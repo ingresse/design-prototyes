@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { ChevronRight } from "@untitledui/icons";
+import { TableCard } from "@/components/application/table/table";
 import { Button } from "@/components/base/buttons/button";
 import { cx } from "@/utils/cx";
 import type { Totais } from "./dados";
@@ -42,18 +43,16 @@ export const NumeroGrande = ({ valor, className, classeDosCentavos = "text-sm" }
     );
 };
 
-/** Cartão de seção: título, selo opcional ao lado do título e ações à direita. */
-export const Secao = ({ titulo, selo, lateral, children, className }: { titulo: string; selo?: ReactNode; lateral?: ReactNode; children: ReactNode; className?: string }) => (
-    <section className={cx("flex flex-col rounded-2xl bg-primary ring-1 ring-secondary", className)}>
-        <header className="flex min-h-18 items-center justify-between gap-6 border-b border-secondary px-6 py-4">
-            <div className="flex min-w-0 items-center gap-2">
-                <h2 className="text-lg font-semibold text-primary">{titulo}</h2>
-                {selo}
-            </div>
-            {lateral && <div className="flex shrink-0 items-center gap-3">{lateral}</div>}
-        </header>
+/**
+ * Cartão de seção: `TableCard` do DS (título, selo ao lado do título e ações à direita).
+ * `semCabecalho`: o título fica só para leitor de tela (topo de Finanças, onde a conta abre a página).
+ * É um contêiner (`@container`): o que está dentro se ajusta à largura do cartão, não à da janela.
+ */
+export const Secao = ({ titulo, semCabecalho, selo, lateral, children, className }: { titulo: string; semCabecalho?: boolean; selo?: ReactNode; lateral?: ReactNode; children: ReactNode; className?: string }) => (
+    <TableCard.Root role="region" aria-label={titulo} className={cx("@container", className)}>
+        {!semCabecalho && <TableCard.Header title={titulo} badge={selo} contentTrailing={lateral} className="md:items-center" />}
         {children}
-    </section>
+    </TableCard.Root>
 );
 
 /* ---------------- cascata ---------------- */
@@ -86,7 +85,7 @@ const Bloco = ({ parte, valor, legenda, leitura, resultado, tom, aoAbrir, acao }
                 {leitura && <span className="sr-only">{leitura} </span>}
                 {ROTULO_DA_PARTE[parte]}
             </span>
-            <span className={cx("font-semibold whitespace-nowrap tabular-nums", resultado ? "text-xl min-[1400px]:text-display-xs" : "text-lg min-[1400px]:text-xl", tom === "erro" && valor !== 0 ? "text-error-primary" : "text-primary")}>{reais(valor)}</span>
+            <span className={cx("font-semibold whitespace-nowrap tabular-nums", resultado ? "text-xl @6xl:text-display-xs" : "text-lg @6xl:text-xl", tom === "erro" && valor !== 0 ? "text-error-primary" : "text-primary")}>{reais(valor)}</span>
             {legenda && <span className="text-xs text-tertiary">{legenda}</span>}
             {aoAbrir && (
                 <span className="mt-auto flex items-center gap-1 pt-1 text-sm font-semibold whitespace-nowrap text-tertiary transition duration-100 ease-linear group-hover:text-tertiary_hover">
@@ -97,7 +96,7 @@ const Bloco = ({ parte, valor, legenda, leitura, resultado, tom, aoAbrir, acao }
             {acao && <span className="mt-auto pt-1">{acao}</span>}
         </>
     );
-    const classe = cx("group flex min-w-0 flex-col gap-1 rounded-xl p-3 text-left ring-1 ring-inset min-[1400px]:p-4", resultado ? "flex-[1.25] bg-secondary ring-primary" : "flex-1 bg-primary ring-secondary");
+    const classe = cx("group flex min-w-0 flex-1 flex-col gap-1 rounded-xl p-3 text-left ring-1 ring-inset @6xl:p-4", resultado ? "bg-secondary ring-primary" : "bg-primary ring-secondary");
     if (!aoAbrir) return <div className={classe}>{conteudo}</div>;
     return (
         <button
@@ -119,7 +118,7 @@ interface CascataProps {
 }
 
 export const Cascata = ({ totais, aoAbrir, aoVerRelatorio }: CascataProps) => (
-    <div className="flex items-stretch gap-2 p-6">
+    <div className="flex items-stretch gap-2 px-6 py-5">
         <Bloco
             parte="vendido"
             valor={totais.vendido}
@@ -158,34 +157,85 @@ interface DistribuicaoProps {
     totais: Pick<Totais, ParteDaDistribuicao | "seuDinheiro">;
     /** Legenda de cada parte, só quando há dado novo (data, prazo). */
     detalhes: Partial<Record<ParteDaDistribuicao, string>>;
+    /**
+     * Topo de Finanças: Disponível agora, A liberar e Já recebido viram os números de destaque
+     * (os únicos com centavos) dentro da própria soma, em vez de se repetirem em cartões à parte.
+     */
+    destaque?: { aoAntecipar: () => void; bloqueado?: boolean };
 }
 
-export const Distribuicao = ({ totais, detalhes }: DistribuicaoProps) => (
-    <div className="flex flex-col gap-5 px-6 pb-6">
-        <div className="flex flex-col gap-3 border-t border-secondary pt-5">
-            <h3 className="text-sm font-semibold text-primary">Onde está seu dinheiro</h3>
-            {/* Barra de proporção: decorativa, os valores estão logo abaixo. */}
-            <div aria-hidden="true" className="flex h-2 w-full gap-0.5 overflow-hidden rounded-full">
-                {ORDEM.filter((p) => totais[p] > 0).map((p) => (
-                    <span key={p} className={cx("h-full min-w-1 rounded-full", COR_DA_PARTE[p])} style={{ flexGrow: totais[p], flexBasis: 0 }} />
-                ))}
-            </div>
-        </div>
-        <dl className="-mx-4 grid grid-cols-6 divide-x divide-secondary">
-            {ORDEM.map((parte) => {
-                const valor = totais[parte];
-                const negativo = valor < 0;
-                return (
-                    <div key={parte} className="flex min-w-0 flex-col gap-1 px-4">
-                        <dt className="flex items-center gap-1.5 text-sm font-medium whitespace-nowrap text-secondary">
-                            <span aria-hidden="true" className={cx("size-2 shrink-0 rounded-full", negativo ? "bg-utility-red-500" : COR_DA_PARTE[parte])} />
-                            {ROTULO_DA_PARTE[parte]}
-                        </dt>
-                        <dd className={cx("text-md font-semibold whitespace-nowrap tabular-nums min-[1400px]:text-lg", negativo ? "text-error-primary" : "text-primary")}>{reais(valor)}</dd>
-                        {detalhes[parte] && <dd className="text-xs text-tertiary">{detalhes[parte]}</dd>}
-                    </div>
-                );
-            })}
-        </dl>
-    </div>
+const DESTAQUES: ParteDaDistribuicao[] = ["disponivel", "aLiberar", "recebido"];
+
+const Rotulo = ({ parte, negativo }: { parte: ParteDaDistribuicao; negativo: boolean }) => (
+    <dt className="flex items-center gap-1.5 text-sm font-medium whitespace-nowrap text-secondary">
+        <span aria-hidden="true" className={cx("size-2 shrink-0 rounded-full", negativo ? "bg-utility-red-500" : COR_DA_PARTE[parte])} />
+        {ROTULO_DA_PARTE[parte]}
+    </dt>
 );
+
+export const Distribuicao = ({ totais, detalhes, destaque }: DistribuicaoProps) => {
+    const menores = destaque ? ORDEM.filter((p) => !DESTAQUES.includes(p)) : ORDEM;
+    return (
+        <div className="flex flex-col gap-4 px-6 pb-5">
+            <div className="flex flex-col gap-3 border-t border-secondary pt-4">
+                <h3 className="text-sm font-semibold text-primary">Onde está seu dinheiro</h3>
+                {/* Barra de proporção: decorativa, os valores estão logo abaixo. */}
+                <div aria-hidden="true" className="flex h-2 w-full gap-0.5 overflow-hidden rounded-full">
+                    {ORDEM.filter((p) => totais[p] > 0).map((p) => (
+                        <span key={p} className={cx("h-full min-w-1 rounded-full", COR_DA_PARTE[p])} style={{ flexGrow: totais[p], flexBasis: 0 }} />
+                    ))}
+                </div>
+            </div>
+            <dl className="flex flex-col gap-4">
+                {destaque && (
+                    <div className="-mx-4 grid grid-cols-3 divide-x divide-secondary">
+                        {DESTAQUES.map((parte) => {
+                            const valor = totais[parte];
+                            const cor = valor < 0 ? "text-error-primary" : parte === "disponivel" ? "text-success-primary" : parte === "aLiberar" ? "text-utility-blue-500" : "text-primary";
+                            return (
+                                <div key={parte} className="flex min-w-0 flex-wrap items-center justify-between gap-3 px-4">
+                                    <div className="flex min-w-0 flex-col gap-1">
+                                        <Rotulo parte={parte} negativo={valor < 0} />
+                                        <dd>
+                                            <NumeroGrande valor={valor} className={cx(parte === "disponivel" ? "text-display-xs @6xl:text-display-sm" : "text-xl @6xl:text-display-xs", cor)} classeDosCentavos="text-md" />
+                                        </dd>
+                                        {detalhes[parte] && <dd className="text-xs text-tertiary">{detalhes[parte]}</dd>}
+                                    </div>
+                                    {parte === "aLiberar" && valor > 0 && (
+                                        <dd className="shrink-0">
+                                            <Button size="sm" color="secondary" isDisabled={destaque.bloqueado} onClick={destaque.aoAntecipar}>
+                                                Antecipar
+                                            </Button>
+                                        </dd>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
+                <div className={cx("-mx-4 grid divide-x divide-secondary", destaque ? "grid-cols-3 border-t border-secondary pt-4" : "grid-cols-6")}>
+                    {menores.map((parte) => {
+                        const valor = totais[parte];
+                        const classeDoValor = cx("font-semibold whitespace-nowrap tabular-nums", valor < 0 ? "text-error-primary" : "text-primary");
+                        return destaque ? (
+                            // No topo, as três partes menores ficam em uma linha cada: rótulo e valor lado a lado.
+                            <div key={parte} className="flex min-w-0 flex-col gap-0.5 px-4">
+                                <div className="flex items-baseline justify-between gap-3">
+                                    <Rotulo parte={parte} negativo={valor < 0} />
+                                    <dd className={cx("text-md", classeDoValor)}>{reais(valor)}</dd>
+                                </div>
+                                {detalhes[parte] && <dd className="text-right text-xs text-tertiary">{detalhes[parte]}</dd>}
+                            </div>
+                        ) : (
+                            <div key={parte} className="flex min-w-0 flex-col gap-1 px-4">
+                                <Rotulo parte={parte} negativo={valor < 0} />
+                                <dd className={cx("text-md @6xl:text-lg", classeDoValor)}>{reais(valor)}</dd>
+                                {detalhes[parte] && <dd className="text-xs text-tertiary">{detalhes[parte]}</dd>}
+                            </div>
+                        );
+                    })}
+                </div>
+            </dl>
+        </div>
+    );
+};

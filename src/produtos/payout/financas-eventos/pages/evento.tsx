@@ -25,9 +25,9 @@ const PARTES: ParteComDetalhe[] = ["taxas", "creditos", "ajustes"];
 
 /** Linha com guia visual: data à esquerda, o que é no meio, valor à direita, divisor entre linhas. */
 const Linha = ({ quando, titulo, detalhe, valor, corDoValor = "text-primary", extra }: { quando: string; titulo: ReactNode; detalhe?: ReactNode; valor?: string; corDoValor?: string; extra?: ReactNode }) => (
-    <li className="grid grid-cols-[9rem_minmax(0,1fr)_auto] items-baseline gap-4 px-6 py-4">
-        <span className="text-sm font-medium whitespace-nowrap text-secondary">{quando}</span>
-        <div className="flex min-w-0 flex-col gap-1">
+    <li className="flex items-baseline gap-4 px-6 py-4">
+        <span className="w-36 shrink-0 text-sm font-medium whitespace-nowrap text-secondary">{quando}</span>
+        <div className="flex min-w-0 flex-1 flex-col gap-1">
             <span className="text-sm font-medium text-primary">{titulo}</span>
             {detalhe && <span className="text-sm text-tertiary">{detalhe}</span>}
             {extra}
@@ -168,8 +168,8 @@ export function FinancasEvento() {
                                             corDoValor={l.tipo === "aLiberar" ? "text-utility-blue-500" : "text-primary"}
                                         />
                                     ))}
-                                    <li className="grid grid-cols-[9rem_minmax(0,1fr)_auto] items-baseline gap-4 bg-secondary px-6 py-4">
-                                        <span className="col-span-2 text-sm font-semibold text-primary">Total que entra no disponível</span>
+                                    <li className="flex items-baseline justify-between gap-4 bg-secondary px-6 py-4">
+                                        <span className="text-sm font-semibold text-primary">Total que entra no disponível</span>
                                         <span className="text-sm font-semibold whitespace-nowrap text-primary tabular-nums">{reais(totalDoCalendario)}</span>
                                     </li>
                                 </Lista>

@@ -58,7 +58,7 @@ Dados e contas
 
 Interface
 
-10. **Topo:** ficaram os três números de destaque (Disponível agora, A liberar, Já recebido, os únicos com centavos) e, logo abaixo, a cascata da organização com a distribuição. Disponível agora, A liberar e Já recebido aparecem duas vezes de propósito: no destaque e como parte da soma que fecha.
+10. **Topo (depois da crítica de design):** um cartão só. A cascata da organização e, dentro de "Onde está seu dinheiro", Disponível agora, A liberar e Já recebido como números de destaque (os únicos com centavos). Cada número aparece uma vez. Os três cartões separados saíram: repetiam os mesmos valores e empurravam a lista para fora da primeira dobra (a lista começava em 810px; agora começa em cerca de 600px, em 1280 e 1440).
 11. **"Solicitar repasse" fica no cabeçalho,** como na Tela guardiã do Figma; "Antecipar" fica no card A liberar.
 12. **Imagem do evento:** o protótipo não tem as capas reais. Cada evento ganha uma capa ilustrativa gerada (`components/financas/capa.ts`) dentro do Avatar do DS. É conteúdo, não estilo: por isso as cores dela não vêm dos tokens. Trocar pelas capas reais quando houver.
 13. **Título de página:** Text xl / Semibold, lido do componente "Cabeçalho da página / Finanças" da Tela guardiã no Figma.
@@ -68,12 +68,17 @@ Interface
 17. **Shell:** menu lateral do Backstage refeito em `shell.tsx` (produto não importa de outro produto; a Arena Produções não existe no banco compartilhado). Botão primário vermelho, como no Figma. Tela escura forçada enquanto o protótipo está aberto.
 18. **"Baixar relatório"** baixa um CSV de verdade com os eventos do resultado, com os mesmos nomes da tela.
 19. Só desktop (1440 e 1280). Em 1280 os valores da cascata e da distribuição usam um degrau menor da escala de tipo do DS para não cortar.
+20. **Ordem padrão da lista: "Pendentes primeiro".** Os ajustes v2 pediam data do evento como padrão. Com 48 eventos, isso abria a lista com eventos de 2027 e deixava 32 pastas quitadas ("Nada disponível agora") misturadas. Agora vêm antes os eventos com dinheiro para entrar, sair ou acompanhar, do mais próximo de hoje para o mais distante. "Data do evento" continua como opção.
+21. **Frase da pasta** diz qual dinheiro é ("R$ 260.000 a liberar em 21/11", "R$ 18.620 retidos até 18/11") em vez de "chegam em", que juntava duas partes diferentes.
+22. **Cenário "Saldo negativo" virou "Total negativo",** e a barra do protótipo diz o que cada cenário muda. Motivo: na página de um evento negativo (Arraial, Sunset no Cais) os cenários Normal e Total negativo mostram a mesma tela, porque o cenário mexe no total da organização, não no evento.
 
 ## Regras a validar com a engenharia
 
 Novas nesta rodada
 
-1. **Saldo negativo de um evento: de onde sai o resto?** A tela diz, como pedido na correção 3: "Em 26/11, R$ 5.700 retidos são liberados e abatem o saldo negativo. Os R$ 19.500 restantes saem das próximas liberações dos seus outros eventos." **Atenção:** o briefing original diz que o Disponível agora total *já desconta* o débito, e é assim que a conta do topo fecha (o −R$ 25.200 do Arraial está dentro dos R$ 2.846.095). As duas coisas não são verdade ao mesmo tempo: ou o débito já saiu do disponível dos outros eventos, ou vai sair das próximas liberações. A frase "já está descontado do seu Disponível agora total" saiu do aviso para a tela não se contradizer, mas a regra precisa ser decidida antes da entrevista.
+1. **DECIDIR ANTES DA ENTREVISTA · Saldo negativo de um evento: de onde sai o resto?** A tela diz, como pedido na correção 3: "Em 26/11, R$ 5.700 retidos são liberados e abatem o saldo negativo. Os R$ 19.500 restantes saem das próximas liberações dos seus outros eventos." **Atenção:** o briefing original diz que o Disponível agora total *já desconta* o débito, e é assim que a conta do topo fecha (o −R$ 25.200 do Arraial está dentro dos R$ 2.846.095). As duas coisas não são verdade ao mesmo tempo: ou o débito já saiu do disponível dos outros eventos, ou vai sair das próximas liberações. A frase "já está descontado do seu Disponível agora total" saiu do aviso para a tela não se contradizer, mas a regra precisa ser decidida antes da entrevista. As duas redações prontas, para trocar em `explicacaoDoNegativo`/aviso de `pages/evento.tsx` conforme a resposta:
+   - *Se já foi descontado:* "Você não precisa pagar nada: o valor já foi descontado do Disponível agora dos seus outros eventos. Em 26/11, R$ 5.700 retidos são liberados e reduzem o saldo negativo para R$ 19.500."
+   - *Se sai das próximas liberações (texto atual):* "Você não precisa pagar nada. Em 26/11, R$ 5.700 retidos são liberados e abatem o saldo negativo. Os R$ 19.500 restantes saem das próximas liberações dos seus outros eventos." Neste caso o Disponível agora do topo **não** deveria somar o −R$ 25.200, e os números do briefing precisam mudar.
 2. **Contestação no cartão sai do retido por segurança?** "O que ainda pode mudar" afirma que o retido fica "guardado para esses casos" (correção 12: mantido). O retido libera em 60 dias e a contestação pode vir até 120: de onde sai o valor de uma contestação depois da liberação?
 3. **Composição de Taxas e custos:** quais linhas existem de verdade e com que nome para o produtor (suposição 4)? Emissão de cortesias é custo cobrado do produtor?
 4. **Créditos são sempre "Bonificações do contrato"?** A legenda do bloco afirma isso. Se existir crédito de outro tipo, a legenda fica errada.
@@ -105,6 +110,7 @@ Do briefing original (seguem em aberto)
 
 | Faltou | O que foi usado no lugar |
 | --- | --- |
+| Cartão de seção e barra de filtros | Agora são `TableCard` e `FilterBar` do DS (antes eram composições locais: corrigido depois da crítica) |
 | Pagination "Page minimal center aligned" em português e com 16px de padding (`PaginationPageMinimalCenter` traz "Previous" e "Next" fixos e padding próprio) | A mesma composição com as peças do DS (`Pagination` base + `Button`), em português: `financas-eventos/components/paginacao.tsx` |
 | Limpar o período no Date range picker (não há "limpar" dentro do componente) | "Limpar filtros" ao lado dos filtros |
 | Rótulo acessível em português no Date range picker (o padrão é "Date range picker") | `aria-label` passado pela tela; o do diálogo interno continua em inglês |
@@ -113,7 +119,8 @@ Do briefing original (seguem em aberto)
 | Barra de proporção com vários segmentos (o `ProgressBar` tem um valor só) | `div` com segmentos em tokens `utility-*` (neutral-300, amber-500, blue-500, green-500, purple-500, neutral-600) |
 | Linha de lista com data, descrição e valor (calendário, repasses, ajustes) | `grid` de três colunas com divisor: `Linha` em `evento.tsx` |
 | Linha de "pasta" (item navegável com imagem, selos e frase de status) | `Link` com `Avatar`, `Badge` e chevron |
-| Número de destaque com centavos menores (`Metrics` não separa os centavos) | `NumeroGrande` em `cascata.tsx` |
+| Número de destaque com centavos menores (`MetricsSimple` não separa os centavos e traz um menu de ações fixo) | `NumeroGrande` em `cascata.tsx` |
+| Ponto de quebra entre 1280 e 1440 (o DS tem `xl` 1280 e `2xl` 1536) | Consulta de contêiner `@6xl` no cartão |
 | Esqueleto de carregamento | Blocos `bg-tertiary` com `animate-pulse` |
 | Alerta em linha que não corta o texto (`AlertFloating` trunca em uma linha) | `Aviso` em `estados.tsx`, mesma anatomia |
 | Rail da organização como componente (só existe dentro do `BackstageLayout`) | Cópia local no shell |
@@ -132,7 +139,7 @@ Tela principal
 | Estado vazio de filtro explicar o porquê ("Nenhum evento está nessa situação neste período") | Não aceita | Mantido o texto pedido ("Nenhum evento com esse filtro" + "Limpar filtros"): é curto e a ação resolve |
 | Aviso de Disponível negativo: trocar "compensado sozinho" por "sai das suas próximas liberações" | Aceita | Mesma expressão da página do evento; "saldo" saiu das frases que falam do disponível |
 | Selo "Evento em vendas" virar "Em vendas", igual ao filtro | Não aceita (decidir) | O selo vem do briefing original; é a única diferença de termo que sobrou, vale escolher um |
-| Frase da pasta usar "liberam em" em vez de "chegam em" | Não aceita | "chegam em" é o exemplo dado nos ajustes v2 e é mais natural na frase |
+| Frase da pasta dizer qual dinheiro é, em vez de "chegam em" | Aceita (na crítica de design) | "chegam em" juntava A liberar e Retido; ficou "a liberar em" e "retidos até" |
 | Toast do relatório dizer quantos eventos foram baixados | Aceita | Confirma que o download seguiu o filtro |
 
 Página do evento

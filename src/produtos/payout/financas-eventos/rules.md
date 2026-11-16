@@ -22,8 +22,9 @@ valores, com navegação. A explicação do dinheiro de cada evento mora dentro 
 ## Regras
 
 ### Topo
-- **FEV-01** Três números de destaque, só eles com centavos: Disponível agora (o maior), A liberar (com Antecipar e a próxima liberação dessa categoria) e Já recebido. _(pages/eventos.tsx)_
-- **FEV-02** "A conta de todos os eventos": Vendido − Taxas e custos + Créditos − Ajustes = Seu dinheiro, e "Onde está seu dinheiro" em seis partes que somam Seu dinheiro. É a mesma cascata da página do evento.
+- **FEV-01** O topo é um cartão só, sem cabeçalho próprio: a cascata (Vendido − Taxas e custos + Créditos − Ajustes = Seu dinheiro) e, abaixo, "Onde está seu dinheiro" em seis partes que somam Seu dinheiro. É a mesma conta da página do evento. _(pages/eventos.tsx, components/financas/cascata.tsx)_
+- **FEV-02** Dentro de "Onde está seu dinheiro", Disponível agora (o maior), A liberar (com Antecipar e a próxima liberação dessa categoria) e Já recebido são os números de destaque, os únicos com centavos. Cada número aparece uma vez só na tela.
+- **FEV-06** A lista de eventos começa na primeira dobra em 1280×800 e 1440×900.
 - **FEV-03** A conta do topo é sempre da organização inteira: busca e filtro da lista não mudam a conta.
 - **FEV-04** Taxas e custos, Créditos e Ajustes abrem um painel lateral com a composição, que fecha com o total do bloco. Bloco com R$ 0 não abre. Vendido tem o link "Ver no relatório de vendas". _(components/financas/cascata.tsx, painel-do-detalhe.tsx)_
 - **FEV-05** Cada parte de "Onde está seu dinheiro" tem uma cor só, a mesma na barra e na legenda. Vermelho só para valor negativo.
@@ -31,7 +32,9 @@ valores, com navegação. A explicação do dinheiro de cada evento mora dentro 
 ### Lista
 - **FEV-10** Cada pasta mostra imagem do evento, nome sem `#ID` e sem truncar, data com dia da semana, selos e uma frase de status do dinheiro. Sem colunas de valores.
 - **FEV-11** Selos: Saldo negativo (vermelho), Ajuste recente (aviso, ajuste nos últimos 30 dias) e Evento em vendas (neutro).
-- **FEV-12** Navegação: contagem ao lado do título, busca por nome (sem diferença de acento), filtro por situação e por período da data do evento, ordenação (data do evento, mais recente primeiro; maior disponível; maior a liberar) e paginação de 10 em 10. _(utils/lista.ts)_
+- **FEV-12** Navegação: contagem ao lado do título, busca por nome (sem diferença de acento), filtro por situação e por período da data do evento, ordenação e paginação de 10 em 10. _(utils/lista.ts)_
+- **FEV-17** Ordem padrão "Pendentes primeiro": eventos com dinheiro para entrar, sair ou acompanhar vêm antes, do mais próximo de hoje para o mais distante; os quitados (tudo já recebido) vêm depois, do mais recente para o mais antigo. Outras ordens: data do evento (mais recente primeiro), maior disponível, maior a liberar.
+- **FEV-18** A frase da pasta diz qual dinheiro é: "a liberar em" ou "retidos até", com os mesmos termos do resto da tela.
 - **FEV-13** Mudar busca, filtro ou ordem volta para a página 1.
 - **FEV-14** "Baixar relatório" baixa os eventos do resultado (CSV), não só os da página.
 - **FEV-15** Busca sem resultado e filtro sem resultado têm estado vazio próprio, com "Limpar filtros".
@@ -51,9 +54,13 @@ valores, com navegação. A explicação do dinheiro de cada evento mora dentro 
 - **FEV-32** Centavos só nos três números de destaque do topo.
 
 ### Estados
-- **FEV-40** Cenário em `?cenario=`: normal, negativo, bloqueado, carregando, erro, sem-eventos.
+- **FEV-40** Cenário em `?cenario=`: normal, negativo (rótulo "Total negativo"), bloqueado, carregando, erro, sem-eventos. A barra do protótipo diz o que o cenário muda na tela.
 - **FEV-41** Evento com saldo negativo: aviso no topo com "Por quê" e "O que acontece agora", até o fim da história (quanto abate, quando, e de onde sai o resto); repasse do evento desligado.
 - **FEV-42** Bloqueado: aviso em linguagem de cliente; repasse e antecipação desligados.
+
+### Design System
+- **FEV-60** Cartões de seção são `TableCard` do DS; busca e filtros ficam em `FilterBar` do DS. Sem valores arbitrários de Tailwind nas telas (a única exceção é a altura do menu lateral, copiada do Backstage).
+- **FEV-61** Tamanhos que mudam entre 1280 e 1440 usam consulta de contêiner (`@6xl`) do cartão, não largura da janela.
 
 ### Contas
 - **FEV-50** `node src/produtos/payout/financas-eventos/utils/conferir-contas.ts` confere que as partes somam Seu dinheiro em cada evento e no total, e que a soma dos 48 eventos é igual à cascata do topo.

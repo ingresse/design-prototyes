@@ -42,7 +42,8 @@ export function statusDoDinheiro(e: Evento): string {
         return `Saldo negativo de ${reais(-e.disponivel)}${abate}`;
     }
     const partes = [e.disponivel > 0 ? `${reais(e.disponivel)} disponíveis` : "Nada disponível agora"];
-    if (proxima) partes.push(`${reais(proxima.valor)} chegam em ${dataCurta(proxima.data)}`);
+    // Diz qual dinheiro é: "a liberar" e "retido" são partes diferentes no resto da tela.
+    if (proxima) partes.push(proxima.tipo === "aLiberar" ? `${reais(proxima.valor)} a liberar em ${dataCurta(proxima.data)}` : `${reais(proxima.valor)} retidos até ${dataCurta(proxima.data)}`);
     else if (e.recebido > 0) partes.push(`${reais(e.recebido)} já recebidos`);
     return partes.join(" · ");
 }

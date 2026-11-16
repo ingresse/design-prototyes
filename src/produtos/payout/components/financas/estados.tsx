@@ -58,15 +58,7 @@ const Bloco = ({ className }: { className?: string }) => <div aria-hidden="true"
 
 export const Carregando = () => (
     <div role="status" aria-label="Carregando suas finanças" className="flex flex-col gap-6">
-        <div className="grid grid-cols-[1.3fr_1fr_1fr] divide-x divide-secondary rounded-2xl bg-primary ring-1 ring-secondary">
-            {Array.from({ length: 3 }, (_, i) => (
-                <div key={i} className="flex flex-col gap-3 px-6 py-5">
-                    <Bloco className="h-3 w-28" />
-                    <Bloco className="h-8 w-48" />
-                </div>
-            ))}
-        </div>
-        <div className="flex flex-col gap-5 rounded-2xl bg-primary p-6 ring-1 ring-secondary">
+        <div className="flex flex-col gap-5 rounded-xl bg-primary p-6 ring-1 ring-secondary">
             <Bloco className="h-5 w-56" />
             <div className="grid grid-cols-5 gap-6">
                 {Array.from({ length: 5 }, (_, i) => (
@@ -78,7 +70,7 @@ export const Carregando = () => (
             </div>
             <Bloco className="h-2 w-full rounded-full" />
         </div>
-        <div className="flex flex-col gap-5 rounded-2xl bg-primary p-6 ring-1 ring-secondary">
+        <div className="flex flex-col gap-5 rounded-xl bg-primary p-6 ring-1 ring-secondary">
             <Bloco className="h-5 w-40" />
             {Array.from({ length: 4 }, (_, i) => (
                 <div key={i} className="flex items-center gap-4">
@@ -96,7 +88,7 @@ export const Carregando = () => (
 /* ---------------- erro e sem eventos ---------------- */
 
 const EstadoCentral = ({ icone, titulo, descricao, acao }: { icone: FC<{ className?: string }>; titulo: string; descricao: string; acao: ReactNode }) => (
-    <div className="flex flex-1 items-center justify-center rounded-2xl bg-primary px-6 py-20 ring-1 ring-secondary">
+    <div className="flex flex-1 items-center justify-center rounded-xl bg-primary px-6 py-20 ring-1 ring-secondary">
         <EmptyState size="sm">
             <EmptyState.Header>
                 <EmptyState.FeaturedIcon icon={icone} color="gray" theme="modern" />
@@ -165,7 +157,7 @@ export const TelaFinal = ({ acao, evento, valor, aoVoltar }: TelaFinalProps) => 
         eventos: { icone: Calendar, titulo: "Aqui você vai para Eventos", descricao: "A lista de eventos da organização abre a partir daqui." },
     }[acao];
     return (
-        <div className="flex flex-1 items-center justify-center rounded-2xl bg-primary px-6 py-20 ring-1 ring-secondary">
+        <div className="flex flex-1 items-center justify-center rounded-xl bg-primary px-6 py-20 ring-1 ring-secondary">
             <EmptyState size="md">
                 <EmptyState.Header>
                     <EmptyState.FeaturedIcon icon={textos.icone} color="gray" theme="modern" />

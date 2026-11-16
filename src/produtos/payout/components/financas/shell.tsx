@@ -69,9 +69,12 @@ const BarraDoPrototipo = ({ jornada }: { jornada: string }) => {
     const [cenario, setCenario] = useCenario();
     return (
         <div className="sticky top-0 z-40 flex h-12 items-center gap-4 border-b border-secondary bg-secondary px-4">
-            <span className="text-xs font-semibold text-secondary">Protótipo de pesquisa</span>
-            <span className="text-xs text-tertiary">{jornada}</span>
-            <div className="ml-auto flex items-center gap-2">
+            <span className="text-xs font-semibold whitespace-nowrap text-secondary">Protótipo de pesquisa</span>
+            <span className="text-xs whitespace-nowrap text-tertiary">{jornada}</span>
+            <span className="min-w-0 truncate text-xs text-tertiary" title={CENARIOS.find((c) => c.id === cenario)?.muda}>
+                {CENARIOS.find((c) => c.id === cenario)?.muda}
+            </span>
+            <div className="ml-auto flex shrink-0 items-center gap-2">
                 <span id="rotulo-cenario" className="text-xs text-tertiary">
                     Cenário
                 </span>
@@ -110,7 +113,7 @@ const MENU: Array<{ id: string; icone: ComponentType<{ className?: string }>; ro
 ];
 
 const MenuLateral = () => (
-    <aside className="sticky top-18 flex h-[calc(100vh-6rem)] w-[100px] shrink-0 flex-col items-center overflow-y-auto rounded-2xl bg-primary px-1 py-4">
+    <aside className="sticky top-18 flex h-[calc(100vh-6rem)] w-25 shrink-0 flex-col items-center overflow-y-auto rounded-2xl bg-primary px-1 py-4">
         <div className="flex flex-col items-center gap-4">
             <div className="flex w-full flex-col items-center gap-1.5 px-1 py-1" aria-label={`Organização: ${ORGANIZACAO.nome}`}>
                 <span className="relative">
@@ -187,7 +190,7 @@ export function FinancasShell({ jornada, children }: FinancasShellProps) {
             <div className="flex gap-3 px-3 py-6">
                 <MenuLateral />
                 <main className="flex min-w-0 flex-1 flex-col px-6 pb-6">
-                    <div className="mx-auto flex w-full max-w-[1240px] flex-1 flex-col gap-6">{children}</div>
+                    <div className="mx-auto flex w-full max-w-310 flex-1 flex-col gap-6">{children}</div>
                 </main>
             </div>
         </div>

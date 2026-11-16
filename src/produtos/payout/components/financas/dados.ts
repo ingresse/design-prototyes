@@ -17,13 +17,14 @@ export const ORGANIZACAO = { nome: "Arena Produções", sigla: "AP", curto: "Are
 
 export type Cenario = "normal" | "negativo" | "bloqueado" | "carregando" | "erro" | "sem-eventos";
 
-export const CENARIOS: Array<{ id: Cenario; rotulo: string }> = [
-    { id: "normal", rotulo: "Normal" },
-    { id: "negativo", rotulo: "Saldo negativo" },
-    { id: "bloqueado", rotulo: "Bloqueado" },
-    { id: "carregando", rotulo: "Carregando" },
-    { id: "erro", rotulo: "Erro" },
-    { id: "sem-eventos", rotulo: "Sem eventos" },
+/** `muda` diz, na barra do protótipo, o que o cenário altera na tela (para quem conduz a entrevista). */
+export const CENARIOS: Array<{ id: Cenario; rotulo: string; muda: string }> = [
+    { id: "normal", rotulo: "Normal", muda: "Dados do briefing. Dois eventos têm saldo negativo, mas o total é positivo." },
+    { id: "negativo", rotulo: "Total negativo", muda: "O disponível dos outros eventos já foi recebido: o total da organização fica negativo." },
+    { id: "bloqueado", rotulo: "Bloqueado", muda: "Repasses pausados: repasse e antecipação desligados." },
+    { id: "carregando", rotulo: "Carregando", muda: "Tela esperando os dados." },
+    { id: "erro", rotulo: "Erro", muda: "Os dados não carregaram." },
+    { id: "sem-eventos", rotulo: "Sem eventos", muda: "Organização sem nenhum evento com vendas." },
 ];
 
 export type TipoLiberacao = "retidoEvento" | "retidoSeguranca" | "aLiberar";
