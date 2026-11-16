@@ -3,9 +3,9 @@ import { Navigate, useNavigate, useParams, useSearchParams } from "react-router"
 import { ChevronLeft, HelpCircle, Share06 } from "@untitledui/icons";
 import { Button } from "@/components/base/buttons/button";
 import { useForceLightTheme } from "../../utils/use-force-light-theme";
+import { MarcaServico } from "../components/apresentacao-servico";
 import { IconeCartao, IconeClickToPay, IconeGoogle, IconePix, MetodoPagamento } from "../components/metodos-pagamento";
 import { Topo } from "../components/topo";
-import { SeloServico } from "../components/selo-servico";
 import { brl, valorFinal } from "../data/servicos";
 import { lerPedido, nomeItem, totalPedido } from "../utils/pedido";
 
@@ -36,7 +36,7 @@ export function CheckoutServico() {
     if (!pedido) return <Navigate to={id ? `/novos-negocios/servicos-adicionais/${id}` : "/novos-negocios/servicos-adicionais"} replace />;
 
     const { servico } = pedido;
-    const titulo = servico.item;
+    const titulo = servico.marca?.nome ?? servico.item;
     const total = totalPedido(pedido);
     // Volta para a oferta mantendo a marcação de quem veio do Checklist do rolê
     const voltar = () => navigate(`/novos-negocios/servicos-adicionais/${servico.id}${params.get("de") === "checklist" ? "?de=checklist" : ""}`);
@@ -58,7 +58,7 @@ export function CheckoutServico() {
                         >
                             <ChevronLeft className="size-5" aria-hidden="true" />
                         </button>
-                        <p className="truncate text-md font-bold text-primary uppercase">{titulo}</p>
+                        <p className="truncate text-lg font-semibold text-primary">{titulo}</p>
                     </div>
                     <div className="flex shrink-0 items-center gap-2">
                         <Button size="md" color="secondary" iconTrailing={Share06} className="hidden sm:flex">
@@ -71,7 +71,7 @@ export function CheckoutServico() {
                 </div>
             </div>
 
-            <main className="mx-auto w-full max-w-[1160px] px-4 pt-6 pb-16 lg:px-6">
+            <main className="mx-auto w-full max-w-[1160px] px-4 pt-6 pb-6 lg:px-6 lg:pb-8">
                 <div className="flex items-center justify-between gap-4">
                     <h1 className="text-xl font-bold text-primary">Finalizar pedido</h1>
                     <p className="text-xs text-secondary tabular-nums">Tempo restante: {tempo}</p>
@@ -90,11 +90,9 @@ export function CheckoutServico() {
 
                     {/* Resumo do pedido: à direita no desktop, antes dos métodos no mobile */}
                     <aside aria-label="Resumo do pedido" className="order-first rounded-2xl bg-primary p-4 shadow-xs ring-1 ring-secondary lg:sticky lg:top-6 lg:order-none">
-                        <div className="flex items-center gap-4">
-                            {/* Selo do serviço no lugar da capa do evento: o serviço não fica preso a um evento */}
-                            <SeloServico servico={servico} tamanho="lg" />
-                            <p className="text-md font-bold text-primary uppercase">{titulo}</p>
-                        </div>
+                        {/* Mesma linha da marca da oferta (selo e "Crédito Uber"), no lugar da capa do evento: o
+                            serviço não fica preso a um evento. Sem o "5% off": o desconto já aparece nos itens */}
+                        <MarcaServico servico={servico} semSelo />
 
                         <div className="my-4 border-t border-secondary" />
 

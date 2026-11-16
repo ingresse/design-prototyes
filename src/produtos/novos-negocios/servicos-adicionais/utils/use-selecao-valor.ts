@@ -14,8 +14,9 @@ export const mascararReais = (digitos: string) => {
  * ou "Outro valor" digitado, com validação de mínimo e máximo.
  */
 export function useSelecaoValor(servico: Servico) {
-    // Sempre começa sem nada selecionado (inclusive ao recarregar ou voltar do checkout)
-    const [opcao, setOpcao] = useState<Opcao | null>(null);
+    // Começa no valor em destaque do serviço (ex.: R$ 100, "Mais escolhido"); sem destaque, sem nada
+    // selecionado. Vale também ao recarregar ou voltar do checkout
+    const [opcao, setOpcao] = useState<Opcao | null>(servico.valorDestaque?.valor ?? null);
     const [outro, setOutro] = useState("");
     const [tocado, setTocado] = useState(false);
 

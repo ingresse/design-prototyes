@@ -3,10 +3,11 @@ import { useNavigate, useSearchParams } from "react-router";
 import { ArrowLeft } from "@untitledui/icons";
 import { Button } from "@/components/base/buttons/button";
 import { cx } from "@/utils/cx";
-import type { Servico } from "../data/servicos";
+import { brl, valorFinal, type Servico } from "../data/servicos";
 import { useCantosDoCard } from "../utils/use-cantos-do-card";
 import { useSelecaoValor } from "../utils/use-selecao-valor";
 import { ApresentacaoServico, MarcaServico } from "./apresentacao-servico";
+import { CompartilharOferta } from "./compartilhar-oferta";
 import { AvisoServico } from "./condicoes";
 import { SeletorValor } from "./seletor-valor";
 
@@ -26,6 +27,9 @@ export function OfertaServico({ servico }: { servico: Servico }) {
     const card = useRef<HTMLElement>(null);
 
     useCantosDoCard(card);
+
+    // Uber e Meep: com valor escolhido, o CTA mostra o preço (com desconto, quando houver)
+    const rotuloCta = servico.ctaComPreco && selecao.valor != null ? `${servico.ctaComPreco} ${brl(valorFinal(servico, selecao.valor))}` : servico.cta;
 
     const contratar = () => {
         if (selecao.valor == null) return;
@@ -55,16 +59,16 @@ export function OfertaServico({ servico }: { servico: Servico }) {
                     </Button>
                 )}
                 <div className="-mb-2">
-                    <MarcaServico servico={servico} />
+                    <MarcaServico servico={servico} acao={servico.compartilhar && <CompartilharOferta servico={servico} />} />
                 </div>
                 <ApresentacaoServico servico={servico} />
 
-                <div className="flex flex-col gap-5 pt-8">
+                <div className="flex flex-col gap-5 pt-2">
                     <SeletorValor servico={servico} selecao={selecao} />
                     {servico.aviso && <AvisoServico texto={servico.aviso} />}
                     {/* Desktop: CTA no fim do card, desabilitado até a pessoa escolher um valor */}
                     <Button size="xl" color="primary" className="hidden w-full lg:flex" isDisabled={!escolheu} onClick={contratar}>
-                        {servico.cta}
+                        {rotuloCta}
                     </Button>
                 </div>
             </section>
@@ -72,7 +76,7 @@ export function OfertaServico({ servico }: { servico: Servico }) {
             {/* Mobile: CTA fixo no rodapé, desabilitado até a pessoa escolher um valor */}
             <div className="fixed inset-x-0 bottom-0 z-20 border-t border-secondary bg-primary px-4 pt-3 pb-[max(12px,env(safe-area-inset-bottom))] lg:hidden">
                 <Button size="xl" color="primary" className="w-full" isDisabled={!escolheu} onClick={contratar}>
-                    {servico.cta}
+                    {rotuloCta}
                 </Button>
             </div>
         </>

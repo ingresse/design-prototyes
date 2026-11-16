@@ -40,7 +40,7 @@ export function ConfirmacaoServico() {
                     <FeaturedIcon icon={CheckCircle} color="success" theme="light" size="xl" />
                     <div className="flex flex-col gap-2">
                         <h1 className="text-display-xs font-bold text-primary">{servico.confirmacao.titulo}</h1>
-                        <p className="text-md text-tertiary">{servico.confirmacao.descricao}</p>
+                        <p className="text-md text-tertiary">{servico.confirmacao.descricao.replace("{valor}", brl(pedido.valor))}</p>
                     </div>
 
                     <dl className="flex w-full flex-col gap-2 rounded-xl bg-secondary p-4 text-left text-md">
@@ -73,11 +73,16 @@ function ComoUsar({ item, forma }: { item: ItemPedido; forma: string }) {
     const { servico, valor } = item;
     if (servico.resgate) return <Resgate servico={servico} resgate={servico.resgate} codigo={codigoResgate(valor, forma)} />;
     if (!servico.confirmacao.passos) return null;
+    return <Passos passos={servico.confirmacao.passos} />;
+}
+
+/** Passo a passo numerado. */
+function Passos({ passos }: { passos: string[] }) {
     return (
         <ol className="flex w-full flex-col gap-3 text-left">
-            {servico.confirmacao.passos.map((p, i) => (
+            {passos.map((p, i) => (
                 <li key={p} className="flex gap-3">
-                    <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-brand-primary text-xs font-semibold text-brand-secondary">{i + 1}</span>
+                    <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-tertiary text-xs font-semibold text-primary">{i + 1}</span>
                     <span className="text-md text-secondary">{p}</span>
                 </li>
             ))}
@@ -98,7 +103,8 @@ function codigoResgate(valor: number, forma: string) {
 }
 
 /**
- * Código de resgate (copiar) + CTA principal para o app do parceiro. Ativar pelo app
+ * Código de resgate (copiar) + CTA principal para o app do parceiro, só no celular (no desktop
+ * fica só o código), e o passo a passo do resgate manual no app embaixo. Ativar pelo app
  * resgata o código: depois disso, nenhum dos dois caminhos permite uma nova ativação.
  */
 function Resgate({ servico, resgate, codigo }: { servico: Servico; resgate: NonNullable<Servico["resgate"]>; codigo: string }) {
@@ -136,20 +142,34 @@ function Resgate({ servico, resgate, codigo }: { servico: Servico; resgate: NonN
                 </div>
             </div>
 
+            {/* O CTA de ativar só existe no celular: a ativação acontece no app da Uber, e no desktop não
+                há como ativar pelo navegador. No desktop fica só o código, com a orientação de onde usar */}
             {ativado ? (
                 <p role="status" className="flex items-center justify-center gap-2 rounded-xl bg-success-primary p-3 text-md font-semibold text-success-primary">
                     <CheckCircle className="size-5" aria-hidden="true" />
                     Crédito ativado na {servico.parceiro}
                 </p>
             ) : (
-                <Button size="xl" color="primary" className="w-full" iconTrailing={LinkExternal01} isLoading={ativando} showTextWhileLoading onClick={ativar}>
+                <Button size="xl" color="primary" className="w-full lg:hidden" iconTrailing={LinkExternal01} isLoading={ativando} showTextWhileLoading onClick={ativar}>
                     {resgate.cta}
                 </Button>
             )}
 
-            <p className="text-sm text-tertiary">
-                {ativado ? "O código já foi resgatado e não pode ser usado de novo." : resgate.orientacao}
-            </p>
+            {ativado ? (
+                <p className="text-sm text-tertiary">O código já foi resgatado e não pode ser usado de novo.</p>
+            ) : (
+                // Passo a passo do resgate manual, depois do CTA. No celular é a alternativa ao botão;
+                // no desktop, o único caminho
+                <div className="flex flex-col gap-4 text-left">
+                    {/* Divider de ponta a ponta do card (anula o padding da seção) */}
+                    <span aria-hidden="true" className="-mx-6 mt-2 mb-1 border-t border-secondary lg:-mx-8" />
+                    <p className="text-md font-semibold text-primary">
+                        <span className="lg:hidden">{resgate.passosTitulo}</span>
+                        <span className="hidden lg:inline">{resgate.passosTituloDesktop}</span>
+                    </p>
+                    <Passos passos={resgate.passos} />
+                </div>
+            )}
         </div>
     );
 }

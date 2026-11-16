@@ -1,4 +1,5 @@
 import { Radio as AriaRadio, RadioGroup as AriaRadioGroup, Label as AriaLabel } from "react-aria-components";
+import { Badge } from "@/components/base/badges/badges";
 import { Input } from "@/components/base/input/input";
 import { cx } from "@/utils/cx";
 import { brl, valorFinal, type Servico } from "../data/servicos";
@@ -45,6 +46,12 @@ export function SeletorValor({ servico, selecao }: { servico: Servico; selecao: 
                         >
                             {({ isSelected }) => (
                                 <>
+                                    {/* Selo de prova social no valor em destaque (Badge do DS, como o "5% off"), sobre a borda de cima do card */}
+                                    {servico.valorDestaque?.valor === v && (
+                                        <Badge color="brand" type="pill-color" size="sm" className="absolute -top-2.5 left-1/2 -translate-x-1/2 whitespace-nowrap">
+                                            {servico.valorDestaque.selo}
+                                        </Badge>
+                                    )}
                                     <span
                                         className={cx(
                                             servico.pacotes ? "text-md leading-tight font-bold sm:text-lg" : "text-lg font-bold tabular-nums sm:text-xl lg:text-display-xs",

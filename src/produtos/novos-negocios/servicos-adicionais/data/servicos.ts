@@ -2,7 +2,7 @@ import type { FC } from "react";
 import festivalAurora from "../assets/festival-aurora.svg";
 import showPalco from "../assets/show-palco.svg";
 import uberLogo from "../assets/uber-logo.svg";
-import { IconlyCalendario, IconlyCamera, IconlyCarro, IconlyCarteira, IconlyCartao, IconlyComida, IconlyDesconto, IconlyEnviar, IconlyEscudo, IconlyImagem, IconlyRaio } from "../components/icones-iconly";
+import { IconlyCalendario, IconlyCamera, IconlyCarteira, IconlyCartao, IconlyDesconto, IconlyEnviar, IconlyEscudo, IconlyImagem, IconlyRaio } from "../components/icones-iconly";
 
 /**
  * Serviços adicionais — configuração das ofertas.
@@ -16,7 +16,7 @@ import { IconlyCalendario, IconlyCamera, IconlyCarro, IconlyCarteira, IconlyCart
  * confirmadas com os parceiros.
  */
 
-export type ServicoId = "uber" | "meep" | "fotos" | "seguro";
+export type ServicoId = "uber" | "uber-evento" | "meep" | "fotos" | "seguro";
 
 export interface Beneficio {
     icone: FC<{ className?: string }>;
@@ -33,16 +33,29 @@ export interface Servico {
     /** Cor de fundo do selo com ícone (classe de token). */
     corSelo?: string;
     categoria: string;
+    /**
+     * Linha da marca na oferta, no lugar de parceiro + categoria: o que se compra e um selo curto
+     * (ex.: "Crédito Uber" + "5% off"), para não repetir a marca e já mostrar o desconto.
+     */
+    marca?: { nome: string; selo?: string };
+    /** Serviço que só existe dentro de um evento (Meep): a oferta mostra o evento no lugar do mosaico. */
+    evento?: boolean;
     /** Título da oferta. `chamada` vem na linha de baixo e termina no `destaque`, em cor de marca. */
     titulo: string;
     chamada?: string;
     destaque?: string;
+    /** Legenda curta abaixo do título, só quando acrescenta informação. */
+    legenda?: string;
     descricao: string;
     beneficios: Beneficio[];
+    /** Destaca o primeiro benefício (o desconto) acima dos outros. */
+    beneficioPrincipal?: boolean;
     pergunta: string;
     /** Nome do que se compra, usado no resumo ("Crédito Uber", "Saldo Meep"). */
     item: string;
     valores: number[];
+    /** Valor que já vem selecionado, com um selo de prova social em cima (ex.: 100 + "Mais escolhido"). */
+    valorDestaque?: { valor: number; selo: string };
     /** Nome de cada opção quando não é crédito, e sim um pacote (ex.: 49 → "15 fotos"). */
     pacotes?: Record<number, string>;
     /** Fração de desconto sobre o valor (0.05 = 5%). 0 = sem desconto. */
@@ -52,6 +65,14 @@ export interface Servico {
     minimo: number;
     maximo: number;
     cta: string;
+    /** Com valor escolhido, o CTA vira este texto + o preço ("Comprar por R$ 47,50"); antes, fica `cta`. */
+    ctaComPreco?: string;
+    /**
+     * Compartilhar a oferta: botão só com ícone na linha da marca (`rotulo` = tooltip/leitor de
+     * tela), que abre modal (desktop) ou bottom sheet (mobile) com `titulo` e `legenda`.
+     * `mensagem` vai antes do link no WhatsApp e em "Mais opções" (provisória).
+     */
+    compartilhar?: { rotulo: string; titulo: string; legenda: string; mensagem: string };
     /** Aviso curto exibido junto da seleção de valor. */
     aviso?: string;
     condicoes: string[];
@@ -63,11 +84,14 @@ export interface Servico {
      * Resgate por código + link do app do parceiro (Uber). As duas são alternativas, não etapas:
      * usar uma invalida a outra. No protótipo o código é ilustrativo e a ativação é simulada.
      */
-    resgate?: { cta: string; link: string; orientacao: string };
+    /** Passo a passo do resgate manual vem depois do CTA; o título muda no celular (alternativa ao botão) e no desktop. */
+    resgate?: { cta: string; link: string; passosTitulo: string; passosTituloDesktop: string; passos: string[] };
 }
 
 export const EVENTO = {
     nome: "Festival Aurora 2026",
+    /** Nome sem o ano, para títulos curtos (a data já aparece no card do evento). */
+    nomeCurto: "Festival Aurora",
     dataLabel: "Sáb, 12 dez · 16h",
     local: "Parque Villa-Lobos, São Paulo",
     dataCompleta: "Sábado, 12 de dezembro de 2026 · 16h",
@@ -80,65 +104,108 @@ export const EVENTO = {
 
 export const USUARIO = { nome: "Mariana Costa", email: "mariana.costa@email.com", cpf: "***.482.317-**" };
 
+/** Crédito Uber genérico: sem vínculo com evento (mosaico de fotos e copy de rolê em geral). */
+const UBER: Servico = {
+    id: "uber",
+    parceiro: "Uber",
+    logo: uberLogo,
+    categoria: "Transporte",
+    marca: { nome: "Crédito\u00a0Uber", selo: "5% off" },
+    titulo: "Menos na corrida, mais pro rolê",
+    legenda: "Compre crédito\u00a0Uber com desconto e aproveite o rolê do começo ao fim com segurança.",
+    descricao: "Compre créditos para usar em viagens pelo app da Uber.",
+    beneficios: [
+        { icone: IconlyDesconto, texto: "R$ 5 de desconto a cada R$ 100" },
+        { icone: IconlyCartao, texto: "Parcele em até 2x sem juros" },
+    ],
+    pergunta: "Escolha o valor do crédito",
+    item: "Crédito\u00a0Uber",
+    valores: [50, 100, 150],
+    // Teste: o valor do meio já vem selecionado. "Mais escolhido" é ilustrativo até termos o dado
+    valorDestaque: { valor: 100, selo: "Mais escolhido" },
+    desconto: 0.05,
+    outroValor: true,
+    minimo: 20,
+    maximo: 500,
+    cta: "Comprar crédito",
+    ctaComPreco: "Comprar por",
+    compartilhar: {
+        rotulo: "Compartilhar com a galera",
+        titulo: "Coisa boa a gente divide",
+        legenda: "Manda pra quem vai com você. Todo mundo pode comprar crédito\u00a0Uber com 5% off.",
+        mensagem: "Achei crédito\u00a0Uber com 5% de desconto na Ingresse. Dá uma olhada:",
+    },
+    condicoes: [
+        "O crédito vai para a conta Uber ligada ao seu e-mail.",
+        "Válido por 30 dias depois da compra, em viagens dentro do Brasil.",
+        "Não pode ser trocado por dinheiro nem transferido para outra conta.",
+    ],
+    destino: { rotulo: "Conta Uber que recebe o crédito", valor: USUARIO.email },
+    parcelamento: "em até 2x sem juros no cartão",
+    confirmacao: {
+        titulo: "Tudo certo com seu crédito\u00a0Uber",
+        // Aceita {valor} (valor do crédito); aqui não usa, porque o valor já aparece no resumo logo abaixo
+        descricao: "Agora é só ativar com o código abaixo no app da Uber.",
+    },
+    resgate: {
+        cta: "Ativar crédito na Uber",
+        // Ilustrativo: na integração, vem o link de resgate do crédito comprado
+        link: "https://m.uber.com/ul/?action=applyPromo",
+        passosTitulo: "Resgate direto no app da Uber",
+        passosTituloDesktop: "Como resgatar no app da Uber",
+        passos: ["Copie o código acima", "No app da Uber, abra Conta e toque em Carteira", "Toque em Adicionar saldo e depois em Gift Card", "Cole o código e toque em Adicionar"],
+    },
+};
+
 export const SERVICOS: Record<ServicoId, Servico> = {
-    uber: {
-        id: "uber",
-        parceiro: "Uber",
-        logo: uberLogo,
-        categoria: "Transporte",
-        titulo: "Crédito Uber para seus próximos destinos",
-        descricao: "Compre créditos para usar em viagens pelo app da Uber.",
-        beneficios: [
-            { icone: IconlyDesconto, texto: "5% de desconto no valor do crédito" },
-            { icone: IconlyCartao, texto: "Parcele em até 2x sem juros" },
-            { icone: IconlyCarro, texto: "Use em viagens para shows, festivais e outros destinos" },
-        ],
-        pergunta: "Escolha o valor do crédito",
-        item: "Crédito Uber",
-        valores: [50, 100, 150],
-        desconto: 0.05,
-        outroValor: true,
-        minimo: 20,
-        maximo: 500,
-        cta: "Comprar crédito Uber",
-        condicoes: [
-            "O crédito vai para a conta Uber ligada ao seu e-mail.",
-            "Válido por 30 dias depois da compra, em viagens dentro do Brasil.",
-            "Não pode ser trocado por dinheiro nem transferido para outra conta.",
-        ],
-        destino: { rotulo: "Conta Uber que recebe o crédito", valor: USUARIO.email },
-        parcelamento: "em até 2x sem juros no cartão",
-        confirmacao: {
-            titulo: "Crédito Uber comprado!",
-            descricao: "Sua compra foi confirmada. Agora é só ativar seu crédito na Uber.",
-        },
-        resgate: {
-            cta: "Ativar crédito na Uber",
-            // Ilustrativo: na integração, vem o link de resgate do crédito comprado
-            link: "https://m.uber.com/ul/?action=applyPromo",
-            orientacao: "Ative seu crédito pelo botão acima ou copie o código para resgatar no app Uber.",
+    uber: UBER,
+    // Crédito Uber ligado a um evento: mesma oferta e o mesmo resgate, com o evento no lugar do
+    // mosaico (como a Meep) e a copy puxando a ida e a volta daquele evento
+    "uber-evento": {
+        ...UBER,
+        id: "uber-evento",
+        categoria: "Transporte para o evento",
+        evento: true,
+        titulo: `O melhor jeito de ir pro ${EVENTO.nomeCurto}`,
+        legenda: "Pague menos e vá e volte sem se preocupar.",
+        descricao: `Crédito\u00a0Uber com desconto para ir e voltar do ${EVENTO.nome}.`,
+        compartilhar: {
+            rotulo: "Compartilhar com a galera",
+            titulo: "Coisa boa a gente divide",
+            legenda: `Manda pra quem vai com você pro ${EVENTO.nome}. Todo mundo pode comprar crédito\u00a0Uber com 5% off.`,
+            mensagem: `Achei crédito\u00a0Uber com 5% de desconto na Ingresse pra ir pro ${EVENTO.nome}. Dá uma olhada:`,
         },
     },
     meep: {
         id: "meep",
         parceiro: "Meep",
         categoria: "Consumo no evento",
-        titulo: "Recarregue antes e aproveite o evento sem filas",
+        marca: { nome: "Recarga Meep" },
+        evento: true,
+        titulo: "Menos fila, mais rolê",
+        legenda: "Carregue sua pulseira antes de sair de casa e use nos bares, comidas e lojas do evento.",
         descricao: "Carregue seu saldo agora e use nos bares, comidas e lojas do evento.",
         beneficios: [
-            { icone: IconlyRaio, texto: "Sem fila de recarga no dia" },
-            { icone: IconlyComida, texto: "Use em bares, comidas e lojas" },
-            { icone: IconlyCarteira, texto: "Saldo pronto para usar ao chegar" },
+            { icone: IconlyCartao, texto: "Pague só aproximando a pulseira" },
+            { icone: IconlyCarteira, texto: "Defina antes quanto quer gastar" },
         ],
         pergunta: "Quanto você quer carregar?",
         item: "Saldo Meep",
         valores: [50, 100, 150],
+        valorDestaque: { valor: 100, selo: "Mais escolhido" },
         desconto: 0,
         outroValor: true,
         minimo: 10,
         maximo: 1000,
-        cta: "Recarregar agora",
-        aviso: "O saldo que não for usado pode ser devolvido depois do evento, conforme as regras da Meep.",
+        cta: "Recarregar",
+        ctaComPreco: "Recarregar",
+        compartilhar: {
+            rotulo: "Compartilhar com a galera",
+            titulo: "Avisa quem vai com você",
+            legenda: `Assim todo mundo carrega a pulseira antes de sair de casa pro ${EVENTO.nome}.`,
+            mensagem: `Dá pra carregar a pulseira do ${EVENTO.nome} antes de sair de casa:`,
+        },
+        aviso: "Sobrou saldo? Você pode pedir a devolução depois do evento, conforme as regras da Meep.",
         condicoes: [
             "O saldo fica no seu cadastro Meep e vale durante todo o evento.",
             "Ao chegar, é só se identificar com o seu CPF nos pontos de venda.",
@@ -220,7 +287,7 @@ export const SERVICOS: Record<ServicoId, Servico> = {
 };
 
 /** Ofertas com página própria (cada uma aberta pelo link de uma comunicação). */
-export const INDIVIDUAIS: ServicoId[] = ["uber", "meep"];
+export const INDIVIDUAIS: ServicoId[] = ["uber", "uber-evento", "meep"];
 
 /** Momentos do Checklist do rolê: a vitrine organiza os serviços pela hora em que a pessoa precisa deles. */
 export const MOMENTOS: { id: string; titulo: string; servicos: ServicoId[] }[] = [

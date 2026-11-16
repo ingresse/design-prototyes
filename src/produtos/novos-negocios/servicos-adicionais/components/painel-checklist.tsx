@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { cx } from "@/utils/cx";
 import type { Servico } from "../data/servicos";
@@ -14,6 +14,30 @@ const BRILHO: Record<string, [string, string]> = {
     fotos: ["bg-utility-purple-500", "bg-utility-pink-500"],
     seguro: ["bg-utility-blue-500", "bg-utility-indigo-500"],
 };
+
+/** Cores dos brilhos, na ordem dos serviços — para fundos que trocam de cor sem mostrar um serviço. */
+export const CORES_BRILHO = Object.values(BRILHO);
+
+/**
+ * Só o fundo de vidro (brilhos coloridos + camada escurecida com reflexo), ocupando o espaço
+ * todo, com qualquer conteúdo por cima em branco. Usado no topo do mobile do Checklist com as
+ * frases rotativas; `cor` troca a cor dos brilhos (com transição).
+ */
+export function FundoVidro({ cor, children }: { cor: [string, string]; children?: ReactNode }) {
+    const [cor1, cor2] = cor;
+    return (
+        <div className="relative isolate size-full overflow-hidden text-white">
+            <div aria-hidden="true" className="absolute inset-0 -z-20 bg-gray-950">
+                <div className={cx("absolute -top-20 -right-10 size-80 rounded-full opacity-60 blur-2xl transition-colors duration-700", cor1)} />
+                <div className={cx("absolute -bottom-24 -left-16 size-72 rounded-full opacity-45 blur-2xl transition-colors duration-700", cor2)} />
+            </div>
+            <div aria-hidden="true" className="absolute inset-0 -z-10 bg-black/40">
+                <div className="absolute inset-0 bg-gradient-to-br from-white/15 via-white/[0.03] to-transparent" />
+            </div>
+            {children}
+        </div>
+    );
+}
 
 /**
  * Estado da rotação, separado do desenho para que mais de uma cópia (no mobile: o topo e a faixa

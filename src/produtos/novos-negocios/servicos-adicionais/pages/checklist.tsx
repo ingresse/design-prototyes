@@ -1,29 +1,33 @@
 import { useEffect, useRef, type CSSProperties } from "react";
 import { useForceLightTheme } from "../../utils/use-force-light-theme";
 import { ChecklistServicos } from "../components/checklist-servicos";
+import { FrasesRotativas, useRotacaoFrases } from "../components/frases-rotativas";
 import { FundoPagina } from "../components/fundo-pagina";
-import { CardRotativoChecklist, useRotacaoChecklist } from "../components/painel-checklist";
+import { CORES_BRILHO, FundoVidro } from "../components/painel-checklist";
 import { Topo, TopoComImagem, recuoCardMobile } from "../components/topo";
-import { CHECKLIST, SERVICOS } from "../data/servicos";
 import { useCantosDoCard } from "../utils/use-cantos-do-card";
 
-/** Altura do card rotativo no topo do mobile (header + detalhes do serviço + respiro do card que sobe). */
-const ALTURA_TOPO_MOBILE = 400;
+/** Altura do topo de vidro do mobile (header + frase + respiro do card que sobe). */
+const ALTURA_TOPO_MOBILE = 260;
+
+/** Frases do título, exibidas uma de cada vez. */
+const FRASES = ["Viva o evento", "Prepare tudo", "Aproveite mais", "Experiência completa", "Seu rolê começa aqui"];
 
 /**
  * Checklist do rolê — /novos-negocios/servicos-adicionais/checklist
- * Desktop: card rotativo de vidro (sem foto) à esquerda, centralizado na altura do conteúdo;
- * título e linha do tempo à direita.
- * Mobile: mesmo esquema das ofertas, sem foto — o card rotativo de vidro ocupa o topo atrás do
- * header vazado e o conteúdo vem num card branco arredondado que sobe por cima dele ao rolar.
+ * Desktop: sem banner — frases rotativas em vermelho à esquerda, centralizadas na altura;
+ * legenda e linha do tempo à direita.
+ * Mobile: o topo é o fundo de vidro (brilhos coloridos atrás do header vazado) com as frases em
+ * branco; os brilhos trocam de cor junto com a frase. O conteúdo vem num card branco
+ * arredondado que sobe por cima do topo ao rolar.
  */
 export function Checklist() {
     useForceLightTheme();
     const card = useRef<HTMLDivElement>(null);
     useCantosDoCard(card);
-    const servicos = CHECKLIST.map((id) => SERVICOS[id]);
-    // Uma rotação só para todas as cópias (topo do mobile, faixa do header e card do desktop)
-    const rotacao = useRotacaoChecklist(servicos.length);
+    // Um índice só para as frases (mobile e desktop) e a cor do fundo de vidro
+    const indice = useRotacaoFrases(FRASES.length);
+    const cor = CORES_BRILHO[indice % CORES_BRILHO.length];
 
     useEffect(() => {
         window.scrollTo(0, 0);
@@ -31,8 +35,12 @@ export function Checklist() {
 
     return (
         <FundoPagina className="lg:bg-primary">
-            <TopoComImagem altura={ALTURA_TOPO_MOBILE} faixa={<CardRotativoChecklist servicos={servicos} rotacao={rotacao} variante="so-fundo" />}>
-                <CardRotativoChecklist servicos={servicos} rotacao={rotacao} variante="topo" />
+            <TopoComImagem altura={ALTURA_TOPO_MOBILE} faixa={<FundoVidro cor={cor} />}>
+                <FundoVidro cor={cor}>
+                    <div className="flex h-full flex-col justify-end px-4 pt-24 pb-12">
+                        <FrasesRotativas frases={FRASES} indice={indice} className="text-display-md font-bold" />
+                    </div>
+                </FundoVidro>
             </TopoComImagem>
             <div className="hidden lg:block">
                 <Topo comEvento={false} />
@@ -47,15 +55,13 @@ export function Checklist() {
                     ref={card}
                     className="min-h-[calc(100dvh-72px)] rounded-t-3xl bg-primary px-4 pt-8 pb-10 lg:min-h-0 lg:rounded-none lg:bg-transparent lg:p-0"
                 >
-                    <h1 className="mb-8 text-display-xs font-bold text-primary sm:text-display-sm lg:mb-10">
-                        Seu ingresso é só o começo. Encontre serviços e benefícios disponíveis para o seu evento.
-                    </h1>
+                    <p className="mb-8 text-display-xs font-bold text-primary sm:text-display-sm lg:mb-10">Encontre serviços e benefícios disponíveis para o seu evento</p>
                     <ChecklistServicos />
                 </div>
 
-                {/* Desktop: card rotativo à esquerda, centralizado na altura do conteúdo */}
+                {/* Desktop: só as frases à esquerda, centralizadas na altura do conteúdo */}
                 <div className="hidden lg:order-first lg:block">
-                    <CardRotativoChecklist servicos={servicos} rotacao={rotacao} />
+                    <FrasesRotativas frases={FRASES} indice={indice} className="text-display-lg font-bold text-brand-secondary" />
                 </div>
             </main>
         </FundoPagina>

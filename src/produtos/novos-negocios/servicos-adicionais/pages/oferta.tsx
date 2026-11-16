@@ -3,7 +3,8 @@ import { Navigate, useNavigate, useParams, useSearchParams } from "react-router"
 import { ArrowLeft } from "@untitledui/icons";
 import { Button } from "@/components/base/buttons/button";
 import { useForceLightTheme } from "../../utils/use-force-light-theme";
-import { MosaicoOferta } from "../components/mosaico-oferta";
+import { CardEvento, TopoEvento } from "../components/contexto-evento";
+import { MosaicoOferta, useBrilho } from "../components/mosaico-oferta";
 import { OfertaServico } from "../components/oferta-servico";
 import { FundoPagina } from "../components/fundo-pagina";
 import { Topo, TopoComImagem } from "../components/topo";
@@ -20,6 +21,8 @@ export function Oferta() {
     const navigate = useNavigate();
     const [params] = useSearchParams();
     const doChecklist = params.get("de") === "checklist";
+    // Um brilho só para todas as cópias do mosaico (desktop, topo do mobile e faixa do header)
+    const brilho = useBrilho();
 
     useEffect(() => {
         window.scrollTo(0, 0);
@@ -29,8 +32,17 @@ export function Oferta() {
 
     return (
         <FundoPagina className="lg:bg-primary lg:pb-16">
-            {/* Mobile: header vazado sobre a foto; o card da oferta desliza por cima dela */}
-            <TopoComImagem />
+            {/* Mobile: header vazado sobre o mosaico (ou a imagem do evento, quando o serviço é de um
+                evento); o card da oferta desliza por cima */}
+            {servico.evento ? (
+                <TopoComImagem>
+                    <TopoEvento />
+                </TopoComImagem>
+            ) : (
+                <TopoComImagem>
+                    <MosaicoOferta brilho={brilho} topo />
+                </TopoComImagem>
+            )}
             <div className="hidden lg:block">
                 <Topo comEvento={false} />
             </div>
@@ -39,8 +51,8 @@ export function Oferta() {
             <main className="relative z-10 mx-auto -mt-[208px] grid w-full max-w-[1264px] grid-cols-1 items-start px-0 lg:mt-0 lg:grid-cols-2 lg:items-center lg:gap-16 lg:px-6 lg:pt-16">
                 {/* key: trocar de serviço reinicia a seleção */}
                 <OfertaServico key={servico.id} servico={servico} />
-                <div className="relative hidden lg:order-first lg:block">
-                    {/* Desktop: voltar no canto superior esquerdo, acima do mosaico. Fica fora do fluxo
+                <div className={`relative hidden w-full justify-self-center lg:order-first lg:block ${servico.evento ? "max-w-[400px]" : "max-w-[480px]"}`}>
+                    {/* Desktop: voltar no canto superior esquerdo, acima do mosaico (ou do card do evento). Fica fora do fluxo
                         (no respiro do topo da página) para não mudar a altura nem criar rolagem */}
                     {doChecklist && (
                         <Button
@@ -53,7 +65,8 @@ export function Oferta() {
                             Voltar
                         </Button>
                     )}
-                    <MosaicoOferta />
+                    {/* Serviço de um evento (Meep): o card do evento no lugar do mosaico */}
+                    {servico.evento ? <CardEvento /> : <MosaicoOferta brilho={brilho} />}
                 </div>
             </main>
         </FundoPagina>
