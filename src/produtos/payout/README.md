@@ -20,13 +20,11 @@ Associação de contratos a eventos. Implementa o refinamento do Figma
 - **Produtoras** (`/payout/contrato-quick-win-finance/produtoras`) — tabela de
   produtoras com a linha expansível listando os contratos de cada uma
 
-### `financas-cascata/` e `financas-eventos/`
+### `financas-eventos/`
 
-Protótipos de pesquisa de **Finanças do produtor** (Backstage), uma jornada por projeto. Não usam o
-Cashout: o shell é o menu lateral do Backstage, em `components/financas/shell.tsx`.
+Protótipo de pesquisa de **Finanças do produtor** (Backstage). Não usa o Cashout: o shell é o menu
+lateral do Backstage, em `components/financas/shell.tsx`.
 
-- **Cascata que fecha** (`/payout/financas-cascata`): a conta do total, do vendido ao que é do
-  produtor, com cada parte abrindo o que a compõe
 - **Eventos como pastas** (`/payout/financas-eventos`): lista de eventos com frase de status e a
   página de cada evento (conta, calendário de liberações, repasses, ajustes, o que pode mudar)
 

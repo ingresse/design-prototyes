@@ -144,7 +144,7 @@ const MenuLateral = () => (
 /* ---------------- shell ---------------- */
 
 interface FinancasShellProps {
-    /** Nome da jornada na barra do protótipo (ex.: "Cascata que fecha"). */
+    /** Nome da jornada na barra do protótipo (ex.: "Eventos como pastas"). */
     jornada: string;
     children: ReactNode;
 }
@@ -156,7 +156,13 @@ export function FinancasShell({ jornada, children }: FinancasShellProps) {
         const raiz = document.documentElement;
         const jaEstava = raiz.classList.contains("dark-mode");
         raiz.classList.add("dark-mode");
+        // O ThemeProvider reaplica o tema salvo depois deste efeito: o observador devolve o escuro.
+        const observador = new MutationObserver(() => {
+            if (!raiz.classList.contains("dark-mode")) raiz.classList.add("dark-mode");
+        });
+        observador.observe(raiz, { attributes: true, attributeFilter: ["class"] });
         return () => {
+            observador.disconnect();
             if (!jaEstava) raiz.classList.remove("dark-mode");
         };
     }, []);

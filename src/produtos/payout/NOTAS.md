@@ -1,32 +1,28 @@
 # NOTAS · Protótipos de pesquisa · Finanças do produtor
 
 > Briefing de 16/11/2026 (Laricia Barbosa, Payout). Estímulos para 3 a 5 entrevistas com produtores.
-> Feito só a **direção B + D**, separada em duas jornadas, uma por projeto. A direção A (Extrato) não foi construída.
+> No ar só a jornada **Eventos como pastas** (direção D). A jornada "Cascata que fecha" (B) foi publicada e retirada no mesmo dia, a pedido da Laricia: não ficou boa como a outra. O código dela está no histórico do git (commit `0770df9`). A direção A (Extrato) não foi construída.
 
 ## O que existe
 
 | Jornada | Projeto | Rota |
 | --- | --- | --- |
-| Cascata que fecha (B) | `payout/financas-cascata/` | `/payout/financas-cascata` |
 | Eventos como pastas (D) | `payout/financas-eventos/` | `/payout/financas-eventos` e `/payout/financas-eventos/:eventoId` |
 
-- O que as duas compartilham fica em `payout/components/financas/`: dados, formatos, shell, cascata, estados.
+- Dados, formatos, shell, cascata (a conta do evento) e estados ficam em `payout/components/financas/`.
 - Cenário pela barra do protótipo ou pela URL: `?cenario=negativo`, `bloqueado`, `carregando`, `erro`, `sem-eventos`. Sem o parâmetro, é o normal.
 - Eventos: `carnaval`, `ivete`, `numanice`, `arraial`.
-- Na jornada B, `?parte=` abre o painel de uma parte direto (ex.: `?parte=disponivel`).
 
 ### Tarefas da entrevista e onde cada uma se resolve
 
-| Tarefa | Cascata que fecha | Eventos como pastas |
-| --- | --- | --- |
-| 1. Quanto pode sacar hoje | Disponível agora, na distribuição | Primeiro número do topo |
-| 2. Vendido do Carnaval bate com o relatório | Vendido › Por evento | Pasta do Carnaval › A conta deste evento |
-| 3. Quando cai o dinheiro do Numanice | A liberar e Retido › Por evento | Pasta do Numanice › Calendário de liberações |
-| 4. Por que o Arraial está negativo | Disponível agora › Arraial e Ajustes › Arraial | Pasta do Arraial › aviso no topo e Ajustes |
-| 5. O que pode mudar no Ivete, até quando | **Não responde direto** (só o Retido, com a data de liberação) | Pasta do Ivete › O que ainda pode mudar |
-| 6. Se precisasse do dinheiro antes | Antecipar, em A liberar | Antecipar, no topo e na pasta |
-
-A tarefa 5 é uma diferença real entre as duas jornadas e vale observar na entrevista.
+| Tarefa | Onde se resolve |
+| --- | --- |
+| 1. Quanto pode sacar hoje | Primeiro número do topo |
+| 2. Vendido do Carnaval bate com o relatório | Pasta do Carnaval › A conta deste evento |
+| 3. Quando cai o dinheiro do Numanice | Pasta do Numanice › Calendário de liberações |
+| 4. Por que o Arraial está negativo | Pasta do Arraial › aviso no topo e Ajustes |
+| 5. O que pode mudar no Ivete, até quando | Pasta do Ivete › O que ainda pode mudar |
+| 6. Se precisasse do dinheiro antes | Antecipar, no topo e na pasta |
 
 ## Suposições
 
@@ -85,10 +81,7 @@ As seis lacunas já anotadas no Figma (Select aberto, Date picker desabilitado, 
 
 | Tela | Depende de |
 | --- | --- |
-| Cascata do total (`/payout/financas-cascata`), bloco Vendido e nota "Mesmo valor do seu relatório de vendas" | Vendido somar com o relatório |
-| Painel Vendido › Por evento | Vendido por evento somar com o relatório do evento |
-| Distribuição (total e por evento), células Em processamento e Disponível agora | Em processamento + Disponível fecharem com o Vendido |
-| Painel Em processamento › Por evento | Em processamento aberto por motivo e previsão |
+| Página do evento › distribuição de Seu dinheiro, células Em processamento e Disponível agora | Em processamento + Disponível fecharem com o Vendido |
 | Topo de `/payout/financas-eventos` (Disponível agora) | Disponível fechar com o resto |
 | Página do evento › A conta deste evento | Vendido do evento somar com o relatório |
 | Página do evento › Calendário de liberações, linha Em processamento | Motivo e previsão do processamento |
@@ -97,5 +90,5 @@ As seis lacunas já anotadas no Figma (Select aberto, Date picker desabilitado, 
 ## Fora deste teste
 
 - Fluxo de repasse e de antecipação: "Solicitar repasse" e "Antecipar" param numa tela final.
-- Direção A (Extrato).
+- Direção A (Extrato) e jornada "Cascata que fecha" como tela própria.
 - Figma: nada foi editado. As telas escolhidas depois da validação vão para o arquivo Finanças - AWA pelo plugin "Importar tela".

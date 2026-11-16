@@ -211,7 +211,6 @@ import { CompraDoEvento } from '../produtos/marketplace/selecao-e-atribuicao/pag
 import { Selecao as ProtecaoDeCompra } from '../produtos/checkout/protecao-de-compra/pages/selecao';
 import { Eventos as CashoutEventos } from '../produtos/payout/contrato-quick-win-finance/pages/eventos';
 import { Produtoras as CashoutProdutoras } from '../produtos/payout/contrato-quick-win-finance/pages/produtoras';
-import { FinancasCascata } from '../produtos/payout/financas-cascata/pages/financas-cascata';
 import { FinancasEventos } from '../produtos/payout/financas-eventos/pages/eventos';
 import { FinancasEvento } from '../produtos/payout/financas-eventos/pages/evento';
 
@@ -488,8 +487,7 @@ export default function App() {
         <Route path="/payin/suspensao-de-conta/historico/:contaId" element={<HistoricoSuspensao />} />
         <Route path="/payout/contrato-quick-win-finance" element={<CashoutEventos />} />
         <Route path="/payout/contrato-quick-win-finance/produtoras" element={<CashoutProdutoras />} />
-        {/* Finanças do produtor: protótipos de pesquisa, uma jornada por projeto. */}
-        <Route path="/payout/financas-cascata" element={<FinancasCascata />} />
+        {/* Finanças do produtor: protótipos de pesquisa, jornada Eventos como pastas. */}
         <Route path="/payout/financas-eventos" element={<FinancasEventos />} />
         <Route path="/payout/financas-eventos/:eventoId" element={<FinancasEvento />} />
         <Route path="/checkout/melhorias-de-compra" element={<CheckoutPagamento />} />

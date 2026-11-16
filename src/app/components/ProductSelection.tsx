@@ -105,13 +105,6 @@ const PRODUCTS: ProductCardData[] = [
         illustration: "payout",
     },
     {
-        id: "financas-cascata",
-        name: "Finanças · Cascata que fecha",
-        description: "Pesquisa com produtores: a conta do dinheiro, do vendido ao que é seu, parte por parte",
-        to: "/payout/financas-cascata",
-        illustration: "payout",
-    },
-    {
         id: "financas-eventos",
         name: "Finanças · Eventos como pastas",
         description: "Pesquisa com produtores: cada evento é uma pasta com o status do dinheiro e o que ainda pode mudar",
