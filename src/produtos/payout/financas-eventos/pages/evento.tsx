@@ -1,24 +1,27 @@
 import type { ReactNode } from "react";
-import { useNavigate, useParams } from "react-router";
+import { useLocation, useNavigate, useParams } from "react-router";
 import { ArrowLeft, Download01 } from "@untitledui/icons";
 import { toast } from "sonner";
 import { Badge } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
 import { cx } from "@/utils/cx";
-import { Cascata, Distribuicao, Secao } from "../../components/financas/cascata";
-import { ROTULO_LIBERACAO, eventosDoCenario, retido, seuDinheiro, type Evento, type Repasse } from "../../components/financas/dados";
+import { Cascata, Distribuicao, Secao, type ParteComDetalhe } from "../../components/financas/cascata";
+import { ROTULO_LIBERACAO, eventosDoCenario, retido, seuDinheiro, somarDias, type Evento, type Repasse } from "../../components/financas/dados";
 import { Aviso, AvisoDeBloqueio, Carregando, ErroAoCarregar, SemEventos, TelaFinal, type AcaoFinal } from "../../components/financas/estados";
 import { dataComDia, dataCurta, dataDoEvento, reais } from "../../components/financas/formato";
 import { detalhesDaDistribuicao } from "../../components/financas/frases";
+import { PainelDoDetalhe } from "../../components/financas/painel-do-detalhe";
 import { CabecalhoDaPagina, FinancasShell, useCenario, useParametro } from "../../components/financas/shell";
 import { SelosDoEvento } from "../components/selos-do-evento";
 
 /*
  * Página do evento (a pasta aberta): a mesma conta do total, só deste evento; o calendário de
  * liberações; os repasses; os ajustes depois do fechamento; e o que ainda pode mudar, até quando.
+ * Copy dos ajustes v2: o rótulo explica; a legenda só entra quando traz data, prazo ou motivo.
  */
 
 const ACOES: AcaoFinal[] = ["repasse", "antecipar"];
+const PARTES: ParteComDetalhe[] = ["taxas", "creditos", "ajustes"];
 
 /** Linha com guia visual: data à esquerda, o que é no meio, valor à direita, divisor entre linhas. */
 const Linha = ({ quando, titulo, detalhe, valor, corDoValor = "text-primary", extra }: { quando: string; titulo: ReactNode; detalhe?: ReactNode; valor?: string; corDoValor?: string; extra?: ReactNode }) => (
@@ -43,20 +46,30 @@ const SITUACAO: Record<Repasse["situacao"], { rotulo: string; cor: "gray" | "suc
 };
 
 const explicacaoDoNegativo = (e: Evento) =>
-    `Você já recebeu ${reais(e.recebido)} deste evento. Depois disso, saíram ${reais(e.ajustes)} em ajustes${e.creditos ? ` e entraram ${reais(e.creditos)} em créditos` : ""}: o que é seu ficou em ${reais(seuDinheiro(e))}. Com ${reais(retido(e))} ainda retidos por segurança, a diferença é de ${reais(-e.disponivel)}.`;
+    `Você recebeu ${reais(e.recebido)} deste evento. Depois, saíram ${reais(e.ajustes)} em ajustes${e.creditos ? ` e entraram ${reais(e.creditos)} em créditos` : ""}. Com ${reais(retido(e))} ainda retidos, faltam ${reais(-e.disponivel)}.`;
 
 export function FinancasEvento() {
     const navigate = useNavigate();
     const { eventoId } = useParams();
     const [cenario, setCenario] = useCenario();
     const [acaoAberta, setAcao] = useParametro("acao");
+    const [detalheAberto, setDetalhe] = useParametro("detalhe");
+    const { state } = useLocation();
 
     const eventos = eventosDoCenario(cenario);
     const evento = eventos.find((e) => e.id === eventoId);
     const bloqueado = cenario === "bloqueado";
     const acao = ACOES.find((a) => a === acaoAberta);
     const sufixo = cenario === "normal" ? "" : `?cenario=${cenario}`;
-    const voltar = () => navigate(`/payout/financas-eventos${sufixo}`);
+    const detalhe = PARTES.find((p) => p === detalheAberto) ?? null;
+    // Volta para a lista como ela estava (busca, filtro, página), no cenário atual.
+    const voltar = () => {
+        const lista = new URLSearchParams((state as { lista?: string } | null)?.lista ?? "");
+        if (cenario === "normal") lista.delete("cenario");
+        else lista.set("cenario", cenario);
+        const consulta = lista.toString();
+        navigate(`/payout/financas-eventos${consulta ? `?${consulta}` : ""}`);
+    };
 
     const voltarParaFinancas = (
         <Button size="sm" color="link-gray" iconLeading={ArrowLeft} className="self-start" onClick={voltar}>
@@ -76,6 +89,8 @@ export function FinancasEvento() {
     const proximaRetida = evento.liberacoes.find((l) => l.tipo === "retidoSeguranca");
     const liberacoes = evento.liberacoes.slice().sort((a, b) => a.data.localeCompare(b.data));
     const totalDoCalendario = evento.processamento + liberacoes.reduce((s, l) => s + l.valor, 0);
+    const restoDoNegativo = -evento.disponivel - (proximaRetida?.valor ?? 0);
+    const fimDasContestacoes = somarDias(evento.data, 120);
 
     return (
         <FinancasShell jornada="Jornada · Eventos como pastas">
@@ -117,25 +132,31 @@ export function FinancasEvento() {
                             </p>
                             <p>
                                 <span className="font-medium text-secondary">O que acontece agora: </span>
-                                você não precisa pagar nada. O valor é compensado com o dinheiro dos seus outros eventos e já está descontado do seu Disponível agora total.
-                                {proximaRetida && ` Em ${dataComDia(proximaRetida.data)}, ${reais(proximaRetida.valor)} retidos são liberados e reduzem o saldo negativo para ${reais(-evento.disponivel - proximaRetida.valor)}.`}
+                                você não precisa pagar nada.
+                                {proximaRetida && ` Em ${dataCurta(proximaRetida.data)}, ${reais(proximaRetida.valor)} retidos são liberados e abatem o saldo negativo.`}
+                                {restoDoNegativo > 0 && ` ${proximaRetida ? `Os ${reais(restoDoNegativo)} restantes` : reais(restoDoNegativo)} saem das próximas liberações dos seus outros eventos.`}
                             </p>
                         </Aviso>
                     )}
 
-                    <Secao titulo="A conta deste evento" descricao="Do que foi vendido até o que é seu, e onde cada parte está hoje.">
-                        <Cascata totais={{ ...evento, seuDinheiro: seuDinheiro(evento) }} escopo="neste evento" />
+                    <Secao titulo="A conta deste evento">
+                        <Cascata totais={{ ...evento, seuDinheiro: seuDinheiro(evento) }} aoAbrir={setDetalhe} aoVerRelatorio={() => toast("Aqui abriria o relatório de vendas deste evento.")} />
                         <Distribuicao totais={{ ...evento, retido: retido(evento), seuDinheiro: seuDinheiro(evento) }} detalhes={detalhesDaDistribuicao([evento])} />
                     </Secao>
 
                     <div className="grid grid-cols-2 items-start gap-6">
-                        <Secao titulo="Calendário de liberações" descricao="Quando cada valor entra no seu Disponível agora.">
+                        <Secao titulo="Calendário de liberações">
                             {totalDoCalendario === 0 ? (
-                                <Vazio>Este evento não tem valores para liberar.</Vazio>
+                                <Vazio>Nenhum valor a liberar neste evento.</Vazio>
                             ) : (
                                 <Lista>
                                     {evento.processamento > 0 && (
-                                        <Linha quando={evento.emVendas ? "Sem data fixa" : "Hoje, até 18h"} titulo="Em processamento" detalhe={`${evento.motivoProcessamento} ${evento.quandoProcessamento}.`} valor={reais(evento.processamento)} />
+                                        <Linha
+                                            quando={evento.previsaoProcessamento === "hoje" ? "Hoje, até 18h" : "Sem data fixa"}
+                                            titulo="Em processamento"
+                                            detalhe={evento.previsaoProcessamento === "hoje" ? "Vendas recentes em confirmação" : "Pix parcelado: entra quando as parcelas forem pagas"}
+                                            valor={reais(evento.processamento)}
+                                        />
                                     )}
                                     {liberacoes.map((l) => (
                                         <Linha
@@ -148,14 +169,14 @@ export function FinancasEvento() {
                                         />
                                     ))}
                                     <li className="grid grid-cols-[9rem_minmax(0,1fr)_auto] items-baseline gap-4 bg-secondary px-6 py-4">
-                                        <span className="col-span-2 text-sm font-semibold text-primary">Total a entrar no seu saldo</span>
+                                        <span className="col-span-2 text-sm font-semibold text-primary">Total que entra no disponível</span>
                                         <span className="text-sm font-semibold whitespace-nowrap text-primary tabular-nums">{reais(totalDoCalendario)}</span>
                                     </li>
                                 </Lista>
                             )}
                         </Secao>
 
-                        <Secao titulo="Repasses" descricao="O que você pediu e o que já caiu na sua conta.">
+                        <Secao titulo="Repasses">
                             {evento.repasses.length === 0 ? (
                                 <Vazio>Você ainda não pediu repasse deste evento.</Vazio>
                             ) : (
@@ -172,7 +193,7 @@ export function FinancasEvento() {
                                                     </Badge>
                                                 </span>
                                             }
-                                            detalhe={r.situacao === "agendado" ? "Cai na sua conta bancária nesta data." : r.nota}
+                                            detalhe={r.nota}
                                             valor={reais(r.valor)}
                                             extra={
                                                 r.situacao === "pago" ? (
@@ -193,38 +214,40 @@ export function FinancasEvento() {
                     </div>
 
                     <div className="grid grid-cols-2 items-start gap-6">
-                        <Secao titulo="Ajustes depois do fechamento" descricao="O que mudou, quanto, por quê e quando.">
-                            {evento.ajustesLista.length === 0 && evento.creditosLista.length === 0 ? (
+                        <Secao titulo="Ajustes depois do fechamento">
+                            {evento.ajustesLista.length === 0 ? (
                                 <Vazio>Nenhum ajuste depois do fechamento.</Vazio>
                             ) : (
                                 <Lista>
                                     {evento.ajustesLista.map((a) => (
                                         <Linha key={a.titulo} quando={dataCurta(a.data)} titulo={a.titulo} detalhe={a.motivo} valor={reais(-a.valor)} corDoValor="text-error-primary" />
                                     ))}
-                                    {evento.creditosLista.map((c) => (
-                                        <Linha key={c.titulo} quando={dataCurta(c.data)} titulo={`Crédito · ${c.titulo}`} detalhe={c.motivo} valor={`+ ${reais(c.valor)}`} />
-                                    ))}
                                 </Lista>
                             )}
                         </Secao>
 
-                        <Secao titulo="O que ainda pode mudar" descricao="O que pode mexer nesta conta daqui para a frente, e até quando.">
-                            <Lista>
-                                {evento.podeMudar.map((p) => (
-                                    <Linha key={p.titulo} quando={p.ate ? `Até ${dataComDia(p.ate)}` : "Sem prazo"} titulo={p.titulo} detalhe={p.texto} />
-                                ))}
-                                {proximaRetida && (
-                                    <Linha
-                                        quando={dataComDia(proximaRetida.data)}
-                                        titulo="Liberação do retido por segurança"
-                                        detalhe={`${reais(proximaRetida.valor)} estão guardados para cobrir esses casos. O que não for usado é liberado nesta data.`}
-                                    />
-                                )}
-                            </Lista>
+                        <Secao titulo="O que ainda pode mudar">
+                            {evento.podeMudar.length === 0 && !proximaRetida ? (
+                                <Vazio>Nada mais pode mudar neste evento. O prazo de contestação no cartão terminou em {dataCurta(fimDasContestacoes)}.</Vazio>
+                            ) : (
+                                <Lista>
+                                    {evento.podeMudar.map((p) => (
+                                        <Linha key={p.titulo} quando={p.ate ? `Até ${dataComDia(p.ate)}` : "Sem prazo"} titulo={p.titulo} detalhe={p.texto} />
+                                    ))}
+                                    {proximaRetida && (
+                                        <Linha
+                                            quando={dataComDia(proximaRetida.data)}
+                                            titulo="Liberação do retido por segurança"
+                                            detalhe={`${reais(proximaRetida.valor)} ficam guardados para esses casos. O que sobrar é liberado nesta data.`}
+                                        />
+                                    )}
+                                </Lista>
+                            )}
                         </Secao>
                     </div>
                 </>
             )}
+            {!acao && <PainelDoDetalhe parte={detalhe} eventos={[evento]} aoFechar={() => setDetalhe(null)} />}
         </FinancasShell>
     );
 }

@@ -47,7 +47,7 @@ export const AvisoDeBloqueio = () => (
         }
     >
         <p>Precisamos confirmar os dados da conta bancária da Arena Produções antes de enviar novos repasses.</p>
-        <p>Seu dinheiro continua guardado e os valores desta tela seguem atualizados. Assim que a conta for confirmada, você volta a solicitar repasses.</p>
+        <p>Seu dinheiro continua guardado. Quando a conta for confirmada, você volta a solicitar repasses.</p>
     </Aviso>
 );
 
@@ -58,6 +58,14 @@ const Bloco = ({ className }: { className?: string }) => <div aria-hidden="true"
 
 export const Carregando = () => (
     <div role="status" aria-label="Carregando suas finanças" className="flex flex-col gap-6">
+        <div className="grid grid-cols-[1.3fr_1fr_1fr] divide-x divide-secondary rounded-2xl bg-primary ring-1 ring-secondary">
+            {Array.from({ length: 3 }, (_, i) => (
+                <div key={i} className="flex flex-col gap-3 px-6 py-5">
+                    <Bloco className="h-3 w-28" />
+                    <Bloco className="h-8 w-48" />
+                </div>
+            ))}
+        </div>
         <div className="flex flex-col gap-5 rounded-2xl bg-primary p-6 ring-1 ring-secondary">
             <Bloco className="h-5 w-56" />
             <div className="grid grid-cols-5 gap-6">
@@ -74,7 +82,7 @@ export const Carregando = () => (
             <Bloco className="h-5 w-40" />
             {Array.from({ length: 4 }, (_, i) => (
                 <div key={i} className="flex items-center gap-4">
-                    <Bloco className="size-10 rounded-lg" />
+                    <Bloco className="size-10 rounded-md" />
                     <div className="flex flex-1 flex-col gap-2">
                         <Bloco className="h-4 w-72" />
                         <Bloco className="h-3 w-96" />
@@ -119,7 +127,7 @@ export const SemEventos = ({ aoIrParaEventos }: { aoIrParaEventos: () => void })
     <EstadoCentral
         icone={Calendar}
         titulo="Você ainda não tem eventos com vendas"
-        descricao="Quando um evento seu começar a vender, o dinheiro aparece aqui: quanto vendeu, quanto é seu e quando você recebe."
+        descricao="Quando um evento começar a vender, o dinheiro dele aparece aqui."
         acao={
             <Button size="md" color="primary" onClick={aoIrParaEventos}>
                 Ir para Eventos
@@ -147,7 +155,7 @@ export const TelaFinal = ({ acao, evento, valor, aoVoltar }: TelaFinalProps) => 
         repasse: {
             icone: Send01,
             titulo: "Aqui começa o repasse",
-            descricao: `O pedido de repasse abre ${escopo}${valor !== undefined ? ` e ${reais(valor)} disponíveis para sacar` : ""}.`,
+            descricao: `O pedido de repasse abre ${escopo}${valor !== undefined ? ` e ${reais(valor)} disponíveis` : ""}.`,
         },
         antecipar: {
             icone: CoinsHand,

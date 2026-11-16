@@ -1,5 +1,5 @@
 import { useLayoutEffect, type ComponentType, type ReactNode } from "react";
-import { useSearchParams } from "react-router";
+import { useLocation, useSearchParams } from "react-router";
 import { ChevronDown } from "@untitledui/icons";
 import calendario from "@/assets/iconly/calendar.json";
 import grafico from "@/assets/iconly/chart.json";
@@ -29,17 +29,21 @@ import { CENARIOS, ORGANIZACAO, type Cenario } from "./dados";
 
 /* ---------------- cenário e navegação por parâmetros ---------------- */
 
-/** Mesmo título de página do Backstage (backstage/components/titulo-pagina.ts). */
-export const TITULO_PAGINA = "text-display-xs leading-tight font-bold tracking-tight text-balance text-primary md:text-display-md";
+/** Título de página do DS, como na Tela guardiã do Figma (Finanças - AWA): Text xl / Semibold. */
+export const TITULO_PAGINA = "text-xl font-semibold text-primary";
+
+const TITULO_DA_ABA = "Finanças · Protótipo de pesquisa";
 
 /** Cenário em `?cenario=`, para o link da entrevista já abrir no estado certo. */
 export function useCenario(): [Cenario, (c: Cenario) => void] {
     const [params, setParams] = useSearchParams();
+    const { state } = useLocation();
     const bruto = params.get("cenario");
     const cenario = CENARIOS.some((c) => c.id === bruto) ? (bruto as Cenario) : "normal";
     const mudar = (c: Cenario) => {
         // Trocar de cenário fecha painel e tela final: começa do início da tela.
-        setParams(c === "normal" ? {} : { cenario: c });
+        // O `state` leva a lista de onde a pessoa veio: sem ele, o "voltar" do evento perderia busca e página.
+        setParams(c === "normal" ? {} : { cenario: c }, { state });
     };
     return [cenario, mudar];
 }
@@ -47,13 +51,14 @@ export function useCenario(): [Cenario, (c: Cenario) => void] {
 /** Lê e grava um parâmetro da URL sem perder os outros (painel aberto, tela final). */
 export function useParametro(nome: string): [string | null, (valor: string | null, extras?: Record<string, string | null>) => void] {
     const [params, setParams] = useSearchParams();
+    const { state } = useLocation();
     const mudar = (valor: string | null, extras: Record<string, string | null> = {}) => {
         const novo = new URLSearchParams(params);
         for (const [chave, v] of Object.entries({ [nome]: valor, ...extras })) {
             if (v === null) novo.delete(chave);
             else novo.set(chave, v);
         }
-        setParams(novo);
+        setParams(novo, { state });
     };
     return [params.get(nome), mudar];
 }
@@ -167,6 +172,15 @@ export function FinancasShell({ jornada, children }: FinancasShellProps) {
         };
     }, []);
 
+    // O título da aba é do repositório inteiro (index.html): aqui ele vale só enquanto o protótipo está aberto.
+    useLayoutEffect(() => {
+        const anterior = document.title;
+        document.title = TITULO_DA_ABA;
+        return () => {
+            document.title = anterior;
+        };
+    }, []);
+
     return (
         <div className="min-h-screen bg-primary_alt">
             <BarraDoPrototipo jornada={jornada} />
@@ -180,14 +194,14 @@ export function FinancasShell({ jornada, children }: FinancasShellProps) {
     );
 }
 
-/** Cabeçalho da página: título à esquerda, ações à direita. */
+/** Cabeçalho da página: título e ações na mesma linha; o que vem acima e abaixo não desloca as ações. */
 export const CabecalhoDaPagina = ({ titulo, acima, abaixo, acoes }: { titulo: string; acima?: ReactNode; abaixo?: ReactNode; acoes?: ReactNode }) => (
-    <header className="flex items-end justify-between gap-6">
-        <div className="flex min-w-0 flex-col gap-2">
-            {acima}
+    <header className="flex flex-col gap-2">
+        {acima}
+        <div className="flex min-h-10 items-center justify-between gap-6">
             <h1 className={TITULO_PAGINA}>{titulo}</h1>
-            {abaixo}
+            {acoes && <div className="flex shrink-0 items-center gap-3">{acoes}</div>}
         </div>
-        {acoes && <div className="flex shrink-0 items-center gap-3">{acoes}</div>}
+        {abaixo}
     </header>
 );

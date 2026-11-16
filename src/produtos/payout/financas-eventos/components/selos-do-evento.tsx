@@ -1,10 +1,10 @@
 import { Badge } from "@/components/base/badges/badges";
 import { selosDoEvento, type Evento, type Selo } from "../../components/financas/dados";
 
-/* Selos de situação do evento. Vermelho só para o que tirou dinheiro; o resto fica neutro. */
-const COR: Record<Selo, "error" | "gray"> = {
+/* Selos de situação do evento. Vermelho só para saldo negativo; ajuste recente é aviso. */
+const COR: Record<Selo, "error" | "warning" | "gray"> = {
     "Saldo negativo": "error",
-    "Ajuste recente": "error",
+    "Ajuste recente": "warning",
     "Evento em vendas": "gray",
 };
 
