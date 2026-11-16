@@ -126,3 +126,4 @@ mostram.
 | `relatorios/` | Relatórios |
 | `comissarios/` | Peças de Comissários reaproveitadas (condições, métricas, repasse) e as regras de cálculo; o comissário é um grupo de `equipe-e-comissarios/` |
 | `freepass/` | Painel Freepass: eventos, minhas vendas no evento e recebimentos de quem vende para a organização |
+| `sports-criar-evento/` | Protótipo v0.3: Seus eventos e criar evento esportivo (modalidade, categoria, lote, formulário de inscrição), em duas versões, assistente e página única |

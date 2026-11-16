@@ -31,6 +31,9 @@ import { Questionarios } from '../produtos/backstage/relatorios/pages/Questionar
 import { RelatorioPersonalizado } from '../produtos/backstage/relatorios/pages/RelatorioPersonalizado';
 import { Eventos as BackstageEventos } from '../produtos/backstage/eventos/pages/Eventos';
 import { CriarEvento as BackstageCriarEvento } from '../produtos/backstage/eventos/pages/CriarEvento';
+import { EscolherInicio as SportsEscolherInicio } from '../produtos/backstage/sports-criar-evento/pages/escolher-inicio';
+import { SeusEventos as SportsSeusEventos } from '../produtos/backstage/sports-criar-evento/pages/seus-eventos';
+import { CriarEventoAssistente as SportsCriarEventoAssistente } from '../produtos/backstage/sports-criar-evento/pages/criar-evento-assistente';
 import { VisaoGeralEvento } from '../produtos/backstage/eventos/pages/VisaoGeralEvento';
 import { InformacoesEvento } from '../produtos/backstage/eventos/pages/InformacoesEvento';
 import { MembrosV2 } from '../produtos/backstage/membros-v2/pages/MembrosV2';
@@ -251,6 +254,11 @@ export default function App() {
         <Route path="/backstage" element={<SelecaoOrganizacao />} />
         <Route path="/backstage/eventos" element={<BackstageEventos />} />
         <Route path="/backstage/eventos/novo" element={<BackstageCriarEvento />} />
+        <Route path="/backstage/sports" element={<SportsSeusEventos />} />
+        <Route path="/backstage/sports/criar-evento" element={<SportsEscolherInicio />} />
+        <Route path="/backstage/sports/criar-evento/assistente" element={<SportsCriarEventoAssistente />} />
+        {/* v0.13: a Versão B (página única) saiu; o endereço antigo leva ao assistente. */}
+        <Route path="/backstage/sports/criar-evento/pagina" element={<Navigate to="/backstage/sports/criar-evento/assistente" replace />} />
         <Route path="/backstage/evento/visao-geral" element={<VisaoGeralEvento />} />
         <Route path="/backstage/informacoes-evento" element={<InformacoesEvento />} />
         <Route path="/backstage/pedidos" element={<PedidosPosCompra />} />
