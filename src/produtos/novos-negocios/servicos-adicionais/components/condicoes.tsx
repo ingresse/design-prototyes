@@ -1,13 +1,13 @@
 import { useState } from "react";
-import { ChevronDown, InfoCircle } from "@untitledui/icons";
+import { ChevronDown, CoinsHand } from "@untitledui/icons";
 import { cx } from "@/utils/cx";
 import type { Servico } from "../data/servicos";
 
-/** Aviso curto em destaque, junto da seleção de valor (ex.: devolução do saldo). */
+/** Aviso curto em destaque, junto da seleção de valor (ex.: devolução do saldo, por isso o ícone de moedas na mão, e não de alerta). */
 export function AvisoServico({ texto }: { texto: string }) {
     return (
         <div className="flex gap-3 rounded-xl bg-secondary p-4">
-            <InfoCircle className="mt-0.5 size-5 shrink-0 text-fg-quaternary" aria-hidden="true" />
+            <CoinsHand className="mt-0.5 size-5 shrink-0 text-fg-tertiary" aria-hidden="true" />
             <p className="text-sm text-tertiary">{texto}</p>
         </div>
     );

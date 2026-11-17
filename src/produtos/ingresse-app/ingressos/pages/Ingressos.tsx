@@ -10,6 +10,7 @@ import { AppShell } from "../../components/AppShell";
 import { BottomSheet } from "../../components/BottomSheet";
 import { GradientFill } from "../../components/GradientFill";
 import { StatusBar } from "../../components/StatusBar";
+import { ServicosEvento } from "../components/servicos-evento";
 import { getEvento, type Combo, type EventoDetalhe, type ItemIngresso } from "../data/eventos";
 import { getPerfilAtivo, itensDoPerfil, usePerfilAtivo } from "../../components/perfil-ativo";
 import { getDependenteAtribuido, isEmTransferencia, isTransferido, subscribeTicketStore } from "../data/transfer-store";
@@ -76,8 +77,9 @@ export function Ingressos() {
             actions: acoes(() => navigate(`/ingresse-app/ingressos/transferir/${evento.id}/${combo.id}`), false),
         });
 
+    // Padding de baixo = altura da tab bar (79px): a seção fixa de serviços fica colada nela
     return (
-        <AppShell activeTab="ingressos" scrollClassName="bg-secondary">
+        <AppShell activeTab="ingressos" scrollClassName="bg-secondary pb-[79px]">
             <div className="min-h-full bg-secondary">
                 <StatusBar tone="dark" />
 
@@ -174,6 +176,9 @@ export function Ingressos() {
                         ))}
                     </div>
                 )}
+
+                {/* Serviços ligados ao evento (ex.: consumo antecipado Meep), depois dos ingressos */}
+                <ServicosEvento key={evento.id} servicos={evento.servicos} fundo={evento.gradient} />
             </div>
 
             <AnimatePresence>

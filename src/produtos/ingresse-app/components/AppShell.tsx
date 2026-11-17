@@ -73,7 +73,7 @@ export function AppShell({ activeTab, showTabBar = true, bottomBar, scrollClassN
                                     onClick={() => tab.to && navigate(tab.to)}
                                     className="flex flex-1 flex-col items-center gap-1 rounded-lg py-1 transition duration-100 ease-linear"
                                 >
-                                    {/* A aba Perfil mostra a bolinha do perfil em uso: a sua foto ou, num dependente, as iniciais dele */}
+                                    {/* A aba Perfil mostra a bolinha do perfil em uso: a foto da conta ou, num dependente (multiperfis), as iniciais dele */}
                                     {tab.id === "perfil" ? (
                                         <span
                                             className={cx(

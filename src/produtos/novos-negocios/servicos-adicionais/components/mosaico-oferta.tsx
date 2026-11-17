@@ -1,39 +1,40 @@
 import { useEffect, useState } from "react";
 import { motion } from "motion/react";
-import fotoAmigos from "../assets/foto-amigos.jpg";
-import fotoCarnaval from "../assets/foto-carnaval.jpg";
-import fotoDanca from "../assets/foto-danca.jpg";
-import fotoPalco from "../assets/hero-evento.jpg";
+import foto01 from "../assets/mosaico/mosaico-01.jpg";
+import foto02 from "../assets/mosaico/mosaico-02.jpg";
+import foto03 from "../assets/mosaico/mosaico-03.jpg";
+import foto04 from "../assets/mosaico/mosaico-04.jpg";
+import foto05 from "../assets/mosaico/mosaico-05.jpg";
+import foto06 from "../assets/mosaico/mosaico-06.jpg";
+import foto07 from "../assets/mosaico/mosaico-07.jpg";
+import foto08 from "../assets/mosaico/mosaico-08.jpg";
+import foto09 from "../assets/mosaico/mosaico-09.jpg";
+import foto10 from "../assets/mosaico/mosaico-10.jpg";
 
 type Foto = { src: string; posicao?: string; peso: string };
 
-const PALCO = { src: fotoPalco };
-const AMIGOS = { src: fotoAmigos, posicao: "object-[center_35%]" };
-const CARNAVAL = { src: fotoCarnaval, posicao: "object-[center_30%]" };
-const DANCA = { src: fotoDanca };
-
 /**
- * Mosaico de fotos com clima de rolê, no lado do conteúdo da oferta no desktop. O tamanho (até 480px, centralizado na coluna) fica em pages/oferta.tsx. Menor e com
- * mais fotos (10, em 3 colunas de alturas desencontradas) para dar o clima sem roubar a
- * atenção da oferta.
- * Protótipo: as 4 fotos que temos se repetem até chegarem as novas — trocar aqui.
+ * Mosaico de fotos com clima de rolê, no lado do conteúdo da oferta no desktop (e no topo do mobile).
+ * O tamanho (até 480px, centralizado na coluna) fica em pages/oferta.tsx. Menor e com mais fotos
+ * (10, em 3 colunas de alturas desencontradas) para dar o clima sem roubar a atenção da oferta.
+ * As fotos verticais ficam nos espaços altos (peso 3) e as horizontais nos baixos (peso 2).
  */
 const COLUNAS: Foto[][] = [
     [
-        { ...PALCO, peso: "flex-[3]" },
-        { ...AMIGOS, peso: "flex-[2]" },
-        { ...DANCA, peso: "flex-[3]" },
+        { src: foto05, peso: "flex-[3]", posicao: "object-[center_40%]" }, // tranças e leque
+        { src: foto02, peso: "flex-[2]" }, // palco no Museu do Amanhã
+        { src: foto01, peso: "flex-[3]", posicao: "object-[center_25%]" }, // pista
     ],
     [
-        { ...CARNAVAL, peso: "flex-[2]" },
-        { ...DANCA, peso: "flex-[3]" },
-        { ...PALCO, peso: "flex-[2]" },
-        { ...AMIGOS, peso: "flex-[3]" },
+        { src: foto09, peso: "flex-[2]", posicao: "object-[center_35%]" }, // amigos
+        { src: foto03, peso: "flex-[3]", posicao: "object-[center_30%]" }, // três amigos
+        { src: foto07, peso: "flex-[2]" }, // multidão
+        { src: foto10, peso: "flex-[3]", posicao: "object-[center_30%]" }, // leque
     ],
     [
-        { ...PALCO, peso: "flex-[2]" },
-        { ...AMIGOS, peso: "flex-[3]" },
-        { ...CARNAVAL, peso: "flex-[3]" },
+        { src: foto04, peso: "flex-[2]" }, // estádio
+        { src: foto06, peso: "flex-[3]", posicao: "object-[center_35%]" }, // carnaval
+        { src: foto08, peso: "flex-[3]" }, // galera
     ],
 ];
 

@@ -2,7 +2,6 @@ import type { ReactNode } from "react";
 import { useNavigate } from "react-router";
 import { ArrowLeft, ChevronRight } from "@untitledui/icons";
 import { Button } from "@/components/base/buttons/button";
-import { MarcaParceiro } from "../components/marca-parceiro";
 import { SeloServico } from "../components/selo-servico";
 import { CHECKLIST, EVENTO, INDIVIDUAIS, SERVICOS } from "../data/servicos";
 
@@ -29,7 +28,7 @@ export function ServicosAdicionais() {
                             <CartaoEntrada
                                 key={id}
                                 onPress={() => navigate(`/novos-negocios/servicos-adicionais/${id}`)}
-                                selos={<MarcaParceiro id={s.id} nome={s.parceiro} />}
+                                selos={<SeloServico servico={s} tamanho="md" />}
                                 titulo={`${s.parceiro} · ${s.categoria}`}
                                 descricao={s.descricao}
                             />

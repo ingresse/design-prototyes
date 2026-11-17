@@ -4,6 +4,7 @@
 
 import { useSyncExternalStore } from "react";
 import fotoMinhaConta from "../assets/foto-perfil.jpg";
+import { MULTIPERFIS } from "./funcionalidades";
 
 /** Foto da conta logada (simulada). Dependentes não têm foto: aparecem com as iniciais. */
 export const FOTO_MINHA_CONTA = fotoMinhaConta;
@@ -25,11 +26,16 @@ const subscribe = (cb: () => void) => {
     return () => listeners.delete(cb);
 };
 
-export const getPerfilAtivo = () => ativo;
+// Com os multiperfis desligados, nunca há perfil de dependente em uso: o app age como a própria conta.
+export const getPerfilAtivo = () => (MULTIPERFIS ? ativo : null);
 
-export const usePerfilAtivo = () => useSyncExternalStore(subscribe, () => ativo);
+export const usePerfilAtivo = () => {
+    const perfil = useSyncExternalStore(subscribe, () => ativo);
+    return MULTIPERFIS ? perfil : null;
+};
 
 export const entrarNoPerfil = (perfil: PerfilAtivo) => {
+    if (!MULTIPERFIS) return;
     ativo = perfil;
     notify();
 };
@@ -40,4 +46,4 @@ export const sairDoPerfil = () => {
 };
 
 /** Ids dos itens do evento que aparecem no perfil ativo (undefined = perfil próprio, mostra tudo). */
-export const itensDoPerfil = (eventId?: string) => (ativo ? (ativo.carteira.find((c) => c.eventId === eventId)?.itens ?? []) : undefined);
+export const itensDoPerfil = (eventId?: string) => (MULTIPERFIS && ativo ? (ativo.carteira.find((c) => c.eventId === eventId)?.itens ?? []) : undefined);

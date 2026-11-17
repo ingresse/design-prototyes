@@ -11,6 +11,7 @@ type IllustrationKind =
     | "backstage"
     | "novo-site"
     | "ingresse-app"
+    | "carteira-web"
     | "landing-pages"
     | "testes"
     | "marketplace"
@@ -77,6 +78,13 @@ const PRODUCTS: ProductCardData[] = [
         illustration: "ingresse-app",
     },
     {
+        id: "carteira-web",
+        name: "Carteira web",
+        description: "Carteira de ingressos na web",
+        to: "/carteira-web",
+        illustration: "carteira-web",
+    },
+    {
         id: "totem",
         name: "Totem",
         description: "Configure o evento e siga a jornada de compra do totem",
@@ -131,6 +139,7 @@ const ILLUSTRATIONS: Record<IllustrationKind, FC> = {
     backstage: BackstageIllustration,
     "novo-site": NovoSiteIllustration,
     "ingresse-app": AppIllustration,
+    "carteira-web": CarteiraWebIllustration,
     "landing-pages": LandingPagesIllustration,
     testes: TestesIllustration,
     marketplace: MarketplaceIllustration,
@@ -729,3 +738,30 @@ const Backdrop = () => (
         />
     </div>
 );
+function CarteiraWebIllustration() {
+    return (
+        <svg viewBox="0 0 320 160" preserveAspectRatio="xMidYMid slice" className="size-full" aria-hidden="true">
+            <rect width="320" height="160" fill={N100} />
+            {/* janela do navegador */}
+            <rect x="40" y="20" width="240" height="124" rx="10" fill={N50} stroke={BORDER} />
+            <rect x="40" y="20" width="240" height="18" rx="10" fill={N100} />
+            <circle cx="52" cy="29" r="2.5" fill={N300} />
+            <circle cx="60" cy="29" r="2.5" fill={N300} />
+            <circle cx="68" cy="29" r="2.5" fill={N300} />
+            {/* título */}
+            <rect x="54" y="50" width="70" height="7" rx="3.5" fill={N400} />
+            {/* abas */}
+            <rect x="54" y="64" width="34" height="4" rx="2" fill={BRAND} />
+            <rect x="94" y="64" width="34" height="4" rx="2" fill={N200} />
+            {/* cards de ingresso */}
+            <g>
+                <rect x="54" y="78" width="62" height="52" rx="6" fill={BRAND_SOFT} />
+                <rect x="62" y="112" width="46" height="12" rx="3" fill={BRAND} />
+                <rect x="129" y="78" width="62" height="52" rx="6" fill={N200} />
+                <rect x="137" y="112" width="46" height="12" rx="3" fill={N300} />
+                <rect x="204" y="78" width="62" height="52" rx="6" fill={N300} />
+                <rect x="212" y="112" width="46" height="12" rx="3" fill={N400} />
+            </g>
+        </svg>
+    );
+}

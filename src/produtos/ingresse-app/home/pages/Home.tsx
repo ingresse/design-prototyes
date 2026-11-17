@@ -1,9 +1,16 @@
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router";
 import { ChevronDown, ChevronRight, Ticket01 } from "@untitledui/icons";
 import { Button } from "@/components/base/buttons/button";
 import { cx } from "@/utils/cx";
 import { AppShell } from "../../components/AppShell";
 import { GradientFill } from "../../components/GradientFill";
 import { StatusBar } from "../../components/StatusBar";
+import { LINK_OFERTA_UBER } from "../../components/ofertas";
+import { OfertaUberSheet } from "../components/oferta-uber-sheet";
+
+/** Mostra a oferta da Uber uma vez só (premissa até o negócio definir a frequência); /ingresse-app/uber ou ?oferta=uber força. */
+const OFERTA_UBER_KEY = "ing-oferta-uber";
 
 interface EventoCard {
     id: string;
@@ -25,8 +32,30 @@ const EM_ALTA: EventoCard[] = [
 ];
 
 export function Home() {
+    const navigate = useNavigate();
+    const [ofertaAberta, setOfertaAberta] = useState(false);
+    useEffect(() => {
+        // /ingresse-app/uber (atalho) ou ?oferta=uber abrem a oferta mesmo se já foi vista
+        const forcar = window.location.pathname.endsWith("/uber") || new URLSearchParams(window.location.search).get("oferta") === "uber";
+        if (!forcar && localStorage.getItem(OFERTA_UBER_KEY)) return;
+        const t = setTimeout(() => setOfertaAberta(true), 700);
+        return () => clearTimeout(t);
+    }, []);
+    const fecharOferta = () => {
+        localStorage.setItem(OFERTA_UBER_KEY, "1");
+        setOfertaAberta(false);
+    };
+
     return (
         <AppShell activeTab="inicio">
+            <OfertaUberSheet
+                isOpen={ofertaAberta}
+                onClose={fecharOferta}
+                onAproveitar={() => {
+                    fecharOferta();
+                    navigate(LINK_OFERTA_UBER);
+                }}
+            />
             {/* Hero / carrossel */}
             <section className="relative flex h-[440px] flex-col">
                 <GradientFill gradient="linear-gradient(180deg,#1e3a8a 0%,#1d4ed8 38%,#15803d 100%)" className="absolute inset-0 -z-10 size-full" />

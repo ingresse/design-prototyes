@@ -7,7 +7,8 @@ import { cx } from "@/utils/cx";
  * Desktop/Mobile do protótipo (mesmo controle flutuante da Carteira Web).
  * No mobile a página roda dentro de um iframe de 390px: os breakpoints, a barra fixa
  * e a rolagem se comportam como num celular de verdade. A escolha vale para todas
- * as páginas de Serviços adicionais e sobrevive à navegação (sessionStorage).
+ * as páginas de Serviços adicionais e sobrevive à navegação (sessionStorage). Um link pode
+ * escolher a vista com ?vista=mobile ou ?vista=desktop.
  */
 
 type Vista = "desktop" | "mobile";
@@ -39,9 +40,29 @@ const MENSAGEM = "servicos-adicionais:rota";
 export function VistaPrototipo({ children }: { children: ReactNode }) {
     const location = useLocation();
     const navigate = useNavigate();
-    const vista = useVista();
     // Dentro do iframe do celular? (vale para qualquer rota navegada lá dentro)
     const embutido = typeof window !== "undefined" && window.self !== window.top;
+
+    // Link de outro protótipo pode escolher a vista (ex.: a Carteira do app abre a oferta já no
+    // celular): ?vista=mobile ou ?vista=desktop. Grava antes de ler, para não piscar a outra vista.
+    const pedida = new URLSearchParams(location.search).get("vista");
+    if (!embutido && (pedida === "mobile" || pedida === "desktop")) {
+        try {
+            if (sessionStorage.getItem(CHAVE) !== pedida) sessionStorage.setItem(CHAVE, pedida);
+        } catch {
+            /* sem storage: segue a vista atual */
+        }
+    }
+    const vista = useVista();
+
+    // Depois de aplicar, tira o ?vista= do endereço (o resto da busca continua)
+    useEffect(() => {
+        if (embutido || !pedida) return;
+        const busca = new URLSearchParams(location.search);
+        busca.delete("vista");
+        const resto = busca.toString();
+        navigate(location.pathname + (resto ? `?${resto}` : ""), { replace: true });
+    }, [embutido, pedida, location.pathname, location.search, navigate]);
 
     // Dentro do iframe: avisa a página de fora a cada troca de rota
     useEffect(() => {

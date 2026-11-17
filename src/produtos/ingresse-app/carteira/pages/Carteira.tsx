@@ -7,13 +7,19 @@ import { AppShell } from "../../components/AppShell";
 import { GradientFill } from "../../components/GradientFill";
 import { StatusBar } from "../../components/StatusBar";
 import { TrocaOnboarding } from "../../ingressos/components/TrocaOnboarding";
+import { LINK_OFERTA_UBER } from "../../components/ofertas";
+import { BannerOfertaUber } from "../components/banner-oferta-uber";
+import { MULTIPERFIS } from "../../components/funcionalidades";
 import { usePerfilAtivo } from "../../components/perfil-ativo";
 import { PerfisOnboarding } from "../../perfil/components/perfis-onboarding";
 import { useDependentes } from "../../perfil/data/dependentes";
 import { juntarGrupos, useCarteiraAppDoBanco } from "../../ingressos/data/plataforma";
+import festivalAurora from "../../assets/festival-aurora.svg";
 
 const ONBOARDING_KEY = "ing-onboarding-troca";
 const ONBOARDING_PERFIS_KEY = "ing-onboarding-perfis";
+/** Banner da oferta da Uber dispensado pelo X (some até limpar os dados do navegador). */
+const BANNER_UBER_KEY = "ing-banner-uber-dispensado";
 
 interface Evento {
     id: string;
@@ -69,6 +75,19 @@ const VEM_AI: GrupoMes[] = [
         ],
     },
     {
+        mes: "Novembro 2026",
+        eventos: [
+            {
+                id: "festival-aurora",
+                title: "Festival Aurora 2026",
+                date: "Sáb, 28 nov • 16:00",
+                local: "Parque Villa-Lobos • São Paulo/SP",
+                qtd: 4,
+                gradient: festivalAurora,
+            },
+        ],
+    },
+    {
         mes: "Dezembro 2026",
         eventos: [
             {
@@ -109,6 +128,7 @@ const PASSADOS: GrupoMes[] = [
 export function Carteira() {
     const navigate = useNavigate();
     const [tab, setTab] = useState<"vem-ai" | "passados">("vem-ai");
+    const [bannerUber, setBannerUber] = useState(() => !localStorage.getItem(BANNER_UBER_KEY));
     // No perfil de um dependente: só os eventos com ingressos dele que essa conta pode acessar.
     const perfil = usePerfilAtivo();
     const doPerfil = (lista: GrupoMes[]) =>
@@ -139,9 +159,9 @@ export function Carteira() {
             const t = setTimeout(() => fn(true), 600);
             return () => clearTimeout(t);
         };
-        if (param === "perfis") return abrir(setPerfisOpen);
+        if (MULTIPERFIS && param === "perfis") return abrir(setPerfisOpen);
         if (param === "1" || !localStorage.getItem(ONBOARDING_KEY)) return abrir(setOnboardingOpen);
-        if (temDependentes && !localStorage.getItem(ONBOARDING_PERFIS_KEY)) return abrir(setPerfisOpen);
+        if (MULTIPERFIS && temDependentes && !localStorage.getItem(ONBOARDING_PERFIS_KEY)) return abrir(setPerfisOpen);
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
     const fecharOnboarding = () => {
         localStorage.setItem(ONBOARDING_KEY, "1");
@@ -179,6 +199,16 @@ export function Carteira() {
 
                 {/* Eventos agrupados por mês */}
                 <div className="flex flex-col gap-2 px-5 pt-5 pb-6">
+                    {/* Oferta da Uber antes da primeira data, só em "Vem aí" (quem ainda vai a eventos) */}
+                    {tab === "vem-ai" && bannerUber && grupos.length > 0 && (
+                        <BannerOfertaUber
+                            onAbrir={() => navigate(LINK_OFERTA_UBER)}
+                            onDispensar={() => {
+                                localStorage.setItem(BANNER_UBER_KEY, "1");
+                                setBannerUber(false);
+                            }}
+                        />
+                    )}
                     {grupos.length === 0 && (
                         <div className="flex flex-col items-center pt-12 text-center">
                             <span className="flex size-14 items-center justify-center rounded-2xl bg-primary text-fg-quaternary ring-1 ring-border-secondary">

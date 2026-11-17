@@ -29,6 +29,7 @@ import { getItem, type Combo, type ComboIncluso, type EventoDetalhe, type ItemIn
 import { FakeQR } from "./FakeQR";
 import { EventoDesktop } from "./evento-desktop";
 import { GradientFill } from "./GradientFill";
+import { ServicosEvento } from "./servicos-evento";
 import { Zigzag } from "./Zigzag";
 
 /** O que abrir a partir da lista do evento: um ingresso/produto ou um combo de QR único. */
@@ -149,6 +150,8 @@ export function EventoIngressos({
                     </div>
                 </div>
                 <div className="flex flex-col gap-6 px-5 pt-6 pb-6">{conteudo}</div>
+                {/* Serviços ligados ao evento (ex.: consumo antecipado Meep): fixos no rodapé, a lista rola por baixo */}
+                <ServicosEvento key={evento.id} servicos={evento.servicos} fundo={evento.gradient} finalizado={evento.finalizado} fixo />
             </div>
     );
 }

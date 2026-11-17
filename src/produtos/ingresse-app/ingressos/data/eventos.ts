@@ -3,6 +3,7 @@
    Cenário de combo: todos os itens/dias inclusos compartilham o MESMO QR Code. */
 
 import arenaCamisa from "../assets/arena-camisa.png";
+import festivalAurora from "../../assets/festival-aurora.svg";
 
 export interface ItemIngresso {
     id: string;
@@ -113,7 +114,12 @@ export interface EventoDetalhe {
     transferenciaPaga?: boolean;
     /** Valor da taxa de transferência (em reais). */
     taxaTransferencia?: number;
+    /** Serviços ligados a este evento, mostrados depois dos ingressos (ex.: consumo antecipado Meep). */
+    servicos?: ServicoEvento[];
 }
+
+/** Serviços adicionais que podem estar ligados a um evento. */
+export type ServicoEvento = "meep";
 
 const PORTADOR = "Priscilão Alcantara Raro";
 const CPF = "948.943.130-44";
@@ -196,6 +202,22 @@ const QUESTIONARIO_SAO_SILVESTRE: Resposta[] = [
 ];
 
 export const EVENTOS: Record<string, EventoDetalhe> = {
+    // Evento de simulação dos serviços adicionais: tem consumo antecipado Meep
+    "festival-aurora": {
+        id: "festival-aurora",
+        title: "Festival Aurora 2026",
+        date: "Sáb, 28 nov • 16:00",
+        local: "Parque Villa-Lobos • São Paulo/SP",
+        gradient: festivalAurora,
+        sessao: "Sáb, 28 nov • 16:00",
+        ingressos: [
+            { id: "aurora-1", title: "Festival Aurora | Pista | (28/11)", tipo: "Inteira", data: "Sáb, 28 nov • 16:00", portador: "Camila Ferreira Rocha", cpf: "512.384.906-27" },
+            { id: "aurora-2", title: "Festival Aurora | Pista | (28/11)", tipo: "Meia-entrada", data: "Sáb, 28 nov • 16:00", portador: "Camila Ferreira Rocha", cpf: "512.384.906-27" },
+            { id: "aurora-3", title: "Festival Aurora | Pista Premium | (28/11)", tipo: "Inteira", data: "Sáb, 28 nov • 16:00", portador: "Camila Ferreira Rocha", cpf: "512.384.906-27" },
+            { id: "aurora-4", title: "Festival Aurora | Pista Premium | (28/11)", tipo: "Inteira", data: "Sáb, 28 nov • 16:00", portador: "Camila Ferreira Rocha", cpf: "512.384.906-27" },
+        ],
+        servicos: ["meep"],
+    },
     arena: {
         id: "arena",
         title: "ARENA BRASILEIRA 2026",

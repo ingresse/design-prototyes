@@ -7,6 +7,7 @@ import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-ic
 import { cx } from "@/utils/cx";
 import type { Combo, ComboIncluso, EventoDetalhe, ItemIngresso } from "../data/eventos";
 import { GradientFill } from "./GradientFill";
+import { ServicosEvento } from "./servicos-evento";
 
 /**
  * Evento no desktop, como no Figma ([Desktop] Carteira → "Ingresso - fechado/aberto"):
@@ -38,6 +39,10 @@ export function EventoDesktop({ evento, onBack }: { evento: EventoDetalhe; onBac
                     </div>
                 </div>
 
+                {/* Desktop: a pessoa não usa o ingresso pelo computador, então os serviços do evento
+                    (ex.: consumo antecipado Meep) vêm antes da lista de ingressos, num card com o banner do evento */}
+                <ServicosEvento servicos={evento.servicos} fundo={evento.gradient} finalizado={evento.finalizado} desktop />
+
                 {evento.combos ? (
                     <Sessao titulo={evento.sessao} total={evento.combos.length}>
                         {evento.combos.map((combo) =>
@@ -66,6 +71,7 @@ export function EventoDesktop({ evento, onBack }: { evento: EventoDetalhe; onBac
                         </Sessao>
                     ))
                 )}
+
             </div>
         </div>
     );

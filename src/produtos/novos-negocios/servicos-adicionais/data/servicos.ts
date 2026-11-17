@@ -1,8 +1,9 @@
 import type { FC } from "react";
 import festivalAurora from "../assets/festival-aurora.svg";
 import showPalco from "../assets/show-palco.svg";
+import meepSimbolo from "../assets/meep-simbolo.png";
 import uberLogo from "../assets/uber-logo.svg";
-import { IconlyCalendario, IconlyCamera, IconlyCarteira, IconlyCartao, IconlyDesconto, IconlyEnviar, IconlyEscudo, IconlyImagem, IconlyRaio } from "../components/icones-iconly";
+import { IconlyCalendario, IconlyCamera, IconlyCarteira, IconlyComida, IconlyCartao, IconlyDesconto, IconlyEnviar, IconlyEscudo, IconlyImagem, IconlyRaio } from "../components/icones-iconly";
 
 /**
  * Serviços adicionais — configuração das ofertas.
@@ -28,6 +29,8 @@ export interface Servico {
     parceiro: string;
     /** Logo oficial do parceiro; sem ela, a página usa o selo provisório com o nome. */
     logo?: string;
+    /** Símbolo oficial colorido do parceiro (ex.: Meep), em selo claro com borda, sem inverter as cores. */
+    simbolo?: string;
     /** Sem logo de parceiro: ícone no selo, no lugar do nome (ex.: câmera nas fotos). */
     iconeSelo?: FC<{ className?: string }>;
     /** Cor de fundo do selo com ícone (classe de token). */
@@ -116,7 +119,7 @@ const UBER: Servico = {
     descricao: "Compre créditos para usar em viagens pelo app da Uber.",
     beneficios: [
         { icone: IconlyDesconto, texto: "R$ 5 de desconto a cada R$ 100" },
-        { icone: IconlyCartao, texto: "Parcele em até 2x sem juros" },
+        { icone: IconlyCartao, texto: "Pague no Pix ou parcele no cartão" },
     ],
     pergunta: "Escolha o valor do crédito",
     item: "Crédito\u00a0Uber",
@@ -127,8 +130,7 @@ const UBER: Servico = {
     outroValor: true,
     minimo: 20,
     maximo: 500,
-    cta: "Comprar crédito",
-    ctaComPreco: "Comprar por",
+    cta: "Comprar crédito\u00a0Uber",
     compartilhar: {
         rotulo: "Compartilhar com a galera",
         titulo: "Coisa boa a gente divide",
@@ -179,17 +181,18 @@ export const SERVICOS: Record<ServicoId, Servico> = {
     meep: {
         id: "meep",
         parceiro: "Meep",
+        simbolo: meepSimbolo,
         categoria: "Consumo no evento",
-        marca: { nome: "Recarga Meep" },
+        marca: { nome: "Consumo antecipado Meep" },
         evento: true,
-        titulo: "Menos fila, mais rolê",
-        legenda: "Carregue sua pulseira antes de sair de casa e use nos bares, comidas e lojas do evento.",
-        descricao: "Carregue seu saldo agora e use nos bares, comidas e lojas do evento.",
+        titulo: "Menos filas, mais rolê",
+        legenda: "Recarregue antes de sair de casa e chegue só pra curtir.",
+        descricao: "Antecipe sua recarga e use o saldo para consumir no evento.",
         beneficios: [
-            { icone: IconlyCartao, texto: "Pague só aproximando a pulseira" },
-            { icone: IconlyCarteira, texto: "Defina antes quanto quer gastar" },
+            { icone: IconlyComida, texto: "Use nos bares, comidas e lojas" },
+            { icone: IconlyCarteira, texto: "Você decide quanto vai gastar" },
         ],
-        pergunta: "Quanto você quer carregar?",
+        pergunta: "Quanto deseja recarregar?",
         item: "Saldo Meep",
         valores: [50, 100, 150],
         valorDestaque: { valor: 100, selo: "Mais escolhido" },
@@ -197,25 +200,24 @@ export const SERVICOS: Record<ServicoId, Servico> = {
         outroValor: true,
         minimo: 10,
         maximo: 1000,
-        cta: "Recarregar",
-        ctaComPreco: "Recarregar",
+        cta: "Carregar meu saldo",
         compartilhar: {
             rotulo: "Compartilhar com a galera",
             titulo: "Avisa quem vai com você",
-            legenda: `Assim todo mundo carrega a pulseira antes de sair de casa pro ${EVENTO.nome}.`,
-            mensagem: `Dá pra carregar a pulseira do ${EVENTO.nome} antes de sair de casa:`,
+            legenda: `Assim todo mundo antecipa a recarga pro ${EVENTO.nome}.`,
+            mensagem: `Dá pra antecipar a recarga pro ${EVENTO.nome} por aqui:`,
         },
-        aviso: "Sobrou saldo? Você pode pedir a devolução depois do evento, conforme as regras da Meep.",
+        aviso: "O que sobrar do saldo pode ser devolvido depois do evento.",
         condicoes: [
-            "O saldo fica no seu cadastro Meep e vale durante todo o evento.",
-            "Ao chegar, é só se identificar com o seu CPF nos pontos de venda.",
+            `Use o saldo para consumir no ${EVENTO.nome}.`,
+            "Você usa o saldo com um cartão ou uma pulseira, conforme o formato do evento.",
             "Pedidos de devolução do saldo seguem as regras e prazos da Meep.",
         ],
         destino: { rotulo: "CPF do cadastro Meep", valor: USUARIO.cpf },
         confirmacao: {
-            titulo: "Recarga confirmada",
-            descricao: "Seu saldo já está no cadastro Meep e fica disponível durante todo o evento.",
-            passos: ["No evento, use o seu CPF para pagar nos bares, comidas e lojas.", "Acompanhe o saldo pelo app da Meep."],
+            titulo: "Tudo certo com seu saldo",
+            descricao: `Agora é só usar seu saldo no ${EVENTO.nome}.`,
+            passos: ["Use o saldo com um cartão ou uma pulseira, conforme o formato do evento.", "Acompanhe o saldo pelo app da Meep."],
         },
     },
     fotos: {

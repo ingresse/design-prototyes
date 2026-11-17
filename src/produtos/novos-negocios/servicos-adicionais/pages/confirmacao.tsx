@@ -103,8 +103,8 @@ function codigoResgate(valor: number, forma: string) {
 }
 
 /**
- * Código de resgate (copiar) + CTA principal para o app do parceiro, só no celular (no desktop
- * fica só o código), e o passo a passo do resgate manual no app embaixo. Ativar pelo app
+ * Código de resgate (copiar) + CTA principal para ativar na Uber (celular e desktop) e o passo a
+ * passo do resgate manual no app embaixo. Ativar pelo app
  * resgata o código: depois disso, nenhum dos dois caminhos permite uma nova ativação.
  */
 function Resgate({ servico, resgate, codigo }: { servico: Servico; resgate: NonNullable<Servico["resgate"]>; codigo: string }) {
@@ -142,15 +142,14 @@ function Resgate({ servico, resgate, codigo }: { servico: Servico; resgate: NonN
                 </div>
             </div>
 
-            {/* O CTA de ativar só existe no celular: a ativação acontece no app da Uber, e no desktop não
-                há como ativar pelo navegador. No desktop fica só o código, com a orientação de onde usar */}
+            {/* CTA de ativar no celular e no desktop (a Uber também aceita o resgate pelo computador) */}
             {ativado ? (
                 <p role="status" className="flex items-center justify-center gap-2 rounded-xl bg-success-primary p-3 text-md font-semibold text-success-primary">
                     <CheckCircle className="size-5" aria-hidden="true" />
                     Crédito ativado na {servico.parceiro}
                 </p>
             ) : (
-                <Button size="xl" color="primary" className="w-full lg:hidden" iconTrailing={LinkExternal01} isLoading={ativando} showTextWhileLoading onClick={ativar}>
+                <Button size="xl" color="primary" className="w-full" iconTrailing={LinkExternal01} isLoading={ativando} showTextWhileLoading onClick={ativar}>
                     {resgate.cta}
                 </Button>
             )}
@@ -158,15 +157,11 @@ function Resgate({ servico, resgate, codigo }: { servico: Servico; resgate: NonN
             {ativado ? (
                 <p className="text-sm text-tertiary">O código já foi resgatado e não pode ser usado de novo.</p>
             ) : (
-                // Passo a passo do resgate manual, depois do CTA. No celular é a alternativa ao botão;
-                // no desktop, o único caminho
+                // Passo a passo do resgate manual, depois do CTA, como alternativa ao botão
                 <div className="flex flex-col gap-4 text-left">
                     {/* Divider de ponta a ponta do card (anula o padding da seção) */}
                     <span aria-hidden="true" className="-mx-6 mt-2 mb-1 border-t border-secondary lg:-mx-8" />
-                    <p className="text-md font-semibold text-primary">
-                        <span className="lg:hidden">{resgate.passosTitulo}</span>
-                        <span className="hidden lg:inline">{resgate.passosTituloDesktop}</span>
-                    </p>
+                    <p className="text-md font-semibold text-primary">{resgate.passosTitulo}</p>
                     <Passos passos={resgate.passos} />
                 </div>
             )}

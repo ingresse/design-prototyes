@@ -6,6 +6,7 @@
 import { useSyncExternalStore } from "react";
 import { mostrarToast } from "../../components/AppToast";
 import { getPerfilAtivo, sairDoPerfil } from "../../components/perfil-ativo";
+import { MULTIPERFIS } from "../../components/funcionalidades";
 
 /** Condição do acesso ao perfil do dependente, do ponto de vista de quem está logado. */
 export type Acesso = "nao-configurado" | "preparando" | "falhou" | "pronto" | "conta-propria";
@@ -29,7 +30,14 @@ export type Dependente = {
 /** Conta logada (dados fictícios). */
 export const EU = { id: "eu", nome: "Camila Ferreira Rocha", iniciais: "CR", email: "camila.rocha@email.com", telefone: "(21) 98452-3318" };
 
-const dependentes: Dependente[] = [
+/** Lista de antes dos multiperfis (com a chave desligada): os três dependentes originais, sem acesso. */
+const DEPENDENTES_CLASSICOS: Dependente[] = [
+    { id: "d1", nome: "Mariana Costa Lima", nascimento: "12/03/1998", cpf: "943.039.930-00", parentesco: "Filha", iniciais: "ML", acesso: "nao-configurado", carteira: [] },
+    { id: "d2", nome: "Eduardo Carlos Souza", nascimento: "25/07/2005", cpf: "821.554.310-22", parentesco: "Filho", iniciais: "ES", acesso: "nao-configurado", carteira: [] },
+    { id: "d3", nome: "Regina Nascimento de Souza", nascimento: "08/11/1962", cpf: "304.118.765-09", parentesco: "Mãe", iniciais: "RS", acesso: "nao-configurado", carteira: [] },
+];
+
+const DEPENDENTES_MULTIPERFIS: Dependente[] = [
     {
         id: "d1",
         nome: "Mariana Costa Lima",
@@ -75,6 +83,8 @@ const dependentes: Dependente[] = [
         carteira: [],
     },
 ];
+
+const dependentes: Dependente[] = MULTIPERFIS ? DEPENDENTES_MULTIPERFIS : DEPENDENTES_CLASSICOS;
 
 /* ------------------------------ Reatividade ------------------------------ */
 

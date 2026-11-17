@@ -3,6 +3,7 @@
    Um evento tem uma lista simples de ingressos OU combos. */
 
 import arenaCamisa from "../assets/arena-camisa.png";
+import festivalAurora from "../assets/festival-aurora.svg";
 
 export interface ItemIngresso {
     id: string;
@@ -57,12 +58,33 @@ export interface EventoDetalhe {
     combos?: Combo[];
     /** Evento já aconteceu (aba Passados): sem QR e sem ações. */
     finalizado?: boolean;
+    /** Serviços ligados a este evento, mostrados depois dos ingressos (ex.: consumo antecipado Meep). */
+    servicos?: ServicoEvento[];
 }
+
+/** Serviços adicionais que podem estar ligados a um evento. */
+export type ServicoEvento = "meep";
 
 const TITULAR = "Camila Ferreira Rocha";
 const CPF = "832.840.732-12";
 
 export const EVENTOS: Record<string, EventoDetalhe> = {
+    // Evento de simulação dos serviços adicionais: tem consumo antecipado Meep
+    "festival-aurora": {
+        id: "festival-aurora",
+        title: "Festival Aurora 2026",
+        date: "Sáb, 28 nov • 16:00",
+        local: "Parque Villa-Lobos • São Paulo/SP",
+        gradient: festivalAurora,
+        sessao: "Sáb, 28 nov • 16:00",
+        ingressos: [
+            { id: "aurora-1", title: "Festival Aurora | Pista | (28/11)", tipo: "Inteira", data: "Sáb, 28 nov • 16:00", portador: TITULAR, cpf: CPF },
+            { id: "aurora-2", title: "Festival Aurora | Pista | (28/11)", tipo: "Meia-entrada", data: "Sáb, 28 nov • 16:00", portador: TITULAR, cpf: CPF },
+            { id: "aurora-3", title: "Festival Aurora | Pista Premium | (28/11)", tipo: "Inteira", data: "Sáb, 28 nov • 16:00", portador: TITULAR, cpf: CPF },
+            { id: "aurora-4", title: "Festival Aurora | Pista Premium | (28/11)", tipo: "Inteira", data: "Sáb, 28 nov • 16:00", portador: TITULAR, cpf: CPF },
+        ],
+        servicos: ["meep"],
+    },
     "gop-tun": {
         id: "gop-tun",
         title: "Gop Tun Festival 2026",

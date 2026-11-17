@@ -1,0 +1,35 @@
+# Ingressos do evento (app): regras
+
+> **Rotas:** `/ingresse-app/ingressos/evento/:eventId`
+> **No menu:** app › aba Ingressos (Carteira) › toque num evento
+> **Revisado em:** 2026-11-17
+
+Este arquivo é a fonte da verdade do comportamento da feature. Mudou uma regra no código, mude
+aqui no mesmo commit. Achou divergência entre código e este arquivo, registre em **Em aberto**
+em vez de escolher um lado em silêncio.
+
+## O que é
+
+Página de um evento na Carteira do app: card do evento e a lista de ingressos (ou combos), que abre o
+detalhe com o QR. Este arquivo começa pelas regras da seção de serviços do evento; as demais regras da
+página ainda não foram documentadas.
+
+## Dados
+
+| Dado | De onde vem | Grava? |
+| --- | --- | --- |
+| Evento, ingressos e serviços ligados | `data/eventos.ts` (`EVENTOS`, campo `servicos`) (mock local) | não |
+
+## Regras
+
+### Comportamento
+- **ING-01** Eventos com serviço ligado mostram a seção "Prepare seu rolê" com uma linha clicável por serviço. Ela começa fixa logo acima da tab bar (a lista de ingressos rola por baixo), então o serviço fica sempre à vista, por mais ingressos que o evento tenha. O ingresso continua sendo o primeiro conteúdo da tela. _(components/servicos-evento.tsx, pages/Ingressos.tsx)_
+- **ING-04** O X da seção fixa a fecha, e a seção passa a ficar no fim da lista de ingressos (a pessoa não é obrigada a ver o serviço o tempo todo). Ao recarregar a página, volta a ficar fixa (nada é salvo). _(components/servicos-evento.tsx)_
+- **ING-02** Hoje o único serviço é a Meep: selo da Meep, "Consumo antecipado Meep", "Chegue com saldo pra comer e beber" e seta. A linha inteira abre `/novos-negocios/servicos-adicionais/meep?vista=mobile`, ou seja, a oferta já na vista de celular do protótipo. _(components/servicos-evento.tsx)_
+- **ING-05** A seção fica no fundo cinza (com uma linha em cima quando fixa). Quando o evento tem banner, a linha do serviço usa um recorte dele (a faixa das montanhas, sem texto do pôster), escurecido à esquerda, com o selo branco e o texto em branco, como no desktop da carteira web. _(components/servicos-evento.tsx)_
+- **ING-03** O evento de simulação é o Festival Aurora 2026 (sáb, 28 nov · 16h, Parque Villa-Lobos), em "Vem aí" › Novembro 2026, com 4 ingressos da Camila Ferreira Rocha (2 Pista e 2 Pista Premium, para simular uma lista longa) e a Meep ligada. _(data/eventos.ts `festival-aurora`, carteira/pages/Carteira.tsx `VEM_AI`)_
+
+## Em aberto
+
+- Falta definir se a seção some no dia do evento e se mostra o status depois da compra (hoje não mostra).
+- O pôster do Festival Aurora ainda diz 12 dez (a oferta e o Figma também usam 12 dez), mas o evento na Carteira é 28 nov.

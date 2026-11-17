@@ -20,6 +20,8 @@ import { useCarteiraDoBanco } from "../data/plataforma";
 import { usePerfilAtivo, type PerfilAtivo } from "../data/perfil-ativo";
 import { useDependentes } from "../data/dependentes";
 import { PerfisOnboarding } from "../components/perfis-onboarding";
+import { MULTIPERFIS } from "../data/funcionalidades";
+import { BannerOfertaUber, CardOfertaUber, LINK_OFERTA_UBER, OfertaUberDialogo } from "../components/oferta-uber";
 
 /** Onboarding dos perfis dos dependentes já visto (mostra uma vez; o link dedicado abre sempre). */
 const ONBOARDING_PERFIS = "cw-onboarding-perfis";
@@ -27,6 +29,37 @@ import { useForceLightTheme } from "../components/use-force-light-theme";
 import { useMarcaIngresse } from "../components/use-marca-ingresse";
 import { SAO_SILVESTRE } from "../data/sao-silvestre";
 import { isTransferido } from "../data/transfer-store";
+import festivalAurora from "../assets/festival-aurora.svg";
+
+/** Oferta da Uber: o modal aparece uma vez (?oferta=uber força); o banner some quando a pessoa toca no X. */
+const OFERTA_UBER_VISTA = "cw-oferta-uber";
+const BANNER_UBER_DISPENSADO = "cw-banner-uber-dispensado";
+const lerFlag = (k: string) => {
+    try {
+        return localStorage.getItem(k) === "1";
+    } catch {
+        return false;
+    }
+};
+const gravarFlag = (k: string) => {
+    try {
+        localStorage.setItem(k, "1");
+    } catch {
+        /* ignora */
+    }
+};
+
+/** Banner da oferta, com o estado de dispensado (o mesmo no desktop e no celular). */
+function useBannerUber() {
+    const [visivel, setVisivel] = useState(() => !lerFlag(BANNER_UBER_DISPENSADO));
+    return {
+        visivel,
+        dispensar: () => {
+            gravarFlag(BANNER_UBER_DISPENSADO);
+            setVisivel(false);
+        },
+    };
+}
 
 type Tab = "proximos" | "anteriores";
 
@@ -84,6 +117,18 @@ const PROXIMOS: EventoCard[] = [
         gradient: "linear-gradient(135deg,#F59E0B 0%,#DB2777 55%,#7C3AED 100%)",
         datas: "4 e 18, Jul 2026",
         mesAno: "Julho 2026",
+    },
+    {
+        id: "festival-aurora",
+        title: "Festival Aurora 2026",
+        local: "Parque Villa-Lobos, São Paulo",
+        hora: "16:00",
+        dia: "28",
+        mes: "Novembro",
+        qtd: 4,
+        gradient: festivalAurora,
+        datas: "28 de Nov 2026",
+        mesAno: "Novembro 2026",
     },
     {
         id: "reveillon-copacabana",
@@ -152,8 +197,7 @@ const doPerfil = (lista: EventoCard[], perfil: PerfilAtivo | null) =>
           });
 
 /** A São Silvestre é inscrição; os outros eventos têm ingressos. */
-const contagem = (e: EventoCard) =>
-    e.comboId ? `${e.qtd} ${e.qtd === 1 ? "inscrição" : "inscrições"}` : `${e.qtd} ${e.qtd === 1 ? "ingresso" : "ingressos"}`;
+const contagem = (e: EventoCard) => (e.comboId ? `${e.qtd} ${e.qtd === 1 ? "inscrição" : "inscrições"}` : `${e.qtd} ${e.qtd === 1 ? "ingresso" : "ingressos"}`);
 
 /* ------------------------------ Conteúdo ------------------------------ */
 
@@ -162,6 +206,8 @@ function CarteiraContent({ onCardClick, erro = false }: { onCardClick: (card: Ev
     const perfil = usePerfilAtivo();
     const doBanco = useCarteiraDoBanco();
     const cards = doPerfil(tab === "proximos" ? [...doBanco.proximos, ...PROXIMOS] : [...doBanco.anteriores, ...ANTERIORES], perfil);
+    const banner = useBannerUber();
+    const navigate = useNavigate();
 
     return (
         <div className="bg-primary text-primary">
@@ -177,6 +223,10 @@ function CarteiraContent({ onCardClick, erro = false }: { onCardClick: (card: Ev
 
                 {cards.length === 0 && <SemIngressos nome={perfil?.nome} />}
                 <div className="grid grid-cols-[repeat(auto-fill,minmax(300px,360px))] gap-8">
+                    {/* Oferta da Uber como o primeiro card da grade (mesmo formato dos eventos, estático) */}
+                    {tab === "proximos" && banner.visivel && cards.length > 0 && (
+                        <CardOfertaUber onAbrir={() => navigate(LINK_OFERTA_UBER)} onDispensar={banner.dispensar} />
+                    )}
                     {cards.map((card) => (
                         <EventoCardView
                             key={card.id}
@@ -223,7 +273,11 @@ const EventoCardView = ({ card, past, erro = false, onClick }: { card: EventoCar
                     transferido && "grayscale",
                 )}
             >
-                {escuro ? <GradientFill gradient={card.gradient ?? ""} className="absolute inset-0 size-full" /> : <Package className="size-16" aria-hidden="true" />}
+                {escuro ? (
+                    <GradientFill gradient={card.gradient ?? ""} className="absolute inset-0 size-full" />
+                ) : (
+                    <Package className="size-16" aria-hidden="true" />
+                )}
                 {/* Inscrição transferida: esmaece a foto */}
                 {transferido && <div className="absolute inset-0 bg-primary/40" />}
 
@@ -296,6 +350,8 @@ function MobileEventList({ onEventClick }: { onEventClick: (card: EventoCard) =>
     const doBanco = useCarteiraDoBanco();
     const eventos = doPerfil(tab === "proximos" ? [...doBanco.proximos, ...PROXIMOS] : [...doBanco.anteriores, ...ANTERIORES], perfil);
     const grupos = [...new Set(eventos.map((e) => e.mesAno))].map((mes) => ({ mes, eventos: eventos.filter((e) => e.mesAno === mes) }));
+    const banner = useBannerUber();
+    const navigate = useNavigate();
 
     return (
         <div className="scrollbar-hide flex-1 overflow-y-auto bg-secondary">
@@ -310,6 +366,9 @@ function MobileEventList({ onEventClick }: { onEventClick: (card: EventoCard) =>
             {grupos.length === 0 && <SemIngressos nome={perfil?.nome} />}
 
             <div className="flex flex-col gap-2 px-5 pt-5 pb-6">
+                {tab === "proximos" && banner.visivel && grupos.length > 0 && (
+                    <BannerOfertaUber onAbrir={() => navigate(LINK_OFERTA_UBER)} onDispensar={banner.dispensar} />
+                )}
                 {grupos.map((grupo) => (
                     <section key={grupo.mes} className="pt-2">
                         <h2 className="pb-3 text-md font-bold text-primary">{grupo.mes}</h2>
@@ -396,7 +455,9 @@ function MobileIngressos({ card, erro = false, onBack, onOpen }: { card: EventoC
             {/* Sessão */}
             <div className="flex items-center justify-between px-5 pt-6">
                 <h2 className="text-sm font-semibold text-primary">{card.datas}</h2>
-                <span className="flex h-7 min-w-7 items-center justify-center rounded-full px-2 text-sm font-medium text-secondary ring-1 ring-border-secondary">1</span>
+                <span className="flex h-7 min-w-7 items-center justify-center rounded-full px-2 text-sm font-medium text-secondary ring-1 ring-border-secondary">
+                    1
+                </span>
             </div>
 
             {/* Inscrição (abre o detalhe) */}
@@ -516,6 +577,7 @@ export function Carteira() {
         } catch {
             /* sem storage: trata como não visto */
         }
+        if (!MULTIPERFIS) return;
         if (!peloLink && (visto || !temDependentes || perfilAtivo)) return;
         const t = setTimeout(() => setOnboardingPerfis(true), 600);
         return () => clearTimeout(t);
@@ -527,6 +589,19 @@ export function Carteira() {
             /* ignora */
         }
         setOnboardingPerfis(false);
+    };
+    // Oferta da Uber ao abrir a Carteira: uma vez; ?oferta=uber força (como no app)
+    const [ofertaUber, setOfertaUber] = useState(false);
+    useEffect(() => {
+        // /carteira-web/uber (atalho) ou ?oferta=uber abrem a oferta mesmo se já foi vista
+        const forcar = location.pathname.endsWith("/uber") || new URLSearchParams(location.search).get("oferta") === "uber";
+        if (!forcar && lerFlag(OFERTA_UBER_VISTA)) return;
+        const t = setTimeout(() => setOfertaUber(true), 700);
+        return () => clearTimeout(t);
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    const fecharOfertaUber = () => {
+        gravarFlag(OFERTA_UBER_VISTA);
+        setOfertaUber(false);
     };
     const eventoBase = getEvento(outro?.eventId);
     const eventoOutro = eventoBase && paraOPerfil(eventoBase, perfilAtivo);
@@ -643,6 +718,15 @@ export function Carteira() {
                         />
                     )}
                     <WebToast ancora={viewport === "mobile" ? "frame" : "janela"} />
+                    <OfertaUberDialogo
+                        aberto={ofertaUber}
+                        compact={viewport === "mobile"}
+                        onFechar={fecharOfertaUber}
+                        onAproveitar={() => {
+                            fecharOfertaUber();
+                            navigate(LINK_OFERTA_UBER);
+                        }}
+                    />
                     <PerfisOnboarding
                         aberto={onboardingPerfis}
                         compact={viewport === "mobile"}

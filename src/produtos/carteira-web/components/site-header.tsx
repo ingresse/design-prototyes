@@ -9,6 +9,7 @@ import fotoPerfil from "../assets/foto-perfil.jpg";
 import { EU, pronomeDe, primeiroNome, useDependentes } from "../data/dependentes";
 import { Confirmacao } from "./dialogo";
 import { entrarNoPerfil, sairDoPerfil, usePerfilAtivo } from "../data/perfil-ativo";
+import { MULTIPERFIS } from "../data/funcionalidades";
 
 /** Conta logada (mesma pessoa do app). */
 export const CONTA = { nome: EU.nome, iniciais: EU.iniciais, foto: fotoPerfil };
@@ -24,7 +25,8 @@ type PerfilOpcao = { id: string; nome: string; iniciais: string; foto?: string; 
 /** Perfil em uso + os outros perfis que essa conta pode acessar (a própria conta e os dependentes com acesso pronto). */
 function usePerfis() {
     const ativo = usePerfilAtivo();
-    const prontos = useDependentes().filter((d) => d.acesso === "pronto");
+    // Sem multiperfis, não há outros perfis para trocar
+    const prontos = useDependentes().filter((d) => MULTIPERFIS && d.acesso === "pronto");
     const dep = prontos.find((d) => d.id === ativo?.id);
     const minha: PerfilOpcao = { id: EU.id, nome: EU.nome, iniciais: EU.iniciais, foto: fotoPerfil, legenda: "Sua conta", entrar: sairDoPerfil };
     const deps: PerfilOpcao[] = prontos.map((d) => ({
@@ -70,7 +72,7 @@ function MenuConta({ className, onFechar, onConfirmarTroca }: { className?: stri
 
     const itens: { label: string; rota?: string }[] = [
         { label: "Meus dados" },
-        { label: "Meus dependentes", rota: "/carteira-web/dependentes" },
+        ...(MULTIPERFIS ? [{ label: "Meus dependentes", rota: "/carteira-web/dependentes" }] : []),
         { label: "Dispositivos verificados" },
         { label: "Formas de pagamentos" },
         { label: "Minhas compras" },
@@ -142,7 +144,7 @@ function MenuConta({ className, onFechar, onConfirmarTroca }: { className?: stri
                     type="button"
                     onClick={() => {
                         sairDoPerfil();
-                        ir("/carteira-web/selecionar");
+                        if (MULTIPERFIS) ir("/carteira-web/selecionar");
                     }}
                     className="h-[42px] rounded-md bg-primary text-xs font-semibold tracking-wide text-primary uppercase ring-2 ring-fg-primary ring-inset transition duration-100 ease-linear hover:bg-secondary"
                 >

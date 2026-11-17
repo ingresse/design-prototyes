@@ -391,6 +391,8 @@ export default function App() {
         <Route path="/novo-site/home/event-details" element={<PasswordGate><EventDetails /></PasswordGate>} />
         <Route path="/novo-site/home/categorias" element={<Categorias />} />
         <Route path="/ingresse-app" element={<IngresseAppHome />} />
+        {/* Atalho de teste: abre a Início com o bottom sheet da oferta Uber */}
+        <Route path="/ingresse-app/uber" element={<IngresseAppHome />} />
         <Route path="/ingresse-app/ingressos" element={<IngresseAppCarteira />} />
         <Route path="/ingresse-app/ingressos/evento/:eventId" element={<IngresseAppIngressos />} />
         <Route path="/ingresse-app/ingressos/detalhe/:eventId/:itemId" element={<IngresseAppIngressoDetalhe />} />
@@ -432,6 +434,8 @@ export default function App() {
         <Route path="/landing-pages/sao-silvestre/solicitar-vagas" element={<SolicitacaoVagas />} />
         <Route path="/landing-pages/sao-silvestre/solicitar-beneficio-pcd" element={<SolicitacaoBeneficioPcd />} />
         <Route path="/carteira-web" element={<CarteiraWeb />} />
+        {/* Atalho de teste: abre a Carteira web com o modal da oferta Uber */}
+        <Route path="/carteira-web/uber" element={<CarteiraWeb />} />
         <Route path="/carteira-web/transferir" element={<CarteiraWebTransferir />} />
         <Route path="/carteira-web/troca-onboarding" element={<CarteiraWebTrocaOnboarding />} />
         <Route path="/carteira-web/dependentes/onboarding" element={<CarteiraWeb />} />

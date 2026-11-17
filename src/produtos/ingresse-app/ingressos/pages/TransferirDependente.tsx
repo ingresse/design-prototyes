@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { ArrowDown, ArrowLeft, ChevronRight, InfoCircle, UserPlus01, XClose } from "@untitledui/icons";
+import { Avatar } from "@/components/base/avatar/avatar";
 import { Button } from "@/components/base/buttons/button";
 import { AppShell } from "../../components/AppShell";
+import { MULTIPERFIS } from "../../components/funcionalidades";
 import { BottomSheet } from "../../components/BottomSheet";
 import { StatusBar } from "../../components/StatusBar";
 import { getEvento, getItem } from "../data/eventos";
@@ -110,6 +112,8 @@ export function TransferirDependente() {
                                     onClick={() => escolher(dep)}
                                     className="-mx-2 flex items-center gap-3 rounded-xl px-2 py-3 text-left transition duration-100 ease-linear active:bg-secondary"
                                 >
+                                    {/* Avatar com iniciais: saiu com os multiperfis; com a chave desligada, volta */}
+                                    {!MULTIPERFIS && <Avatar size="md" initials={dep.iniciais} alt={dep.nome} />}
                                     <div className="min-w-0 flex-1">
                                         <p className="text-sm font-bold text-primary">{dep.nome}</p>
                                         <p className="truncate text-sm text-tertiary">CPF: {dep.cpf}</p>
@@ -154,6 +158,7 @@ export function TransferirDependente() {
 
                 {selecionado && (
                     <div className="mt-4 flex items-center gap-3 rounded-2xl bg-primary p-4 ring-1 ring-border-secondary">
+                        {!MULTIPERFIS && <Avatar size="md" initials={selecionado.iniciais} alt={selecionado.nome} />}
                         <div className="min-w-0 flex-1">
                             <p className="text-sm font-bold text-primary">{selecionado.nome}</p>
                             <p className="truncate text-sm text-tertiary">{contatoDep(selecionado)}</p>
@@ -189,6 +194,7 @@ export function TransferirDependente() {
 
                 {selecionado && (
                     <div className="mt-4 flex items-center gap-3 rounded-2xl bg-primary p-4 ring-1 ring-border-secondary">
+                        {!MULTIPERFIS && <Avatar size="md" initials={selecionado.iniciais} alt={selecionado.nome} />}
                         <div className="min-w-0 flex-1">
                             <p className="text-sm font-bold text-primary">{selecionado.nome}</p>
                             <p className="truncate text-sm text-tertiary">{contatoDep(selecionado)}</p>
