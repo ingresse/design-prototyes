@@ -1210,7 +1210,6 @@ const STATUS_DESCRICAO_CURTA: Record<EventoStatus, string> = {
 const EventDetailsCard = () => {
     const evento = useEventoAtual();
     const freepass = usePainel() === "freepass";
-    const encerrado = evento.status === "encerrado";
     // O espelho do evento em contexto não traz o slug: o link usa o do banco.
     const slug = useDoc("eventos", evento.id)?.slug ?? evento.id;
 
@@ -1235,9 +1234,9 @@ const EventDetailsCard = () => {
                 </Badge>
             ) : (
             <div className="flex flex-col gap-1.5 px-4">
-                <span className="text-sm text-quaternary">Status do evento</span>
+                {/* Rascunho: só o "Publicar evento", sem rótulo (BKS-72). */}
+                {evento.status !== "rascunho" && <span className="text-sm text-quaternary">Status do evento</span>}
                 <SeletorDeStatus />
-                {encerrado && <p className="text-sm text-tertiary">Evento encerrado. O status não pode mais ser alterado.</p>}
             </div>
             )}
         </div>
@@ -1249,21 +1248,42 @@ const StatusNoMenuMobile = () => {
     const evento = useEventoAtual();
     return (
         <div className="sticky bottom-0 flex flex-col gap-1.5 border-t border-secondary bg-primary px-4 pt-4 pb-6">
-            <span className="text-sm text-quaternary">Status do evento</span>
+            {evento.status !== "rascunho" && <span className="text-sm text-quaternary">Status do evento</span>}
             <SeletorDeStatus />
-            {evento.status === "encerrado" && <p className="text-sm text-tertiary">Evento encerrado. O status não pode mais ser alterado.</p>}
         </div>
     );
 };
 
-/** Lista de status do evento: escolher abre o modal, que confirma. O mesmo no desktop e no celular. */
+/**
+ * Status do evento no menu (desktop e celular), conforme o que dá para fazer (BKS-72):
+ * rascunho mostra só "Publicar evento" (escolhe privado ou público no modal); encerrado só o selo e
+ * o aviso; os outros, a lista de status, em que escolher abre o modal que confirma.
+ */
 const SeletorDeStatus = () => {
     const evento = useEventoAtual();
     const abrirModalDeStatus = useAbrirModalDeStatus();
     const encerrado = evento.status === "encerrado";
+    if (evento.status === "rascunho" || encerrado)
+        return (
+            <div className="flex flex-col gap-2">
+                {/* Rascunho: só o botão (o "Publicar evento" já diz que não está no ar). Encerrado: selo e aviso. */}
+                {encerrado && (
+                    <Badge size="sm" type="pill-color" color={EVENTO_STATUS_BADGE_COLOR[evento.status]} className="self-start">
+                        {EVENTO_STATUS_LABEL[evento.status]}
+                    </Badge>
+                )}
+                {encerrado ? (
+                    <p className="text-sm text-tertiary">Evento encerrado. O status não pode mais ser alterado.</p>
+                ) : (
+                    <Button size="sm" color="primary" iconLeading={Globe01} className="w-full" onClick={() => abrirModalDeStatus()}>
+                        Publicar evento
+                    </Button>
+                )}
+            </div>
+        );
     return (
         <Dropdown.Root>
-            <Button size="sm" color="secondary" className="w-full justify-between" iconTrailing={encerrado ? undefined : ChevronDown} isDisabled={encerrado}>
+            <Button size="sm" color="secondary" className="w-full justify-between" iconTrailing={ChevronDown}>
                 <span className="flex min-w-0 items-center gap-1.5">
                     <Dot size="sm" className={STATUS_DOT_COR[evento.status]} aria-hidden="true" />
                     <span className="truncate">{EVENTO_STATUS_LABEL[evento.status]}</span>

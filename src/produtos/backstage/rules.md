@@ -67,7 +67,7 @@ mostram.
 - **BKS-30** Status, na ordem: Rascunho, Privado, Publicado, Encerrado. _(eventos/components/AlterarStatusModal.tsx)_
 - **BKS-31** Rascunho não vende. Privado vende só pelo link de compra. Publicado vende e aparece no site. Encerrado para de vender. _(src/plataforma/regras.ts)_
 - **BKS-32** Existe um único modal de status por tela. O card, o topo mobile e Informações do evento só pré-selecionam a escolha; quem confirma é o modal. _(components/Backstage.tsx)_
-- **BKS-33** Encerrado é definitivo: o seletor de status fica desabilitado, com o aviso "Evento encerrado. O status não pode mais ser alterado." _(components/Backstage.tsx)_
+- **BKS-33** Encerrado é definitivo: não há seletor de status (BKS-72), só o selo e o aviso "Evento encerrado. O status não pode mais ser alterado." _(components/Backstage.tsx)_
 
 ### Plataforma
 - **BKS-40** Evento, ingresso, lote, pedido e ingresso emitido vêm de `@/plataforma`. Feature nova não cria mock próprio desses dados. _(src/plataforma/README.md)_
@@ -88,6 +88,7 @@ mostram.
 - **BKS-69** No rail da organização, o nome da organização aparece abaixo do avatar, em até duas linhas; o avatar e o nome juntos abrem a troca de organização. _(components/Backstage.tsx)_
 - **BKS-70** Backstage e Freepass usam a marca neutra (monocromática): nas rotas `/backstage` e `/freepass`, o `<html>` ganha a classe `tema-backstage`, que troca a escala brand e o sólido de marca. O botão primário também é neutro, como o resto. Os outros produtos seguem o vermelho do tema. _(app/App.tsx, styles/index.css)_
 - **BKS-71** Entrar numa página nova (link ou botão, ex.: da lista para criar ou editar um ingresso) começa do topo; voltar pelo navegador mantém a rolagem que ele restaura. _(components/Backstage.tsx)_
+- **BKS-72** O controle de status do evento depende do que dá para fazer: em Rascunho, só o botão "Publicar evento" (no menu do evento, sem o selo "Rascunho" nem o rótulo "Status do evento"), que abre o modal "Publicar evento" só com Privado e Público (nada pré-selecionado, "Publicar evento" libera depois de escolher); em Encerrado, o selo e o aviso, sem lista; em Privado e Publicado, a lista de status. Vale no cartão do evento, no menu do evento no celular e em Informações do evento. _(components/Backstage.tsx, eventos/components/AlterarStatusModal.tsx, eventos/pages/InformacoesEvento.tsx)_
 
 ### Remix
 - **BKS-50** O assistente Remix vive na shell: abre de qualquer tela do Backstage (não no Freepass, BKS-64) e sabe se o contexto é a organização ou o evento em contexto. _(components/remix/remix-context.tsx)_

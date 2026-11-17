@@ -1,4 +1,4 @@
-import { ChevronDown, Copy01, LinkExternal01 } from "@untitledui/icons";
+import { ChevronDown, Copy01, LinkExternal01, Globe01 } from "@untitledui/icons";
 import { toast } from "sonner";
 import { useDoc, vendeNoLink } from "@/plataforma";
 import { Badge } from "@/components/base/badges/badges";
@@ -60,8 +60,13 @@ const StatusSection = ({ evento }: { evento: Evento }) => {
                 <p className="text-sm text-tertiary">{EVENTO_STATUS_DESCRICAO[evento.status]}</p>
             </div>
 
+            {/* Rascunho publica (privado ou público); encerrado não muda; os outros trocam pela lista (BKS-72). */}
             {encerrado ? (
                 <p className="text-sm text-tertiary">Evento encerrado. O status não pode mais ser alterado.</p>
+            ) : evento.status === "rascunho" ? (
+                <Button size="sm" color="primary" className="w-fit" iconLeading={Globe01} onClick={() => abrirModalDeStatus()}>
+                    Publicar evento
+                </Button>
             ) : (
                 <Button size="sm" color="secondary" className="w-fit" iconTrailing={ChevronDown} onClick={() => abrirModalDeStatus()}>
                     Alterar status

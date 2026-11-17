@@ -50,7 +50,7 @@ Antes do banco carregar, a lista mostra o mock de `data/eventos.ts`; depois pass
 - **EVT-13** Sem banner, o evento novo recebe uma imagem fixa por id. _(plataforma/acoes.ts)_
 - **EVT-14** Informações do evento mostra capa, Nome, ID, Produtor, Data e horário e Local, só leitura. _(pages/InformacoesEvento.tsx)_
 - **EVT-15** O status pode ser alterado em três lugares: botão "Alterar status" em Informações do evento, dropdown "Status do evento" no cartão do menu do evento e seta ao lado do badge no mobile. Todos abrem o mesmo modal. _(pages/InformacoesEvento.tsx, components/Backstage.tsx)_
-- **EVT-16** O dropdown do cartão do evento lista os 4 status com legenda curta; o atual fica desabilitado. Escolher um abre o modal já com o destino escolhido, sem a lista de opções. _(components/Backstage.tsx, components/AlterarStatusModal.tsx)_
+- **EVT-16** O dropdown do cartão do evento lista os 4 status com legenda curta; o atual fica desabilitado. Escolher um abre o modal já com o destino escolhido, sem a lista de opções. _(components/Backstage.tsx, components/AlterarStatusModal.tsx)_ Em Rascunho não há lista: o cartão e Informações do evento mostram "Publicar evento", que escolhe entre Privado e Público (BKS-72).
 - **EVT-17** O modal explica o efeito antes de aplicar: ligar ou desligar a venda, abrir para qualquer pessoa ou restringir a quem tem o link. _(components/AlterarStatusModal.tsx)_
 - **EVT-18** Botão de confirmar muda com o destino: "Abrir para todo mundo", "Tornar privado", "Voltar para rascunho" ou "Encerrar evento" (vermelho). _(components/AlterarStatusModal.tsx)_
 - **EVT-19** Status e venda: rascunho não vende; privado vende só pelo link; publicado vende pelo link e aparece no site; encerrado não vende. _(data/eventos.ts, plataforma/regras.ts)_
@@ -121,7 +121,7 @@ Antes do banco carregar, a lista mostra o mock de `data/eventos.ts`; depois pass
 ### Estados
 - **EVT-46** Criar evento: falha ao carregar as listas mostra "Não foi possível carregar as listas (times, moedas, políticas)." e "Tentar de novo". _(pages/CriarEvento.tsx)_
 - **EVT-40** Dois vazios: busca sem resultado mostra "Nenhum evento encontrado" / "Tente outro nome, produtor ou local."; organização sem nenhum evento mostra "Nenhum evento ainda" / "Crie o primeiro evento da organização para começar a vender." com o botão "Criar evento" e o menu de tipos (UI-EST-006). _(pages/Eventos.tsx)_
-- **EVT-41** Encerrado: Informações do evento troca o botão por "Evento encerrado. O status não pode mais ser alterado."; o dropdown do menu fica desabilitado e a seta do mobile some. _(pages/InformacoesEvento.tsx, components/Backstage.tsx)_
+- **EVT-41** Encerrado: Informações do evento troca o botão por "Evento encerrado. O status não pode mais ser alterado."; o menu mostra só o selo e o aviso, sem dropdown (BKS-72). _(pages/InformacoesEvento.tsx, components/Backstage.tsx)_
 - **EVT-42** Link de compra não aparece enquanto o documento do evento não carrega do banco. _(pages/InformacoesEvento.tsx)_
 - **EVT-43** Visão geral sem dados de venda: só o título e "Este evento ainda não tem vendas para acompanhar." _(pages/VisaoGeralEvento.tsx)_
 - **EVT-44** Marcos vazio: "Nenhuma anotação ainda." _(pages/VisaoGeralEvento.tsx)_

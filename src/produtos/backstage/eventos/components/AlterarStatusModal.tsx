@@ -58,7 +58,12 @@ interface AlterarStatusModalProps {
 
 /** Modal de troca de status — reúne escolha e confirmação num só passo, com o efeito
  *  de cada opção explicado antes de aplicar (liga a venda, restringe o acesso, etc.). */
+/** Publicar um rascunho: só se escolhe entre Privado e Público (BKS-72). */
+const OPCOES_DE_PUBLICACAO: EventoStatus[] = ["privado", "publicado"];
+
 export function AlterarStatusModal({ isOpen, onClose, statusAtual, onConfirm, statusInicial }: AlterarStatusModalProps) {
+    // Rascunho não troca de status por lista: publica, escolhendo privado ou público.
+    const publicar = statusAtual === "rascunho";
     const [selecionado, setSelecionado] = useState<EventoStatus>(statusInicial ?? statusAtual);
     const [cienteDoEncerramento, setCienteDoEncerramento] = useState(false);
 
@@ -73,9 +78,10 @@ export function AlterarStatusModal({ isOpen, onClose, statusAtual, onConfirm, st
 
     const mudanca = descreverMudanca(statusAtual, selecionado);
     const precisaConfirmarEncerramento = selecionado === "encerrado" && selecionado !== statusAtual;
-    const items = ORDEM_STATUS.map((status) => ({
+    const items = (publicar ? OPCOES_DE_PUBLICACAO : ORDEM_STATUS).map((status) => ({
         value: status,
-        title: EVENTO_STATUS_LABEL[status],
+        // Ao publicar, as opções são "Privado" e "Público", como a pessoa escolhe quem encontra o evento.
+        title: publicar && status === "publicado" ? "Público" : EVENTO_STATUS_LABEL[status],
         secondaryTitle: status === statusAtual ? "Status atual" : "",
         description: EVENTO_STATUS_DESCRICAO[status],
         icon: STATUS_ICON[status],
@@ -87,17 +93,19 @@ export function AlterarStatusModal({ isOpen, onClose, statusAtual, onConfirm, st
                     <div className="w-full max-w-md rounded-xl bg-primary p-6 shadow-xl ring-1 ring-border-secondary">
                         <div className="flex items-start gap-4">
                             <div className="flex-1">
-                                <h2 className="text-lg font-semibold text-primary">Alterar status do evento</h2>
-                                {!statusInicial && (
+                                <h2 className="text-lg font-semibold text-primary">{publicar ? "Publicar evento" : "Alterar status do evento"}</h2>
+                                {(publicar || !statusInicial) && (
                                     <p className="mt-1 text-sm text-tertiary">
-                                        Cada opção liga ou desliga as vendas e define quem acessa o link de compra.
+                                        {publicar
+                                            ? "As vendas ligam ao publicar. Escolha quem encontra o evento."
+                                            : "Cada opção liga ou desliga as vendas e define quem acessa o link de compra."}
                                     </p>
                                 )}
                             </div>
                             <ButtonUtility size="xs" color="tertiary" icon={XClose} tooltip="Fechar" onClick={onClose} />
                         </div>
 
-                        {statusInicial ? (
+                        {statusInicial && !publicar ? (
                             <p className={cx("mt-4 text-sm", mudanca ? "text-primary" : "text-tertiary")}>{mudanca ? mudanca.texto : EVENTO_STATUS_DESCRICAO[selecionado]}</p>
                         ) : (
                             <>
@@ -141,7 +149,7 @@ export function AlterarStatusModal({ isOpen, onClose, statusAtual, onConfirm, st
                                     onClose();
                                 }}
                             >
-                                {labelConfirmar(selecionado)}
+                                {publicar ? "Publicar evento" : labelConfirmar(selecionado)}
                             </Button>
                         </div>
                     </div>
