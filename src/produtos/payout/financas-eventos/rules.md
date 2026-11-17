@@ -28,12 +28,14 @@ quanto já repassou.
 
 ### Finanças (tela principal) _(pages/eventos.tsx)_
 - **FEV-10** Cabeçalho: título, "Atualizado em dd/mm/aaaa, hh:mm" (informação neutra) e "Solicitar repasse".
-- **FEV-11** Três cards de ação, os únicos números com centavos: Disponível para repasse (em quantos eventos; não é clicável), Antecipável (próxima liberação e "Antecipar", sem taxa) e Repassado (agendados e "Ver repasses", que abre o Extrato filtrado por Repasses).
+- **FEV-10** Visão geral, Calendário e Extrato são abas de uma tela só, "Finanças" (`Tabs` do DS sob o título). A aba mantém o cenário do protótipo. A página do evento não tem abas: volta por "← Finanças".
+- **FEV-11** Três cards de ação, os únicos números com centavos, todos em cor neutra (vermelho só para saldo negativo): Disponível para repasse (em quantos eventos e a conta de repasse, com o selo "Confirmada" ou "Em confirmação"), Antecipável (próxima liberação e "Antecipar", sem taxa) e Repassado (agendados e "Ver repasses", que abre o Extrato filtrado por Repasses).
 - **FEV-11b** Copy sem quebra de linha em 1280: os blocos da conta não têm legenda fixa (a definição fica no tooltip) e a legenda de "Líquido por situação" traz só o dado novo ("R$ 150.000 em 19/11").
 - **FEV-12** "Resumo financeiro": a cascata e "Líquido por situação" (barra de proporção com tooltip em cada parte e legenda de seis itens). Cada bloco com valor > 0 tem "Ver detalhe"; o Líquido não tem.
 - **FEV-13** Cada item da legenda é clicável: Em processamento, Retido e Antecipável abrem o Calendário filtrado; Disponível abre a lista filtrada; Agendado abre o Extrato filtrado por repasses e Repassado abre o Extrato filtrado por repasses pagos.
 - **FEV-14** A conta e os cards são sempre da organização inteira: busca e filtro da lista não mudam nenhum dos dois.
 - **FEV-15** "Próximas liberações": as 3 próximas datas (uma linha por data e tipo; vários eventos viram "N eventos"). "Últimos movimentos": os 3 mais recentes que mudaram o Disponível. Cada um leva à sua tela.
+- **FEV-15b** "Próximas liberações" e "Últimos movimentos" têm até oito linhas cada, com rolagem dentro do bloco: três linhas inteiras e meia quarta à vista, para a linha cortada avisar que há mais.
 - **FEV-16** "Saldo por evento": lista (não tabela) em que cada linha lê como conta de banco. À direita, o Disponível do evento é o número mais forte (vermelho com "−" quando negativo, apagado quando zero); à esquerda, nome, data e selos; embaixo, sempre a próxima liberação no mesmo formato ("Próxima liberação: R$ 260.000 em 21/11 · Antecipável"). Acima da lista, o total de Disponível do resultado filtrado (todas as páginas). Busca, filtro por situação e data do evento na barra; ordenação e "Baixar saldos por evento" no cabeçalho; paginação de 10 em 10. Evento quitado leva o selo "Totalmente repassado".
 - **FEV-17** Abrir um evento ou voltar para a lista começa do topo da página; a volta mantém busca, filtro e página.
 
@@ -46,10 +48,12 @@ quanto já repassou.
 
 ### Calendário de liberações _(pages/calendario.tsx)_
 - **FEV-30** Topo com um número: "Total a liberar" (Em processamento + Retido + Antecipável da organização), com as faixas acumuladas "Até" 7 dias e "Até" 30 dias e, quando há, "Sem data definida" (Pix parcelado). O topo não muda com os filtros.
-- **FEV-31** "Liberações por semana": oito semanas a partir de hoje e "Depois de", em barras empilhadas por tipo (Antecipável, Retido, Em processamento, com as cores da legenda da tela principal). Semanas + depois + sem data = total a liberar. Clicar em uma semana filtra a lista por data; clicar de novo tira o filtro.
+- **FEV-31** Gráfico de liberações em barras empilhadas por tipo (Antecipável, Retido, Em processamento, com as cores da legenda da Visão geral). Sem filtro de data: "Liberações por semana", oito semanas a partir de hoje e "Depois de" (semanas + depois + sem data = total a liberar).
+- **FEV-31b** **O gráfico segue o filtro de data da lista.** Com um período escolhido (no campo de data, nos atalhos ou clicando em uma barra), as barras mostram só aquele período, e a soma delas é igual ao total da lista no mesmo período. O passo acompanha o tamanho: até 14 dias, uma barra por dia; até 12 semanas, uma por semana, contadas do primeiro dia; acima disso, uma por mês. O título muda junto ("por dia", "por semana", "por mês") e um selo diz o período e o total. "Ver todas as semanas" tira o filtro de data. Clicar em uma barra filtra por ela; se a barra já é o período inteiro, clicar de novo tira o filtro. O que não tem data fica fora do gráfico filtrado. Evento e tipo mudam só a lista; o topo ("Total a liberar") nunca muda.
 - **FEV-32** "Próximas liberações": lista por mês (com total do mês) e por dia. Cada dia é uma linha com data, evento ou número de eventos, tipos e total; abre para mostrar cada evento, que leva à página do evento. "Abrir tudo" / "Recolher tudo" no cabeçalho. Com um evento filtrado, os dias já abrem. O que não tem data fica em "Sem data definida", no fim.
 - **FEV-33** "Antecipar" aparece uma vez, no topo ("Você pode antecipar R$ …"), sem taxa. Não há botão por linha.
 - **FEV-34** Filtros: evento (campo com busca, igual ao do Extrato), tipo e data da liberação.
+- **FEV-35** "Baixar calendário" (CSV do resultado filtrado). Toda linha de Retido por segurança diz o porquê.
 
 ### Extrato _(pages/extrato.tsx, components/painel-do-movimento.tsx)_
 - **FEV-40** Período padrão: do primeiro dia do mês até hoje (01/11 a 17/11), com o atalho "Este mês". O extrato cobre os últimos 90 dias.
@@ -61,10 +65,13 @@ quanto já repassou.
 - **FEV-46** Filtros: Tudo / Entradas / Saídas, busca, período, evento e tipo. O evento é um campo com busca (`Select.ComboBox` do DS), porque a organização pode ter dezenas de eventos; vazio quer dizer todos. Escondem linhas; "Disponível após" e o saldo do dia são sempre os da organização.
 - **FEV-47** A linha abre o painel do movimento: o que foi, o que mudou em cada parte, dados do repasse ou da antecipação e o link de prova. O repasse mostra "De onde veio este valor", e as linhas somam o valor do repasse. A taxa da antecipação e a taxa de transferência só aparecem aqui e na linha de repasse do evento.
 - **FEV-48** Paginação de 20 em 20. "Baixar extrato" oferece PDF (simulado) e Planilha (CSV do resultado, em ordem cronológica, com os saldos).
+- **FEV-49** "Fechamento mensal", no fim do Extrato: os meses inteiros dentro dos 90 dias e o mês corrente até hoje, com Disponível no início, Entradas, Saídas e Disponível no fim. Cada mês fecha e o fim de um é o início do seguinte. O nome do mês aplica o período ao Extrato; "Baixar PDF" é simulado.
+- **FEV-49b** Repasse e antecipação têm código (RP-…, AN-…), quem solicitou, data e hora no painel do movimento.
 
 ### Página do evento _(pages/evento.tsx)_
-- **FEV-50** Nesta ordem: a conta do evento, calendário de liberações, repasses, devoluções e o que ainda pode mudar.
-- **FEV-51** Repasse mostra situação (Agendado, Pago, Não concluído), conta de destino, modalidade, taxa de transferência e valor recebido.
+- **FEV-50** Nesta ordem: resumo financeiro do evento, próximas liberações (com "Ver no calendário") e repasses (com "Ver no extrato"), devoluções e o que ainda pode mudar.
+- **FEV-51** Repasse mostra situação (Agendado, Pago, Não concluído), conta de destino (com o selo "Conta de terceiro" quando for o caso), modalidade, taxa de transferência, valor creditado, código, quem solicitou e quando.
+- **FEV-52** Endereço de evento que não existe mostra "Evento não encontrado", e não o vazio de organização sem eventos.
 - **FEV-52** Saldo negativo: "Por quê" e "O que acontece agora" com a regra 1 da v3 (já descontado do Disponível dos outros eventos).
 - **FEV-53** "O que ainda pode mudar": contestações com prazo de 120 dias depois do evento e de onde saem antes e depois da liberação do retido.
 

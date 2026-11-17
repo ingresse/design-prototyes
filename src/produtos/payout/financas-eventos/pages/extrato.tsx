@@ -1,6 +1,6 @@
 import { parseDate } from "@internationalized/date";
 import { useSearchParams } from "react-router";
-import { ArrowDownLeft, ArrowLeft, ArrowUpRight, ChevronDown, ChevronRight, Download01, File06, Minus, SearchLg, Table as IconeDePlanilha } from "@untitledui/icons";
+import { ArrowDownLeft, ArrowUpRight, ChevronDown, ChevronRight, Download01, File06, Minus, SearchLg, Table as IconeDePlanilha } from "@untitledui/icons";
 import { toast } from "sonner";
 import { DateRangePicker } from "@/components/application/date-picker/date-range-picker";
 import { EmptyState } from "@/components/application/empty-state/empty-state";
@@ -21,6 +21,7 @@ import {
     ROTULO_DO_MOVIMENTO,
     eventosDoCenario,
     extrato,
+    fechamentos,
     somarDias,
     totalizar,
     type Extrato,
@@ -250,6 +251,7 @@ export function FinancasExtrato() {
     const aberto = extrato(eventos, limite, HOJE).linhas.find((m) => m.id === params.get("movimento")) ?? null;
     const eventosDoPeriodo = [...new Map(x.linhas.map((m) => [m.evento.id, m.evento.nome])).entries()].sort((a, b) => a[1].localeCompare(b[1])).map(([id, label]) => ({ id, label }));
     const temDados = cenario === "normal" || cenario === "negativo" || bloqueado;
+    const meses = fechamentos(eventos);
     const quantos = (n: number) => (n === 1 ? "1 movimento" : `${n} movimentos`);
 
     const baixar = (formato: "csv" | "pdf") => {
@@ -418,6 +420,56 @@ export function FinancasExtrato() {
                     )}
                     {paginas > 1 && <Paginacao pagina={pagina} total={paginas} aoMudar={(p) => mudar({ pagina: p === 1 ? null : String(p) })} />}
                 </Secao>
+
+                {/* Conciliação por mês: cada linha fecha (início + entradas − saídas = fim) e o fim de um mês é o início do seguinte. */}
+                {meses.length > 0 && (
+                    <Secao titulo="Fechamento mensal" lateral={<span className="text-sm text-tertiary">O Disponível no fim de um mês é o do início do seguinte</span>}>
+                        <div aria-hidden="true" className="flex items-center gap-4 border-b border-secondary px-6 py-2 text-xs font-semibold text-quaternary">
+                            <span className="flex-1">Mês</span>
+                            <span className={COLUNA}>Disponível no início</span>
+                            <span className={COLUNA}>Entradas</span>
+                            <span className={COLUNA}>Saídas</span>
+                            <span className={COLUNA}>Disponível no fim</span>
+                            <span className="w-28 shrink-0" />
+                        </div>
+                        <ul className="flex flex-col divide-y divide-secondary">
+                            {meses.map((m) => (
+                                <li key={m.mes} className="flex items-center gap-4 px-6 py-3">
+                                    <span className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+                                        <Button size="sm" color="link-gray" onClick={() => mudar({ de: m.de, ate: m.ate, periodo: null })}>
+                                            {m.mes}
+                                        </Button>
+                                        {m.parcial && (
+                                            <Badge size="sm" type="pill-color" color="gray">
+                                                Até hoje
+                                            </Badge>
+                                        )}
+                                    </span>
+                                    <span className={cx(COLUNA, "text-sm whitespace-nowrap tabular-nums", m.saldoInicial < 0 ? "text-error-primary" : "text-secondary")}>
+                                        <span className="sr-only">Disponível no início: </span>
+                                        {reais(m.saldoInicial)}
+                                    </span>
+                                    <span className={cx(COLUNA, "text-sm font-medium whitespace-nowrap text-success-primary tabular-nums")}>
+                                        <span className="sr-only">Entradas: </span>+ {reais(m.entradas)}
+                                    </span>
+                                    <span className={cx(COLUNA, "text-sm font-medium whitespace-nowrap text-primary tabular-nums")}>
+                                        <span className="sr-only">Saídas: </span>
+                                        {reais(-m.saidas)}
+                                    </span>
+                                    <span className={cx(COLUNA, "text-sm font-semibold whitespace-nowrap tabular-nums", m.saldoFinal < 0 ? "text-error-primary" : "text-primary")}>
+                                        <span className="sr-only">Disponível no fim: </span>
+                                        {reais(m.saldoFinal)}
+                                    </span>
+                                    <span className="flex w-28 shrink-0 justify-end">
+                                        <Button size="sm" color="link-gray" iconLeading={Download01} aria-label={`Baixar o fechamento de ${m.mes} em PDF`} onClick={() => toast(`Aqui baixaria o fechamento de ${m.mes} em PDF.`)}>
+                                            Baixar PDF
+                                        </Button>
+                                    </span>
+                                </li>
+                            ))}
+                        </ul>
+                    </Secao>
+                )}
             </>
         );
     };
@@ -425,12 +477,8 @@ export function FinancasExtrato() {
     return (
         <FinancasShell jornada="Jornada · Eventos como pastas">
             <CabecalhoDaPagina
-                titulo="Extrato"
-                acima={
-                    <Button size="sm" color="link-gray" iconLeading={ArrowLeft} className="self-start" href={comCenario(BASE)}>
-                        Finanças
-                    </Button>
-                }
+                titulo="Finanças"
+                aba="extrato"
                 acoes={
                     temDados && (
                         <Dropdown.Root>

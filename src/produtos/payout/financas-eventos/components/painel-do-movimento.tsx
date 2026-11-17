@@ -3,7 +3,7 @@ import { SlideoutMenu } from "@/components/application/slideout-menus/slideout-m
 import { Badge } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
 import { cx } from "@/utils/cx";
-import { ROTULO_DO_MOVIMENTO, TAXA_DA_MODALIDADE, composicaoDoRepasse, type LinhaDoExtrato, type Prova } from "../../components/financas/dados";
+import { ROTULO_DO_MOVIMENTO, TAXA_DA_MODALIDADE, composicaoDoRepasse, registroDaAntecipacao, registroDoRepasse, type LinhaDoExtrato, type Prova, type Registro } from "../../components/financas/dados";
 import { dataComDia, dataCurta, reais } from "../../components/financas/formato";
 
 /*
@@ -27,6 +27,8 @@ const Campo = ({ rotulo, children }: { rotulo: string; children: React.ReactNode
         <dd className="text-right text-sm font-medium text-primary">{children}</dd>
     </div>
 );
+
+const solicitadoPor = (r: Registro) => `${r.solicitante} · ${dataCurta(r.data)} às ${r.hora}`;
 
 export function PainelDoMovimento({ movimento, aoFechar }: { movimento: LinhaDoExtrato | null; aoFechar: () => void }) {
     if (!movimento) return null;
@@ -79,11 +81,22 @@ export function PainelDoMovimento({ movimento, aoFechar }: { movimento: LinhaDoE
                     <section className="flex flex-col border-t border-secondary pt-4">
                         <h3 className="text-sm font-semibold text-primary">Repasse</h3>
                         <dl className="flex flex-col divide-y divide-secondary">
-                            <Campo rotulo="Conta de destino">{m.repasse.conta}</Campo>
+                            <Campo rotulo="Código">{registroDoRepasse(m.evento, m.repasse).codigo}</Campo>
+                            <Campo rotulo="Solicitado por">{solicitadoPor(registroDoRepasse(m.evento, m.repasse))}</Campo>
+                            <Campo rotulo="Conta de destino">
+                                <span className="flex flex-wrap items-center justify-end gap-2">
+                                    {m.repasse.conta.replace("Conta de terceiro · ", "")}
+                                    {m.repasse.conta.startsWith("Conta de terceiro") && (
+                                        <Badge size="sm" type="pill-color" color="warning">
+                                            Conta de terceiro
+                                        </Badge>
+                                    )}
+                                </span>
+                            </Campo>
                             <Campo rotulo="Modalidade">{m.repasse.modalidade}</Campo>
                             <Campo rotulo="Valor do repasse">{reais(m.repasse.valor)}</Campo>
                             <Campo rotulo="Taxa de transferência">{taxaDoRepasse ? reais(taxaDoRepasse) : "Sem taxa"}</Campo>
-                            <Campo rotulo={m.situacao === "pago" ? "Valor recebido na conta" : "Valor a receber na conta"}>{reais(m.repasse.valor - taxaDoRepasse)}</Campo>
+                            <Campo rotulo={m.situacao === "pago" ? "Valor creditado na conta" : "Valor a creditar na conta"}>{reais(m.repasse.valor - taxaDoRepasse)}</Campo>
                             {m.situacao === "agendado" && <Campo rotulo="Pagamento previsto">{dataCurta(m.repasse.data)}</Campo>}
                         </dl>
                     </section>
@@ -112,6 +125,8 @@ export function PainelDoMovimento({ movimento, aoFechar }: { movimento: LinhaDoE
                     <section className="flex flex-col border-t border-secondary pt-4">
                         <h3 className="text-sm font-semibold text-primary">Antecipação</h3>
                         <dl className="flex flex-col divide-y divide-secondary">
+                            <Campo rotulo="Código">{registroDaAntecipacao(m.evento, m.antecipacao).codigo}</Campo>
+                            <Campo rotulo="Solicitado por">{solicitadoPor(registroDaAntecipacao(m.evento, m.antecipacao))}</Campo>
                             <Campo rotulo="Valor antecipado">{reais(m.antecipacao.valor)}</Campo>
                             <Campo rotulo="Taxa da antecipação">{reais(m.antecipacao.taxa)}</Campo>
                             <Campo rotulo="Valor que entrou no Disponível">{reais(m.antecipacao.valor - m.antecipacao.taxa)}</Campo>

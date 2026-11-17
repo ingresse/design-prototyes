@@ -1,5 +1,5 @@
 import { useLayoutEffect, type ComponentType, type ReactNode } from "react";
-import { useLocation, useSearchParams } from "react-router";
+import { useLocation, useNavigate, useSearchParams } from "react-router";
 import { ChevronDown } from "@untitledui/icons";
 import calendario from "@/assets/iconly/calendar.json";
 import grafico from "@/assets/iconly/chart.json";
@@ -10,6 +10,7 @@ import sacola from "@/assets/iconly/bag.json";
 import grupo from "@/assets/iconly/users-group.json";
 import engrenagem from "@/assets/iconly/setting.json";
 import { Avatar } from "@/components/base/avatar/avatar";
+import { Tabs } from "@/components/application/tabs/tabs";
 import { ButtonGroup, ButtonGroupItem } from "@/components/base/button-group/button-group";
 import { iconeAnimado } from "@/components/foundations/icone-animado";
 import { cx } from "@/utils/cx";
@@ -204,8 +205,40 @@ export function FinancasShell({ jornada, children }: FinancasShellProps) {
     );
 }
 
+/* ---------------- abas de Finanças ---------------- */
+
+export type AbaDeFinancas = "visao-geral" | "calendario" | "extrato";
+const ABAS: Array<{ id: AbaDeFinancas; rotulo: string; rota: string }> = [
+    { id: "visao-geral", rotulo: "Visão geral", rota: "/payout/financas-eventos" },
+    { id: "calendario", rotulo: "Calendário", rota: "/payout/financas-eventos/calendario" },
+    { id: "extrato", rotulo: "Extrato", rota: "/payout/financas-eventos/extrato" },
+];
+
+/** As três telas de Finanças são um produto só: a aba troca de tela e mantém o cenário do protótipo. */
+const AbasDeFinancas = ({ ativa }: { ativa: AbaDeFinancas }) => {
+    const navigate = useNavigate();
+    const [cenario] = useCenario();
+    return (
+        <Tabs
+            selectedKey={ativa}
+            onSelectionChange={(chave) => {
+                const aba = ABAS.find((a) => a.id === chave);
+                if (aba && aba.id !== ativa) navigate(`${aba.rota}${cenario === "normal" ? "" : `?cenario=${cenario}`}`);
+            }}
+        >
+            <Tabs.List type="underline" size="sm" aria-label="Telas de Finanças">
+                {ABAS.map((a) => (
+                    <Tabs.Item key={a.id} id={a.id}>
+                        {a.rotulo}
+                    </Tabs.Item>
+                ))}
+            </Tabs.List>
+        </Tabs>
+    );
+};
+
 /** Cabeçalho da página: título e ações na mesma linha; o que vem acima e abaixo não desloca as ações. */
-export const CabecalhoDaPagina = ({ titulo, acima, abaixo, acoes }: { titulo: string; acima?: ReactNode; abaixo?: ReactNode; acoes?: ReactNode }) => (
+export const CabecalhoDaPagina = ({ titulo, acima, abaixo, acoes, aba }: { titulo: string; acima?: ReactNode; abaixo?: ReactNode; acoes?: ReactNode; aba?: AbaDeFinancas }) => (
     <header className="flex flex-col gap-2">
         {acima}
         <div className="flex min-h-10 items-center justify-between gap-6">
@@ -217,5 +250,6 @@ export const CabecalhoDaPagina = ({ titulo, acima, abaixo, acoes }: { titulo: st
             </div>
         </div>
         {abaixo}
+        {aba && <AbasDeFinancas ativa={aba} />}
     </header>
 );

@@ -37,6 +37,7 @@ Confere, nos cenários com dados (normal, total negativo, bloqueado), e sai com 
 - cada evento: as duas linhas da equação, e as listas (liberações, devoluções, créditos, taxas, repasses) contra os totais do evento;
 - a soma dos 48 eventos = a conta da organização;
 - **Calendário:** a soma das liberações = Em processamento + Retido + Antecipável (organização e cada evento), e as três faixas do resumo somam o total;
+- **Fechamento mensal:** cada mês fecha, o fim de um mês é o início do seguinte e o mês corrente termina no Disponível do card;
 - **Extrato:** saldo inicial + movimentos que afetam o Disponível = saldo final = Disponível do card (em 30 e em 90 dias), e a última linha termina no saldo final; o resumo fecha (inicial + entradas − saídas = final); os repasses agendados somam o Agendado; a origem de cada repasse soma o valor do repasse;
 - **painéis de detalhe:** a soma das linhas = o valor do bloco (Vendido, Taxas e custos, Créditos, Devoluções);
 - cards do topo e legenda leem o mesmo total.
@@ -82,6 +83,14 @@ Decisões de interface
 30. **"Seus eventos" virou "Saldo por evento"** (crítica e revisão de copy de 17/11, diretriz "somos o banco do produtor"). Continua lista, não tabela (decisão da Laricia). O Disponível de cada evento saiu da frase e virou o número em destaque à direita; a linha de apoio diz sempre a próxima liberação, no mesmo formato. Acima da lista, o total de Disponível do resultado filtrado. Evento quitado ganhou o selo "Totalmente repassado". A ordenação subiu para o cabeçalho da seção, para a barra de filtros caber em uma linha em 1280.
 31. **Calendário de liberações refeito** (crítica e revisão de copy de 17/11). Topo com um número, "Total a liberar", e faixas **acumuladas** (até 7 dias, até 30 dias): antes eram três faixas que não se sobrepunham, e "Próximos 30 dias" não incluía os 7 primeiros (muda a decisão 13). Entrou o gráfico "Liberações por semana", empilhado por tipo e clicável. A lista passou a ter uma linha por dia, que abre para mostrar os eventos. "Antecipar" saiu das linhas e ficou uma vez, no topo. O filtro de evento é o mesmo campo com busca do Extrato. O título "Calendário de liberações" foi mantido (decisão 11); "Agenda de recebíveis" ficou como alternativa a decidir.
 32. **Pix parcelado no Calendário:** aparece no topo como "Sem data definida", fora do gráfico e fora das faixas "Até". Antes entrava em "Depois de 30 dias".
+33. **Crítica geral de 17/11 (conciliação, transparência e segurança; "somos o banco dos produtores").** As três telas viraram abas de "Finanças" (Visão geral, Calendário, Extrato); os links "← Finanças" do Calendário e do Extrato saíram.
+34. **Conciliação por mês no Extrato:** seção "Fechamento mensal", com números reais do extrato de cada mês. O Resumo financeiro continua acumulado ("Acumulado de todos os eventos, até hoje"): os dados não têm Vendido nem Taxas por data, então um resumo por período seria inventado.
+35. **Rastreabilidade:** repasse e antecipação mostram código, quem solicitou, data e hora (painel do movimento e linha de repasse do evento).
+36. **Conta em evidência:** o card Disponível para repasse mostra a conta de repasse e se ela está confirmada; repasse para conta de terceiro leva o selo "Conta de terceiro"; o aviso de pausa diz o motivo, o passo ("Confirmar conta") e o prazo.
+37. **Cor dos números:** os três cards do topo e os valores de devolução ficaram em cor neutra. Vermelho só para saldo negativo; verde só para entrada no Extrato e no fechamento.
+38. **Página do evento:** "Próximas liberações" e "Repasses" ganharam atalhos para o Calendário e o Extrato já filtrados pelo evento.
+39. **O gráfico do Calendário segue o filtro de data** (pedido de 17/11). Antes, filtrar a data só apagava as barras. Agora o gráfico mostra o período escolhido, por dia (até 14 dias), por semana (até 12 semanas) ou por mês. Clicar em uma semana passou a abrir aquela semana dia a dia, e "Ver todas as semanas" volta. Evento e tipo continuam mudando só a lista: decisão minha, a confirmar.
+40. **Rolagem dentro de "Próximas liberações" e "Últimos movimentos"** (pedido de 17/11): oito linhas em vez de três, com três e meia à vista. A observar na pesquisa: duas rolagens na mesma tela atrapalham?
 
 ## Suposições (dados inventados)
 
@@ -94,6 +103,8 @@ Decisões de interface
 7. **O saldo inicial do Extrato é calculado de trás para a frente** a partir do Disponível de hoje. Por evento, a história do extrato não é reconciliada com o Disponível do evento; só o saldo da organização é verificado. Por isso a origem de um repasse ("De onde veio este valor") fecha com uma linha de ajuste quando precisa: "Já estava no Disponível do evento" ou "Ficou no Disponível do evento".
 8. **Cenário "Total negativo":** a organização já teve todo o disponível repassado em 13/11. Disponível = −R$ 39.200; Repassado = R$ 32.152.390.
 9. **Imagem do evento:** capas ilustrativas geradas, dentro do Avatar do DS (cores de conteúdo, não de interface).
+10. **Código, solicitante e horário de repasse e antecipação são inventados** (gerados a partir do evento, da data e do valor; nomes fictícios: Marina Duarte, Rafael Antunes, Camila Prado). Repasse pago: o pedido é dois dias antes do pagamento.
+11. **Conta de repasse "Confirmada" / "Em confirmação" e o prazo de 2 dias úteis** de análise são ilustrativos.
 
 ## Regras a validar
 
@@ -110,6 +121,11 @@ Decisões de interface
 11. **Extrato em PDF:** o produtor e o contador precisam de PDF, de OFX ou só da planilha? O protótipo oferece PDF e Planilha (CSV).
 12. **Origem do repasse:** o sistema consegue dizer quais liberações formaram cada repasse? O painel promete "De onde veio este valor".
 13. **Vendas fora do Extrato:** o produtor sente falta das vendas do dia nessa tela, ou o relatório de vendas basta?
+14. **Resumo financeiro por período:** dá para ter Vendido, Taxas e custos, Créditos e Devoluções por mês? Hoje o protótipo só fecha por mês o Disponível (Extrato).
+15. **Código do repasse e da antecipação:** existe um identificador que o produtor possa citar no atendimento e que apareça no comprovante?
+16. **Quem solicitou:** o sistema guarda o membro e o horário de cada pedido de repasse e de antecipação?
+17. **Confirmação de conta:** o produtor consegue confirmar a conta sozinho? Qual o prazo real de análise?
+18. **Conta de terceiro:** quando é permitida e como deve ser sinalizada?
 
 ## Lacunas do DS
 
@@ -213,7 +229,26 @@ Princípios aplicados: claro, conciso, consistente, útil, humano; CTA com verbo
 | Nota | "Entra hoje"; "Pix parcelado: entra quando as parcelas forem pagas" | "Libera hoje"; "Pix parcelado: libera a cada parcela paga" | O verbo da tela é "liberar" |
 | Filtro de tipo | "Retido (os dois tipos)" | "Retido" | O parêntese era explicação de dentro |
 | Data | Campo vazio "Selecione as datas" | Rótulo "Data da liberação" ao lado | Mesmo ajuste de "Saldo por evento" |
+| Gráfico com filtro de data | "Liberações por semana", fixo | "Liberações por dia" / "por semana" / "por mês" + selo "17/11 a 24/11 · R$ 572.020" + "Ver todas as semanas" | O título diz o passo e o selo diz o período e o total; a ação nomeia para onde volta |
 | Abrir e recolher | (não havia) | "Abrir tudo" / "Recolher tudo" | Verbos simples; "Expandir" foi recusada |
+
+### Revisão de 17/11 (copy entre telas)
+
+| Onde | Antes | Agora | Motivo |
+| --- | --- | --- | --- |
+| Abas | (não havia) | "Visão geral" / "Calendário" / "Extrato" | Nomes curtos; o título da tela é sempre "Finanças" |
+| Legenda da tela principal | "R$ 143.400 entram hoje" | "R$ 143.400 liberam hoje" | Um verbo só para a mesma coisa, igual ao Calendário |
+| Devoluções e "O que ainda pode mudar" | "Saiu do disponível", "saem do retido" | "Saiu do Disponível", "saem do Retido" | Termo do glossário com maiúscula quando é a parte do Líquido |
+| Evento, aviso de negativo | "Você recebeu R$ 290.000 deste evento" | "Foram repassados R$ 290.000 deste evento" | "Repassado" é o termo do glossário |
+| Evento, liberações | "Calendário de liberações" + "Total que entra no disponível" | "Próximas liberações" + "Total a liberar" | Mesmos nomes da Visão geral e do Calendário |
+| Repasse | "você recebeu R$ 289.975"; "Valor recebido na conta" | "Valor creditado R$ 289.975"; "Valor creditado na conta" | Fala de banco, e continua fácil |
+| Repasse, registro | (não havia) | "RP-276620 · Solicitado por Rafael Antunes em 03/10 às 13:40" | Quem, quando e um código para citar |
+| Conta | (não havia) | "Conta de repasse: Itaú ···4521" + "Confirmada" / "Em confirmação"; selo "Conta de terceiro" | "Verificada" foi recusada: "Confirmada" combina com o aviso de pausa ("Confirmar conta") |
+| Pausa de repasses | "Seu dinheiro continua guardado. Quando a conta for confirmada, você volta a solicitar repasses." | "Seu saldo continua seguro. Depois que você confirmar a conta, a análise leva até 2 dias úteis e os repasses voltam." + "Confirmar conta" | Motivo, passo e prazo; o atendimento vira segunda opção |
+| Fechamento | (não havia) | "Fechamento mensal": "Disponível no início", "Entradas", "Saídas", "Disponível no fim"; selo "Até hoje" | "Saldo inicial/final" foi recusada: o glossário usa "Disponível" |
+| Resumo financeiro | (sem escopo) | "Acumulado de todos os eventos, até hoje" | Diz de que período é o número |
+| Evento inexistente | "Você ainda não tem eventos com vendas" | "Evento não encontrado" + "Voltar para Finanças" | A mensagem antiga era de outro estado |
+| Erro ao carregar | "seu dinheiro não foi afetado" | Mantido | Em erro, a fala direta tranquiliza mais |
 
 ## Fora deste teste
 

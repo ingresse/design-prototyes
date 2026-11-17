@@ -15,7 +15,7 @@ import { Select } from "@/components/base/select/select";
 import { cx } from "@/utils/cx";
 import { capaDoEvento } from "../../components/financas/capa";
 import { Cascata, Distribuicao, NumeroGrande, PARTES_COM_DETALHE, Secao } from "../../components/financas/cascata";
-import { HOJE, ROTULO_DA_ENTRADA, quitado, calendario, entradasDoCalendario, eventosDoCenario, movimentos, totalizar, type Entrada, type Evento } from "../../components/financas/dados";
+import { CONTA_DA_ORGANIZACAO, HOJE, ROTULO_DA_ENTRADA, quitado, calendario, entradasDoCalendario, eventosDoCenario, movimentos, totalizar, type Entrada, type Evento } from "../../components/financas/dados";
 import { Aviso, AvisoDeBloqueio, Carregando, ErroAoCarregar, TelaFinal, type AcaoFinal } from "../../components/financas/estados";
 import { dataComDia, dataCurta, dataDoEvento, reais } from "../../components/financas/formato";
 import { detalhesDaDistribuicao, fraseDeCompensacao, proximaLiberacaoDoEvento } from "../../components/financas/frases";
@@ -45,6 +45,13 @@ const PERIODOS = {
 };
 
 const BASE = "/payout/financas-eventos";
+
+/**
+ * "Próximas liberações" e "Últimos movimentos" mostram três linhas e um pedaço da quarta, com rolagem
+ * dentro do bloco: dá para ver mais sem sair da Visão geral, e a linha cortada avisa que há mais.
+ */
+const NA_ROLAGEM = 8;
+const ROLAGEM = "max-h-68 overflow-y-auto overscroll-contain";
 
 /** Card de ação do topo: um número (o único tipo de número com centavos na tela), uma linha de apoio e uma ação. */
 const CardDeAcao = ({ rotulo, selo, valor, cor, apoio, children }: { rotulo: string; selo?: ReactNode; valor: number; cor: string; apoio?: string; children?: ReactNode }) => (
@@ -129,10 +136,10 @@ export function FinancasEventos() {
     const comCenario = (rota: string) => `${rota}${cenario === "normal" ? "" : `${rota.includes("?") ? "&" : "?"}cenario=${cenario}`}`;
     const proximaAntecipavel = calendario(eventos, ["aLiberar"])[0];
     const agendado = eventos.flatMap((e) => e.repasses.filter((r) => r.situacao === "agendado")).sort((a, b) => a.data.localeCompare(b.data))[0];
-    const proximas = proximasLiberacoes(entradasDoCalendario(eventos), 3);
+    const proximas = proximasLiberacoes(entradasDoCalendario(eventos), NA_ROLAGEM);
     const ultimos = movimentos(eventos)
         .filter((m) => m.efeito !== 0)
-        .slice(-3)
+        .slice(-NA_ROLAGEM)
         .reverse();
 
     /* ---- lista: busca, filtro, ordem e página ficam na URL, para o "voltar" do evento devolver a lista como estava ---- */
@@ -190,12 +197,20 @@ export function FinancasEventos() {
                                 )
                             }
                             valor={totais.disponivel}
-                            cor={totais.disponivel < 0 ? "text-error-primary" : bloqueado ? "text-primary" : "text-success-primary"}
+                            cor={totais.disponivel < 0 ? "text-error-primary" : "text-primary"}
                             apoio={comDisponivel > 0 ? `Em ${contagem(comDisponivel)}` : undefined}
-                        />
+                        >
+                            {/* A conta que recebe fica à vista antes de qualquer pedido de repasse. */}
+                            <span className="flex flex-wrap items-center gap-2 text-sm text-tertiary">
+                                Conta de repasse: <span className="font-medium text-secondary">{CONTA_DA_ORGANIZACAO}</span>
+                                <Badge size="sm" type="pill-color" color={bloqueado ? "warning" : "success"}>
+                                    {bloqueado ? "Em confirmação" : "Confirmada"}
+                                </Badge>
+                            </span>
+                        </CardDeAcao>
                     </TableCard.Root>
                     <TableCard.Root className="px-6 py-5">
-                        <CardDeAcao rotulo="Antecipável" valor={totais.aLiberar} cor="text-utility-blue-500" apoio={proximaAntecipavel ? `Próxima liberação: ${reais(proximaAntecipavel.valor)} em ${dataCurta(proximaAntecipavel.data)}` : undefined}>
+                        <CardDeAcao rotulo="Antecipável" valor={totais.aLiberar} cor="text-primary" apoio={proximaAntecipavel ? `Próxima liberação: ${reais(proximaAntecipavel.valor)} em ${dataCurta(proximaAntecipavel.data)}` : undefined}>
                             {totais.aLiberar > 0 && (
                                 <Button size="sm" color="secondary" className="self-start" isDisabled={bloqueado} onClick={() => setAcao("antecipar")}>
                                     Antecipar
@@ -212,7 +227,7 @@ export function FinancasEventos() {
                     </TableCard.Root>
                 </section>
 
-                <Secao titulo="Resumo financeiro">
+                <Secao titulo="Resumo financeiro" lateral={<span className="text-sm text-tertiary">Acumulado de todos os eventos, até hoje</span>}>
                     <Cascata totais={totais} aoAbrir={setDetalhe} creditoPendente={eventos.some((e) => e.creditoPendente)} />
                     <Distribuicao
                         totais={totais}
@@ -240,6 +255,7 @@ export function FinancasEventos() {
                         {proximas.length === 0 ? (
                             <Vazio>Nenhuma liberação prevista. Quando um evento começar a vender, as próximas datas aparecem aqui.</Vazio>
                         ) : (
+                            <div className={ROLAGEM}>
                             <Lista>
                                 {proximas.map((g) => (
                                     <Linha
@@ -252,6 +268,7 @@ export function FinancasEventos() {
                                     />
                                 ))}
                             </Lista>
+                            </div>
                         )}
                     </Secao>
                     <Secao
@@ -265,6 +282,7 @@ export function FinancasEventos() {
                         {ultimos.length === 0 ? (
                             <Vazio>Nenhum movimento ainda. Liberações, repasses e devoluções aparecem aqui.</Vazio>
                         ) : (
+                            <div className={ROLAGEM}>
                             <Lista>
                                 {ultimos.map((m) => (
                                     <Linha
@@ -278,6 +296,7 @@ export function FinancasEventos() {
                                     />
                                 ))}
                             </Lista>
+                            </div>
                         )}
                     </Secao>
                 </div>
@@ -414,6 +433,7 @@ export function FinancasEventos() {
         <FinancasShell jornada="Jornada · Eventos como pastas">
             <CabecalhoDaPagina
                 titulo="Finanças"
+                aba={acao ? undefined : "visao-geral"}
                 acoes={
                     temDados && (
                         <Button size="md" color="primary" isDisabled={bloqueado || totais.disponivel <= 0} onClick={() => setAcao("repasse")}>

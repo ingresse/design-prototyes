@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { parseDate } from "@internationalized/date";
 import { Link, useSearchParams } from "react-router";
-import { ArrowLeft, ChevronDown, ChevronRight, SearchLg } from "@untitledui/icons";
+import { ChevronDown, ChevronRight, Download01, SearchLg } from "@untitledui/icons";
+import { toast } from "sonner";
 import { DateRangePicker } from "@/components/application/date-picker/date-range-picker";
 import { EmptyState } from "@/components/application/empty-state/empty-state";
 import { FilterBar } from "@/components/application/filter-bar/filter-bar";
@@ -17,6 +18,7 @@ import {
     HOJE,
     ROTULO_DA_ENTRADA,
     entradasDoCalendario,
+    recorteDoCalendario,
     eventosDoCenario,
     resumoDoCalendario,
     semanasDoCalendario,
@@ -27,20 +29,22 @@ import {
     type PeriodoDoCalendario,
     type TipoDeEntrada,
 } from "../../components/financas/dados";
+import { baixarCsv, dataDoCsv } from "../../components/financas/csv";
 import { tituloDeTooltip } from "../../components/financas/dica";
 import { AvisoDeBloqueio, Carregando, ErroAoCarregar, TelaFinal } from "../../components/financas/estados";
 import { dataComDia, dataCurta, reais } from "../../components/financas/formato";
 import { CabecalhoDaPagina, FinancasShell, useCenario } from "../../components/financas/shell";
 
 /*
- * Calendário de liberações (ajustes v3, seção 4.1, refeito depois da crítica de design de 17/11).
+ * Calendário de liberações, aba "Calendário" de Finanças (ajustes v3, seção 4.1, refeito depois da crítica de design de 17/11).
  * Pergunta que responde: quanto ainda vai entrar no meu Disponível, e quando?
  * De cima para baixo:
  *  - um número: o total a liberar (Em processamento + Retido + Antecipável da organização), com as
  *    faixas acumuladas (até 7 dias, até 30 dias) e o que não tem data;
- *  - o gráfico por semana, empilhado por tipo; clicar em uma semana filtra a lista;
+ *  - o gráfico, empilhado por tipo, que segue o filtro de data: sem filtro mostra as próximas semanas;
+ *    com filtro mostra o período escolhido (por dia, semana ou mês). Clicar em uma barra filtra por ela;
  *  - a lista por dia: uma linha por dia, com o total; abre para mostrar os eventos.
- * O topo e o gráfico são sempre da organização inteira; os filtros mudam só a lista.
+ * O topo é sempre da organização inteira. Evento e tipo mudam só a lista; a data muda a lista e o gráfico.
  */
 
 const BASE = "/payout/financas-eventos";
@@ -94,26 +98,25 @@ interface BarraProps {
     periodo: PeriodoDoCalendario;
     rotulo: string;
     maior: number;
+    /** A barra é o próprio período filtrado (uma barra só): escolher de novo tira o filtro. */
     selecionada: boolean;
-    apagada: boolean;
     aoEscolher: () => void;
 }
 
 /** Uma semana do gráfico: barra empilhada por tipo. Lacuna do DS: não há gráfico de barras pronto (só a base do Recharts). */
-const Barra = ({ periodo, rotulo, maior, selecionada, apagada, aoEscolher }: BarraProps) => {
+const Barra = ({ periodo, rotulo, maior, selecionada, aoEscolher }: BarraProps) => {
     const partes = GRUPOS.filter((g) => periodo.porGrupo[g.id] > 0);
     const descricao = partes.length ? partes.map((g) => `${g.rotulo}: ${reais(periodo.porGrupo[g.id])}`).join(" · ") : "Nenhuma liberação prevista";
     return (
         <Tooltip title={tituloDeTooltip(`${rotulo} · ${reais(periodo.total)}`)} description={descricao} delay={0} closeDelay={0} arrow>
             <TooltipTrigger
-                aria-label={`${rotulo}: ${reais(periodo.total)}. ${descricao}. ${selecionada ? "Mostrando só este período" : "Filtrar a lista por este período"}`}
+                aria-label={`${rotulo}: ${reais(periodo.total)}. ${descricao}. ${selecionada ? "Mostrando só este período. Escolha de novo para ver todo o período" : "Ver só este período no gráfico e na lista"}`}
                 aria-pressed={selecionada}
                 isDisabled={periodo.total === 0}
                 onPress={aoEscolher}
                 className={cx(
                     "group flex min-w-0 flex-1 cursor-pointer flex-col items-center gap-2 rounded-lg px-1 py-2 outline-focus-ring transition duration-100 ease-linear hover:bg-primary_hover focus-visible:outline-2 disabled:cursor-default disabled:hover:bg-transparent",
                     selecionada && "bg-secondary",
-                    apagada && "opacity-50",
                 )}
             >
                 <span className={cx("text-xs font-semibold whitespace-nowrap tabular-nums", periodo.total ? "text-primary" : "text-quaternary")}>{periodo.total ? reais(periodo.total) : "—"}</span>
@@ -203,8 +206,6 @@ export function FinancasCalendario() {
     const entradas = entradasDoCalendario(eventos);
     const resumo = resumoDoCalendario(entradas);
     const grafico = semanasDoCalendario(entradas);
-    const periodos = [...grafico.semanas, ...(grafico.depois.total > 0 ? [grafico.depois] : [])];
-    const maior = Math.max(1, ...periodos.map((p) => p.total));
 
     const eventoId = params.get("evento") ?? "todos";
     const filtro = TIPOS.find((t) => t.id === params.get("tipo")) ?? TIPOS[0];
@@ -222,6 +223,24 @@ export function FinancasCalendario() {
     };
     const limpar = () => mudar({ evento: null, tipo: null, de: null, ate: null });
     const comFiltro = eventoId !== "todos" || filtro.id !== "todos" || Boolean(de || ate);
+    // O gráfico segue o filtro de data da lista: sem filtro, as próximas semanas; com filtro, o período
+    // escolhido, por dia, por semana ou por mês conforme o tamanho. Evento e tipo mudam só a lista.
+    const recorte = de && ate ? recorteDoCalendario(entradas, de, ate) : null;
+    const periodos = recorte ? recorte.periodos : [...grafico.semanas, ...(grafico.depois.total > 0 ? [grafico.depois] : [])];
+    const passo = recorte?.passo ?? "semana";
+    const maior = Math.max(1, ...periodos.map((p) => p.total));
+    const rotuloDaBarra = (p: PeriodoDoCalendario) =>
+        !p.ate
+            ? `Depois de ${SEM_ANO(somarDias(p.de, -1))}`
+            : passo === "dia"
+              ? p.de === HOJE
+                  ? "Hoje"
+                  : dataComDia(p.de)
+              : passo === "mes"
+                ? `${MESES[Number(p.de.slice(5, 7)) - 1].slice(0, 3)}/${p.de.slice(0, 4)}`
+                : p.de === p.ate
+                  ? SEM_ANO(p.de)
+                  : `${SEM_ANO(p.de)} a ${SEM_ANO(p.ate)}`;
     const eventosDoCalendario = [...new Map(entradas.map((e) => [e.evento.id, e.evento.nome])).entries()].sort((a, b) => a[1].localeCompare(b[1])).map(([id, label]) => ({ id, label }));
 
     const lista = entradas.filter(
@@ -250,6 +269,14 @@ export function FinancasCalendario() {
             return novo;
         });
     const rotaDoEvento = (id: string) => comCenario(`${BASE}/${id}`);
+
+    const baixar = () => {
+        baixarCsv("financas-calendario.csv", [
+            ["Data da liberação", "Evento", "Tipo", "Observação", "Valor"],
+            ...lista.map((e) => [e.data ? dataDoCsv(e.data) : "Sem data definida", e.evento.nome, ROTULO_DA_ENTRADA[e.tipo], e.nota ?? "", e.valor]),
+        ]);
+        toast.success(`Calendário baixado com ${quantos(lista.length, "liberação", "liberações")}.`);
+    };
 
     const conteudo = () => {
         if (antecipar) return <TelaFinal acao="antecipar" evento={eventoParaAntecipar?.nome} valor={eventoParaAntecipar?.aLiberar ?? totais.aLiberar} aoVoltar={() => mudar({ antecipar: null })} />;
@@ -289,33 +316,41 @@ export function FinancasCalendario() {
 
                 {entradas.length > 0 && (
                     <Secao
-                        titulo="Liberações por semana"
+                        titulo={`Liberações por ${{ dia: "dia", semana: "semana", mes: "mês" }[passo]}`}
+                        selo={
+                            recorte && (
+                                <Badge size="sm" type="modern" color="gray">
+                                    {de === ate ? dataCurta(de!) : `${dataCurta(de!)} a ${ate! >= MUITO_DEPOIS ? "o fim" : dataCurta(ate!)}`} · {reais(recorte.total)}
+                                </Badge>
+                            )
+                        }
                         lateral={
-                            <ul aria-label="Legenda" className="flex items-center gap-4 text-sm text-tertiary">
-                                {GRUPOS.map((g) => (
-                                    <li key={g.id} className="flex items-center gap-1.5">
-                                        {ponto(g.id)}
-                                        {g.rotulo}
-                                    </li>
-                                ))}
-                            </ul>
+                            <div className="flex items-center gap-4">
+                                <ul aria-label="Legenda" className="flex items-center gap-4 text-sm text-tertiary">
+                                    {GRUPOS.map((g) => (
+                                        <li key={g.id} className="flex items-center gap-1.5">
+                                            {ponto(g.id)}
+                                            {g.rotulo}
+                                        </li>
+                                    ))}
+                                </ul>
+                                {recorte && (
+                                    <Button size="sm" color="link-gray" onClick={() => mudar({ de: null, ate: null })}>
+                                        Ver todas as semanas
+                                    </Button>
+                                )}
+                            </div>
                         }
                     >
-                        <div role="group" aria-label="Total de cada semana. Escolha uma semana para filtrar a lista" className="flex items-stretch gap-1 px-5 py-4">
+                        <div
+                            role="group"
+                            aria-label={`Total de cada ${{ dia: "dia", semana: "semana", mes: "mês" }[passo]}${recorte ? " do período escolhido" : ""}. Escolha uma barra para ver só aquele período`}
+                            className="flex items-stretch gap-1 px-5 py-4"
+                        >
                             {periodos.map((p) => {
                                 const fim = p.ate ?? MUITO_DEPOIS;
                                 const selecionada = de === p.de && ate === fim;
-                                return (
-                                    <Barra
-                                        key={p.de}
-                                        periodo={p}
-                                        rotulo={p.ate ? `${SEM_ANO(p.de)} a ${SEM_ANO(p.ate)}` : `Depois de ${SEM_ANO(somarDias(p.de, -1))}`}
-                                        maior={maior}
-                                        selecionada={selecionada}
-                                        apagada={Boolean(de || ate) && !selecionada}
-                                        aoEscolher={() => mudar(selecionada ? { de: null, ate: null } : { de: p.de, ate: fim })}
-                                    />
-                                );
+                                return <Barra key={p.de} periodo={p} rotulo={rotuloDaBarra(p)} maior={maior} selecionada={selecionada} aoEscolher={() => mudar(selecionada ? { de: null, ate: null } : { de: p.de, ate: fim })} />;
                             })}
                         </div>
                     </Secao>
@@ -441,11 +476,15 @@ export function FinancasCalendario() {
     return (
         <FinancasShell jornada="Jornada · Eventos como pastas">
             <CabecalhoDaPagina
-                titulo="Calendário de liberações"
-                acima={
-                    <Button size="sm" color="link-gray" iconLeading={ArrowLeft} className="self-start" href={comCenario(BASE)}>
-                        Finanças
-                    </Button>
+                titulo="Finanças"
+                aba={antecipar ? undefined : "calendario"}
+                acoes={
+                    !antecipar &&
+                    entradas.length > 0 && (
+                        <Button size="md" color="secondary" iconLeading={Download01} isDisabled={lista.length === 0} onClick={baixar}>
+                            Baixar calendário
+                        </Button>
+                    )
                 }
             />
             {conteudo()}

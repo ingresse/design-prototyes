@@ -5,6 +5,7 @@ import { EmptyState } from "@/components/application/empty-state/empty-state";
 import { Button } from "@/components/base/buttons/button";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { cx } from "@/utils/cx";
+import { CONTA_DA_ORGANIZACAO } from "./dados";
 import { reais } from "./formato";
 
 /* Estados de tela dos protótipos de Finanças (briefing, seção 4), acessados pelo seletor de cenário. */
@@ -35,19 +36,24 @@ export const Aviso = ({ tom, titulo, children, acao }: AvisoProps) => (
     </div>
 );
 
-/** Repasses pausados, em linguagem de cliente. O dinheiro continua visível na tela. */
+/** Repasses pausados: o motivo, o que o produtor faz, o prazo e, por último, o atendimento. O saldo continua visível na tela. */
 export const AvisoDeBloqueio = () => (
     <Aviso
         tom="alerta"
         titulo="Seus repasses estão pausados"
         acao={
-            <Button size="sm" color="secondary" onClick={() => toast("Aqui abriria a conversa com o atendimento.")}>
-                Falar com o atendimento
-            </Button>
+            <>
+                <Button size="sm" color="primary" onClick={() => toast("Aqui abriria a confirmação da conta bancária, em Ajustes.")}>
+                    Confirmar conta
+                </Button>
+                <Button size="sm" color="secondary" onClick={() => toast("Aqui abriria a conversa com o atendimento.")}>
+                    Falar com o atendimento
+                </Button>
+            </>
         }
     >
-        <p>Precisamos confirmar os dados da conta bancária da Arena Produções antes de enviar novos repasses.</p>
-        <p>Seu dinheiro continua guardado. Quando a conta for confirmada, você volta a solicitar repasses.</p>
+        <p>Precisamos confirmar a conta bancária da Arena Produções ({CONTA_DA_ORGANIZACAO}) antes de enviar novos repasses.</p>
+        <p>Seu saldo continua seguro. Depois que você confirmar a conta, a análise leva até 2 dias úteis e os repasses voltam.</p>
     </Aviso>
 );
 
@@ -144,6 +150,20 @@ export const SemEventos = ({ aoIrParaEventos }: { aoIrParaEventos: () => void })
         acao={
             <Button size="md" color="primary" onClick={aoIrParaEventos}>
                 Ir para Eventos
+            </Button>
+        }
+    />
+);
+
+/** Endereço de um evento que não existe nesta organização. */
+export const EventoNaoEncontrado = ({ aoVoltar }: { aoVoltar: () => void }) => (
+    <EstadoCentral
+        icone={Calendar}
+        titulo="Evento não encontrado"
+        descricao="Este evento não existe ou não é desta organização."
+        acao={
+            <Button size="md" color="secondary" onClick={aoVoltar}>
+                Voltar para Finanças
             </Button>
         }
     />

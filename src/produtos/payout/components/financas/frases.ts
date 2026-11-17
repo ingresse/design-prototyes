@@ -22,8 +22,8 @@ export function detalhesDaDistribuicao(eventos: Evento[]): Partial<Record<ParteD
     const agendados = eventos.flatMap((e) => e.repasses.filter((r) => r.situacao === "agendado")).sort((a, b) => a.data.localeCompare(b.data));
 
     let processamento: string | undefined;
-    if (emProcessamento.length === 1) processamento = emProcessamento[0].previsaoProcessamento === "hoje" ? "Entra hoje" : "Quando as parcelas forem pagas";
-    else if (entraHoje > 0) processamento = `${reais(entraHoje)} entram hoje`;
+    if (emProcessamento.length === 1) processamento = emProcessamento[0].previsaoProcessamento === "hoje" ? "Libera hoje" : "A cada parcela paga";
+    else if (entraHoje > 0) processamento = `${reais(entraHoje)} liberam hoje`;
 
     return {
         processamento,

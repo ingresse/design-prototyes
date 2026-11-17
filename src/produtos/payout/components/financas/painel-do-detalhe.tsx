@@ -24,7 +24,7 @@ const TITULO: Record<ParteComDetalhe, string> = { vendido: "Vendido por evento",
 
 const ROTULO_DO_CREDITO: Record<TipoDeCredito, string> = { bonificacao: "Bonificação de custo", rebate: "Rebate", luvas: "Luvas", ajuste: "Ajuste a crédito" };
 const ROTULO_DA_DEVOLUCAO: Record<TipoDeDevolucao, string> = { cancelamento: "Cancelamento", reembolso: "Reembolso parcial", contestacao: "Contestação no cartão", suspenso: "Ingresso suspenso" };
-const ORIGEM = { disponivel: "Saiu do disponível", antecipavel: "Saiu do antecipável" };
+const ORIGEM = { disponivel: "Saiu do Disponível", antecipavel: "Saiu do Antecipável" };
 const ORDEM_DAS_TAXAS: TipoDeTaxa[] = ["pagamentos", "servico", "juros", "pre-impressos", "cortesias", "operacao"];
 
 const numero = new Intl.NumberFormat("pt-BR");

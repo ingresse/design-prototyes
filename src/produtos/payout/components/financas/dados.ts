@@ -146,8 +146,8 @@ const contestacoes = (dataDoEvento: string): PodeMudar => {
         titulo: "Contestações no cartão",
         texto:
             liberaRetido > HOJE
-                ? `Podem acontecer até 120 dias depois do evento. Até ${quando}, contestações saem do retido. Depois disso, saem do seu disponível.`
-                : "Podem acontecer até 120 dias depois do evento. O retido já foi liberado: se acontecerem, saem do seu disponível.",
+                ? `Podem acontecer até 120 dias depois do evento. Até ${quando}, contestações saem do Retido. Depois disso, saem do seu Disponível.`
+                : "Podem acontecer até 120 dias depois do evento. O Retido já foi liberado: se acontecerem, saem do seu Disponível.",
         ate: somarDias(dataDoEvento, DIAS_DE_CONTESTACAO),
     };
 };
@@ -738,7 +738,11 @@ export function entradasDoCalendario(eventos: Evento[]): Entrada[] {
                     : { tipo: "processamento", valor: e.processamento, evento: e, nota: "Pix parcelado: libera a cada parcela paga" },
             );
         }
-        for (const l of e.liberacoes) entradas.push({ ...l, nota: l.tipo === "retidoEvento" ? "Libera depois do evento" : l.nota, evento: e });
+        for (const l of e.liberacoes) {
+            // O porquê do Retido aparece em toda linha, não só na página do evento.
+            const nota = l.tipo === "retidoEvento" ? "Libera depois do evento" : l.tipo === "retidoSeguranca" ? (l.nota ?? "Reservado para contestações no cartão. O que sobrar libera nesta data.") : l.nota;
+            entradas.push({ ...l, nota, evento: e });
+        }
     }
     // Sem data vai para o fim.
     return entradas.sort((a, b) => (a.data ?? "9999").localeCompare(b.data ?? "9999") || b.valor - a.valor);
@@ -935,7 +939,7 @@ export function movimentos(eventos: Evento[]): Movimento[] {
                 evento: e,
                 valor: -d.valor,
                 efeito: doDisponivel ? -d.valor : 0,
-                semEfeito: doDisponivel ? undefined : "Saiu do antecipável",
+                semEfeito: doDisponivel ? undefined : "Saiu do Antecipável",
                 descricao: d.motivo,
                 partes: [{ parte: doDisponivel ? "Disponível" : "Antecipável", valor: -d.valor }],
                 prova: "transacoes",
@@ -1122,6 +1126,113 @@ export function composicaoDoRepasse(evento: Evento, repasse: Repasse): Composica
     return { linhas, total: repasse.valor };
 }
 
+export type PassoDoGrafico = "dia" | "semana" | "mes";
+
+export interface RecorteDoCalendario {
+    passo: PassoDoGrafico;
+    periodos: PeriodoDoCalendario[];
+    /** Soma das barras: tudo o que libera entre `de` e `ate`. */
+    total: number;
+}
+
+/**
+ * O gráfico do Calendário para um período escolhido no filtro de data. O passo acompanha o tamanho
+ * do período: até 14 dias, uma barra por dia; até 12 semanas, uma por semana (contadas a partir do
+ * primeiro dia); acima disso, uma por mês. O que não tem data fica de fora, como na lista filtrada.
+ */
+export function recorteDoCalendario(entradas: Entrada[], de: string, ate: string): RecorteDoCalendario {
+    const dias = Math.round((Date.parse(ate) - Date.parse(de)) / 86_400_000) + 1;
+    const passo: PassoDoGrafico = dias <= 14 ? "dia" : dias <= 84 ? "semana" : "mes";
+    const periodos: PeriodoDoCalendario[] = [];
+    const novo = (inicio: string, fim: string) => periodos.push({ de: inicio, ate: fim > ate ? ate : fim, porGrupo: { processamento: 0, retido: 0, aLiberar: 0 }, total: 0 });
+    if (passo === "mes") {
+        let [ano, mes] = [Number(de.slice(0, 4)), Number(de.slice(5, 7))];
+        for (let inicio = de; inicio <= ate; ) {
+            novo(inicio, new Date(Date.UTC(ano, mes, 0)).toISOString().slice(0, 10));
+            mes += 1;
+            if (mes === 13) [ano, mes] = [ano + 1, 1];
+            inicio = `${ano}-${String(mes).padStart(2, "0")}-01`;
+        }
+    } else {
+        const tamanho = passo === "dia" ? 1 : 7;
+        for (let inicio = de; inicio <= ate; inicio = somarDias(inicio, tamanho)) novo(inicio, somarDias(inicio, tamanho - 1));
+    }
+    for (const e of entradas) {
+        if (!e.data) continue;
+        const periodo = periodos.find((p) => e.data! >= p.de && e.data! <= p.ate!);
+        if (!periodo) continue;
+        periodo.porGrupo[GRUPO_DA_ENTRADA[e.tipo]] += e.valor;
+        periodo.total += e.valor;
+    }
+    return { passo, periodos, total: periodos.reduce((s, p) => s + p.total, 0) };
+}
+
+/* ---------------- fechamento mensal ---------------- */
+
+const NOME_DO_MES = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+
+export interface Fechamento extends Extrato {
+    /** "Novembro de 2026". */
+    mes: string;
+    /** O mês ainda não terminou: o fechamento vai até hoje. */
+    parcial: boolean;
+}
+
+/**
+ * Fechamento de cada mês inteiro dentro dos 90 dias do Extrato, mais o mês corrente até hoje, do
+ * mais recente para o mais antigo. Cada um fecha (início + entradas − saídas = fim) e o fim de um
+ * mês é o início do seguinte (`conferirContas`).
+ */
+export function fechamentos(eventos: Evento[]): Fechamento[] {
+    const limite = somarDias(HOJE, -DIAS_DO_EXTRATO);
+    const lista: Fechamento[] = [];
+    let ano = Number(HOJE.slice(0, 4));
+    let mes = Number(HOJE.slice(5, 7));
+    for (;;) {
+        const de = `${ano}-${String(mes).padStart(2, "0")}-01`;
+        if (de < limite) break;
+        const ultimoDia = new Date(Date.UTC(ano, mes, 0)).toISOString().slice(0, 10);
+        const ate = ultimoDia > HOJE ? HOJE : ultimoDia;
+        lista.push({ ...extrato(eventos, de, ate), mes: `${NOME_DO_MES[mes - 1]} de ${ano}`, parcial: ultimoDia > HOJE });
+        mes -= 1;
+        if (mes === 0) {
+            mes = 12;
+            ano -= 1;
+        }
+    }
+    return lista;
+}
+
+/* ---------------- registro (rastreabilidade) ---------------- */
+
+/** Membros da organização que podem pedir repasse e antecipação (nomes fictícios). */
+const MEMBROS = ["Marina Duarte", "Rafael Antunes", "Camila Prado"];
+
+export interface Registro {
+    /** Código para citar no atendimento e bater com o comprovante ("RP-482913"). */
+    codigo: string;
+    /** Quem pediu, e quando (data ISO e hora "14:32"). */
+    solicitante: string;
+    data: string;
+    hora: string;
+}
+
+/** Número estável a partir de um texto: o mesmo repasse tem sempre o mesmo código. */
+const semente = (texto: string) => [...texto].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 1_000_003, 7);
+
+/** Código, solicitante e horário de um repasse ou de uma antecipação. Dados ilustrativos (NOTAS.md). */
+export function registro(prefixo: "RP" | "AN", evento: Evento, data: string, valor: number): Registro {
+    const n = semente(`${prefixo}-${evento.id}-${data}-${valor}`);
+    return {
+        codigo: `${prefixo}-${String(100_000 + (n % 900_000))}`,
+        solicitante: MEMBROS[n % MEMBROS.length],
+        data,
+        hora: `${String(9 + (n % 9)).padStart(2, "0")}:${String((n * 7) % 60).padStart(2, "0")}`,
+    };
+}
+export const registroDoRepasse = (evento: Evento, r: Repasse) => registro("RP", evento, r.pedidoEm ?? somarDias(r.data, r.situacao === "pago" ? -2 : 0), r.valor);
+export const registroDaAntecipacao = (evento: Evento, a: Antecipacao) => registro("AN", evento, a.data, a.valor);
+
 /* ---------------- verificação ---------------- */
 
 /**
@@ -1198,6 +1309,21 @@ export function conferirContas(): string[] {
             if (x.linhas.some((l) => !Number.isInteger(l.apos))) erros.push(`${cenario}: Extrato de ${dias} dias com saldo quebrado`);
             if (x.saldoInicial + x.entradas - x.saidas !== x.saldoFinal) erros.push(`${cenario}: Extrato de ${dias} dias: o resumo não fecha (${x.saldoInicial} + ${x.entradas} − ${x.saidas} ≠ ${x.saldoFinal})`);
         }
+        // Gráfico com filtro de data: as barras somam o que a lista filtrada mostra, em qualquer passo (dia, semana, mês).
+        for (const dias of [0, 7, 30, 60, 400]) {
+            const ate = somarDias(HOJE, dias);
+            const naLista = soma(entradas.filter((x) => x.data && x.data >= HOJE && x.data <= ate), (x) => x.valor);
+            const recorte = recorteDoCalendario(entradas, HOJE, ate);
+            if (recorte.total !== naLista) erros.push(`${cenario}: o gráfico de ${dias} dias soma ${recorte.total}, a lista do mesmo período soma ${naLista}`);
+        }
+        // Fechamentos mensais: cada um fecha, o fim de um é o início do seguinte e o último termina no card.
+        const meses = fechamentos(eventos);
+        meses.forEach((m, i) => {
+            if (m.saldoInicial + m.entradas - m.saidas !== m.saldoFinal) erros.push(`${cenario}: o fechamento de ${m.mes} não fecha`);
+            const anterior = meses[i + 1];
+            if (anterior && anterior.saldoFinal !== m.saldoInicial) erros.push(`${cenario}: ${anterior.mes} termina em ${anterior.saldoFinal} e ${m.mes} começa em ${m.saldoInicial}`);
+        });
+        if (meses[0] && meses[0].saldoFinal !== t.disponivel) erros.push(`${cenario}: o fechamento do mês corrente não termina no Disponível do card`);
         // Agendados do Extrato somam o Agendado da legenda; a composição de cada repasse soma o repasse.
         if (soma(repassesAgendados(eventos), (a) => a.repasse.valor) !== t.agendado) erros.push(`${cenario}: os repasses agendados do Extrato não somam Agendado`);
         for (const e of eventos) {
