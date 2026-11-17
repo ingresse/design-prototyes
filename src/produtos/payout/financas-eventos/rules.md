@@ -39,6 +39,7 @@ valores, com navegação. A explicação do dinheiro de cada evento mora dentro 
 - **FEV-13** Mudar busca, filtro ou ordem volta para a página 1.
 - **FEV-14** "Baixar relatório" baixa os eventos do resultado (CSV), não só os da página.
 - **FEV-15** Busca sem resultado e filtro sem resultado têm estado vazio próprio, com "Limpar filtros".
+- **FEV-19** Abrir um evento ou voltar para a lista começa sempre do topo da página.
 - **FEV-16** A pasta abre a página do evento; "Finanças" no topo volta para a lista como ela estava, mantendo o cenário.
 
 ### Página do evento

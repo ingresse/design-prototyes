@@ -175,6 +175,13 @@ export function FinancasShell({ jornada, children }: FinancasShellProps) {
         };
     }, []);
 
+    // Trocar de tela (lista ↔ evento) começa sempre do topo: sem isso a página do evento abria na
+    // altura em que a lista estava rolada. Trocar de cenário ou de filtro não muda o caminho e não rola.
+    const { pathname } = useLocation();
+    useLayoutEffect(() => {
+        window.scrollTo(0, 0);
+    }, [pathname]);
+
     // O título da aba é do repositório inteiro (index.html): aqui ele vale só enquanto o protótipo está aberto.
     useLayoutEffect(() => {
         const anterior = document.title;
