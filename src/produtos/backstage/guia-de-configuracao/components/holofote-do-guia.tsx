@@ -1,10 +1,27 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { motion, useReducedMotion } from "motion/react";
 import { CampoDeParticulas } from "../../components/campo-de-particulas";
 import { useCorDasParticulas } from "../utils/cor-das-particulas";
 
-/** Tempo para ler as duas linhas e achar o painel. Clicar no painel encerra antes (GDC-14). */
+/** Tempo para ler as duas linhas e achar o painel. Clicar em qualquer lugar encerra antes (GDC-14). */
 const PERMANENCIA_MS = 9000;
+
+/**
+ * O teste de usabilidade cobre o protótipo com perguntas e briefings e marca o <body> com
+ * `data-teste-sobreposto`. Enquanto a marca existe, o holofote espera: só aparece, e só começa a
+ * contar, quando a pessoa volta para o protótipo.
+ */
+function useCobertoPeloTeste() {
+    const ler = () => typeof document !== "undefined" && document.body.hasAttribute("data-teste-sobreposto");
+    const [coberto, setCoberto] = useState(ler);
+    useEffect(() => {
+        const obs = new MutationObserver(() => setCoberto(ler()));
+        obs.observe(document.body, { attributes: true, attributeFilter: ["data-teste-sobreposto"] });
+        setCoberto(ler());
+        return () => obs.disconnect();
+    }, []);
+    return coberto;
+}
 
 const ESMAECER = {
     initial: { opacity: 0 },
@@ -18,17 +35,33 @@ const TEXTO = {
 
 /**
  * Apresentação do guia logo depois de criar o evento: escurece a tela a partir do canto do painel,
- * acende o canto com partículas e diz o que vem agora. Não bloqueia cliques (pointer-events-none)
- * e é aria-hidden: a informação que importa está no painel, que não some.
+ * acende o canto com partículas e diz o que vem agora. Some em 9 s ou no primeiro clique em qualquer
+ * lugar; o clique segue para o que estava embaixo (pointer-events-none), então clicar numa opção do
+ * guia já faz a ação (GDC-14). É aria-hidden: a informação que importa está no painel.
  */
 export function HolofoteDoGuia({ onConcluir }: { onConcluir: () => void }) {
     const reduzir = useReducedMotion();
     const cor = useCorDasParticulas("holofote");
 
+    const coberto = useCobertoPeloTeste();
+
+    // Os 9 s e o clique para fechar só valem com o holofote à vista (no teste, depois do "Começar").
     useEffect(() => {
+        if (coberto) return;
         const t = window.setTimeout(onConcluir, PERMANENCIA_MS);
-        return () => window.clearTimeout(t);
-    }, [onConcluir]);
+        // Cliques na camada do teste de usabilidade (barra da tarefa) não contam: o holofote é do protótipo.
+        const fechar = (e: PointerEvent) => {
+            if ((e.target as Element | null)?.closest?.("[data-camada-do-teste]")) return;
+            onConcluir();
+        };
+        document.addEventListener("pointerdown", fechar, true);
+        return () => {
+            window.clearTimeout(t);
+            document.removeEventListener("pointerdown", fechar, true);
+        };
+    }, [onConcluir, coberto]);
+
+    if (coberto) return null;
 
     return (
         <motion.div aria-hidden="true" className="pointer-events-none fixed inset-0 z-20 overflow-hidden" {...(reduzir ? {} : ESMAECER)}>

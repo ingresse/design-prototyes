@@ -62,6 +62,16 @@ function CamadaDoTeste() {
 
     const bloco: Bloco | undefined = run?.teste.blocos[run.blocoIndex];
 
+    // Enquanto o teste cobre o protótipo (pergunta, briefing, sucesso, comunicação...), o <body> leva
+    // `data-teste-sobreposto`: o protótipo pode segurar o que só faz sentido visível (ex.: o holofote do
+    // guia espera a tarefa começar para aparecer e contar o tempo dele).
+    const cobrindo = !!bloco && (bloco.tipo !== "atividade" || briefingAberto || mostrandoSucesso || sucessoPendente);
+    useEffect(() => {
+        if (cobrindo) document.body.setAttribute("data-teste-sobreposto", "");
+        else document.body.removeAttribute("data-teste-sobreposto");
+        return () => document.body.removeAttribute("data-teste-sobreposto");
+    }, [cobrindo]);
+
     // Resposta/SUS do bloco atual (lidas do mapa por bloco).
     const resposta = bloco ? respostasPorBloco[bloco.id] ?? [] : [];
     const susRespostas = bloco ? susPorBloco[bloco.id] ?? [] : [];
@@ -459,6 +469,8 @@ function TopLayer({ children }: { children: React.ReactNode }) {
         if (typeof document === "undefined") return null;
         const d = document.createElement("div");
         d.setAttribute("data-react-aria-top-layer", "true");
+        // O protótipo reconhece cliques na camada do teste (ex.: o holofote do guia não fecha com eles).
+        d.setAttribute("data-camada-do-teste", "");
         return d;
     });
     useEffect(() => {
