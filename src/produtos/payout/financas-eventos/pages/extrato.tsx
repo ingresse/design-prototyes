@@ -373,6 +373,10 @@ export function FinancasExtrato() {
                                 <Select.ComboBox
                                     size="sm"
                                     shortcut={false}
+                                    // Lacuna do DS: o ComboBox não tem seta à direita e sempre abre com a lupa. Sem lupa e com a
+                                    // seta (no espaço de `status`), o campo lê como o select ao lado, e não como uma busca.
+                                    icon={<></>}
+                                    status={<ChevronDown aria-hidden="true" className="pointer-events-none size-4 shrink-0 stroke-[2.25px] text-fg-quaternary" />}
                                     aria-label="Filtrar por evento"
                                     placeholder="Todos os eventos"
                                     popoverClassName="w-80"
