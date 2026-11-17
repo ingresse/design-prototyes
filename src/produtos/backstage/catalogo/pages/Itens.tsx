@@ -44,7 +44,7 @@ interface Ticket {
     lotes: Lote[];
 }
 
-const tooltipChave = (hasChave?: boolean) => (hasChave ? "Editar vínculos de chave de acesso" : "Vincular chave de acesso");
+const tooltipChave = (hasChave?: boolean) => (hasChave ? "Editar vínculos de Passkey" : "Vincular Passkey");
 
 const TICKETS: Ticket[] = [
     { id: "pista-fem", name: "Pista Feminino", sub: "2 lotes à venda", active: true, precoFrom: "R$ 420,00", precoTo: "Até R$ 980,00", emissoes: "1.000 de 1.000", pendentes: "0 pendentes", lotes: [] },
@@ -52,7 +52,7 @@ const TICKETS: Ticket[] = [
     {
         id: "camarote",
         name: "Camarote Open Bar",
-        sub: "4 lotes à venda • 2 com chave de acesso",
+        sub: "4 lotes à venda • 2 com Passkey",
         active: true,
         hasChave: true,
         precoFrom: "R$ 1.200,00",
@@ -66,7 +66,7 @@ const TICKETS: Ticket[] = [
             { id: "cam-l4", name: "4º Lote", active: false, preco: "R$ 2.400,00", emissoes: "400 de 400" },
         ],
     },
-    { id: "lounge-vip", name: "Lounge VIP", sub: "5 lotes à venda • Oculto por chave de acesso", active: true, hasChave: true, precoFrom: "R$ 980,00", precoTo: "Até R$ 1.800,00", emissoes: "1.000 de 1.000", pendentes: "0 pendentes", lotes: [] },
+    { id: "lounge-vip", name: "Lounge VIP", sub: "5 lotes à venda • Oculto por Passkey", active: true, hasChave: true, precoFrom: "R$ 980,00", precoTo: "Até R$ 1.800,00", emissoes: "1.000 de 1.000", pendentes: "0 pendentes", lotes: [] },
     { id: "passaporte-fem", name: "Passaporte 5 Festas • Feminino", sub: "5 lotes à venda", active: false, precoFrom: "R$ 2.340,00", precoTo: "Até R$ 3.200,00", emissoes: "1.000 de 1.000", pendentes: "0 pendentes", lotes: [] },
     { id: "passaporte-masc", name: "Passaporte 5 Festas • Masculino", sub: "5 lotes à venda", active: false, precoFrom: "R$ 2.490,00", precoTo: "Até R$ 3.400,00", emissoes: "1.000 de 1.000", pendentes: "0 pendentes", lotes: [] },
 ];
@@ -250,8 +250,8 @@ export function Itens() {
                     setIsVincularOpen(false);
                     toast.success(
                         count === 1
-                            ? "1 chave de acesso vinculada com sucesso."
-                            : `${count} chaves de acesso vinculadas com sucesso.`,
+                            ? "1 Passkey vinculada com sucesso."
+                            : `${count} Passkeys vinculadas com sucesso.`,
                         { icon: <CheckCircle className="size-5 text-fg-success-primary" /> },
                     );
                 }}

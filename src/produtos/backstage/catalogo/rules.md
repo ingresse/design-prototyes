@@ -13,15 +13,15 @@ em vez de escolher um lado em silêncio.
 
 ## O que é
 
-Protótipo de uma lista de itens de um grupo (Réveillon) com foco em vincular chaves de acesso a
-ingressos e lotes. Serve para testar o slide-out "Vincular chaves de acesso".
+Protótipo de uma lista de itens de um grupo (Réveillon) com foco em vincular Passkeys a
+ingressos e lotes. Serve para testar o slide-out "Vincular Passkeys".
 
 ## Dados
 
 | Dado | De onde vem | Grava? |
 | --- | --- | --- |
 | Grupo, ingressos e lotes | mock em `pages/Itens.tsx` | só em memória (toggles) |
-| Chaves de acesso | mock em `components/VincularChavesSlideOut.tsx` (24 chaves) | não |
+| Passkeys | mock em `components/VincularChavesSlideOut.tsx` (24 chaves) | não |
 
 Não lê `@/plataforma` nem o evento em contexto.
 
@@ -29,15 +29,15 @@ Não lê `@/plataforma` nem o evento em contexto.
 
 ### Comportamento
 - **CAT-01** A página mostra um único grupo ("31/12 • Réveillon dos Milagres") com Lote, Emissões, Pendentes e Acesso; o grupo abre e fecha ao clicar. _(pages/Itens.tsx)_
-- **CAT-02** Cada ingresso tem toggle ativo, nome, resumo, virada "Individual", faixa de preço, emissões e ações Editar item, chave de acesso e Remover item. _(pages/Itens.tsx)_
-- **CAT-03** O ícone de chave mostra "Editar vínculos de chave de acesso" quando o item já tem chave e "Vincular chave de acesso" quando não tem. _(pages/Itens.tsx)_
+- **CAT-02** Cada ingresso tem toggle ativo, nome, resumo, virada "Individual", faixa de preço, emissões e ações Editar item, Passkey e Remover item. _(pages/Itens.tsx)_
+- **CAT-03** O ícone de chave mostra "Editar vínculos de Passkey" quando o item já tem chave e "Vincular Passkey" quando não tem. _(pages/Itens.tsx)_
 - **CAT-04** Ingresso com lotes expande para mostrar cada lote com toggle, badge "Auto" e marca "Oculto" (lote com chave). "Camarote Open Bar" começa expandido. _(pages/Itens.tsx)_
 - **CAT-05** Os toggles de ingresso e lote ligam e desligam só na tela. _(pages/Itens.tsx)_
-- **CAT-06** O ícone de chave (ingresso ou lote) abre o slide-out "Vincular chaves de acesso" pela direita. _(pages/Itens.tsx, components/VincularChavesSlideOut.tsx)_
+- **CAT-06** O ícone de chave (ingresso ou lote) abre o slide-out "Vincular Passkeys" pela direita. _(pages/Itens.tsx, components/VincularChavesSlideOut.tsx)_
 - **CAT-07** No slide-out, a busca filtra chaves pelo código e mostra "N chaves encontradas". _(components/VincularChavesSlideOut.tsx)_
 - **CAT-08** Menu Opções: "Selecionar todos" e "Desmarcar todos" agem só sobre as chaves do filtro atual. _(components/VincularChavesSlideOut.tsx)_
 - **CAT-09** Contador "N de 1.200 vinculada(s)". _(components/VincularChavesSlideOut.tsx)_
-- **CAT-10** Salvar fecha o slide-out e mostra "1 chave de acesso vinculada com sucesso." ou "N chaves de acesso vinculadas com sucesso." _(pages/Itens.tsx)_
+- **CAT-10** Salvar fecha o slide-out e mostra "1 Passkey vinculada com sucesso." ou "N Passkeys vinculadas com sucesso." _(pages/Itens.tsx)_
 
 ### Validações
 - **CAT-20** Salvar fica desabilitado sem nenhuma chave marcada. _(components/VincularChavesSlideOut.tsx)_

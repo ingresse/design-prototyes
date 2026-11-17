@@ -275,6 +275,8 @@ export interface NovoEventoInput {
     cidade?: string;
     /** Início de cada sessão (ISO). */
     sessoes?: string[];
+    /** Fim de cada sessão, pela chave do início dela (ISO ou ISO local). */
+    fimDasSessoes?: Record<string, string>;
     descricao?: string;
     capa?: string;
     extras?: NovoEvento["extras"];
@@ -292,6 +294,7 @@ export function criarEvento(input: NovoEventoInput): Evento {
         cidade,
         data: toLocalIso(input.data),
         sessoes: input.sessoes?.map(toLocalIso),
+        fimDasSessoes: input.fimDasSessoes && Object.fromEntries(Object.entries(input.fimDasSessoes).map(([inicio, fim]) => [toLocalIso(inicio), toLocalIso(fim)])),
         descricao: input.descricao,
         capa: input.capa,
         extras: input.extras,

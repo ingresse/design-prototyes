@@ -3,8 +3,8 @@ import { cx } from "@/utils/cx";
 import { formatar } from "../data/textos-itens";
 
 /**
- * Alça de arrastar: o padrão de ordenação do Backstage (6 bolinhas). Aparece no hover da linha no
- * desktop e fica sempre visível no toque. Pelo teclado, foco na alça e setas para cima e para
+ * Alça de arrastar: o padrão de ordenação do Backstage (6 bolinhas). A do grupo fica sempre visível;
+ * a do ingresso aparece no hover da linha no desktop e fica sempre visível no toque. Pelo teclado, foco na alça e setas para cima e para
  * baixo movem o item (alternativa a arrastar, WCAG 2.5.7).
  */
 export function Alca({
@@ -32,8 +32,8 @@ export function Alca({
             }}
             className={cx(
                 "relative z-10 flex size-8 shrink-0 cursor-grab touch-none items-center justify-center rounded-md text-fg-quaternary outline-focus-ring transition-opacity duration-100 hover:bg-primary_hover hover:text-fg-quaternary_hover focus-visible:opacity-100 focus-visible:outline-2 active:cursor-grabbing motion-reduce:transition-none",
-                // Só no hover em telas com mouse; no toque fica visível.
-                grupo === "setor" ? "md:opacity-0 md:group-hover/setor:opacity-100" : "md:opacity-0 md:group-hover/linha:opacity-100",
+                // A do grupo fica sempre visível; a do ingresso, só no hover em telas com mouse (no toque, sempre).
+                grupo === "linha" && "md:opacity-0 md:group-hover/linha:opacity-100",
             )}
         >
             <svg viewBox="0 0 24 24" fill="currentColor" className="size-4" aria-hidden="true">

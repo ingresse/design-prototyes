@@ -1,7 +1,7 @@
-# Chave de acesso: regras
+# Passkey: regras
 
 > **Rotas:** `/backstage/marketing/chave-de-acesso`, `/backstage/marketing/chave-de-acesso/vincular-itens`, `/backstage/marketing/chave-de-acesso/lista`
-> **No menu:** Backstage › menu do evento › Marketing › Chave de acesso
+> **No menu:** Backstage › menu do evento › Marketing › Passkey
 > **Versão em uso:** única, pasta `chave-de-acesso`
 > **Revisado em:** 2026-11-07
 
@@ -29,18 +29,18 @@ Não lê nada de `@/plataforma`.
 ## Regras
 
 ### Entrada
-- **CHA-01** Sem chave: "Crie chaves de acesso para liberar ingressos ocultos" com "Criar chave de acesso". _(pages/ChaveDeAcesso.tsx)_
-- **CHA-02** "Nova chave de acesso", na lista, abre direto a criação. _(pages/ListaChaves.tsx, pages/ChaveDeAcesso.tsx)_
+- **CHA-01** Sem chave: "Crie Passkeys para liberar ingressos ocultos" com "Criar Passkey". _(pages/ChaveDeAcesso.tsx)_
+- **CHA-02** "Nova Passkey", na lista, abre direto a criação. _(pages/ListaChaves.tsx, pages/ChaveDeAcesso.tsx)_
 
 ### Criação
 - **CHA-10** Duas formas, uma por vez: "Criar automaticamente" ou "Criar manualmente". _(pages/ChaveDeAcesso.tsx)_
 - **CHA-11** As chaves usam só letras e números, sem símbolos ou emojis, e não distinguem maiúsculas de minúsculas. _(pages/ChaveDeAcesso.tsx)_
 - **CHA-12** Automática: Limite de uso (opcional, vazio = ilimitado), Quantidade e Prefixo (opcional). Mostra exemplos dos códigos com o prefixo em maiúsculas. _(pages/ChaveDeAcesso.tsx)_
-- **CHA-13** Automática: quantidade acima de 5.000 mostra "O seu total de chaves de acesso no evento não pode ser maior que 5 mil." e bloqueia o avanço. _(pages/ChaveDeAcesso.tsx)_
+- **CHA-13** Automática: quantidade acima de 5.000 mostra "O seu total de Passkeys no evento não pode ser maior que 5 mil." e bloqueia o avanço. _(pages/ChaveDeAcesso.tsx)_
 - **CHA-14** Manual: Limite de uso (opcional) e até 1.000 chaves separadas por vírgula, com contador "N / 1.000". _(pages/ChaveDeAcesso.tsx)_
 - **CHA-15** Importar planilha (.csv, .xlsx, .xls; até 1.000 chaves). Acima disso: "A planilha ultrapassa o limite de 1.000 chaves por importação." _(components/ImportarPlanilhaModal.tsx)_
 - **CHA-16** Depois de importar, as chaves viram chips editáveis (clique edita, vazio remove, Enter ou vírgula adiciona, Backspace apaga a última), com carregamento de 1,8 s. _(pages/ChaveDeAcesso.tsx)_
-- **CHA-17** Chip com símbolo é inválido e bloqueia o avanço: "Chave de acesso inválida encontrada. Ajuste o formato dos destacados para continuar." _(pages/ChaveDeAcesso.tsx)_
+- **CHA-17** Chip com símbolo é inválido e bloqueia o avanço: "Passkey inválida encontrada. Ajuste o formato dos destacados para continuar." _(pages/ChaveDeAcesso.tsx)_
 - **CHA-18** Chip repetido (sem diferenciar maiúsculas) é marcado e não bloqueia: "N chaves estão duplicadas e não serão consideradas ao continuar." Chips com problema vão para o início. _(pages/ChaveDeAcesso.tsx)_
 - **CHA-19** "Criar e vincular itens" exige: automática com quantidade entre 1 e 5.000; manual com ao menos uma chave, sem carregamento e sem chip inválido. _(pages/ChaveDeAcesso.tsx)_
 
@@ -53,9 +53,9 @@ Não lê nada de `@/plataforma`.
 ### Lista de chaves
 - **CHA-30** Busca por código; filtro Todas, Ativas, Inativas; 10 linhas por página. _(pages/ListaChaves.tsx)_
 - **CHA-31** Cada linha: status (toggle), código, "N ingressos associados", uso "X de Y" (∞ quando ilimitado) e ações: Copiar link, Editar vínculo, Desvincular tudo, Remover. _(pages/ListaChaves.tsx)_
-- **CHA-32** Ao abrir, as chaves aparecem "Preparando chave de acesso..." e ficam prontas e ativas uma a uma, em até 6 s. Em preparo não podem ser selecionadas nem alternadas. _(pages/ListaChaves.tsx)_
+- **CHA-32** Ao abrir, as chaves aparecem "Preparando Passkey..." e ficam prontas e ativas uma a uma, em até 6 s. Em preparo não podem ser selecionadas nem alternadas. _(pages/ListaChaves.tsx)_
 - **CHA-33** Editar limite na linha: o novo limite não pode ser menor que o uso: "Limite não alterado. O novo limite não pode ser menor que a quantidade de vezes que o código já foi usado." O aviso some em 15 s. Vazio cancela. _(pages/ListaChaves.tsx)_
-- **CHA-34** Ações em massa aparecem com 2 ou mais selecionadas: Ativar (se houver inativa), Desativar (se houver ativa), Editar limite, Adicionar vínculos, Desvincular, Remover. Cada uma confirma em modal e mostra "N chaves de acesso …s com sucesso." _(pages/ListaChaves.tsx, components/ConfirmModal.tsx)_
+- **CHA-34** Ações em massa aparecem com 2 ou mais selecionadas: Ativar (se houver inativa), Desativar (se houver ativa), Editar limite, Adicionar vínculos, Desvincular, Remover. Cada uma confirma em modal e mostra "N Passkeys …s com sucesso." _(pages/ListaChaves.tsx, components/ConfirmModal.tsx)_
 - **CHA-35** Editar limite em massa: vazio = ilimitado. _(components/EditarLimiteModal.tsx)_
 - **CHA-36** Textos de efeito: desativar mantém os itens ocultos e para a liberação; desvincular ou remover deixa os itens visíveis se não tiverem outra chave; atingir o limite mantém os itens ocultos. _(pages/ListaChaves.tsx, components/EditarLimiteModal.tsx)_
 

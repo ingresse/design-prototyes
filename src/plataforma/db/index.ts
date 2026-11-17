@@ -48,6 +48,17 @@ const indexar = (colecoes: Partial<Record<NomeColecao, { id: string }[]>>): Tabe
     return t;
 };
 
+/** Fim das sessões da seed, por id da sessão: completa, só na leitura, as sessões gravadas antes de existir `fim`. */
+const FIM_DA_SEED = new Map(SEED.eventos.flatMap((e) => e.sessoes.flatMap((x) => (x.fim ? [[x.id, x.fim] as const] : []))));
+
+function completarFimDasSessoes(t: Tabelas): Tabelas {
+    for (const [id, ev] of Object.entries(t.eventos)) {
+        if (!ev.sessoes?.some((x) => !x.fim && FIM_DA_SEED.has(x.id))) continue;
+        t.eventos[id] = { ...ev, sessoes: ev.sessoes.map((x) => (x.fim || !FIM_DA_SEED.has(x.id) ? x : { ...x, fim: FIM_DA_SEED.get(x.id) })) };
+    }
+    return t;
+}
+
 /* ---------------- transporte ---------------- */
 
 async function api<T>(init?: RequestInit, query = ""): Promise<T> {
@@ -70,7 +81,7 @@ function lerLocal(): Tabelas | null {
             const seed = indexar(SEED);
             for (const c of COLECOES) p.tabelas[c] = { ...seed[c], ...(p.tabelas[c] ?? {}) } as never;
         }
-        return p.tabelas;
+        return completarFimDasSessoes(p.tabelas);
     } catch {
         return null;
     }
@@ -98,7 +109,7 @@ async function sincronizar() {
             await post({ op: "seed", versao: SEED_VERSAO, data: SEED });
             return sincronizar();
         }
-        if (pendentes === 0) emitir({ modo: "compartilhado", tabelas: indexar(r.colecoes), erro: null });
+        if (pendentes === 0) emitir({ modo: "compartilhado", tabelas: completarFimDasSessoes(indexar(r.colecoes)), erro: null });
     } catch (err) {
         if (estado.modo === "carregando") {
             emitir({ modo: "local", tabelas: lerLocal() ?? indexar(SEED), erro: null });

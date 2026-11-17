@@ -37,7 +37,7 @@ export function EditarLimiteModal({ isOpen, onClose, onSave }: EditarLimiteModal
 
                         <h2 className="mt-4 text-lg font-semibold text-primary">Editar limite de uso</h2>
                         <p className="mt-1 text-sm text-tertiary">
-                            Ao atingir o limite de uso, as chaves de acesso não poderão mais ser utilizadas, mas os itens
+                            Ao atingir o limite de uso, as Passkeys não poderão mais ser utilizadas, mas os itens
                             permanecerão ocultos.
                         </p>
 

@@ -69,7 +69,7 @@ export function VincularChavesSlideOut({ isOpen, onClose, onSave }: VincularChav
                 <AriaDialog className="flex h-full flex-col outline-hidden">
                     {/* Header */}
                     <div className="flex items-center justify-between gap-4 px-6 pt-6 pb-4">
-                        <h2 className="text-lg font-semibold text-primary">Vincular chaves de acesso</h2>
+                        <h2 className="text-lg font-semibold text-primary">Vincular Passkeys</h2>
                         <ButtonUtility size="sm" color="tertiary" icon={XClose} tooltip="Fechar" onClick={onClose} />
                     </div>
 
@@ -77,7 +77,7 @@ export function VincularChavesSlideOut({ isOpen, onClose, onSave }: VincularChav
                     <div className="px-6">
                         <label className="text-sm font-medium text-secondary">Busca</label>
                         <div className="mt-1.5">
-                            <Input icon={SearchLg} placeholder="Busque por chave de acesso" value={search} onChange={setSearch} />
+                            <Input icon={SearchLg} placeholder="Busque por Passkey" value={search} onChange={setSearch} />
                         </div>
                         {term !== "" && <p className="mt-3 text-sm text-tertiary">{filtered.length} chaves encontradas</p>}
                     </div>
@@ -108,7 +108,7 @@ export function VincularChavesSlideOut({ isOpen, onClose, onSave }: VincularChav
                                 <span className="text-sm text-secondary">{key.name}</span>
                             </label>
                         ))}
-                        {filtered.length === 0 && <p className="px-1 py-6 text-sm text-tertiary">Nenhuma chave encontrada.</p>}
+                        {filtered.length === 0 && <p className="px-1 py-6 text-sm text-tertiary">Nenhuma Passkey encontrada.</p>}
                     </div>
 
                     {/* Footer */}

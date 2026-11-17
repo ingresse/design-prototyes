@@ -116,8 +116,8 @@ export function ListaChaves() {
     const successMassa = (count: number, participio: string) =>
         showSuccess(
             count === 1
-                ? `1 chave de acesso ${participio} com sucesso.`
-                : `${count} chaves de acesso ${participio}s com sucesso.`,
+                ? `1 Passkey ${participio} com sucesso.`
+                : `${count} Passkeys ${participio}s com sucesso.`,
         );
 
     const removerChave = (id: number) => {
@@ -223,7 +223,7 @@ export function ListaChaves() {
         <BackstageLayout activeSection="marketing" activeItem="chave-de-acesso">
             <div className="flex min-w-0 flex-1 flex-col md:h-[calc(100dvh-4.5rem)] md:overflow-hidden">
                 <header className="flex shrink-0 items-center justify-between gap-3">
-                    <h1 className={TITULO_PAGINA}>Chave de acesso</h1>
+                    <h1 className={TITULO_PAGINA}>Passkey</h1>
                     <div className="flex items-center gap-3">
                         <Button size="lg" color="secondary">
                             Exportar
@@ -233,7 +233,7 @@ export function ListaChaves() {
                             color="primary"
                             onClick={() => navigate("/backstage/marketing/chave-de-acesso", { state: { create: true } })}
                         >
-                            Nova chave de acesso
+                            Nova Passkey
                         </Button>
                     </div>
                 </header>
@@ -242,7 +242,7 @@ export function ListaChaves() {
                     {/* Toolbar */}
                     <div className="flex shrink-0 flex-wrap items-center gap-3 border-b border-secondary p-4">
                         <div className="w-80 max-w-full">
-                            <Input icon={SearchLg} placeholder="Buscar chaves de acesso" value={search} onChange={setSearch} />
+                            <Input icon={SearchLg} placeholder="Buscar Passkeys" value={search} onChange={setSearch} />
                         </div>
                         <ButtonGroup
                             selectedKeys={[filter]}
@@ -274,7 +274,7 @@ export function ListaChaves() {
                                 <div className="flex flex-wrap items-center justify-between gap-3 border-b border-secondary px-4 py-3">
                                     <span className="text-sm font-semibold text-primary">
                                         {selectedRows.size}{" "}
-                                        {selectedRows.size === 1 ? "chave de acesso selecionada" : "chaves de acesso selecionadas"}
+                                        {selectedRows.size === 1 ? "Passkey selecionada" : "Passkeys selecionadas"}
                                     </span>
                                     <div className="flex flex-wrap items-center gap-2">
                                         {hasSelectedInactive && (
@@ -309,7 +309,7 @@ export function ListaChaves() {
                     <div className="flex shrink-0 items-center gap-4 border-b border-secondary px-4 py-2.5">
                         <Checkbox
                             size="sm"
-                            aria-label="Selecionar todas as chaves"
+                            aria-label="Selecionar todas as Passkeys"
                             isSelected={allSelected}
                             isIndeterminate={someSelected && !allSelected}
                             onChange={toggleAll}
@@ -353,7 +353,7 @@ export function ListaChaves() {
                                             className="flex items-center gap-2 pl-2"
                                         >
                                             <div className="size-5 shrink-0 animate-spin rounded-full border-2 border-secondary border-t-brand" />
-                                            <span className="text-sm text-tertiary">Preparando chave de acesso...</span>
+                                            <span className="text-sm text-tertiary">Preparando Passkey...</span>
                                         </motion.div>
                                     )}
                                 </AnimatePresence>
@@ -427,9 +427,9 @@ export function ListaChaves() {
                             </div>
                             <div className={cx("flex w-32 items-center justify-end gap-1 transition-opacity duration-300 ease-out", isProcessing && "opacity-50 pointer-events-none")}>
                                 <RowAction icon={Copy01} tooltip="Copiar link" />
-                                <RowAction icon={Key01} tooltip="Editar vínculo de chave de acesso" onClick={abrirAdicionarVinculos} />
+                                <RowAction icon={Key01} tooltip="Editar vínculo de Passkey" onClick={abrirAdicionarVinculos} />
                                 <RowAction icon={LinkBroken02} tooltip="Desvincular tudo" onClick={() => setDesvincularRowId(row.id)} />
-                                <RowAction icon={Trash01} tooltip="Remover chave de acesso" onClick={() => setRemoverRowId(row.id)} />
+                                <RowAction icon={Trash01} tooltip="Remover Passkey" onClick={() => setRemoverRowId(row.id)} />
                             </div>
                         </div>
                         );
@@ -495,8 +495,8 @@ export function ListaChaves() {
                     successMassa(count, "desvinculada");
                 }}
                 icon={LinkBroken02}
-                title="Deseja desvincular as chaves de acesso selecionadas?"
-                description="Ao desvincular as chaves de acesso selecionadas, os itens ficarão visíveis para o público se não tiverem nenhum outra chave associada."
+                title="Deseja desvincular as Passkeys selecionadas?"
+                description="Ao desvincular as Passkeys selecionadas, os itens ficarão visíveis para o público se não tiverem nenhuma outra Passkey associada."
                 confirmLabel="Desvincular"
             />
 
@@ -510,8 +510,8 @@ export function ListaChaves() {
                     successMassa(count, "ativada");
                 }}
                 icon={XClose}
-                title="Deseja ativar as chaves de acesso selecionadas?"
-                description="Ao ativá-las, essas chaves voltarão a liberar os itens vinculados."
+                title="Deseja ativar as Passkeys selecionadas?"
+                description="Ao ativá-las, essas Passkeys voltarão a liberar os itens vinculados."
                 confirmLabel="Ativar"
             />
 
@@ -525,7 +525,7 @@ export function ListaChaves() {
                     successMassa(count, "desativada");
                 }}
                 icon={XClose}
-                title="Deseja desativar as chaves de acesso selecionadas?"
+                title="Deseja desativar as Passkeys selecionadas?"
                 description="Ao desativá-los, os itens continuarão ocultos no fluxo de compra, mas o fluxo de liberação deixará de funcionar."
                 confirmLabel="Desativar"
             />
@@ -540,8 +540,8 @@ export function ListaChaves() {
                     successMassa(count, "removida");
                 }}
                 icon={Trash01}
-                title="Deseja remover as chaves de acesso selecionadas?"
-                description="Ao excluir, os itens ficarão visíveis para o público se não tiverem nenhuma outra chave de acesso associada."
+                title="Deseja remover as Passkeys selecionadas?"
+                description="Ao excluir, os itens ficarão visíveis para o público se não tiverem nenhuma outra Passkey associada."
                 confirmLabel="Remover"
             />
 
@@ -551,11 +551,11 @@ export function ListaChaves() {
                 onClose={() => setDesvincularRowId(null)}
                 onConfirm={() => {
                     setDesvincularRowId(null);
-                    showSuccess("Chave de acesso desvinculada com sucesso.");
+                    showSuccess("Passkey desvinculada com sucesso.");
                 }}
                 icon={LinkBroken02}
-                title="Deseja desvincular esta chave de acesso de todos os itens?"
-                description="Ao desvinculá-la, esta chave deixará de liberar todos os itens associados e eles não poderão mais ser acessados por ela no fluxo de compra."
+                title="Deseja desvincular esta Passkey de todos os itens?"
+                description="Ao desvinculá-la, esta Passkey deixará de liberar todos os itens associados e eles não poderão mais ser acessados por ela no fluxo de compra."
                 confirmLabel="Desvincular"
             />
 
@@ -565,11 +565,11 @@ export function ListaChaves() {
                 onConfirm={() => {
                     if (removerRowId !== null) removerChave(removerRowId);
                     setRemoverRowId(null);
-                    showSuccess("Chave de acesso removida com sucesso.");
+                    showSuccess("Passkey removida com sucesso.");
                 }}
                 icon={Trash01}
-                title="Deseja remover esta chave de acesso?"
-                description="Essa ação removerá a chave permanentemente e ela não poderá mais ser usada."
+                title="Deseja remover esta Passkey?"
+                description="Essa ação removerá a Passkey permanentemente e ela não poderá mais ser usada."
                 confirmLabel="Remover"
             />
         </BackstageLayout>

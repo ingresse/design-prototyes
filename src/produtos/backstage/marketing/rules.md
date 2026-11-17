@@ -1,7 +1,7 @@
 # Pré-venda: regras
 
 > **Rotas:** `/backstage/marketing/pre-venda`
-> **No menu:** não tem. A tela só é aberta pela URL; o menu do evento › Marketing só lista "Chave de acesso".
+> **No menu:** não tem. A tela só é aberta pela URL; o menu do evento › Marketing só lista "Passkey".
 > **Versão em uso:** única, pasta `marketing`
 > **Revisado em:** 2026-11-07
 
@@ -65,7 +65,7 @@ Não lê nada de `@/plataforma` nem do evento em contexto. `data/pre-venda-itens
 
 ## Em aberto
 
-- Sem entrada no menu: a rota é órfã. Decidir se entra em Marketing, ao lado de Chave de acesso.
+- Sem entrada no menu: a rota é órfã. Decidir se entra em Marketing, ao lado de Passkey.
 - Não usa `@/plataforma`: os itens deveriam vir do catálogo do evento em contexto e a pré-venda deveria ser gravada no evento.
 - `publicado` é fixo em `false`: o selo é sempre "Rascunho" e o estado "Em andamento" nunca é alcançável (o atalho de simulação está no selo "Agendada", que não aparece).
 - O período exibido é fixo ("01/02/2026 às 10:00" a "07/02/2026 às 10:00"), não as datas configuradas.

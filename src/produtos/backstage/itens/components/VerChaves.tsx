@@ -1,14 +1,15 @@
 import { useMemo, useState } from "react";
 import { Key01, SearchLg } from "@untitledui/icons";
-import { Dialog, Modal, ModalOverlay } from "@/components/application/modals/modal";
+import { SlideoutMenu } from "@/components/application/slideout-menus/slideout-menu";
 import { Button } from "@/components/base/buttons/button";
 import { InputBase } from "@/components/base/input/input";
 import type { TipoIngresso } from "@/plataforma";
+import { cx } from "@/utils/cx";
 import { formatar, useTextosItens } from "../data/textos-itens";
 import { BotaoMostrarMais, LIMIAR_FERRAMENTAS, paraBusca, useMostrarMais } from "./escala";
 
 /* ------------------------------------------------------------------ */
-/*  Chaves de acesso de um ingresso, para consultar na lista           */
+/*  Passkeys de um ingresso, para consultar na lista           */
 /*                                                                     */
 /*  Só leitura: as chaves do ingresso inteiro e as de cada lote, com   */
 /*  busca e "Mostrar mais" acima do limiar (UI-LST-001). Editar é no   */
@@ -16,15 +17,25 @@ import { BotaoMostrarMais, LIMIAR_FERRAMENTAS, paraBusca, useMostrarMais } from 
 /* ------------------------------------------------------------------ */
 
 const T = {
-    botao: { one: "{n} chave de acesso", other: "{n} chaves de acesso" },
+    botao: { one: "{n} Passkey", other: "{n} Passkeys" },
+    coluna: "Passkey",
+    contagem: { one: "{n} Passkey", other: "{n} Passkeys" },
+    /** Primeiro trecho do detalhe, com a palavra "Passkey": "2 Passkeys no ingresso". */
+    primeiro: { one: "{n} Passkey {onde}", other: "{n} Passkeys {onde}" },
+    /** Trechos seguintes, sem repetir a palavra: "1 no 1º lote". */
+    seguinte: "{n} {onde}",
+    noIngresso: "no ingresso",
+    noLote: "no {lote}",
+    /** Com muitos lotes, o detalhe não cabe na linha: só o total e quantos lotes. */
+    emLotes: { one: "{chaves} em {n} lote", other: "{chaves} em {n} lotes" },
     /** Começa pelo texto visível (WCAG 2.5.3) e diz de qual ingresso. */
-    botaoRotulo: "{chaves} de {ingresso}",
-    titulo: "Chaves de {ingresso}",
-    dica: "Só quem tem uma destas chaves compra o ingresso ou o lote.",
+    botaoRotulo: "{chaves}, {ingresso}",
+    titulo: "Passkeys de {ingresso}",
+    dica: "Só quem tem uma destas Passkeys compra o ingresso ou o lote.",
     todoIngresso: "Todo o ingresso",
-    grupo: { one: "{grupo}, {n} chave", other: "{grupo}, {n} chaves" },
-    buscar: "Buscar chave",
-    nada: "Nenhuma chave com esse termo.",
+    grupo: { one: "{grupo}, {n} Passkey", other: "{grupo}, {n} Passkeys" },
+    buscar: "Buscar Passkey",
+    nada: "Nenhuma Passkey com esse termo.",
     editar: "Editar no ingresso",
     fechar: "Fechar",
 };
@@ -44,30 +55,48 @@ const gruposDe = (tipo: TipoIngresso, todoIngresso: string): GrupoDeChaves[] =>
 /** Total de chaves distintas do ingresso, somando as do ingresso e as dos lotes. */
 export const totalDeChaves = (tipo: TipoIngresso) => new Set([...(tipo.chaves ?? []), ...tipo.lotes.flatMap((l) => l.chaves ?? [])]).size;
 
-/** Botão da linha do ingresso: "N chaves de acesso", abre a consulta. Some sem chaves. */
-export function BotaoChaves({ tipo, onEditar }: { tipo: TipoIngresso; onEditar: () => void }) {
-    const { plural } = useTextosItens();
+/** Até três lugares (ingresso e lotes) o detalhe vai na linha; acima disso, só o total. */
+const MAX_TRECHOS = 3;
+
+/** Coluna "Passkey" da linha do ingresso (dentro do `dl`): ícone e "N Passkeys" em azul; abre o slideout com o detalhe. Some sem chaves. */
+export function BotaoChaves({ tipo, onEditar, className }: { tipo: TipoIngresso; onEditar: () => void; className?: string }) {
+    const { plural, locale } = useTextosItens();
     const [aberto, setAberto] = useState(false);
     const total = totalDeChaves(tipo);
     if (!total) return null;
+    const grupos = gruposDe(tipo, T.todoIngresso);
+    const lotesComChave = grupos.filter((g) => g.id !== "ingresso").length;
+    const texto =
+        grupos.length > MAX_TRECHOS
+            ? plural(T.emLotes, lotesComChave, { chaves: plural(T.botao, total) })
+            : new Intl.ListFormat(locale, { type: "conjunction" }).format(
+                  grupos.map((g, i) => {
+                      const onde = g.id === "ingresso" ? T.noIngresso : formatar(T.noLote, { lote: g.nome });
+                      return i === 0 ? plural(T.primeiro, g.chaves.length, { onde }) : formatar(T.seguinte, { n: g.chaves.length, onde });
+                  }),
+              );
     return (
-        <>
-            <Button
-                color="link-gray"
-                size="sm"
-                iconLeading={Key01}
-                aria-label={formatar(T.botaoRotulo, { chaves: plural(T.botao, total), ingresso: tipo.nome })}
-                onClick={() => setAberto(true)}
-                className="relative z-10 self-start"
-            >
-                {plural(T.botao, total)}
-            </Button>
-            {aberto && <VerChaves tipo={tipo} onEditar={onEditar} onFechar={() => setAberto(false)} />}
-        </>
+        <div className={cx("flex flex-col", className)}>
+            {/* No desktop o cabeçalho da tabela diz "Passkey"; o rótulo fica só para leitor de tela. */}
+            <dt className="text-tertiary md:sr-only">{T.coluna}</dt>
+            <dd>
+                {/* Por cima do link da linha (z-10): abre o slideout sem abrir o ingresso. */}
+                <button
+                    type="button"
+                    aria-label={formatar(T.botaoRotulo, { chaves: texto, ingresso: tipo.nome })}
+                    onClick={() => setAberto(true)}
+                    className="relative z-10 flex cursor-pointer items-center gap-1 rounded font-medium whitespace-nowrap text-utility-blue-600 outline-focus-ring transition duration-100 ease-linear hover:text-utility-blue-700 focus-visible:outline-2"
+                >
+                    <Key01 className="size-4 shrink-0" aria-hidden="true" />
+                    {plural(T.contagem, total)}
+                </button>
+            </dd>
+            {aberto && <VerChaves tipo={tipo} resumo={texto} onEditar={onEditar} onFechar={() => setAberto(false)} />}
+        </div>
     );
 }
 
-function VerChaves({ tipo, onEditar, onFechar }: { tipo: TipoIngresso; onEditar: () => void; onFechar: () => void }) {
+function VerChaves({ tipo, resumo, onEditar, onFechar }: { tipo: TipoIngresso; resumo: string; onEditar: () => void; onFechar: () => void }) {
     const { plural, numero } = useTextosItens();
     const [busca, setBusca] = useState("");
     const termo = paraBusca(busca.trim());
@@ -79,45 +108,48 @@ function VerChaves({ tipo, onEditar, onFechar }: { tipo: TipoIngresso; onEditar:
     );
 
     return (
-        <ModalOverlay isOpen onOpenChange={(v) => !v && onFechar()} isDismissable>
-            <Modal className="sm:max-w-[480px]">
-                <Dialog>
-                    <div className="flex max-h-[85dvh] w-full flex-col gap-4 rounded-2xl bg-primary p-6 shadow-xl ring-1 ring-border-secondary">
-                        <div className="flex flex-col gap-1">
-                            <h2 className="text-lg font-semibold text-primary">{formatar(T.titulo, { ingresso: tipo.nome })}</h2>
-                            <p className="text-sm text-tertiary">{T.dica}</p>
-                        </div>
-                        {total > LIMIAR_FERRAMENTAS && (
-                            <InputBase
-                                size="sm"
-                                icon={SearchLg}
-                                aria-label={T.buscar}
-                                placeholder={T.buscar}
-                                value={busca}
-                                onChange={(v: unknown) => setBusca(typeof v === "string" ? v : ((v as { target?: { value?: string } })?.target?.value ?? ""))}
-                            />
-                        )}
-                        <div className="-mx-2 flex min-h-0 flex-col gap-5 overflow-y-auto px-2">
-                            {filtrados.map((g) => (
-                                <GrupoDaLista key={g.id} grupo={g} titulo={plural(T.grupo, g.chaves.length, { grupo: g.nome })} />
-                            ))}
-                            {filtrados.length === 0 && <p className="text-sm text-tertiary">{T.nada}</p>}
-                        </div>
-                        <div className="flex flex-col-reverse gap-3 border-t border-secondary pt-4 sm:flex-row sm:justify-end">
-                            <Button color="secondary" size="md" onClick={onFechar}>
-                                {T.fechar}
-                            </Button>
-                            <Button color="primary" size="md" onClick={onEditar}>
-                                {T.editar}
-                            </Button>
-                        </div>
-                        <span className="sr-only" role="status">
-                            {termo ? numero(filtrados.reduce((n, g) => n + g.chaves.length, 0)) : ""}
-                        </span>
-                    </div>
-                </Dialog>
-            </Modal>
-        </ModalOverlay>
+        <SlideoutMenu
+            isOpen
+            isDismissable
+            onOpenChange={(v) => !v && onFechar()}
+            // Celular: tela cheia (UI-NAV-003); z-50, acima do cabeçalho fixo do Backstage.
+            className="z-50 pl-0"
+            dialogClassName="gap-0"
+        >
+            <SlideoutMenu.Header onClose={onFechar} className="flex flex-col gap-1 pb-4">
+                <h2 className="pr-8 text-lg font-semibold text-primary">{formatar(T.titulo, { ingresso: tipo.nome })}</h2>
+                {/* Onde estão as chaves, em uma frase: "2 Passkeys no ingresso e 1 no 1º lote". */}
+                <p className="text-sm text-secondary first-letter:uppercase">{resumo}.</p>
+                <p className="text-sm text-tertiary">{T.dica}</p>
+            </SlideoutMenu.Header>
+            <SlideoutMenu.Content className="gap-5 border-t border-secondary pt-4 pb-4">
+                {total > LIMIAR_FERRAMENTAS && (
+                    <InputBase
+                        size="sm"
+                        icon={SearchLg}
+                        aria-label={T.buscar}
+                        placeholder={T.buscar}
+                        value={busca}
+                        onChange={(v: unknown) => setBusca(typeof v === "string" ? v : ((v as { target?: { value?: string } })?.target?.value ?? ""))}
+                    />
+                )}
+                {filtrados.map((g) => (
+                    <GrupoDaLista key={g.id} grupo={g} titulo={plural(T.grupo, g.chaves.length, { grupo: g.nome })} />
+                ))}
+                {filtrados.length === 0 && <p className="text-sm text-tertiary">{T.nada}</p>}
+                <span className="sr-only" role="status">
+                    {termo ? numero(filtrados.reduce((n, g) => n + g.chaves.length, 0)) : ""}
+                </span>
+            </SlideoutMenu.Content>
+            <SlideoutMenu.Footer className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                <Button color="secondary" size="md" onClick={onFechar}>
+                    {T.fechar}
+                </Button>
+                <Button color="primary" size="md" onClick={onEditar}>
+                    {T.editar}
+                </Button>
+            </SlideoutMenu.Footer>
+        </SlideoutMenu>
     );
 }
 

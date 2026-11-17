@@ -62,6 +62,8 @@ export function useTextosItens() {
         const dataHora = new Intl.DateTimeFormat(locale, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
         const dataLonga = new Intl.DateTimeFormat(locale, { dateStyle: "long", timeStyle: "short" });
         const dataCurta = new Intl.DateTimeFormat(locale, { day: "numeric", month: "short" });
+        const diaLongo = new Intl.DateTimeFormat(locale, { dateStyle: "long" });
+        const hora = new Intl.DateTimeFormat(locale, { timeStyle: "short" });
         const regras = new Intl.PluralRules(locale);
         return {
             t,
@@ -71,6 +73,10 @@ export function useTextosItens() {
             quando: (iso: string) => dataHora.format(new Date(iso)),
             /** "17 de outubro de 2026 às 22:00" */
             dataLonga: (iso: string) => dataLonga.format(new Date(iso)),
+            /** "17 de outubro de 2026" */
+            diaLongo: (iso: string) => diaLongo.format(new Date(iso)),
+            /** "22:00" */
+            hora: (iso: string) => hora.format(new Date(iso)),
             /** "17 de out." */
             dataCurta: (iso: string) => dataCurta.format(new Date(iso)),
             /** Escolhe a forma pelo número do idioma e preenche {n} formatado. */

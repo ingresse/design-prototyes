@@ -129,7 +129,7 @@ export function ChaveDeAcesso() {
         }
     };
 
-    // Habilita o botão "Criar chaves de acesso" conforme o fluxo escolhido.
+    // Habilita o botão "Criar Passkeys" conforme o fluxo escolhido.
     let canSubmit = false;
     if (mode === "automatica") canSubmit = quantidadeNumber > 0 && !isQuantidadeInvalid;
     if (mode === "manual") canSubmit = hasChaveManual && manualFieldState !== "loading" && !hasInvalidKey;
@@ -148,7 +148,7 @@ export function ChaveDeAcesso() {
                                     tooltip="Voltar"
                                     onClick={() => setIsCreating(false)}
                                 />
-                                <h1 className={TITULO_PAGINA}>Chave de acesso</h1>
+                                <h1 className={TITULO_PAGINA}>Passkey</h1>
                             </div>
                             <Button
                                 size="lg"
@@ -163,12 +163,12 @@ export function ChaveDeAcesso() {
                         <main className="flex flex-1 flex-col items-center">
                             <div className="flex w-full max-w-3xl flex-col gap-6">
                                 <h2 className="text-center text-lg font-semibold text-primary">
-                                    Escolha como quer criar suas chaves de acesso
+                                    Escolha como quer criar suas Passkeys
                                 </h2>
 
                                 <RadioGroup
                                     size="md"
-                                    aria-label="Como criar suas chaves de acesso"
+                                    aria-label="Como criar suas Passkeys"
                                     value={mode ?? ""}
                                     onChange={(value) => setMode(value as CreationMode)}
                                     className="gap-3"
@@ -189,7 +189,7 @@ export function ChaveDeAcesso() {
                                             >
                                             <div className="mt-4 flex flex-col gap-5 pl-8">
                                                 <p className="text-sm text-tertiary">
-                                                    As chaves de acesso geradas usarão apenas letras e números, sem
+                                                    As Passkeys geradas usarão apenas letras e números, sem
                                                     símbolos ou emojis e sem distinção entre maiúsculas e minúsculas.
                                                 </p>
 
@@ -217,7 +217,7 @@ export function ChaveDeAcesso() {
 
                                                 {isQuantidadeInvalid && (
                                                     <p className="-mt-3 text-sm text-error-primary">
-                                                        O seu total de chaves de acesso no evento não pode ser maior que 5 mil.
+                                                        O seu total de Passkeys no evento não pode ser maior que 5 mil.
                                                     </p>
                                                 )}
 
@@ -256,7 +256,7 @@ export function ChaveDeAcesso() {
                                             >
                                             <div className="mt-4 flex flex-col gap-5 pl-8">
                                                 <p className="text-sm text-tertiary">
-                                                    As chaves de acesso geradas usarão apenas letras e números, sem
+                                                    As Passkeys geradas usarão apenas letras e números, sem
                                                     símbolos ou emojis e sem distinção entre maiúsculas e minúsculas.
                                                 </p>
 
@@ -264,7 +264,7 @@ export function ChaveDeAcesso() {
                                                     <Input
                                                         label="Limite de uso (opcional)"
                                                         placeholder="Ilimitado"
-                                                        tooltip="Quantas vezes cada chave de acesso pode ser utilizada."
+                                                        tooltip="Quantas vezes cada Passkey pode ser utilizada."
                                                         value={limiteUsoManual}
                                                         onChange={setLimiteUsoManual}
                                                         wrapperClassName="sm:w-56"
@@ -289,8 +289,8 @@ export function ChaveDeAcesso() {
                                                     {manualFieldState === "input" && (
                                                         <div className="relative">
                                                             <TextArea
-                                                                aria-label="Chaves de acesso"
-                                                                placeholder="Insira aqui até 1.000 chaves separadas por vírgulas."
+                                                                aria-label="Passkeys"
+                                                                placeholder="Insira aqui até 1.000 Passkeys separadas por vírgulas."
                                                                 rows={5}
                                                                 value={chavesManuais}
                                                                 onChange={setChavesManuais}
@@ -305,7 +305,7 @@ export function ChaveDeAcesso() {
                                                         <>
                                                             <div className="flex min-h-44 flex-col items-center justify-center gap-4 rounded-lg bg-primary ring-1 ring-primary ring-inset">
                                                                 <LoadingSpinner />
-                                                                <p className="text-sm text-tertiary">Carregando chaves</p>
+                                                                <p className="text-sm text-tertiary">Carregando Passkeys</p>
                                                             </div>
                                                             <span className="self-end text-xs text-tertiary">0 / 0</span>
                                                         </>
@@ -348,7 +348,7 @@ export function ChaveDeAcesso() {
                                                                                     }}
                                                                                     onBlur={commitEditingKey}
                                                                                     onClick={(e) => e.stopPropagation()}
-                                                                                    aria-label="Editar chave"
+                                                                                    aria-label="Editar Passkey"
                                                                                     className="w-24 bg-transparent text-primary outline-hidden"
                                                                                 />
                                                                             ) : (
@@ -391,8 +391,8 @@ export function ChaveDeAcesso() {
                                                                     onKeyDown={handleNewKeyDown}
                                                                     onBlur={() => addImportedKeys(newKey)}
                                                                     disabled={importedKeys.length >= MAX_CHAVES}
-                                                                    placeholder={importedKeys.length >= MAX_CHAVES ? "" : "Adicionar chave"}
-                                                                    aria-label="Adicionar chave de acesso"
+                                                                    placeholder={importedKeys.length >= MAX_CHAVES ? "" : "Adicionar Passkey"}
+                                                                    aria-label="Adicionar Passkey"
                                                                     className="h-7 min-w-32 flex-1 bg-transparent px-1 text-sm text-primary outline-hidden placeholder:text-placeholder"
                                                                 />
                                                             </div>
@@ -411,8 +411,8 @@ export function ChaveDeAcesso() {
                                                                         />
                                                                         <span>
                                                                             {hasInvalidKey
-                                                                                ? "Chave de acesso inválida encontrada. Ajuste o formato dos destacados para continuar."
-                                                                                : `${duplicateCount} ${duplicateCount === 1 ? "chave está duplicada e não será considerada" : "chaves estão duplicadas e não serão consideradas"} ao continuar.`}
+                                                                                ? "Passkey inválida encontrada. Ajuste o formato dos destacados para continuar."
+                                                                                : `${duplicateCount} ${duplicateCount === 1 ? "Passkey está duplicada e não será considerada" : "Passkeys estão duplicadas e não serão consideradas"} ao continuar.`}
                                                                         </span>
                                                                     </div>
                                                                 ) : (
@@ -436,13 +436,13 @@ export function ChaveDeAcesso() {
                     </>
                 ) : (
                     <main className="flex flex-1 flex-col">
-                        <h1 className={TITULO_PAGINA}>Chave de acesso</h1>
+                        <h1 className={TITULO_PAGINA}>Passkey</h1>
 
                         <div className="relative flex flex-1 flex-col items-center justify-center overflow-hidden">
                             <div className="z-10 flex max-w-xl flex-col items-center gap-5 text-center">
                                 <div className="flex flex-col gap-1">
                                     <p className="text-display-sm font-light text-tertiary italic">
-                                        Crie chaves de acesso para
+                                        Crie Passkeys para
                                     </p>
                                     <h2 className="text-display-md font-bold text-primary">
                                         liberar ingressos ocultos
@@ -450,7 +450,7 @@ export function ChaveDeAcesso() {
                                 </div>
 
                                 <p className="max-w-md text-md text-tertiary">
-                                    Com a chave de acesso é possível liberar ingressos apenas para quem o
+                                    Com a Passkey é possível liberar ingressos apenas para quem o
                                     tem ou acessa o evento por um link especial.
                                 </p>
 
@@ -461,7 +461,7 @@ export function ChaveDeAcesso() {
                                     className="mt-1"
                                     onClick={() => setIsCreating(true)}
                                 >
-                                    Criar chave de acesso
+                                    Criar Passkey
                                 </Button>
                             </div>
 

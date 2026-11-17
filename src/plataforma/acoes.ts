@@ -18,6 +18,8 @@ export interface NovoEvento {
     capa?: string;
     /** Início de cada sessão (ISO local). Sem lista, uma sessão em `data`. */
     sessoes?: string[];
+    /** Fim de cada sessão (ISO local), pela chave do início dela (ISO local). */
+    fimDasSessoes?: Record<string, string>;
     descricao?: string;
     extras?: Pick<Evento, "tipo" | "modalidade" | "categoria" | "fim" | "moeda" | "limites" | "idadeMinima" | "mapa" | "partida" | "avancado" | "vitrine">;
 }
@@ -46,7 +48,7 @@ export function montarEvento(input: NovoEvento): Evento {
         local: input.local,
         cidade: input.cidade,
         data,
-        sessoes: inicios.map((inicio, i) => ({ id: `${id}-s${i + 1}`, inicio, grupos: [] })),
+        sessoes: inicios.map((inicio, i) => ({ id: `${id}-s${i + 1}`, inicio, ...(input.fimDasSessoes?.[inicio] ? { fim: input.fimDasSessoes[inicio].slice(0, 16) } : {}), grupos: [] })),
         taxaServico: 0.1,
         ...(input.descricao ? { vitrine: { descricao: input.descricao.split(/\n{2,}/).map((p) => p.trim()).filter(Boolean) } } : {}),
         ...input.extras,

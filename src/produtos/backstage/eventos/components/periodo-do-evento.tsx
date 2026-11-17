@@ -1,4 +1,4 @@
-import { useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { getLocalTimeZone, parseDate, today, type CalendarDate } from "@internationalized/date";
 import type { DateValue, RangeValue } from "react-aria-components";
 import { DateRangePicker as AriaDateRangePicker, Dialog as AriaDialog, Group as AriaGroup, Popover as AriaPopover } from "react-aria-components";
@@ -16,6 +16,24 @@ import { cx } from "@/utils/cx";
  */
 
 const HORA_INICIO_PADRAO = "20:00";
+
+/** Distância mínima entre o fim do calendário (com o Aplicar) e a borda de baixo da tela, ou o topo da barra de ações fixa. */
+const MARGEM_DA_BORDA = 24;
+
+/** Altura ocupada embaixo por elementos fixos (a barra "Cancelar / Criar evento"): o calendário precisa ficar acima dela. */
+function ocupadoEmbaixo() {
+    let topo = window.innerHeight;
+    for (const el of document.querySelectorAll<HTMLElement>("body *")) {
+        const estilo = getComputedStyle(el);
+        if (estilo.position !== "fixed" && estilo.position !== "sticky") continue;
+        const r = el.getBoundingClientRect();
+        // Só faixas que encostam na borda de baixo e ocupam boa parte da largura.
+        if (r.height > 0 && r.bottom >= window.innerHeight - 1 && r.width > window.innerWidth / 2 && r.top > window.innerHeight / 2) topo = Math.min(topo, r.top);
+    }
+    return window.innerHeight - topo;
+}
+/** Altura do calendário de dois meses com o rodapé, até a primeira abertura medir a real. */
+const ALTURA_ESTIMADA = 460;
 
 /**
  * O relógio do campo de hora é o ícone nativo do navegador: sem `color-scheme`, ele fica escuro
@@ -96,6 +114,46 @@ export function PeriodoDoEvento({ inicio, fim, onChange, erroInicio, erroFim, es
         setDiaUnico(data);
     };
     const [aberto, setAberto] = useState(false);
+    // Campo e calendário, para garantir que o Aplicar nunca fique fora da tela.
+    const campoRef = useRef<HTMLDivElement>(null);
+    const popoverRef = useRef<HTMLElement>(null);
+    const alturaDoCalendario = useRef(ALTURA_ESTIMADA);
+    // Aberto, mede a altura real do calendário para as próximas aberturas.
+    useEffect(() => {
+        if (!aberto) return;
+        const id = requestAnimationFrame(() => {
+            const h = popoverRef.current?.getBoundingClientRect().height;
+            if (h) alturaDoCalendario.current = h;
+        });
+        return () => cancelAnimationFrame(id);
+    }, [aberto]);
+
+    /**
+     * Abre o calendário sempre abaixo do campo e inteiro na tela: se não cabe o calendário mais a margem,
+     * a página rola suave antes de abrir (com ele aberto, a rolagem fica travada) e o campo sobe.
+     */
+    const abrir = () => {
+        const campo = campoRef.current;
+        if (!campo) return setAberto(true);
+        const falta = campo.getBoundingClientRect().bottom + 8 + alturaDoCalendario.current + MARGEM_DA_BORDA + ocupadoEmbaixo() - window.innerHeight;
+        if (falta <= 0) return setAberto(true);
+        // Rola o contêiner que de fato rola (a página ou a área de conteúdo do Backstage).
+        let alvo: HTMLElement | null = campo.parentElement;
+        while (alvo && !(alvo.scrollHeight > alvo.clientHeight && /(auto|scroll)/.test(getComputedStyle(alvo).overflowY))) alvo = alvo.parentElement;
+        const rolavel = (alvo ?? document.scrollingElement ?? document.documentElement) as HTMLElement;
+        // Rolagem suave (sem movimento para quem pediu menos animação); o calendário abre quando ela termina.
+        const reduzir = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        let aberta = false;
+        const abrirUmaVez = () => {
+            if (aberta) return;
+            aberta = true;
+            requestAnimationFrame(() => setAberto(true));
+        };
+        (rolavel === document.documentElement ? window : rolavel).addEventListener("scrollend", abrirUmaVez, { once: true });
+        // Sem o evento "scrollend" (navegador antigo) ou sem ter o que rolar, abre mesmo assim.
+        setTimeout(abrirUmaVez, reduzir ? 0 : 600);
+        rolavel.scrollBy({ top: falta, behavior: reduzir ? "auto" : "smooth" });
+    };
 
     const aplicar = () => {
         const intervalo = diaUnico ? { start: diaUnico, end: diaUnico } : rascunho;
@@ -142,7 +200,8 @@ export function PeriodoDoEvento({ inicio, fim, onChange, erroInicio, erroFim, es
                 }}
                 isOpen={aberto}
                 onOpenChange={(a) => {
-                    setAberto(a);
+                    if (a) abrir();
+                    else setAberto(false);
                     if (a) {
                         setRascunho(valor);
                         setDiaUnico(null);
@@ -155,7 +214,7 @@ export function PeriodoDoEvento({ inicio, fim, onChange, erroInicio, erroFim, es
                 <span className="text-sm font-medium text-secondary">
                     Dias do evento <span className="text-brand-tertiary">*</span>
                 </span>
-                <AriaGroup>
+                <AriaGroup ref={campoRef}>
                     <Button
                         size="md"
                         color="secondary"
@@ -167,7 +226,10 @@ export function PeriodoDoEvento({ inicio, fim, onChange, erroInicio, erroFim, es
                 </AriaGroup>
                 {erroInicio && !inicio && <p className="text-sm text-error-primary">{erroInicio}</p>}
                 <AriaPopover
+                    ref={popoverRef}
                     placement="bottom start"
+                    // Sempre abaixo do campo: quem garante o espaço é a rolagem antes de abrir.
+                    shouldFlip={false}
                     offset={8}
                     className={({ isEntering, isExiting }) =>
                         cx("z-50 will-change-transform", isEntering && "duration-150 ease-out animate-in fade-in", isExiting && "duration-100 ease-in animate-out fade-out")

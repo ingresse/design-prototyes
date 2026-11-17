@@ -1,11 +1,9 @@
 import { useEffect, useMemo, useRef, useState, type FC, type ReactNode } from "react";
 import { Navigate, useNavigate, useSearchParams } from "react-router";
 import { toast } from "sonner";
-import { parseDateTime } from "@internationalized/date";
 import { AnimatePresence, motion } from "motion/react";
-import { ArrowLeft, Image01, Plus, RefreshCw01, Tag01, Trash01, XClose } from "@untitledui/icons";
+import { ArrowLeft, Plus, RefreshCw01, Tag01, Trash01, XClose } from "@untitledui/icons";
 import { FileUploadDropZone } from "@/components/application/file-upload/file-upload-base";
-import { DateTimePicker } from "@/components/application/date-picker/date-time-picker";
 import { Dialog, Modal, ModalOverlay } from "@/components/application/modals/modal";
 import { ButtonGroup, ButtonGroupItem } from "@/components/base/button-group/button-group";
 import { Button } from "@/components/base/buttons/button";
@@ -13,23 +11,12 @@ import { ButtonUtility } from "@/components/base/buttons/button-utility";
 import { Input } from "@/components/base/input/input";
 import { ComboBox } from "@/components/base/select/combobox";
 import { Select } from "@/components/base/select/select";
-import { TextEditor } from "@/components/base/text-editor/text-editor";
-import {
-    TextEditorAlignCenter,
-    TextEditorAlignLeft,
-    TextEditorBold,
-    TextEditorBulletList,
-    TextEditorItalic,
-    TextEditorUnderline,
-} from "@/components/base/text-editor/text-editor-extensions";
-import { EditorButton } from "@/components/base/text-editor/text-editor-button";
-import { useEditorContext } from "@/components/base/text-editor/text-editor";
-import { Tooltip } from "@/components/base/tooltip/tooltip";
 import { Toggle } from "@/components/base/toggle/toggle";
 import { Surgir, useTransicao } from "@/components/foundations/transicao";
 import type { ConfiguracoesAvancadas, Modalidade, TipoEvento } from "@/plataforma";
 import { cx } from "@/utils/cx";
 import { BackstageLayout, prepararGuiaDoEventoNovo } from "../../components/Backstage";
+import { DescricaoRica, paragrafosDoHtml } from "../../components/descricao-rica";
 import { useOrganizacaoAtual } from "../../organizacoes/data/organizacao-atual";
 import { AVANCADO_PADRAO } from "../data/configuracoes-avancadas";
 import { CronogramaDeSessoes, temCronograma, type SessaoExtra } from "../components/cronograma-de-sessoes";
@@ -193,14 +180,6 @@ function validar(f: Formulario): Erros {
     return e;
 }
 
-const paraData = (s: string) => {
-    try {
-        return s ? parseDateTime(s) : null;
-    } catch {
-        return null;
-    }
-};
-
 export function CriarEvento() {
     const [params] = useSearchParams();
     const tipo = tipoDeEvento(params.get("tipo"));
@@ -287,6 +266,8 @@ function FormularioDeEvento({ tipo, titulo }: { tipo: TipoEvento; titulo: string
             nome: f.nome.trim(),
             data: new Date(inicioDoEvento).toISOString(),
             sessoes: (ordenadas.length ? ordenadas.map((s) => s.valor) : [f.inicio]).map((v) => new Date(v).toISOString()),
+            // O fim de cada sessão fica gravado: a lista de ingressos mostra "das 22:00 às 04:00" (ITM-81).
+            fimDasSessoes: Object.fromEntries(ordenadas.length ? ordenadas.map((s) => [s.valor, fimDaSessao(s)]) : [[f.inicio, f.fim]]),
             local: f.local!.nome,
             cidade: f.local!.cidade,
             produtor: organizacao?.nome ?? "",
@@ -538,48 +519,14 @@ function FormularioDeEvento({ tipo, titulo }: { tipo: TipoEvento; titulo: string
 
                         {/* Sobre o evento: rótulo do mesmo tamanho e a formatação dentro da caixa (EVT-86). */}
                         <div id="campo-sobre" className="flex gap-4" data-erro={erros.descricao ? "" : undefined}>
-                            <TextEditor.Root
-                                content={f.descricao}
-                                onUpdate={({ editor }) => {
-                                    const html = editor.getHTML();
-                                    set("descricao", html === "<p></p>" ? "" : html);
-                                }}
-                                // Imagem redimensionável pelos cantos, mantendo a proporção (EVT-86). O editor do DS não expõe a
-                                // opção; ela é ligada antes de o editor montar, quando as visualizações dos nós ainda não existem.
-                                onBeforeCreate={({ editor }) => {
-                                    // As opções são recalculadas a cada leitura (addOptions): troca a função, não o objeto.
-                                    const imagem = editor.extensionManager.extensions.find((e) => e.name === "image");
-                                    if (!imagem) return;
-                                    const anteriores = imagem.options;
-                                    imagem.config.addOptions = () => ({
-                                        ...anteriores,
-                                        resize: { enabled: true, alwaysPreserveAspectRatio: true, minWidth: 80, minHeight: 40, directions: ["top-left", "top-right", "bottom-left", "bottom-right"] },
-                                    });
-                                }}
+                            <DescricaoRica
+                                label="Sobre o evento"
+                                isRequired
+                                valor={f.descricao}
+                                onChange={(html) => set("descricao", html)}
                                 placeholder="Conte o que vai acontecer, a programação e o que está incluso."
-                                className="flex min-w-0 flex-1 flex-col gap-1.5"
-                                inputClassName={cx(
-                                    "min-h-40 resize-y rounded-none rounded-b-lg bg-transparent px-3.5 pt-2 pb-3 shadow-none ring-0 focus:ring-0",
-                                    // Mesmo visual do recorte do banner (Cropper do DS): contorno de 2 px em utility-brand-600 e alças
-                                    // quadradas brancas de 12 px com borda de 2 px. Aparecem ao passar o mouse ou com a imagem selecionada.
-                                    "[&_[data-resize-container]]:my-3 [&_[data-resize-wrapper]]:max-w-full [&_[data-resize-wrapper]_img]:h-auto! [&_[data-resize-wrapper]_img]:max-w-full",
-                                    "[&_[data-resize-wrapper]]:outline-2 [&_[data-resize-wrapper]]:-outline-offset-2 [&_[data-resize-wrapper]]:outline-transparent [&_[data-resize-wrapper]]:transition-[outline-color] [&_[data-resize-wrapper]]:duration-100",
-                                    "[&_[data-resize-container]:hover_[data-resize-wrapper]]:outline-utility-brand-600 [&_.ProseMirror-selectednode_[data-resize-wrapper]]:outline-utility-brand-600 [&_[data-resize-state=true]_[data-resize-wrapper]]:outline-utility-brand-600",
-                                    "[&_[data-resize-handle]]:z-10 [&_[data-resize-handle]]:size-3 [&_[data-resize-handle]]:border-2 [&_[data-resize-handle]]:border-utility-brand-600 [&_[data-resize-handle]]:bg-white [&_[data-resize-handle]]:opacity-0 [&_[data-resize-handle]]:transition-opacity [&_[data-resize-handle]]:duration-100",
-                                    "[&_[data-resize-container]:hover_[data-resize-handle]]:opacity-100 [&_.ProseMirror-selectednode_[data-resize-handle]]:opacity-100 [&_[data-resize-state=true]_[data-resize-handle]]:opacity-100",
-                                    "[&_[data-resize-handle=top-left]]:-translate-1/2 [&_[data-resize-handle=top-left]]:cursor-nwse-resize [&_[data-resize-handle=bottom-right]]:translate-1/2 [&_[data-resize-handle=bottom-right]]:cursor-nwse-resize",
-                                    "[&_[data-resize-handle=top-right]]:translate-x-1/2 [&_[data-resize-handle=top-right]]:-translate-y-1/2 [&_[data-resize-handle=top-right]]:cursor-nesw-resize [&_[data-resize-handle=bottom-left]]:-translate-x-1/2 [&_[data-resize-handle=bottom-left]]:translate-y-1/2 [&_[data-resize-handle=bottom-left]]:cursor-nesw-resize",
-                                )}
-                            >
-                                <TextEditor.Label isRequired>Sobre o evento</TextEditor.Label>
-                                <div className={cx("flex flex-col overflow-hidden rounded-lg bg-primary shadow-xs ring-1 ring-primary transition duration-100 ease-linear ring-inset focus-within:ring-2 focus-within:ring-brand", erros.descricao && "ring-error_subtle focus-within:ring-error")}>
-                                    <div className="border-b border-secondary px-2 py-1.5">
-                                        <BarraDaDescricao />
-                                    </div>
-                                    <TextEditor.Content />
-                                </div>
-                                {erros.descricao && <p className="text-sm text-error-primary">{erros.descricao}</p>}
-                            </TextEditor.Root>
+                                erro={erros.descricao}
+                            />
                         </div>
                     </div>
                     </Secao>
@@ -714,83 +661,6 @@ function FormularioDeEvento({ tipo, titulo }: { tipo: TipoEvento; titulo: string
 
 /* ---------------- peças ---------------- */
 
-/** Parágrafos em texto puro de um HTML do editor (blocos e itens de lista viram um parágrafo cada). */
-function paragrafosDoHtml(html: string): string[] {
-    if (!html) return [];
-    const doc = new DOMParser().parseFromString(html, "text/html");
-    const blocos = doc.body.querySelectorAll("p, li, h1, h2, h3, h4, blockquote");
-    const textos = blocos.length ? [...blocos].map((b) => b.textContent ?? "") : [doc.body.textContent ?? ""];
-    return textos.map((t) => t.trim()).filter(Boolean);
-}
-
-/**
- * Barra do "Sobre o evento" montada com as peças do editor do DS, sem escolha de cor nem fonte:
- * a página do evento usa as cores e a tipografia da Ingresse (EVT-86). Sem link, porque o editor
- * pede a URL num prompt em inglês.
- */
-const Separador = () => (
-    <div className="p-1.5" aria-hidden="true">
-        <div className="h-full w-px rounded-full bg-border-primary" />
-    </div>
-);
-const BarraDaDescricao = () => (
-    <div role="toolbar" aria-label="Formatação da descrição" className="flex w-max flex-wrap gap-0.5">
-        <Tooltip title="Negrito ⌘B">
-            <TextEditorBold />
-        </Tooltip>
-        <Tooltip title="Itálico ⌘I">
-            <TextEditorItalic />
-        </Tooltip>
-        <Tooltip title="Sublinhado ⌘U">
-            <TextEditorUnderline />
-        </Tooltip>
-        <Separador />
-        <Tooltip title="Alinhar à esquerda">
-            <TextEditorAlignLeft />
-        </Tooltip>
-        <Tooltip title="Centralizar">
-            <TextEditorAlignCenter />
-        </Tooltip>
-        <Separador />
-        <Tooltip title="Lista">
-            <TextEditorBulletList />
-        </Tooltip>
-        <Separador />
-        <Tooltip title="Inserir imagem">
-            <InserirImagem />
-        </Tooltip>
-    </div>
-);
-
-/**
- * Imagem no meio da descrição. O botão do DS grava um endereço temporário do navegador, que some ao
- * recarregar; aqui a imagem entra como data URL, como as outras imagens do evento, sem limite de
- * tamanho (EVT-86).
- */
-const InserirImagem = () => {
-    const { editor, isDisabled } = useEditorContext();
-    const arquivo = useRef<HTMLInputElement>(null);
-    return (
-        <>
-            <input
-                ref={arquivo}
-                type="file"
-                accept="image/png,image/jpeg"
-                className="hidden"
-                onChange={async (e) => {
-                    const file = e.target.files?.[0];
-                    e.target.value = "";
-                    if (!file) return;
-                    // Sem limite de tamanho na imagem da descrição (EVT-86).
-                    editor.chain().focus().setImage({ src: await lerComoDataUrl(file), alt: "" }).run();
-                }}
-            />
-            <EditorButton aria-label="Inserir imagem" isDisabled={isDisabled} onClick={() => arquivo.current?.click()}>
-                <Image01 className="size-5" />
-            </EditorButton>
-        </>
-    );
-};
 
 /** Linha de informação da página do evento: ícone, título curto e o campo que edita a informação. */
 /* O título fica só para leitor de tela: o rótulo do campo já diz o que é, e o ícone desce até a altura do campo (abaixo do rótulo). */
@@ -821,43 +691,6 @@ const Secao = ({ titulo, descricao, children }: { titulo: string; descricao?: st
 );
 
 const Grade = ({ children }: { children: ReactNode }) => <div className="grid gap-4 md:grid-cols-2">{children}</div>;
-
-/** Data e hora de agenda: calendário do DS e segmentos digitáveis (UI-FRM-001), pt-BR, 24 h. Valor em ISO local `AAAA-MM-DDTHH:mm`. */
-const CampoDataHora = ({
-    label,
-    valor,
-    onChange,
-    erro,
-    dica,
-    isRequired,
-    className,
-}: {
-    label: string;
-    valor: string;
-    onChange: (v: string) => void;
-    erro?: string;
-    dica?: string;
-    isRequired?: boolean;
-    className?: string;
-}) => (
-    <DateTimePicker
-        label={label}
-        granularity="minute"
-        hourCycle={24}
-        value={paraData(valor)}
-        onChange={(v) => onChange(v ? v.toString().slice(0, 16) : "")}
-        isRequired={isRequired}
-        isInvalid={!!erro}
-        hint={erro ?? dica}
-        className={className}
-    />
-);
-
-/** Soma horas a um ISO local `AAAA-MM-DDTHH:mm`. */
-const somarHoras = (v: string, horas: number) => {
-    const d = paraData(v);
-    return d ? d.add({ hours: horas }).toString().slice(0, 16) : "";
-};
 
 /**
  * Local com a busca de endereço (API; no protótipo, simulada). Um campo só: o resultado já traz o

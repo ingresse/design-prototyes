@@ -51,10 +51,13 @@ export function SecaoDoItem({
     descricao,
     alerta,
     recolhida,
+    semCartao,
     children,
 }: {
     titulo: string;
     descricao?: string;
+    /** Sem o cartão em volta: o conteúdo já é o próprio contêiner (ex.: a tabela de lotes). */
+    semCartao?: boolean;
     /** Destaca a seção quando algo precisa de atenção (ex.: erro, setor acima da capacidade). */
     alerta?: boolean;
     recolhida?: boolean;
@@ -74,6 +77,13 @@ export function SecaoDoItem({
                         <div className="flex flex-col gap-5">{children}</div>
                     </Accordion.Item>
                 </Accordion>
+            </section>
+        );
+    if (semCartao)
+        return (
+            <section data-alerta={alerta || undefined} className="flex flex-col gap-4 pt-2">
+                <h2>{cabecalho}</h2>
+                {children}
             </section>
         );
     return (

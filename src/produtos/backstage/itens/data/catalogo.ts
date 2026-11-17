@@ -131,7 +131,7 @@ function catalogoSimulado(base: Evento, total: number) {
                 vendidos.set(lotes[0].id, (vendidos.get(lotes[0].id) ?? 0) + pend);
             }
             const ativo = rand() > 0.1;
-            // Chaves de acesso de exemplo: algumas no ingresso inteiro (de 3 a 120), outras só no 1º lote.
+            // Passkeys de exemplo: algumas no ingresso inteiro (de 3 a 120), outras só no 1º lote.
             const chaves = i % 6 === 0 ? CHAVES_DE_EXEMPLO.slice(i % 50, (i % 50) + [3, 12, 120][s % 3]) : undefined;
             if (i % 9 === 4) lotes[0] = { ...lotes[0], chaves: CHAVES_DE_EXEMPLO.slice(200 + i, 205 + i) };
             g.ingressos.push({ id, nome: NOMES_TIPO[Math.floor(i / grupos.length) % NOMES_TIPO.length], beneficio: i % 2 ? "meia-entrada" : "inteira", ativo, lotes, ...(chaves ? { chaves } : {}) });

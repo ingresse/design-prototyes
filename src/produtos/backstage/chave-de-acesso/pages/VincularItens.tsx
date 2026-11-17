@@ -75,7 +75,7 @@ export function VincularItens() {
                 <header className="flex shrink-0 items-center justify-between gap-3">
                     <div className="flex items-center gap-3">
                         <ButtonUtility size="md" color="secondary" icon={ArrowLeft} tooltip="Voltar" onClick={() => leaveTo(backTo)} />
-                        <h1 className={TITULO_PAGINA}>Chave de acesso</h1>
+                        <h1 className={TITULO_PAGINA}>Passkey</h1>
                     </div>
                     <div className="flex items-center gap-3">
                         <Button size="lg" color="secondary" onClick={() => leaveTo(backTo)}>
@@ -95,7 +95,7 @@ export function VincularItens() {
                 <main className="flex-1 md:min-h-0 md:overflow-y-auto">
                     <div className="mx-auto w-full max-w-5xl">
                         <h2 className="text-lg font-semibold text-primary">
-                            {adicionarMode ? "Adicionar vínculos" : "Marque os itens que serão liberados ao utilizar a chave de acesso"}
+                            {adicionarMode ? "Adicionar vínculos" : "Marque os itens que serão liberados ao utilizar a Passkey"}
                         </h2>
                         {adicionarMode && (
                             <p className="mt-1 text-sm text-tertiary">

@@ -21,14 +21,14 @@ export interface Lote {
     pausado?: boolean;
     /** ISO local: o lote para de vender nesta data, mesmo com saldo. */
     dataLimite?: string;
-    /** Códigos de chave de acesso (Marketing) que liberam este lote. */
+    /** Códigos de Passkey (Marketing) que liberam este lote. */
     chaves?: string[];
 }
 
 /** Onde um item pode ser vendido. */
 export type CanalVenda = "site" | "link" | "app" | "bilheteria";
 
-/** Quem pode comprar: qualquer pessoa ou só quem tem uma chave de acesso. */
+/** Quem pode comprar: qualquer pessoa ou só quem tem uma Passkey. */
 export type PublicoVenda = "todos" | "chave";
 
 /** Quando, onde e para quem um item vende. Tudo opcional: sem regra, vende enquanto estiver ativo. */
@@ -59,9 +59,14 @@ export type TipoAcesso = "qr" | "facial";
 
 export type Beneficio = "inteira" | "meia-entrada";
 
+/** Como o ingresso passa de um lote para o próximo. Sem valor, "individual" (o padrão). */
+export type ViradaDeLote = "individual" | "em-conjunto" | "manual";
+
 export interface TipoIngresso {
     id: string;
     nome: string;
+    /** Tipo de virada de lote. Ainda não se escolhe: todo ingresso usa o padrão, "individual". */
+    virada?: ViradaDeLote;
     descricao?: string;
     beneficio?: Beneficio;
     /** Desligado no Backstage: não aparece para venda. */
@@ -83,7 +88,7 @@ export interface TipoIngresso {
     segmentos?: string[];
     /** Padrão: "comprador". */
     taxas?: PagadorDeTaxas;
-    /** Códigos de chave de acesso (Marketing) que liberam o ingresso inteiro. */
+    /** Códigos de Passkey (Marketing) que liberam o ingresso inteiro. */
     chaves?: string[];
 }
 
@@ -153,6 +158,8 @@ export interface Sessao {
     id: string;
     /** ISO local, sem fuso (ex.: 2026-10-03T22:00). */
     inicio: string;
+    /** Fim da sessão (ISO local). Pode cair no dia seguinte. Sessões antigas não têm. */
+    fim?: string;
     grupos: Grupo[];
 }
 

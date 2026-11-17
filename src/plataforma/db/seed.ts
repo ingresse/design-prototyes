@@ -15,8 +15,16 @@ export const SEED_VERSAO = "2026-11-13.1";
 
 const CRIADO = "2026-11-07T12:00:00.000Z";
 
-/** Catálogo padrão: Pista (inteira + meia) e Camarote, dois lotes cada. */
-export function catalogoPadrao(eventoId: string, inicios: string[], precoBase: number): Sessao[] {
+/** Soma horas a um ISO local `AAAA-MM-DDTHH:mm`, mantendo o formato (o fim pode cair no dia seguinte). */
+const somarHoras = (iso: string, horas: number) => {
+    const d = new Date(iso);
+    d.setHours(d.getHours() + horas);
+    const n = (x: number) => String(x).padStart(2, "0");
+    return `${d.getFullYear()}-${n(d.getMonth() + 1)}-${n(d.getDate())}T${n(d.getHours())}:${n(d.getMinutes())}`;
+};
+
+/** Catálogo padrão: Pista (inteira + meia) e Camarote, dois lotes cada. Cada sessão dura `duracao` horas. */
+export function catalogoPadrao(eventoId: string, inicios: string[], precoBase: number, duracao = 6): Sessao[] {
     const p = Math.max(precoBase, 20);
     return inicios.map((inicio, si) => {
         const s = `${eventoId}-s${si + 1}`;
@@ -72,7 +80,7 @@ export function catalogoPadrao(eventoId: string, inicios: string[], precoBase: n
                 ],
             },
         ];
-        return { id: s, inicio, grupos };
+        return { id: s, inicio, fim: somarHoras(inicio, duracao), grupos };
     });
 }
 
@@ -133,7 +141,7 @@ const eventosSite: Evento[] = EVENTOS_SITE.map((s) => {
         local: s.local,
         cidade: s.cidade,
         data: inicios[0],
-        sessoes: catalogoPadrao(s.id, inicios, s.preco),
+        sessoes: catalogoPadrao(s.id, inicios, s.preco, 4),
         vitrine: { artista: s.artista, categoria: s.categoria, tags: s.tags, descricao: s.descricao },
     });
 });

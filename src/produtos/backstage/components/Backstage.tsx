@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type ComponentType, type CSSProperties, type FC, type ReactNode } from "react";
 import { motion, useReducedMotion } from "motion/react";
-import { useLocation, useNavigate } from "react-router";
+import { useLocation, useNavigate, useNavigationType } from "react-router";
 import { Button as AriaButton, MenuItem as AriaMenuItem, type Key } from "react-aria-components";
 import {
     LinkExternal01,
@@ -211,6 +211,12 @@ export function BackstageLayout({
 }: BackstageLayoutProps) {
     const [menuMobile, setMenuMobile] = useState<MenuMobile>(null);
     const { pathname, search } = useLocation();
+    const tipoDeNavegacao = useNavigationType();
+    // Página nova começa do topo (ex.: da lista para criar ou editar um ingresso). Voltar pelo navegador
+    // (POP) mantém a rolagem que o navegador restaura.
+    useLayoutEffect(() => {
+        if (tipoDeNavegacao !== "POP") window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+    }, [pathname]);
     // Navegar fecha o menu do celular (o menu do evento navega pelos links da árvore).
     useEffect(() => setMenuMobile(null), [pathname]);
     const [variant, setVariant] = useLayoutVariant();
@@ -611,7 +617,7 @@ const ITEM_LABELS: Record<BackstageItem, string> = {
     "relatorio-personalizado": "Relatório personalizado",
     "relatorio-questionarios": "Respostas do questionário",
     "relatorio-comissarios": "Comissários",
-    "chave-de-acesso": "Chave de acesso",
+    "chave-de-acesso": "Passkey",
     "minhas-vendas-evento": "Minhas vendas",
     "formularios-compra": "Perguntas por ingresso",
 };
@@ -722,7 +728,7 @@ const EVENT_NAV: EventNavSection[] = [
     { id: "equipe-e-comissarios", label: "Equipe e Comissários", icon: UsersPlus, novo: true, items: [{ id: "equipe-e-comissarios", label: "Equipe e Comissários", href: "/backstage/evento/equipe" }] },
     // Questionário não é item vendido: fica fora da página de Itens, num destino próprio (BKS-18).
     { id: "questionario", label: "Questionário", icon: ClipboardCheck, items: [{ id: "catalogo-questionario", label: "Questionário", href: "/backstage/catalogo/questionario" }] },
-    // Um item só, direto para Chave de acesso (BKS-25).
+    // Um item só, direto para Passkey (BKS-25).
     { id: "marketing", label: "Marketing", icon: Announcement01, items: [{ id: "chave-de-acesso", label: "Marketing", href: "/backstage/marketing/chave-de-acesso" }] },
     // Um item só: os relatórios ficam num menu empilhado dentro da tela (BKS-25, navegacao-de-secao.tsx).
     // Relatórios moram na organização (BKS-26); daqui, abre com o "voltar para o evento".

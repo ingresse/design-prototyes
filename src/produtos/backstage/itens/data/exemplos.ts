@@ -1,7 +1,7 @@
 /* ------------------------------------------------------------------ */
 /*  Listas de exemplo do catálogo (fictícias)                          */
 /*                                                                     */
-/*  Chaves de acesso: em produção vêm de Marketing › Chave de acesso   */
+/*  Passkeys: em produção vêm de Marketing › Passkey   */
 /*  do evento (lá também em mock). Segmentações vêm de Público › */
 /*  Segmentações da organização.                                       */
 /* ------------------------------------------------------------------ */

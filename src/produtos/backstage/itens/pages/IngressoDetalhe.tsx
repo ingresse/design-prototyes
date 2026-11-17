@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useNavigate, useParams, useSearchParams } from "react-router";
 import { toast } from "sonner";
-import { ArrowLeft, InfoCircle, Plus, Ticket01, Trash01 } from "@untitledui/icons";
+import { ArrowLeft, InfoCircle, Key01, Plus, Ticket01, Trash01 } from "@untitledui/icons";
 import { EmptyState } from "@/components/application/empty-state/empty-state";
 import { Dialog, Modal, ModalOverlay } from "@/components/application/modals/modal";
 import { Button } from "@/components/base/buttons/button";
@@ -11,13 +11,14 @@ import { Input } from "@/components/base/input/input";
 import { ComboBox } from "@/components/base/select/combobox";
 import { Select } from "@/components/base/select/select";
 import { LIMIAR_FERRAMENTAS } from "../components/escala";
-import { TextArea } from "@/components/base/textarea/textarea";
 import { Toggle } from "@/components/base/toggle/toggle";
 import { Tooltip, TooltipTrigger } from "@/components/base/tooltip/tooltip";
 import { DURACAO_TRANSICAO, Surgir } from "@/components/foundations/transicao";
 import type { Lote, TipoIngresso } from "@/plataforma";
-import { loteAtual, PRAZO_DA_COMPRA_PENDENTE_MIN } from "@/plataforma";
+import { PRAZO_DA_COMPRA_PENDENTE_MIN } from "@/plataforma";
+import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
+import { DescricaoRica } from "../../components/descricao-rica";
 import { ButtonGroup, ButtonGroupItem } from "@/components/base/button-group/button-group";
 import { SeletorDeLista } from "../components/SeletorDeLista";
 import { CHAVES_DE_EXEMPLO, SEGMENTACOES } from "../data/exemplos";
@@ -31,7 +32,6 @@ import {
     EstadoBadge,
     SecaoDoItem,
     irParaPrimeiroErro,
-    CabecalhoDoItem,
 } from "../components/comuns";
 import {
     acharIngresso,
@@ -41,9 +41,7 @@ import {
     novoId,
     ofertaDoSetor,
     pagosDoLote,
-    pendentesDoIngresso,
     pendentesDoLote,
-    quantidadeDoIngresso,
     salvarSessoes,
     semIngresso,
     useCatalogo,
@@ -60,10 +58,12 @@ import { formatar, useTextosItens } from "../data/textos-itens";
 /*  quando há mudança, e sair com mudança pede confirmação.            */
 /* ------------------------------------------------------------------ */
 
+/** Colunas da lista de lotes: nome, quantidade, preço, à venda e ações. */
+const GRADE_LOTES = "md:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)_minmax(0,1.1fr)_4.5rem_4.5rem]";
+
 const T = {
     voltar: "Ingressos",
     novo: "Novo ingresso",
-    resumoTopo: "{lote} à venda por {preco}",
     disponiveis: "{n} disponíveis",
     pendentes: "{n} pendentes",
     vendidos: "{n} vendidos",
@@ -91,22 +91,22 @@ const T = {
     setorDaSessao: "Sessão de {data}",
     buscarSetor: "Busque pelo nome do grupo",
     lotes: "Preço e lotes",
-    lotesDica: "Só um lote vende por vez.",
     loteNome: "Nome do lote",
     lotePreco: "Preço",
     loteQtd: "Quantidade",
+    loteQtdDe: "Quantidade do {lote}",
     loteNumeros: "{disponiveis} disponíveis, {pendentes} pendentes e {vendidos} vendidos.",
     loteNumerosSemPendentes: "{disponiveis} disponíveis e {vendidos} vendidos.",
     loteQtdErro: "Use pelo menos {n}, a quantidade já vendida.",
     loteQtdErroPendentes: "Use pelo menos {n}, entre vendidos e pendentes.",
     /** Começa pelo rótulo visível (WCAG 2.5.3). */
     loteVender: "À venda, {lote}",
-    loteTroca: "Ao salvar, {anterior} deixa de vender e {lote} passa a vender. Só um lote vende por vez.",
-    loteChaves: { one: "{n} chave de acesso", other: "{n} chaves de acesso" },
-    loteSemChaves: "Sem chave de acesso",
-    loteVincular: "Chaves do {lote}",
+    loteTroca: "Ao salvar, {anterior} deixa de vender e {lote} passa a vender.",
+    loteChaves: { one: "{n} Passkey", other: "{n} Passkeys" },
+    loteSemChaves: "Sem Passkey",
+    loteVincular: "Passkeys do {lote}",
     nomeContador: "{n} de 70 caracteres",
-    descricaoContador: "{n} de 1.000 caracteres",
+    descricaoPlaceholder: "O que está incluso, quem pode usar e o que levar.",
     itemVendido: "Item vendido",
     itemVendidoDica: "Ingresso dá acesso ao evento; check-in confirma presença; pacote reúne o acesso a mais de um dia ou atração.",
     itens: { ingresso: "Ingresso", checkin: "Check-in", pacote: "Pacote" },
@@ -114,11 +114,11 @@ const T = {
     transferencias: { sempre: "Sempre permitir", nunca: "Nunca permitir", compra: "Somente na compra" },
     transferenciaPorDependentes: "Com dependentes como portadores, a transferência fica em Nunca permitir.",
     transferenciaPorSegmento: "Com segmentação, a transferência fica em Somente na compra.",
-    chaves: "Chaves de acesso",
-    chavesDica: "Com chave vinculada, só quem tem uma delas compra. As chaves são criadas em Marketing › Chave de acesso.",
-    chavesVincular: "Vincular chaves",
-    chavesTitulo: "Chaves de acesso de {item}",
-    chavesVazio: "Nenhuma chave neste evento. Crie em Marketing › Chave de acesso.",
+    chaves: "Passkeys",
+    chavesDica: "Com Passkey vinculada, só quem tem uma delas compra. As Passkeys são criadas em Marketing › Passkey.",
+    chavesVincular: "Vincular Passkeys",
+    chavesTitulo: "Passkeys de {item}",
+    chavesVazio: "Nenhuma Passkey neste evento. Crie em Marketing › Passkey.",
     avancadoDica: "Já vêm preenchidas. Mude só se precisar.",
     avancado: "Avançado",
     portador: "Tipo de portador",
@@ -199,7 +199,7 @@ export function IngressoDetalhe() {
             <BackstageLayout activeSection="itens" activeItem="catalogo-ingressos">
                 <div role="status" aria-label="Carregando ingresso" className="flex flex-col gap-4">
                     <span aria-hidden="true" className="h-9 w-64 animate-pulse rounded bg-secondary motion-reduce:animate-none" />
-                    <span aria-hidden="true" className="mx-auto h-64 w-full max-w-[732px] animate-pulse rounded-2xl bg-secondary motion-reduce:animate-none" />
+                    <span aria-hidden="true" className="h-64 w-full animate-pulse rounded-2xl bg-secondary motion-reduce:animate-none" />
                 </div>
             </BackstageLayout>
         );
@@ -259,12 +259,8 @@ export function IngressoDetalhe() {
 
     // Estado e números do rascunho: a tela mostra o efeito do que está sendo editado.
     const estado = estadoDoIngresso(tipo, vendidos);
-    const atual = loteAtual(tipo, vendidos);
     // vendidos do catálogo já inclui os pendentes (seguram o estoque); para mostrar, separa os dois.
     const vendidosTotal = vendidosDoIngresso(tipo, vendidos);
-    const total = quantidadeDoIngresso(tipo);
-    const pendentesTotal = pendentesDoIngresso(tipo, pendentes);
-    const numeros = { disponiveis: Math.max(0, total - vendidosTotal), pendentes: pendentesTotal, vendidos: vendidosTotal - pendentesTotal };
     const setorEscolhido = setores.find((s) => s.setor.id === rascunho.setorId);
     const setorComRascunho = setorEscolhido && {
         ...setorEscolhido.setor,
@@ -325,36 +321,61 @@ export function IngressoDetalhe() {
     return (
         <BackstageLayout activeSection="itens" activeItem="catalogo-ingressos">
             <div className="flex min-w-0 flex-1 flex-col gap-6">
-                <CabecalhoDoItem
-                    voltar={T.voltar}
-                    onVoltar={voltar}
-                    titulo={novo ? tipo.nome.trim() || T.novo : original.tipo.nome}
-                    estado={novo ? undefined : estado}
-                    resumo={
-                        novo ? undefined : (
-                            <NumerosDoEstoque antes={atual ? formatar(T.resumoTopo, { lote: atual.nome, preco: preco(atual.preco) }) : undefined} {...numeros} />
-                        )
-                    }
-                    ativo={tipo.ativo}
-                    onAtivo={(ativo) => void alternarAtivo(ativo)}
-                    aviso={!novo && tipo.ativo && estado !== "a-venda" ? T.avisoLigado[estado === "esgotado" ? "esgotado" : tipo.lotes.length ? "semLote" : "semLotes"] : undefined}
-                />
+                {/* Criar e editar usam o mesmo formulário: sem título no topo, só o voltar; o "À venda" fica ao lado do nome (ITM-32). */}
+                <header>
+                    <h1 className="sr-only">{novo ? T.novo : original.tipo.nome}</h1>
+                    <Button color="tertiary" size="md" iconLeading={ArrowLeft} onClick={voltar} className="-ml-3">
+                        {T.voltar}
+                    </Button>
+                </header>
 
-                <div className="mx-auto flex w-full max-w-[732px] flex-col gap-4">
+                <div className="flex w-full flex-col gap-4">
                     <SecaoDoItem
                         titulo={T.info}
                         alerta={tentou && (!!erros.nome || !!erros.setor)}
                     >
-                        <Input
-                            label={T.nome}
-                            isRequired
-                            maxLength={70}
-                            value={tipo.nome}
-                            onChange={(v) => set({ nome: v })}
-                            placeholder="Ex.: Inteira"
-                            isInvalid={tentou && !!erros.nome}
-                            hint={tentou && erros.nome ? erros.nome : formatar(T.nomeContador, { n: tipo.nome.length })}
-                        />
+                        <div className="grid gap-4 md:grid-cols-2">
+                            {/* O grupo vem primeiro: o ingresso nasce dentro dele. Com muitos setores (várias sessões), o campo vira busca (UI-LST-001). */}
+                            <CampoSetor
+                                label={T.setor}
+                                valor={rascunho.setorId}
+                                onChange={(id) => setRascunho((r) => (r ? { ...r, setorId: id } : r))}
+                                erro={tentou ? erros.setor : undefined}
+                                opcoes={setores.map(({ setor, sessao }) => ({
+                                    id: setor.id,
+                                    nome: setor.nome,
+                                    data: evento.sessoes.length > 1 ? dataCurta(sessao.inicio) : undefined,
+                                }))}
+                            />
+                        </div>
+                        <div className="flex items-start gap-4">
+                            <Input
+                                label={T.nome}
+                                isRequired
+                                maxLength={70}
+                                value={tipo.nome}
+                                onChange={(v) => set({ nome: v })}
+                                placeholder="Ex.: Inteira"
+                                isInvalid={tentou && !!erros.nome}
+                                hint={tentou && erros.nome ? erros.nome : formatar(T.nomeContador, { n: tipo.nome.length })}
+                                className="min-w-0 flex-1"
+                            />
+                            {/* O "À venda" fica ao lado do nome, com o rótulo em cima, como na lista (UI-FRM-005). Na edição, grava na hora (ITM-32). */}
+                            <div className="flex shrink-0 flex-col gap-1.5">
+                                <span className="text-sm font-medium text-secondary" aria-hidden="true">
+                                    {t.visibilidade.ativo}
+                                </span>
+                                <div className="flex h-11 items-center">
+                                    <Toggle size="md" aria-label={t.visibilidade.ativo} isSelected={tipo.ativo} onChange={(ativo) => void alternarAtivo(ativo)} />
+                                </div>
+                            </div>
+                        </div>
+                        {/* Ligado mas sem vender (esgotado ou sem lote à venda): o motivo fica logo abaixo do nome. */}
+                        <Surgir visivel={!novo && tipo.ativo && estado !== "a-venda"}>
+                            <p role="status" className="text-sm text-warning-primary">
+                                {T.avisoLigado[estado === "esgotado" ? "esgotado" : tipo.lotes.length ? "semLote" : "semLotes"]}
+                            </p>
+                        </Surgir>
                         <div className="grid gap-4 md:grid-cols-3">
                             <Select
                                 label={T.itemVendido}
@@ -387,136 +408,145 @@ export function IngressoDetalhe() {
                                 {(i) => <Select.Item id={i.id}>{i.label}</Select.Item>}
                             </Select>
                         </div>
-                        <div className="grid gap-4 md:grid-cols-2">
-                            {/* Com muitos setores (várias sessões), o campo vira busca (UI-LST-001). */}
-                            <CampoSetor
-                                label={T.setor}
-                                valor={rascunho.setorId}
-                                onChange={(id) => setRascunho((r) => (r ? { ...r, setorId: id } : r))}
-                                erro={tentou ? erros.setor : undefined}
-                                opcoes={setores.map(({ setor, sessao }) => ({
-                                    id: setor.id,
-                                    nome: setor.nome,
-                                    data: evento.sessoes.length > 1 ? dataCurta(sessao.inicio) : undefined,
-                                }))}
-                            />
-                        </div>
-                        <TextArea
+                        {/* Mesmo editor do "Sobre o evento" (EVT-86); grava o HTML, que a compra já mostra formatado. */}
+                        <DescricaoRica
                             label={T.descricao}
-                            hint={formatar("{dica} {contador}", { dica: T.descricaoDica, contador: formatar(T.descricaoContador, { n: (tipo.descricao ?? "").length }) })}
-                            rows={3}
-                            maxLength={1000}
-                            value={tipo.descricao ?? ""}
-                            onChange={(v) => set({ descricao: v || undefined })}
+                            valor={tipo.descricao ?? ""}
+                            onChange={(html) => set({ descricao: html || undefined })}
+                            placeholder={T.descricaoPlaceholder}
+                            hint={T.descricaoDica}
                         />
                     </SecaoDoItem>
 
+                    {/* Sem cartão em volta: a tabela de lotes já é o contêiner (UI-VIS-019). */}
                     <SecaoDoItem
                         titulo={T.lotes}
+                        semCartao
                         alerta={acimaDaCapacidade || (tentou && (!!erros.lotes || !!erros.loteQtd))}
                     >
-                        <p className="text-sm text-tertiary">
-                            {T.lotesDica}
-                            {vendidosTotal > 0 && ` ${t.mudancasValem}`}
-                        </p>
+                        {vendidosTotal > 0 && <p className="text-sm text-tertiary">{t.mudancasValem}</p>}
                         <Surgir visivel={acimaDaCapacidade}>
                             <p role="status" className="rounded-lg bg-warning-primary px-3 py-2 text-sm text-warning-primary">
                                 {formatar(T.capacidadeAviso, { setor: setorEscolhido?.setor.nome ?? "", oferta: numero(ofertaSetor), capacidade: numero(setorEscolhido?.setor.capacidade ?? 0) })}
                             </p>
                         </Surgir>
-                        <ol className="flex flex-col gap-3">
-                            <AnimatePresence initial={false}>
-                                {tipo.lotes.map((l, i) => {
-                                    const vendidosLote = vendidosDoLote(l, vendidos);
-                                    const pendentesLote = pendentesDoLote(l, pendentes);
-                                    const numerosLote = {
-                                        disponiveis: numero(Math.max(0, l.quantidade - vendidosLote)),
-                                        pendentes: numero(pendentesLote),
-                                        vendidos: numero(pagosDoLote(l, vendidos, pendentes)),
-                                    };
-                                    const qtdInvalida = l.quantidade < vendidosLote;
-                                    const esgotado = l.quantidade > 0 && vendidosLote >= l.quantidade;
-                                    return (
-                                        <motion.li
-                                            key={l.id}
-                                            layout={!reduzir}
-                                            initial={{ opacity: 0, height: 0 }}
-                                            animate={{ opacity: 1, height: "auto" }}
-                                            exit={{ opacity: 0, height: 0 }}
-                                            transition={{ duration: reduzir ? 0.12 : DURACAO_TRANSICAO }}
-                                            className="overflow-hidden"
-                                        >
-                                            {/* Celular: o lote vira um cartão empilhado, sem rolagem lateral (UI-MOB-004). */}
-                                            <div className="flex flex-col gap-3 rounded-xl p-4 ring-1 ring-secondary">
-                                                <div className="flex flex-wrap items-center justify-between gap-2">
-                                                    <span className="flex items-center gap-2">
-                                                        <span className="text-sm font-semibold text-primary">{l.nome || formatar(T.loteNomePadrao, { n: i + 1 })}</span>
-                                                        {esgotado && <EstadoBadge lote estado="esgotado" />}
-                                                    </span>
-                                                    <span className="flex items-center gap-3">
-                                                        {/* Rótulo visível "À venda" (UI-FRM-005); esgotado não liga. */}
-                                                        <Toggle
-                                                            size="sm"
-                                                            label={t.visibilidade.ativo}
-                                                            aria-label={formatar(T.loteVender, { lote: l.nome })}
-                                                            isSelected={loteLigado?.id === l.id}
-                                                            isDisabled={esgotado}
-                                                            onChange={(on) => venderLote(l.id, on)}
+                        {/* Lista em tabela: o essencial de cada lote numa linha (nome, quantidade, preço, à venda).
+                            No celular, cada linha vira um bloco empilhado, com os rótulos visíveis (UI-MOB-004). */}
+                        <div
+                            className={cx(
+                                "overflow-hidden rounded-2xl bg-primary ring-1 ring-secondary",
+                                (acimaDaCapacidade || (tentou && (!!erros.lotes || !!erros.loteQtd))) && "ring-2 ring-fg-warning-secondary",
+                            )}
+                        >
+                            <div aria-hidden="true" className={cx(GRADE_LOTES, "hidden border-b border-secondary bg-secondary px-4 py-3 text-sm font-medium text-tertiary md:grid")}>
+                                <span>{T.loteNome}</span>
+                                <span>{T.loteQtd}</span>
+                                <span>{T.lotePreco}</span>
+                                <span>{t.visibilidade.ativo}</span>
+                                <span />
+                            </div>
+                            <ol className="flex flex-col">
+                                <AnimatePresence initial={false}>
+                                    {tipo.lotes.map((l, i) => {
+                                        const vendidosLote = vendidosDoLote(l, vendidos);
+                                        const pendentesLote = pendentesDoLote(l, pendentes);
+                                        const numerosLote = {
+                                            disponiveis: numero(Math.max(0, l.quantidade - vendidosLote)),
+                                            pendentes: numero(pendentesLote),
+                                            vendidos: numero(pagosDoLote(l, vendidos, pendentes)),
+                                        };
+                                        const qtdInvalida = l.quantidade < vendidosLote;
+                                        const esgotado = l.quantidade > 0 && vendidosLote >= l.quantidade;
+                                        const nomeDoLote = l.nome || formatar(T.loteNomePadrao, { n: i + 1 });
+                                        // Linha de apoio só quando diz algo: vendas, erro de quantidade, esgotado ou chaves.
+                                        const apoio = qtdInvalida
+                                            ? formatar(pendentesLote ? T.loteQtdErroPendentes : T.loteQtdErro, { n: numero(vendidosLote) })
+                                            : vendidosLote > 0
+                                              ? formatar(pendentesLote ? T.loteNumeros : T.loteNumerosSemPendentes, numerosLote)
+                                              : null;
+                                        return (
+                                            <motion.li
+                                                key={l.id}
+                                                layout={!reduzir}
+                                                initial={{ opacity: 0, height: 0 }}
+                                                animate={{ opacity: 1, height: "auto" }}
+                                                exit={{ opacity: 0, height: 0 }}
+                                                transition={{ duration: reduzir ? 0.12 : DURACAO_TRANSICAO }}
+                                                className="overflow-hidden border-b border-secondary last:border-b-0"
+                                            >
+                                                <div className="flex flex-col gap-2 px-4 py-4">
+                                                    <div className={cx(GRADE_LOTES, "grid grid-cols-1 gap-3 md:items-center md:**:data-label:hidden")}>
+                                                        <Input label={T.loteNome} aria-label={T.loteNome} value={l.nome} onChange={(v) => setLote(l.id, { nome: v })} placeholder={T.loteNome} />
+                                                        <Input
+                                                            label={T.loteQtd}
+                                                            aria-label={formatar(T.loteQtdDe, { lote: nomeDoLote })}
+                                                            type="number"
+                                                            inputMode="numeric"
+                                                            placeholder="0"
+                                                            value={l.quantidade ? String(l.quantidade) : ""}
+                                                            onChange={(v) => setLote(l.id, { quantidade: Math.max(0, Math.round(Number(v) || 0)) })}
+                                                            isInvalid={qtdInvalida}
                                                         />
-                                                        <ButtonUtility
-                                                            size="xs"
-                                                            color="tertiary"
-                                                            icon={Trash01}
-                                                            tooltip={vendidosLote > 0 ? formatar(T.loteComVendas, { lote: l.nome }) : formatar(T.loteRemover, { lote: l.nome })}
-                                                            isDisabled={vendidosLote > 0}
-                                                            onClick={() => set({ lotes: tipo.lotes.filter((x) => x.id !== l.id) })}
-                                                        />
-                                                    </span>
+                                                        <CampoPreco label={T.lotePreco} valor={l.preco} onChange={(v) => setLote(l.id, { preco: v })} />
+                                                        {/* Rótulo "À venda" no cabeçalho da tabela; no celular, ao lado do toggle (UI-FRM-005). Esgotado não liga. */}
+                                                        <div className="flex items-center justify-between gap-3 md:justify-start">
+                                                            <span className="text-sm font-medium text-secondary md:hidden">{t.visibilidade.ativo}</span>
+                                                            <Toggle
+                                                                size="sm"
+                                                                aria-label={formatar(T.loteVender, { lote: nomeDoLote })}
+                                                                isSelected={loteLigado?.id === l.id}
+                                                                isDisabled={esgotado}
+                                                                onChange={(on) => venderLote(l.id, on)}
+                                                            />
+                                                        </div>
+                                                        <div className="flex items-center justify-end gap-1">
+                                                            <ButtonUtility
+                                                                size="xs"
+                                                                color="tertiary"
+                                                                icon={Key01}
+                                                                tooltip={formatar(T.loteVincular, { lote: nomeDoLote })}
+                                                                onClick={() => setSeletor({ tipo: "chaves", loteId: l.id })}
+                                                            />
+                                                            <ButtonUtility
+                                                                size="xs"
+                                                                color="tertiary"
+                                                                icon={Trash01}
+                                                                tooltip={vendidosLote > 0 ? formatar(T.loteComVendas, { lote: nomeDoLote }) : formatar(T.loteRemover, { lote: nomeDoLote })}
+                                                                isDisabled={vendidosLote > 0}
+                                                                onClick={() => set({ lotes: tipo.lotes.filter((x) => x.id !== l.id) })}
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                    {(apoio || esgotado || !!l.chaves?.length) && (
+                                                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+                                                            {esgotado && <EstadoBadge lote estado="esgotado" />}
+                                                            {apoio && <span className={qtdInvalida ? "text-error-primary" : "text-tertiary"}>{apoio}</span>}
+                                                            {!!l.chaves?.length && <span className="text-tertiary">{plural(T.loteChaves, l.chaves.length)}</span>}
+                                                        </div>
+                                                    )}
                                                 </div>
-                                                <div className="grid gap-3 sm:grid-cols-3">
-                                                    <Input label={T.loteNome} value={l.nome} onChange={(v) => setLote(l.id, { nome: v })} />
-                                                    <CampoPreco label={T.lotePreco} valor={l.preco} onChange={(v) => setLote(l.id, { preco: v })} />
-                                                    <Input
-                                                        label={T.loteQtd}
-                                                        type="number"
-                                                        inputMode="numeric"
-                                                        value={l.quantidade ? String(l.quantidade) : ""}
-                                                        onChange={(v) => setLote(l.id, { quantidade: Math.max(0, Math.round(Number(v) || 0)) })}
-                                                        isInvalid={qtdInvalida}
-                                                        hint={
-                                                            qtdInvalida
-                                                                ? formatar(pendentesLote ? T.loteQtdErroPendentes : T.loteQtdErro, { n: numero(vendidosLote) })
-                                                                : formatar(pendentesLote ? T.loteNumeros : T.loteNumerosSemPendentes, numerosLote)
-                                                        }
-                                                    />
-                                                </div>
-                                                <div className="flex flex-wrap items-center justify-between gap-2 border-t border-secondary pt-3">
-                                                    <span className="text-sm text-tertiary">{l.chaves?.length ? plural(T.loteChaves, l.chaves.length) : T.loteSemChaves}</span>
-                                                    <Button color="secondary" size="sm" onClick={() => setSeletor({ tipo: "chaves", loteId: l.id })}>
-                                                        {formatar(T.loteVincular, { lote: l.nome })}
-                                                    </Button>
-                                                </div>
-                                            </div>
-                                        </motion.li>
-                                    );
-                                })}
-                            </AnimatePresence>
-                        </ol>
+                                            </motion.li>
+                                        );
+                                    })}
+                                </AnimatePresence>
+                            </ol>
+                            <div className={cx("px-2 py-2", tipo.lotes.length > 0 && "border-t border-secondary")}>
+                                <Button
+                                    color="tertiary"
+                                    size="md"
+                                    iconLeading={Plus}
+                                    onClick={() => {
+                                        const ultimo = tipo.lotes.at(-1);
+                                        set({ lotes: [...tipo.lotes, { id: novoId("lot"), nome: formatar(T.loteNomePadrao, { n: tipo.lotes.length + 1 }), preco: ultimo?.preco ?? 0, quantidade: 0, ...(tipo.lotes.length ? { pausado: true } : {}) }] });
+                                    }}
+                                >
+                                    {T.loteNovo}
+                                </Button>
+                            </div>
+                        </div>
                         <Surgir visivel={tentou && !!erros.lotes}>
                             <p className="text-sm text-error-primary">{T.semLotes}</p>
                         </Surgir>
-                        <Button
-                            color="secondary"
-                            size="md"
-                            iconLeading={Plus}
-                            className="self-start"
-                            onClick={() => {
-                                const ultimo = tipo.lotes.at(-1);
-                                set({ lotes: [...tipo.lotes, { id: novoId("lot"), nome: formatar(T.loteNomePadrao, { n: tipo.lotes.length + 1 }), preco: ultimo?.preco ?? 0, quantidade: 0, ...(tipo.lotes.length ? { pausado: true } : {}) }] });
-                            }}
-                        >
-                            {T.loteNovo}
-                        </Button>
                     </SecaoDoItem>
 
                     <SecaoDoItem titulo={t.vendas.titulo}>
@@ -703,25 +733,3 @@ function CampoSetor({ label, valor, onChange, erro, opcoes }: { label: string; v
 
 
 
-/**
- * Disponíveis, pendentes e vendidos do ingresso, numa frase, sem símbolo separador (UI-TXT-010).
- * Pendentes só aparece quando há, com a explicação do prazo num tooltip (ITM-34).
- */
-function NumerosDoEstoque({ antes, disponiveis, pendentes, vendidos }: { antes?: string; disponiveis: number; pendentes: number; vendidos: number }) {
-    const { numero } = useTextosItens();
-    const inicio = antes ? `${antes}. ` : "";
-    const disp = formatar(T.disponiveis, { n: numero(disponiveis) });
-    const vend = formatar(T.vendidos, { n: numero(vendidos) });
-    if (pendentes <= 0) return <>{`${inicio}${disp} e ${vend}.`}</>;
-    return (
-        <>
-            {`${inicio}${disp}, ${formatar(T.pendentes, { n: numero(pendentes) })}`}
-            <Tooltip title={formatar(T.pendentesDica, { min: PRAZO_DA_COMPRA_PENDENTE_MIN })}>
-                <TooltipTrigger aria-label={T.pendentesAria} className="mx-1 inline-flex align-middle text-fg-quaternary transition duration-100 ease-linear hover:text-fg-secondary">
-                    <InfoCircle className="size-4" />
-                </TooltipTrigger>
-            </Tooltip>
-            {`e ${vend}.`}
-        </>
-    );
-}

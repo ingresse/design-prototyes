@@ -93,7 +93,7 @@ export function ImportarPlanilhaModal({ isOpen, onClose, onImport }: ImportarPla
         const keys = await parseKeys(f);
         if (keys.length > MAX_KEYS) {
             setErrorMessage(
-                "A planilha ultrapassa o limite de 1.000 chaves por importação. Ajuste o arquivo e tente novamente.",
+                "A planilha ultrapassa o limite de 1.000 Passkeys por importação. Ajuste o arquivo e tente novamente.",
             );
             return;
         }
@@ -141,7 +141,7 @@ export function ImportarPlanilhaModal({ isOpen, onClose, onImport }: ImportarPla
                             <div className="flex-1">
                                 <h2 className="text-lg font-semibold text-primary">Importar planilha</h2>
                                 <p className="mt-1 text-sm text-tertiary">
-                                    Envie uma planilha com as chaves de acesso que deseja adicionar
+                                    Envie uma planilha com as Passkeys que deseja adicionar
                                 </p>
                             </div>
                             <ButtonUtility size="xs" color="tertiary" icon={XClose} tooltip="Fechar" onClick={handleCancel} />
@@ -190,7 +190,7 @@ export function ImportarPlanilhaModal({ isOpen, onClose, onImport }: ImportarPla
                                     <span className="font-semibold text-brand-secondary">Clique</span>{" "}
                                     <span className="text-secondary">ou arraste o arquivo aqui</span>
                                 </p>
-                                <p className="mt-1 text-xs text-tertiary">CSV ou Excel com até 1.000 chaves de acesso</p>
+                                <p className="mt-1 text-xs text-tertiary">CSV ou Excel com até 1.000 Passkeys</p>
                             </div>
                             <FileIcon type="csv" className="pointer-events-none absolute right-6 bottom-6 size-8 shrink-0" />
                         </div>
@@ -258,7 +258,7 @@ export function ImportarPlanilhaModal({ isOpen, onClose, onImport }: ImportarPla
                                 Cancelar
                             </Button>
                             <Button size="md" color="primary" isDisabled={!isDone} onClick={handleConfirm}>
-                                Importar chaves
+                                Importar Passkeys
                             </Button>
                         </div>
                     </div>

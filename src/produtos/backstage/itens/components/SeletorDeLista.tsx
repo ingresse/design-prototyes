@@ -11,7 +11,7 @@ import { BotaoMostrarMais, LIMIAR_FERRAMENTAS, paraBusca, useMostrarMais } from 
 /* ------------------------------------------------------------------ */
 /*  Seletor de muitos itens (UI-LST-001, UI-LST-002)                   */
 /*                                                                     */
-/*  Para produtos, combos, chaves de acesso, venda vinculada e         */
+/*  Para produtos, combos, Passkeys, venda vinculada e         */
 /*  segmentações. Mesmo padrão do seletor de ingressos da abertura:    */
 /*  slideout (tela cheia no celular, UI-NAV-001 e UI-NAV-003), busca,  */
 /*  "N de M", "Selecionar todos do filtro", Todos ou Selecionados,     */
@@ -53,7 +53,7 @@ export function SeletorDeLista({
     descricao?: string;
     opcoes: OpcaoDeLista[];
     selecionados: string[];
-    /** Texto quando não há nenhuma opção (ex.: "Crie chaves em Marketing › Chave de acesso."). */
+    /** Texto quando não há nenhuma opção (ex.: "Crie Passkeys em Marketing › Passkey."). */
     vazio: string;
     onConfirmar: (ids: string[]) => void;
     onFechar: () => void;

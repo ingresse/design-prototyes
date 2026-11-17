@@ -39,7 +39,7 @@ export const acoesDaSecao = (secao: SecaoPermissao) => (secao.colunas ? secao.co
 const CRUD: AcaoBase[] = ["view", "edit", "create", "delete"];
 
 // Linha de recurso: substantivo no plural; o verbo vem da coluna. Mudanças de baixo impacto
-// (reordenar, desativar chave de acesso, vincular termos) ficam no Editar do próprio item.
+// (reordenar, desativar Passkey, vincular termos) ficam no Editar do próprio item.
 // Linha de ação: só quando o efeito é maior que o da coluna (abre ou fecha venda, vira lote,
 // exporta dados, movimenta dinheiro) e sempre começa pelo verbo real.
 // Recurso com uma linha de ação só: ela fica direta, logo abaixo (`acao`). Com duas ou mais,
@@ -149,13 +149,13 @@ export const CATALOGO_PERMISSOES: SecaoPermissao[] = [
     {
         id: "marketing",
         nome: "Marketing",
-        descricao: "Cupons de desconto, etiquetas e as chaves de acesso que liberam ingressos ocultos.",
+        descricao: "Cupons de desconto, etiquetas e as Passkeys que liberam ingressos ocultos.",
         recursos: [
             { id: "coupons", nome: "Cupons de desconto", base: CRUD },
             sub("coupons", "toggle", "Ativar e desativar cupons", "edit"),
             sub("coupons", "link", "Vincular e desvincular cupons", "edit"),
-            { id: "passkeys", nome: "Chaves de acesso", base: CRUD },
-            acao("passkeys", "export", "Exportar chaves de acesso", "view"),
+            { id: "passkeys", nome: "Passkeys", base: CRUD },
+            acao("passkeys", "export", "Exportar Passkeys", "view"),
             { id: "labels", nome: "Etiquetas", base: CRUD },
             acao("labels", "link", "Vincular e desvincular etiquetas", "edit"),
         ],

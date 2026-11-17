@@ -1,8 +1,6 @@
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { CalendarPlus01, Copy01, Edit01, Plus, SearchLg, Trash01 } from "@untitledui/icons";
-import { parseDateTime } from "@internationalized/date";
-import { DateTimePicker } from "@/components/application/date-picker/date-time-picker";
 import { EmptyState } from "@/components/application/empty-state/empty-state";
 import { Dialog, Modal, ModalOverlay } from "@/components/application/modals/modal";
 import { Badge } from "@/components/base/badges/badges";
@@ -20,6 +18,7 @@ import { SeletorDeIngressos, useResumoDeIngressos } from "../components/SeletorD
 import { novoId, produtosDo, salvarAberturas, useCatalogo } from "../../itens/data/catalogo";
 import { formatar, useTextosItens } from "../../itens/data/textos-itens";
 import { AbasDeItens } from "../../components/abas-de-itens";
+import { CampoData, CampoHora } from "../../components/campos-de-data-e-hora";
 
 /* ------------------------------------------------------------------ */
 /*  Aberturas de vendas (ABV)                                          */
@@ -69,7 +68,10 @@ const T = {
         nomeErro: "Dê um nome à abertura.",
         inicio: "Começa em",
         fim: "Termina em",
-        dataErro: "Escolha data e hora.",
+        inicioHora: "Horário de início",
+        fimHora: "Horário de fim",
+        dataErro: "Escolha a data.",
+        horaErro: "Escolha o horário.",
         fimErro: "Escolha um fim depois do começo.",
         evento: "O evento começa em {data}.",
         cancelar: "Cancelar",
@@ -91,15 +93,6 @@ const COR: Record<Estado, "success" | "blue" | "gray"> = { aberta: "success", ag
 
 const estadoDa = (a: AberturaDeVendas, agora = new Date()): Estado =>
     new Date(a.inicio) > agora ? "agendada" : new Date(a.fim) < agora ? "encerrada" : "aberta";
-
-const paraData = (v?: string) => {
-    if (!v) return null;
-    try {
-        return parseDateTime(v.slice(0, 16));
-    } catch {
-        return null;
-    }
-};
 
 /** Itens do evento por tipo, como opções do seletor, com contexto para nomes repetidos (UI-LST-001). */
 function opcoesDeItens(evento: Evento | undefined, biblioteca: ProdutoDaOrganizacao[], dataCurta: (iso: string) => string): Record<TipoDeItem, OpcaoDeLista[]> {
@@ -402,19 +395,27 @@ function ModalDaAbertura({
     onSalvar: (dados: Pick<AberturaDeVendas, "nome" | "inicio" | "fim">) => Promise<void>;
 }) {
     const [nome, setNome] = useState(abertura?.nome ?? "");
-    const [inicio, setInicio] = useState(abertura?.inicio);
-    const [fim, setFim] = useState(abertura?.fim);
+    // Data e hora em campos separados (UI-FRM-008): cada parte tem o seu estado e o ISO sai das duas.
+    const [inicioDia, setInicioDia] = useState(abertura?.inicio.slice(0, 10) ?? "");
+    const [inicioHora, setInicioHora] = useState(abertura?.inicio.slice(11, 16) ?? "");
+    const [fimDia, setFimDia] = useState(abertura?.fim.slice(0, 10) ?? "");
+    const [fimHora, setFimHora] = useState(abertura?.fim.slice(11, 16) ?? "");
+    const inicio = inicioDia && inicioHora ? `${inicioDia}T${inicioHora}` : undefined;
+    const fim = fimDia && fimHora ? `${fimDia}T${fimHora}` : undefined;
     const [tentou, setTentou] = useState(false);
     const [salvando, setSalvando] = useState(false);
     const erros = {
         nome: !nome.trim() ? T.modal.nomeErro : undefined,
-        inicio: !inicio ? T.modal.dataErro : undefined,
-        fim: !fim ? T.modal.dataErro : inicio && fim <= inicio ? T.modal.fimErro : undefined,
+        inicioDia: !inicioDia ? T.modal.dataErro : undefined,
+        inicioHora: !inicioHora ? T.modal.horaErro : undefined,
+        fimDia: !fimDia ? T.modal.dataErro : undefined,
+        fimHora: !fimHora ? T.modal.horaErro : undefined,
+        fim: inicio && fim && fim <= inicio ? T.modal.fimErro : undefined,
     };
 
     const salvar = async () => {
         setTentou(true);
-        if (erros.nome || erros.inicio || erros.fim || !inicio || !fim) return;
+        if (erros.nome || erros.fim || !inicio || !fim) return;
         setSalvando(true);
         await onSalvar({ nome: nome.trim(), inicio, fim });
         setSalvando(false);
@@ -446,26 +447,46 @@ function ModalDaAbertura({
                             isInvalid={tentou && !!erros.nome}
                             hint={tentou && erros.nome ? erros.nome : T.modal.nomeDica}
                         />
-                        <DateTimePicker
-                            label={T.modal.inicio}
-                            granularity="minute"
-                            hourCycle={24}
-                            isRequired
-                            value={paraData(inicio)}
-                            onChange={(d) => setInicio(d ? d.toString().slice(0, 16) : undefined)}
-                            isInvalid={tentou && !!erros.inicio}
-                            hint={tentou ? erros.inicio : undefined}
-                        />
-                        <DateTimePicker
-                            label={T.modal.fim}
-                            granularity="minute"
-                            hourCycle={24}
-                            isRequired
-                            value={paraData(fim)}
-                            onChange={(d) => setFim(d ? d.toString().slice(0, 16) : undefined)}
-                            isInvalid={tentou && !!erros.fim}
-                            hint={tentou ? erros.fim : undefined}
-                        />
+                        <div className="grid grid-cols-[minmax(0,1fr)_10rem] items-start gap-3">
+                            <CampoData
+                                label={T.modal.inicio}
+                                isRequired
+                                valor={inicioDia}
+                                onChange={setInicioDia}
+                                isInvalid={tentou && !!erros.inicioDia}
+                                hint={tentou ? erros.inicioDia : undefined}
+                            />
+                            <CampoHora
+                                label={T.modal.inicioHora}
+                                isRequired
+                                valor={inicioHora}
+                                onChange={setInicioHora}
+                                isInvalid={tentou && !!erros.inicioHora}
+                                hint={tentou ? erros.inicioHora : undefined}
+                            />
+                        </div>
+                        <div className="flex flex-col gap-1.5">
+                            <div className="grid grid-cols-[minmax(0,1fr)_10rem] items-start gap-3">
+                                <CampoData
+                                    label={T.modal.fim}
+                                    isRequired
+                                    valor={fimDia}
+                                    onChange={setFimDia}
+                                    minimo={inicioDia || undefined}
+                                    isInvalid={tentou && !!(erros.fimDia || erros.fim)}
+                                    hint={tentou ? erros.fimDia : undefined}
+                                />
+                                <CampoHora
+                                    label={T.modal.fimHora}
+                                    isRequired
+                                    valor={fimHora}
+                                    onChange={setFimHora}
+                                    isInvalid={tentou && !!(erros.fimHora || erros.fim)}
+                                    hint={tentou ? erros.fimHora : undefined}
+                                />
+                            </div>
+                            {tentou && erros.fim && <p className="text-sm text-error-primary">{erros.fim}</p>}
+                        </div>
                         <div className="flex flex-col-reverse gap-3 pt-1 sm:flex-row sm:justify-end">
                             <Button color="secondary" size="md" onClick={onFechar}>
                                 {T.modal.cancelar}

@@ -59,7 +59,8 @@ export function sessoesDoBanco(evento: Evento, vendidos: Map<string, number>): T
                             type: t.nome,
                             lote: lote.nome,
                             access: "qrcode" as const,
-                            description: t.descricao ?? "Entrada válida apenas para a data e o horário selecionados. Sujeito à disponibilidade do lote.",
+                            // A descrição do ingresso é HTML do editor do Backstage: aqui vai como texto.
+                            description: t.descricao?.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim() || "Entrada válida apenas para a data e o horário selecionados. Sujeito à disponibilidade do lote.",
                             price: lote.preco,
                         },
                     ];
