@@ -111,6 +111,7 @@ Do briefing original (seguem em aberto)
 | Faltou | O que foi usado no lugar |
 | --- | --- |
 | Cartão de seção e barra de filtros | Agora são `TableCard` e `FilterBar` do DS (antes eram composições locais: corrigido depois da crítica) |
+| Tooltip no tema escuro: o fundo fica claro e o título continua `text-white`, invisível | Título com o token `text-bg-primary`, que inverte junto com o fundo (barra de "Onde está seu dinheiro") |
 | Pagination "Page minimal center aligned" em português e com 16px de padding (`PaginationPageMinimalCenter` traz "Previous" e "Next" fixos e padding próprio) | A mesma composição com as peças do DS (`Pagination` base + `Button`), em português: `financas-eventos/components/paginacao.tsx` |
 | Limpar o período no Date range picker (não há "limpar" dentro do componente) | "Limpar filtros" ao lado dos filtros |
 | Rótulo acessível em português no Date range picker (o padrão é "Date range picker") | `aria-label` passado pela tela; o do diálogo interno continua em inglês |

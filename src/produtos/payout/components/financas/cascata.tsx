@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { ChevronRight } from "@untitledui/icons";
 import { TableCard } from "@/components/application/table/table";
 import { Button } from "@/components/base/buttons/button";
+import { Tooltip, TooltipTrigger } from "@/components/base/tooltip/tooltip";
 import { cx } from "@/utils/cx";
 import type { Totais } from "./dados";
 import { reais, reaisComCentavos } from "./formato";
@@ -151,6 +152,12 @@ const COR_DA_PARTE: Record<ParteDaDistribuicao, string> = {
     recebido: "bg-utility-neutral-600",
 };
 
+/** Fatia de Seu dinheiro, com uma casa decimal: "7,7%". Abaixo de 0,1% diz "menos de 0,1%". */
+const porcentagem = (valor: number, total: number) => {
+    const fatia = total > 0 ? (valor / total) * 100 : 0;
+    return fatia > 0 && fatia < 0.1 ? "menos de 0,1%" : `${fatia.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%`;
+};
+
 const ORDEM: ParteDaDistribuicao[] = ["processamento", "retido", "aLiberar", "disponivel", "agendado", "recebido"];
 
 interface DistribuicaoProps {
@@ -177,12 +184,23 @@ export const Distribuicao = ({ totais, detalhes, destaque }: DistribuicaoProps) 
     const menores = destaque ? ORDEM.filter((p) => !DESTAQUES.includes(p)) : ORDEM;
     return (
         <div className="flex flex-col gap-4 px-6 pb-5">
-            <div className="flex flex-col gap-3 border-t border-secondary pt-4">
+            <div className="flex flex-col gap-1 border-t border-secondary pt-4">
                 <h3 className="text-sm font-semibold text-primary">Onde está seu dinheiro</h3>
-                {/* Barra de proporção: decorativa, os valores estão logo abaixo. */}
-                <div aria-hidden="true" className="flex h-2 w-full gap-0.5 overflow-hidden rounded-full">
+                {/* Barra de proporção. Cada parte mostra, ao passar o mouse ou focar pelo teclado, o que é e
+                    quanto vale. A área de toque é mais alta que a barra, para a parte fina não escapar do cursor. */}
+                {/* Lacuna do DS: no tema escuro o fundo do Tooltip fica claro e o título continua `text-white`
+                    (some). O título recebe o token do fundo da página, que inverte junto com o tooltip. */}
+                <div role="group" aria-label="Proporção de cada parte" className="flex w-full items-center gap-0.5">
                     {ORDEM.filter((p) => totais[p] > 0).map((p) => (
-                        <span key={p} className={cx("h-full min-w-1 rounded-full", COR_DA_PARTE[p])} style={{ flexGrow: totais[p], flexBasis: 0 }} />
+                        <Tooltip key={p} title={<span className="text-bg-primary">{ROTULO_DA_PARTE[p]}</span>} description={`${reais(totais[p])} · ${porcentagem(totais[p], totais.seuDinheiro)} de Seu dinheiro`} delay={0} closeDelay={0} arrow>
+                            <TooltipTrigger
+                                aria-label={`${ROTULO_DA_PARTE[p]}: ${reais(totais[p])}`}
+                                className="group flex h-6 min-w-2 cursor-default items-center rounded-full outline-focus-ring focus-visible:outline-2"
+                                style={{ flexGrow: totais[p], flexBasis: 0 }}
+                            >
+                                <span className={cx("h-2 w-full rounded-full transition duration-100 ease-linear group-hover:h-3 group-focus-visible:h-3", COR_DA_PARTE[p])} />
+                            </TooltipTrigger>
+                        </Tooltip>
                     ))}
                 </div>
             </div>

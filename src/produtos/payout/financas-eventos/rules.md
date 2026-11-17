@@ -28,6 +28,7 @@ valores, com navegação. A explicação do dinheiro de cada evento mora dentro 
 - **FEV-03** A conta do topo é sempre da organização inteira: busca e filtro da lista não mudam a conta.
 - **FEV-04** Taxas e custos, Créditos e Ajustes abrem um painel lateral com a composição, que fecha com o total do bloco. Bloco com R$ 0 não abre. Vendido tem o link "Ver no relatório de vendas". _(components/financas/cascata.tsx, painel-do-detalhe.tsx)_
 - **FEV-05** Cada parte de "Onde está seu dinheiro" tem uma cor só, a mesma na barra e na legenda. Vermelho só para valor negativo.
+- **FEV-07** Cada parte da barra mostra um tooltip (mouse ou foco do teclado) com o nome da parte, o valor e a fatia de Seu dinheiro. Vale no topo e na página do evento.
 
 ### Lista
 - **FEV-10** Cada pasta mostra imagem do evento, nome sem `#ID` e sem truncar, data com dia da semana, selos e uma frase de status do dinheiro. Sem colunas de valores.
