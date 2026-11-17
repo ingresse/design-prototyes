@@ -14,7 +14,7 @@
 
 - Código: `payout/financas-eventos/` (telas) e `payout/components/financas/` (dados, conta, painéis, estados, shell).
 - Cenário pela barra do protótipo ou pela URL: `?cenario=negativo`, `bloqueado`, `carregando`, `erro`, `sem-eventos`.
-- Busca, filtros, página e painel aberto ficam na URL em todas as telas: dá para mandar o link da entrevista já no estado certo. Exemplos: `/calendario?tipo=antecipavel`, `/extrato?tipo=repasse-pago&periodo=90`, `?detalhe=taxas`.
+- Busca, filtros, página e painel aberto ficam na URL em todas as telas: dá para mandar o link da entrevista já no estado certo. Exemplos: `/calendario?tipo=antecipavel`, `/extrato?tipo=repasse-pago&periodo=90`, `/extrato?sentido=saidas`, `?detalhe=taxas`.
 - Eventos do briefing: `carnaval`, `ivete`, `numanice`, `arraial`.
 
 ## A equação que a tela inteira conta
@@ -37,11 +37,11 @@ Confere, nos cenários com dados (normal, total negativo, bloqueado), e sai com 
 - cada evento: as duas linhas da equação, e as listas (liberações, devoluções, créditos, taxas, repasses) contra os totais do evento;
 - a soma dos 48 eventos = a conta da organização;
 - **Calendário:** a soma das liberações = Em processamento + Retido + Antecipável (organização e cada evento), e as três faixas do resumo somam o total;
-- **Extrato:** saldo inicial + movimentos que afetam o Disponível = saldo final = Disponível do card (em 30 e em 90 dias), e a última linha termina no saldo final;
+- **Extrato:** saldo inicial + movimentos que afetam o Disponível = saldo final = Disponível do card (em 30 e em 90 dias), e a última linha termina no saldo final; o resumo fecha (inicial + entradas − saídas = final); os repasses agendados somam o Agendado; a origem de cada repasse soma o valor do repasse;
 - **painéis de detalhe:** a soma das linhas = o valor do bloco (Vendido, Taxas e custos, Créditos, Devoluções);
 - cards do topo e legenda leem o mesmo total.
 
-Resultado em 17/11/2026: todas as contas fecham. Calendário: R$ 572.020 + R$ 2.045.515 + R$ 1.543.250 = R$ 4.160.785. Extrato de um mês: começa em R$ 1.173.930 (17/10) e termina em R$ 2.846.095.
+Resultado em 17/11/2026: todas as contas fecham. Calendário: R$ 572.020 + R$ 2.045.515 + R$ 1.543.250 = R$ 4.160.785. Extrato de um mês: R$ 1.173.930 (17/10) + R$ 5.483.165 de entradas − R$ 3.811.000 de saídas = R$ 2.846.095.
 
 ## Decisões desta rodada (v3)
 
@@ -65,11 +65,16 @@ Decisões de interface
 13. **Resumo do Calendário em três faixas que não se sobrepõem.** Os rótulos são os pedidos ("Próximos 7 dias", "Próximos 30 dias", "Depois de 30 dias"), e a linha de apoio diz as datas de cada faixa ("Até 24/11", "De 25/11 a 17/12", "A partir de 18/12"). Sem isso, "Próximos 30 dias" pareceria incluir os 7 primeiros e a soma das três não fecharia.
 14. **Pix parcelado não tem data:** fica no grupo "Sem data definida", no fim do Calendário, e entra na faixa "Depois de 30 dias" com o aviso "inclui R$ 15.000 sem data".
 15. **Filtro "Retido (os dois tipos)" no Calendário:** não estava na lista pedida, mas a legenda de "Onde está o seu líquido" precisa abrir o Calendário com os dois tipos de retido de uma vez.
-16. **Extrato em ordem cronológica** (do mais antigo para o mais recente), como pede "saldo inicial no topo, saldo final no fim". Com paginação, o saldo inicial fica no topo da primeira página e o saldo final no fim da última.
-17. **Filtros do Extrato escondem linhas, mas "Disponível após" é sempre o saldo da organização** depois daquele movimento.
-18. **Filtros "Repasses pagos" e "Repasses agendados" no Extrato:** é como a legenda (Agendado, Repassado) abre o Extrato "filtrado por status".
+16. **Extrato do mais recente para o mais antigo, agrupado por dia** (crítica de design de 17/11). Muda a decisão anterior, que seguia o pedido "saldo inicial no topo, saldo final no fim": os dois saldos saíram da lista e foram para o resumo do período, e a lista passou a ler como extrato de banco. Cada dia mostra o Disponível no fim do dia. **A validar com o briefing v3 (seção 4.2).**
+17. **Filtros do Extrato escondem linhas, mas "Disponível após" e o saldo do dia são sempre os da organização.** O resumo do período e os repasses agendados também não mudam com os filtros.
+18. **Repasses agendados saíram do filtro e viraram um bloco próprio** no topo do Extrato, como os lançamentos futuros de um banco. O filtro "Repasses pagos" continua: é como a legenda (Repassado) abre o Extrato. O pedido do repasse ("Repasse solicitado") segue no histórico, porque foi quando o valor saiu do Disponível.
 19. **Sem eventos:** a tela principal aparece inteira, zerada, com o vazio de cada seção, em vez de um vazio único.
 20. **Cenário "Total negativo":** o aviso do topo continua dizendo que o valor "sai das suas próximas liberações". Vale para a organização inteira negativa; a regra 1 trata de um evento negativo dentro de uma organização positiva.
+21. **O Extrato só lista o que mudou o Disponível** (crítica de 17/11). Vendas em processamento e devoluções que saíram do Antecipável ficam de fora por padrão, com um aviso e "Mostrar na lista". Antes elas apareciam com "—". **Muda a seção 4.2 do briefing v3, que listava Vendas entre os movimentos: a validar.**
+22. **Cor do valor no Extrato:** entrada em verde, saída em cor neutra; vermelho só para saldo negativo. Antes, taxa e devolução saíam em vermelho e repasse em branco. A mesma regra vale em "Últimos movimentos" e no painel do movimento.
+23. **Linha do Extrato sem selo colorido de tipo:** ícone de direção (entrou, saiu, não mudou), título e, embaixo, tipo · evento · conta.
+24. **Painel do repasse mostra "De onde veio este valor":** os movimentos mais recentes do evento que formaram o Disponível, até cobrir o valor do repasse.
+25. **"Baixar extrato" oferece PDF e Planilha (CSV).** O PDF é simulado (mostra um aviso); o CSV baixa de verdade.
 
 ## Suposições (dados inventados)
 
@@ -79,7 +84,7 @@ Decisões de interface
 4. **Devoluções por tipo:** os R$ 22.000 do Arraial viraram Cancelamento (R$ 18.000) e Reembolso parcial (R$ 4.000); os R$ 14.000 do Sunset no Cais viraram Cancelamento (R$ 11.500) e Ingresso suspenso (R$ 2.500); a contestação do Oktober da Serra 2026 "saiu do antecipável", as outras "saíram do disponível".
 5. **Repasses:** conta da organização "Itaú ···4521"; modalidades com taxa de transferência de R$ 0 (Básico), R$ 10 (Expresso) e R$ 25 (Turbo). A taxa não entra na conta do Líquido: "Repassado" é o valor do repasse; "valor recebido na conta" é o repasse menos a taxa.
 6. **Extrato cobre os últimos 90 dias** (desde 19/08). Os movimentos saem dos dados de cada evento: repasses, devoluções, créditos e custos já existiam; **liberações passadas, vendas do dia e uma antecipação foram inventadas** para o extrato contar uma história completa. Vendas do dia de hoje são o que está Em processamento. A antecipação (Festival de Verão Salvador 2027, R$ 80.000 com taxa de R$ 1.600) é ilustrativa: a taxa dela não está em Taxas e custos do evento.
-7. **O saldo inicial do Extrato é calculado de trás para a frente** a partir do Disponível de hoje. Por evento, a história do extrato não é reconciliada com o Disponível do evento; só o saldo da organização é verificado.
+7. **O saldo inicial do Extrato é calculado de trás para a frente** a partir do Disponível de hoje. Por evento, a história do extrato não é reconciliada com o Disponível do evento; só o saldo da organização é verificado. Por isso a origem de um repasse ("De onde veio este valor") fecha com uma linha de ajuste quando precisa: "Já estava no Disponível do evento" ou "Ficou no Disponível do evento".
 8. **Cenário "Total negativo":** a organização já teve todo o disponível repassado em 13/11. Disponível = −R$ 39.200; Repassado = R$ 32.152.390.
 9. **Imagem do evento:** capas ilustrativas geradas, dentro do Avatar do DS (cores de conteúdo, não de interface).
 
@@ -95,14 +100,18 @@ Decisões de interface
 8. **Vendas agrupadas por dia no Extrato:** a contagem de ingressos bate com o relatório de vendas do dia?
 9. **Repasse "não concluído":** o valor volta ao Disponível no dia seguinte, como no protótipo?
 10. Seguem abertas, do briefing original: Vendido × relatório de vendas (o protótipo assume que fecha), repasse de um evento só, antecipação vale para quais partes, comprovante para todo repasse pago.
+11. **Extrato em PDF:** o produtor e o contador precisam de PDF, de OFX ou só da planilha? O protótipo oferece PDF e Planilha (CSV).
+12. **Origem do repasse:** o sistema consegue dizer quais liberações formaram cada repasse? O painel promete "De onde veio este valor".
+13. **Vendas fora do Extrato:** o produtor sente falta das vendas do dia nessa tela, ou o relatório de vendas basta?
 
 ## Lacunas do DS
 
 | Faltou | O que foi usado no lugar |
 | --- | --- |
 | Painel lateral com grupos expansíveis | `SlideoutMenu` + `Accordion` do DS (Taxas e custos da organização). O Accordion tem borda e fundo próprios, pensados para página, não para painel |
-| Linha de extrato com saldo (linha de saldo inicial e final dentro da tabela) | `Table` do DS com duas linhas de fundo `bg-secondary` e células vazias. O cabeçalho da `Table` não alinha o rótulo à direita em colunas de valor |
-| Selos de tipo (movimento, liberação) com cor por tipo | `Badge` do DS com as cores existentes (gray, blue, warning, success, error, purple). Não há mapa oficial de cor por tipo de movimento |
+| Lista de extrato agrupada por dia, com saldo do dia e colunas de valor | Lista local (`ol` por dia, linha como `button` com foco e hover do DS, `FeaturedIcon` para a direção). A `Table` do DS não agrupa linhas nem alinha à direita o rótulo das colunas de valor |
+| Resumo em blocos com operadores (+ − =) | Blocos locais iguais aos de "A conta de todos os eventos" |
+| Selos de tipo (liberação) com cor por tipo | `Badge` do DS com as cores existentes. No Extrato o selo saiu: a linha usa ícone de direção |
 | Card de métrica clicável, com centavos menores e sem menu de ações | `TableCard.Root` + `NumeroGrande` local; o card clicável é um `button` com os estados de foco e hover do DS |
 | Tooltip no tema escuro: fundo claro e título `text-white`, invisível | Título com o token `text-bg-primary`, que inverte junto com o fundo (`dica.tsx`) |
 | Link que envolve conteúdo composto (item da legenda, linha clicável) | `Link` do roteador com os estados de foco e hover do DS |
@@ -131,8 +140,14 @@ Princípios aplicados: claro, conciso, consistente, útil, humano; CTA com verbo
 | Calendário, faixas | Linha de apoio com as datas de cada faixa | Aceita | Sem ela, "Próximos 30 dias" é ambíguo |
 | Calendário, Retido até o evento | "Libera depois do evento" | Aceita (texto pedido) | — |
 | Calendário, vazio | Título "Nenhuma liberação prevista" + "Quando um evento começar a vender, as datas aparecem aqui." | Aceita | O texto pedido não dizia como seguir |
-| Extrato, linha de saldo | "Disponível em 17/10" | Aceita (texto pedido) | — |
-| Extrato, sem efeito no Disponível | "—" com o motivo embaixo ("Em processamento", "Saiu do antecipável") | Aceita | O traço sozinho não explica |
+| Extrato, resumo | "Resumo de 17/10 a hoje": "Disponível em 17/10" + "Entradas" − "Saídas" = "Disponível hoje" | Aceita | Palavras de extrato de banco; "hoje" em vez da data quando o período termina hoje |
+| Extrato, entradas por tipo | "Repasses não concluídos" para o valor que voltou | Aceita | "Repasses" em Entradas pareceria erro |
+| Extrato, o que ficou de fora | "25 movimentos não mudaram o Disponível e não aparecem na lista: vendas em processamento e devoluções que saíram do Antecipável." + "Mostrar na lista" / "Ocultar" | Aceita | Diz o que é e por que não está; a ação nomeia o que acontece. "Ver todos" foi recusada: não diz o quê |
+| Extrato, agendados | Título "Repasses agendados" + "Já saíram do Disponível e caem na conta na data prevista"; linha "Repasse para Itaú ···4521" | Aceita | Responde "isso ainda sai do meu saldo?". "Lançamentos futuros" foi recusada: é fala de banco e inclui o que não é repasse |
+| Extrato, cabeçalho do dia | "Disponível no fim do dia"; "Hoje, 17/11" | Aceita | "Saldo do dia" foi recusada: o glossário usa "Disponível", não "saldo" |
+| Extrato, atalhos | "Tudo" / "Entradas" / "Saídas"; filtro "Todos os tipos" | Aceita | Uma palavra cada; "Todos os movimentos" ficou redundante com "Tudo" |
+| Extrato, baixar | "Baixar extrato" → "PDF" e "Planilha (CSV)" | Aceita | "Planilha" é a palavra do produtor; CSV fica entre parênteses para quem procura |
+| Painel do repasse | "De onde veio este valor", com "Já estava no Disponível do evento" / "Ficou no Disponível do evento" | Aceita | Pergunta do produtor, na voz dele; as linhas de ajuste dizem para onde foi a diferença |
 | Extrato, liberação | "Antecipável liberado" / "Retido liberado" | Aceita | Diz de onde veio em duas palavras |
 | Painel do movimento | Seções "O que foi" e "O que mudou no seu líquido" | Aceita | "Efeito em cada parte" é fala de dentro; o produtor quer saber o que mudou |
 | Painel do movimento, repasse | "Valor recebido na conta" (pago) e "Valor a receber na conta" (agendado) | Aceita | O tempo do verbo segue a situação |

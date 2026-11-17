@@ -218,7 +218,7 @@ export function FinancasEventos() {
                             retido: comCenario(`${BASE}/calendario?tipo=retido`),
                             aLiberar: comCenario(`${BASE}/calendario?tipo=antecipavel`),
                             disponivel: comCenario(`${BASE}?situacao=disponivel`),
-                            agendado: comCenario(`${BASE}/extrato?tipo=repasse-agendado&periodo=90`),
+                            agendado: comCenario(`${BASE}/extrato`),
                             recebido: comCenario(`${BASE}/extrato?tipo=repasse-pago&periodo=90`),
                         }}
                     />
@@ -269,7 +269,7 @@ export function FinancasEventos() {
                                         titulo={m.tipo === "repasse" ? m.titulo : `${ROTULO_DO_MOVIMENTO[m.tipo]} · ${m.titulo}`}
                                         detalhe={m.evento.nome}
                                         valor={`${m.valor > 0 ? "+ " : ""}${reais(m.valor)}`}
-                                        corDoValor={m.tipo === "repasse" ? "text-primary" : m.valor > 0 ? "text-success-primary" : "text-error-primary"}
+                                        corDoValor={m.valor > 0 ? "text-success-primary" : "text-primary"}
                                         para={comCenario(`${BASE}/extrato?periodo=90&movimento=${m.id}`)}
                                     />
                                 ))}

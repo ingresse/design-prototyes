@@ -3,13 +3,14 @@ import { SlideoutMenu } from "@/components/application/slideout-menus/slideout-m
 import { Badge } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
 import { cx } from "@/utils/cx";
-import { ROTULO_DO_MOVIMENTO, TAXA_DA_MODALIDADE, type LinhaDoExtrato, type Prova } from "../../components/financas/dados";
+import { ROTULO_DO_MOVIMENTO, TAXA_DA_MODALIDADE, composicaoDoRepasse, type LinhaDoExtrato, type Prova } from "../../components/financas/dados";
 import { dataComDia, dataCurta, reais } from "../../components/financas/formato";
 
 /*
  * Painel lateral de um movimento do Extrato (ajustes v3, seção 4.2): o que foi, de onde veio, o
  * efeito em cada parte e o link de prova. É aqui, e só aqui, que aparecem a taxa da antecipação
- * e a taxa de transferência do repasse.
+ * e a taxa de transferência do repasse. O repasse mostra também de onde veio o valor: os
+ * movimentos do evento que formaram aquele Disponível.
  */
 
 const PROVA: Record<Prova, { rotulo: string; aviso: string }> = {
@@ -31,6 +32,8 @@ export function PainelDoMovimento({ movimento, aoFechar }: { movimento: LinhaDoE
     if (!movimento) return null;
     const m = movimento;
     const taxaDoRepasse = m.repasse ? TAXA_DA_MODALIDADE[m.repasse.modalidade] : 0;
+    // Só o repasse que saiu do Disponível tem origem a mostrar; o valor que voltou (não concluído) não.
+    const origem = m.repasse && m.efeito < 0 ? composicaoDoRepasse(m.evento, m.repasse) : null;
     return (
         <SlideoutMenu isOpen isDismissable onOpenChange={(aberto) => !aberto && aoFechar()} className="z-50">
             <SlideoutMenu.Header onClose={aoFechar} className="flex flex-col gap-1 pb-5">
@@ -40,7 +43,7 @@ export function PainelDoMovimento({ movimento, aoFechar }: { movimento: LinhaDoE
                     </Badge>
                 </span>
                 <h2 className="pr-8 text-md font-semibold text-primary">{m.titulo}</h2>
-                <p className={cx("text-display-xs font-semibold tabular-nums", m.tipo === "repasse" || m.valor > 0 ? "text-primary" : "text-error-primary")}>
+                <p className={cx("text-display-xs font-semibold tabular-nums", m.efeito > 0 ? "text-success-primary" : "text-primary")}>
                     {m.valor > 0 ? "+ " : ""}
                     {reais(m.valor)}
                 </p>
@@ -60,7 +63,7 @@ export function PainelDoMovimento({ movimento, aoFechar }: { movimento: LinhaDoE
                     <dl className="flex flex-col divide-y divide-secondary">
                         {m.partes.map((p) => (
                             <Campo key={p.parte} rotulo={p.parte}>
-                                <span className={cx("tabular-nums", p.valor < 0 ? "text-error-primary" : "text-success-primary")}>
+                                <span className={cx("tabular-nums", p.valor > 0 ? "text-success-primary" : "text-primary")}>
                                     {p.valor > 0 ? "+ " : ""}
                                     {reais(p.valor)}
                                 </span>
@@ -82,6 +85,25 @@ export function PainelDoMovimento({ movimento, aoFechar }: { movimento: LinhaDoE
                             <Campo rotulo="Taxa de transferência">{taxaDoRepasse ? reais(taxaDoRepasse) : "Sem taxa"}</Campo>
                             <Campo rotulo={m.situacao === "pago" ? "Valor recebido na conta" : "Valor a receber na conta"}>{reais(m.repasse.valor - taxaDoRepasse)}</Campo>
                             {m.situacao === "agendado" && <Campo rotulo="Pagamento previsto">{dataCurta(m.repasse.data)}</Campo>}
+                        </dl>
+                    </section>
+                )}
+
+                {origem && (
+                    <section className="flex flex-col border-t border-secondary pt-4">
+                        <h3 className="text-sm font-semibold text-primary">De onde veio este valor</h3>
+                        <dl className="flex flex-col divide-y divide-secondary">
+                            {origem.linhas.map((l) => (
+                                <Campo key={l.id} rotulo={l.data ? `${l.titulo} · ${dataCurta(l.data)}` : l.titulo}>
+                                    <span className="tabular-nums">
+                                        {l.valor > 0 ? "+ " : ""}
+                                        {reais(l.valor)}
+                                    </span>
+                                </Campo>
+                            ))}
+                            <Campo rotulo="Valor do repasse">
+                                <span className="font-semibold tabular-nums">{reais(origem.total)}</span>
+                            </Campo>
                         </dl>
                     </section>
                 )}

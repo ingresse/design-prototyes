@@ -991,6 +991,12 @@ export interface Extrato {
     ate: string;
     saldoInicial: number;
     saldoFinal: number;
+    /** Tudo o que entrou no Disponível no período (soma dos efeitos positivos). */
+    entradas: number;
+    /** Tudo o que saiu do Disponível no período, como número positivo. */
+    saidas: number;
+    /** Entradas e saídas por tipo de movimento, do maior para o menor. */
+    porTipo: { entradas: Array<{ tipo: TipoDeMovimento; valor: number }>; saidas: Array<{ tipo: TipoDeMovimento; valor: number }> };
     linhas: LinhaDoExtrato[];
 }
 
@@ -998,6 +1004,7 @@ export interface Extrato {
  * Extrato de um período: o Disponível no começo, cada movimento com o Disponível depois dele, e o
  * Disponível no fim. Conta de trás para a frente a partir do Disponível de hoje, e de novo para a
  * frente: as duas contas têm de dar o mesmo número (`conferirContas`).
+ * O resumo (entradas e saídas) fecha a mesma conta: inicial + entradas − saídas = final.
  */
 export function extrato(eventos: Evento[], de: string, ate: string): Extrato {
     const todos = movimentos(eventos);
@@ -1007,7 +1014,62 @@ export function extrato(eventos: Evento[], de: string, ate: string): Extrato {
     const saldoInicial = saldoFinal - doPeriodo.reduce((s, m) => s + m.efeito, 0);
     let corrente = saldoInicial;
     const linhas = doPeriodo.map((m) => ({ ...m, apos: (corrente += m.efeito) }));
-    return { de, ate, saldoInicial, saldoFinal, linhas };
+    const agrupar = (sinal: 1 | -1) => {
+        const mapa = new Map<TipoDeMovimento, number>();
+        for (const m of doPeriodo) if (m.efeito * sinal > 0) mapa.set(m.tipo, (mapa.get(m.tipo) ?? 0) + m.efeito * sinal);
+        return [...mapa.entries()].map(([tipo, valor]) => ({ tipo, valor })).sort((a, b) => b.valor - a.valor);
+    };
+    const porTipo = { entradas: agrupar(1), saidas: agrupar(-1) };
+    const total = (itens: Array<{ valor: number }>) => itens.reduce((s, i) => s + i.valor, 0);
+    return { de, ate, saldoInicial, saldoFinal, entradas: total(porTipo.entradas), saidas: total(porTipo.saidas), porTipo, linhas };
+}
+
+/** Repasse já solicitado que ainda vai ser pago: o valor já saiu do Disponível e espera a data. */
+export interface RepasseAgendado {
+    evento: Evento;
+    repasse: Repasse;
+    /** Id do movimento "Repasse solicitado" no Extrato, quando ele está nos últimos 90 dias. */
+    movimento?: string;
+}
+
+export function repassesAgendados(eventos: Evento[]): RepasseAgendado[] {
+    const doExtrato = movimentos(eventos);
+    return eventos
+        .flatMap((evento) => evento.repasses.filter((r) => r.situacao === "agendado").map((repasse) => ({ evento, repasse, movimento: doExtrato.find((m) => m.repasse === repasse)?.id })))
+        .sort((a, b) => a.repasse.data.localeCompare(b.repasse.data));
+}
+
+export interface ComposicaoDoRepasse {
+    linhas: Array<{ id: string; titulo: string; data?: string; valor: number }>;
+    total: number;
+}
+
+/**
+ * De onde veio o valor de um repasse: os movimentos mais recentes do evento que mexeram no Disponível
+ * (desde o repasse anterior), até cobrir o valor, mais o que já estava disponível antes (ou menos o
+ * que ficou no Disponível).
+ * A soma das linhas é sempre o valor do repasse (`conferirContas`).
+ */
+export function composicaoDoRepasse(evento: Evento, repasse: Repasse): ComposicaoDoRepasse {
+    const quando = (r: Repasse) => r.pedidoEm ?? r.data;
+    const anterior = evento.repasses
+        .filter((r) => r !== repasse && r.situacao !== "falhou" && quando(r) < quando(repasse))
+        .map(quando)
+        .sort()
+        .pop();
+    // Do movimento mais recente para trás, até cobrir o valor do repasse: o que veio antes já estava no Disponível.
+    const linhas: ComposicaoDoRepasse["linhas"] = [];
+    let coberto = 0;
+    for (const m of movimentos([evento]).reverse()) {
+        if (coberto >= repasse.valor) break;
+        if (m.tipo === "repasse" || m.efeito === 0 || m.data > quando(repasse) || (anterior && m.data <= anterior)) continue;
+        linhas.unshift({ id: m.id, titulo: m.titulo, data: m.data, valor: m.efeito });
+        coberto += m.efeito;
+    }
+    const resto = repasse.valor - linhas.reduce((s, l) => s + l.valor, 0);
+    if (resto > 0) linhas.unshift({ id: "antes", titulo: "Já estava no Disponível do evento", valor: resto });
+    if (resto < 0) linhas.push({ id: "ficou", titulo: "Ficou no Disponível do evento", valor: resto });
+    return { linhas, total: repasse.valor };
 }
 
 /* ---------------- verificação ---------------- */
@@ -1018,6 +1080,7 @@ export function extrato(eventos: Evento[], de: string, ate: string): Extrato {
  *  - o total da organização (a conta do topo) contra a soma dos 48 eventos;
  *  - o Calendário: as liberações somam Em processamento + Retido + Antecipável (organização e evento);
  *  - o Extrato: saldo inicial + movimentos que afetam o Disponível = saldo final = Disponível do card;
+ *    o resumo (inicial + entradas − saídas = final), os agendados e a composição de cada repasse;
  *  - cada painel de detalhe: a soma das linhas é o valor do bloco;
  *  - os cards do topo e os itens da legenda saem do mesmo total.
  */
@@ -1079,6 +1142,15 @@ export function conferirContas(): string[] {
             const ultima = x.linhas[x.linhas.length - 1];
             if (ultima && ultima.apos !== x.saldoFinal) erros.push(`${cenario}: Extrato de ${dias} dias: a última linha fica em ${ultima.apos}, o saldo final é ${x.saldoFinal}`);
             if (x.linhas.some((l) => !Number.isInteger(l.apos))) erros.push(`${cenario}: Extrato de ${dias} dias com saldo quebrado`);
+            if (x.saldoInicial + x.entradas - x.saidas !== x.saldoFinal) erros.push(`${cenario}: Extrato de ${dias} dias: o resumo não fecha (${x.saldoInicial} + ${x.entradas} − ${x.saidas} ≠ ${x.saldoFinal})`);
+        }
+        // Agendados do Extrato somam o Agendado da legenda; a composição de cada repasse soma o repasse.
+        if (soma(repassesAgendados(eventos), (a) => a.repasse.valor) !== t.agendado) erros.push(`${cenario}: os repasses agendados do Extrato não somam Agendado`);
+        for (const e of eventos) {
+            for (const r of e.repasses) {
+                const c = composicaoDoRepasse(e, r);
+                if (soma(c.linhas, (l) => l.valor) !== r.valor) erros.push(`${cenario}/${e.id}: a composição do repasse de ${r.data} não soma ${r.valor}`);
+            }
         }
         // Cards do topo = itens da legenda: os dois leem o mesmo total; o que pode divergir é o Retido.
         if (t.retido !== t.retidoEvento + t.retidoSeguranca) erros.push(`${cenario}: Retido da legenda ≠ retido até o evento + retido por segurança`);

@@ -1,60 +1,86 @@
 import { parseDate } from "@internationalized/date";
 import { useSearchParams } from "react-router";
-import { ArrowLeft, Download01, SearchLg } from "@untitledui/icons";
+import { ArrowDownLeft, ArrowLeft, ArrowUpRight, ChevronDown, ChevronRight, Download01, File06, Minus, SearchLg, Table as IconeDePlanilha } from "@untitledui/icons";
 import { toast } from "sonner";
 import { DateRangePicker } from "@/components/application/date-picker/date-range-picker";
 import { EmptyState } from "@/components/application/empty-state/empty-state";
 import { FilterBar } from "@/components/application/filter-bar/filter-bar";
-import { Table } from "@/components/application/table/table";
 import { Badge } from "@/components/base/badges/badges";
+import { ButtonGroup, ButtonGroupItem } from "@/components/base/button-group/button-group";
 import { Button } from "@/components/base/buttons/button";
+import { Dropdown } from "@/components/base/dropdown/dropdown";
 import { Input } from "@/components/base/input/input";
 import { Select } from "@/components/base/select/select";
+import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { cx } from "@/utils/cx";
 import { Secao } from "../../components/financas/cascata";
 import { baixarCsv, dataDoCsv } from "../../components/financas/csv";
-import { DIAS_DO_EXTRATO, HOJE, ROTULO_DO_MOVIMENTO, eventosDoCenario, extrato, somarDias, totalizar, type LinhaDoExtrato, type TipoDeMovimento } from "../../components/financas/dados";
+import {
+    DIAS_DO_EXTRATO,
+    HOJE,
+    ROTULO_DO_MOVIMENTO,
+    TAXA_DA_MODALIDADE,
+    eventosDoCenario,
+    extrato,
+    repassesAgendados,
+    somarDias,
+    totalizar,
+    type Extrato,
+    type LinhaDoExtrato,
+    type TipoDeMovimento,
+} from "../../components/financas/dados";
 import { Aviso, AvisoDeBloqueio, Carregando, ErroAoCarregar } from "../../components/financas/estados";
 import { dataComDia, dataCurta, reais } from "../../components/financas/formato";
 import { fraseDeCompensacao } from "../../components/financas/frases";
+import { Linha, Lista } from "../../components/financas/linha";
 import { CabecalhoDaPagina, FinancasShell, useCenario } from "../../components/financas/shell";
 import { Paginacao } from "../components/paginacao";
 import { PainelDoMovimento } from "../components/painel-do-movimento";
 
 /*
- * Extrato (ajustes v3, seção 4.2).
+ * Extrato (ajustes v3, seção 4.2, refeito depois da crítica de design de 17/11).
  * Pergunta que responde: o que aconteceu com o meu dinheiro, e por que o meu Disponível mudou?
- * Começa no Disponível do início do período, mostra cada movimento com o Disponível depois dele e
- * termina no Disponível do fim do período (hoje: o mesmo número do card). Os filtros escondem
- * linhas, mas "Disponível após" é sempre o saldo da organização depois daquele movimento.
+ * Lê-se como extrato de banco:
+ *  - o resumo do período fecha a conta (Disponível no início + entradas − saídas = Disponível no fim);
+ *  - os repasses agendados ficam à parte: é o que ainda vai cair na conta;
+ *  - os movimentos vêm do mais recente para o mais antigo, agrupados por dia, com o Disponível no
+ *    fim de cada dia. Por padrão só aparece o que mudou o Disponível.
+ * O resumo e os agendados não mudam com os filtros; "Disponível após" é sempre o saldo da organização.
  */
 
 const BASE = "/payout/financas-eventos";
 const POR_PAGINA = 20;
 
-type Filtro = "todos" | TipoDeMovimento | "repasse-pago" | "repasse-agendado";
+type Filtro = "todos" | TipoDeMovimento | "repasse-pago";
 const TIPOS: Array<{ id: Filtro; label: string }> = [
-    { id: "todos", label: "Todos os movimentos" },
-    { id: "venda", label: "Vendas" },
+    { id: "todos", label: "Todos os tipos" },
     { id: "liberacao", label: "Liberações" },
-    { id: "taxa", label: "Taxas e custos" },
+    { id: "antecipacao", label: "Antecipações" },
     { id: "credito", label: "Créditos" },
-    { id: "devolucao", label: "Devoluções" },
     { id: "repasse", label: "Repasses" },
     { id: "repasse-pago", label: "Repasses pagos" },
-    { id: "repasse-agendado", label: "Repasses agendados" },
-    { id: "antecipacao", label: "Antecipações" },
+    { id: "taxa", label: "Taxas e custos" },
+    { id: "devolucao", label: "Devoluções" },
+    { id: "venda", label: "Vendas" },
 ];
-const noFiltro = (m: LinhaDoExtrato, f: Filtro) => f === "todos" || (f === "repasse-pago" ? m.situacao === "pago" : f === "repasse-agendado" ? m.situacao === "agendado" : m.tipo === f);
+const noFiltro = (m: LinhaDoExtrato, f: Filtro) => f === "todos" || (f === "repasse-pago" ? m.situacao === "pago" : m.tipo === f);
 
-const COR_DO_TIPO: Record<TipoDeMovimento, "gray" | "blue" | "warning" | "success" | "error" | "purple"> = {
-    venda: "gray",
-    liberacao: "blue",
-    taxa: "warning",
-    credito: "success",
-    devolucao: "error",
-    repasse: "purple",
-    antecipacao: "blue",
+type Sentido = "tudo" | "entradas" | "saidas";
+const SENTIDOS: Array<{ id: Sentido; label: string }> = [
+    { id: "tudo", label: "Tudo" },
+    { id: "entradas", label: "Entradas" },
+    { id: "saidas", label: "Saídas" },
+];
+
+/** Nome de cada tipo no resumo do período (plural). Repasse só entra quando um repasse não concluído volta. */
+const NO_RESUMO: Record<TipoDeMovimento, string> = {
+    venda: "Vendas",
+    liberacao: "Liberações",
+    taxa: "Taxas e custos",
+    credito: "Créditos",
+    devolucao: "Devoluções",
+    repasse: "Repasses",
+    antecipacao: "Antecipações",
 };
 
 const hoje = parseDate(HOJE);
@@ -73,7 +99,116 @@ const simples = (t: string) =>
         .toLowerCase()
         .trim();
 
-type Linha = { id: string; saldo: "inicial" | "final"; data: string; valor: number } | (LinhaDoExtrato & { saldo?: undefined });
+/* ---------------- resumo do período ---------------- */
+
+const Sinal = ({ sinal }: { sinal: string }) => (
+    <span aria-hidden="true" className="flex w-4 shrink-0 items-center justify-center text-xl font-medium text-quaternary">
+        {sinal}
+    </span>
+);
+
+interface ParteDoResumoProps {
+    rotulo: string;
+    leitura?: string;
+    valor: number;
+    cor?: string;
+    resultado?: boolean;
+    porTipo?: Array<{ tipo: TipoDeMovimento; valor: number }>;
+    vazio?: string;
+    rotuloDoTipo?: (tipo: TipoDeMovimento) => string;
+}
+
+const ParteDoResumo = ({ rotulo, leitura, valor, cor = "text-primary", resultado, porTipo, vazio, rotuloDoTipo = (t) => NO_RESUMO[t] }: ParteDoResumoProps) => (
+    <div className={cx("flex min-w-0 flex-1 flex-col gap-1 rounded-xl p-3 ring-1 ring-inset @6xl:p-4", resultado ? "bg-secondary ring-primary" : "bg-primary ring-secondary")}>
+        <dt className="text-sm font-medium text-secondary">
+            {leitura && <span className="sr-only">{leitura} </span>}
+            {rotulo}
+        </dt>
+        <dd className="flex flex-col gap-2">
+            <span className={cx("font-semibold whitespace-nowrap tabular-nums", resultado ? "text-xl @6xl:text-display-xs" : "text-lg @6xl:text-xl", valor < 0 ? "text-error-primary" : cor)}>{reais(valor)}</span>
+            {porTipo &&
+                (porTipo.length ? (
+                    <ul className="flex flex-col gap-1 border-t border-secondary pt-2">
+                        {porTipo.map((t) => (
+                            <li key={t.tipo} className="flex items-baseline justify-between gap-3 text-xs text-tertiary">
+                                <span>{rotuloDoTipo(t.tipo)}</span>
+                                <span className="whitespace-nowrap tabular-nums">{reais(t.valor)}</span>
+                            </li>
+                        ))}
+                    </ul>
+                ) : (
+                    <span className="text-xs text-tertiary">{vazio}</span>
+                ))}
+        </dd>
+    </div>
+);
+
+const ResumoDoPeriodo = ({ x }: { x: Extrato }) => (
+    <Secao titulo={`Resumo de ${dataCurta(x.de)} a ${x.ate === HOJE ? "hoje" : dataCurta(x.ate)}`}>
+        <dl className="flex items-stretch gap-2 px-6 py-5">
+            <ParteDoResumo rotulo={`Disponível em ${dataCurta(x.de)}`} valor={x.saldoInicial} />
+            <Sinal sinal="+" />
+            <ParteDoResumo
+                rotulo="Entradas"
+                leitura="mais"
+                valor={x.entradas}
+                cor="text-success-primary"
+                porTipo={x.porTipo.entradas}
+                vazio="Nada entrou no período"
+                rotuloDoTipo={(t) => (t === "repasse" ? "Repasses não concluídos" : NO_RESUMO[t])}
+            />
+            <Sinal sinal="−" />
+            <ParteDoResumo rotulo="Saídas" leitura="menos" valor={x.saidas} porTipo={x.porTipo.saidas} vazio="Nada saiu no período" />
+            <Sinal sinal="=" />
+            <ParteDoResumo rotulo={x.ate === HOJE ? "Disponível hoje" : `Disponível em ${dataCurta(x.ate)}`} leitura="igual a" valor={x.saldoFinal} resultado />
+        </dl>
+    </Secao>
+);
+
+/* ---------------- movimentos por dia ---------------- */
+
+/** Larguras das colunas de valor: as mesmas no cabeçalho, no dia e na linha, para os números alinharem. */
+const COLUNA = "w-36 shrink-0 text-right";
+const SETA = "size-5 shrink-0";
+
+const Movimento = ({ m, aoAbrir }: { m: LinhaDoExtrato; aoAbrir: () => void }) => {
+    const entrou = m.efeito > 0;
+    const semEfeito = m.efeito === 0;
+    return (
+        <li>
+            <button
+                type="button"
+                onClick={aoAbrir}
+                className="flex w-full cursor-pointer items-center gap-4 px-6 py-3 text-left outline-focus-ring transition duration-100 ease-linear hover:bg-primary_hover focus-visible:outline-2 focus-visible:-outline-offset-2"
+            >
+                <FeaturedIcon size="sm" theme="light" color={entrou ? "success" : "gray"} icon={semEfeito ? Minus : entrou ? ArrowDownLeft : ArrowUpRight} />
+                <span className="flex min-w-0 flex-1 flex-col">
+                    <span className="truncate text-sm font-medium text-primary">{m.titulo}</span>
+                    <span className="truncate text-sm text-tertiary">
+                        {ROTULO_DO_MOVIMENTO[m.tipo]} · {m.evento.nome}
+                        {m.repasse && ` · ${m.repasse.conta}`}
+                    </span>
+                </span>
+                <span className={cx(COLUNA, "text-sm font-semibold whitespace-nowrap tabular-nums", semEfeito ? "text-tertiary" : entrou ? "text-success-primary" : "text-primary")}>
+                    <span className="sr-only">{semEfeito ? "Valor: " : entrou ? "Entrou: " : "Saiu: "}</span>
+                    {m.valor > 0 ? "+ " : ""}
+                    {reais(m.valor)}
+                </span>
+                <span className={cx(COLUNA, "text-sm whitespace-nowrap tabular-nums", semEfeito ? "text-tertiary" : m.apos < 0 ? "text-error-primary" : "text-secondary")}>
+                    {semEfeito ? (
+                        m.semEfeito
+                    ) : (
+                        <>
+                            <span className="sr-only">Disponível após: </span>
+                            {reais(m.apos)}
+                        </>
+                    )}
+                </span>
+                <ChevronRight aria-hidden="true" className={cx(SETA, "text-fg-quaternary")} />
+            </button>
+        </li>
+    );
+};
 
 export function FinancasExtrato() {
     const [cenario, setCenario] = useCenario();
@@ -84,12 +219,13 @@ export function FinancasExtrato() {
     const comCenario = (rota: string) => `${rota}${cenario === "normal" ? "" : `${rota.includes("?") ? "&" : "?"}cenario=${cenario}`}`;
     const compensa = fraseDeCompensacao(eventos);
 
-    // Período: `de`/`ate` na URL, ou o atalho `periodo=90` (usado pelos links que chegam aqui), ou 30 dias.
+    // Período: `de`/`ate` na URL, ou o atalho `periodo=90` (usado pelos links que chegam aqui), ou um mês.
     const limite = somarDias(HOJE, -DIAS_DO_EXTRATO);
     const de = [params.get("de") ?? (params.get("periodo") === "90" ? limite : UM_MES_ATRAS), limite].sort()[1];
     const ate = [params.get("ate") ?? HOJE, HOJE].sort()[0];
     const busca = params.get("busca") ?? "";
     const filtro = TIPOS.find((t) => t.id === params.get("tipo"))?.id ?? "todos";
+    const sentido = SENTIDOS.find((t) => t.id === params.get("sentido"))?.id ?? "tudo";
     const eventoId = params.get("evento") ?? "todos";
     const mudar = (mudancas: Record<string, string | null>) => {
         const novo = new URLSearchParams(params);
@@ -99,33 +235,52 @@ export function FinancasExtrato() {
         }
         setParams(novo, { replace: true });
     };
-    const limpar = () => mudar({ busca: null, tipo: null, evento: null });
-    const comFiltro = Boolean(busca) || filtro !== "todos" || eventoId !== "todos";
+    const limpar = () => mudar({ busca: null, tipo: null, evento: null, sentido: null });
+    const comFiltro = Boolean(busca) || filtro !== "todos" || eventoId !== "todos" || sentido !== "tudo";
 
     const x = extrato(eventos, de, ate);
     const termo = simples(busca);
-    const visiveis = x.linhas.filter((m) => noFiltro(m, filtro) && (eventoId === "todos" || m.evento.id === eventoId) && (!termo || simples(`${m.titulo} ${m.evento.nome} ${ROTULO_DO_MOVIMENTO[m.tipo]}`).includes(termo)));
+    const doFiltro = x.linhas.filter(
+        (m) =>
+            noFiltro(m, filtro) &&
+            (sentido === "tudo" || (sentido === "entradas" ? m.efeito > 0 : m.efeito < 0)) &&
+            (eventoId === "todos" || m.evento.id === eventoId) &&
+            (!termo || simples(`${m.titulo} ${m.evento.nome} ${ROTULO_DO_MOVIMENTO[m.tipo]} ${m.repasse?.conta ?? ""}`).includes(termo)),
+    );
+    // Extrato é o histórico do Disponível: o que não mexeu nele (vendas em processamento, devolução que
+    // saiu do Antecipável) fica de fora, a não ser que a pessoa peça ou filtre por um tipo.
+    const semEfeito = doFiltro.filter((m) => m.efeito === 0).length;
+    const mostrarSemEfeito = params.get("semefeito") === "1" || filtro !== "todos";
+    // Do mais recente para o mais antigo, como no banco.
+    const visiveis = (mostrarSemEfeito ? doFiltro : doFiltro.filter((m) => m.efeito !== 0)).slice().reverse();
+    const totalDoPeriodo = mostrarSemEfeito ? x.linhas.length : x.linhas.filter((m) => m.efeito !== 0).length;
     const paginas = Math.max(1, Math.ceil(visiveis.length / POR_PAGINA));
     const pagina = Math.min(Math.max(1, Number(params.get("pagina")) || 1), paginas);
     const daPagina = visiveis.slice((pagina - 1) * POR_PAGINA, pagina * POR_PAGINA);
-    // Saldo inicial no topo da primeira página; saldo final no fim da última.
-    const linhas: Linha[] = [
-        ...(pagina === 1 ? [{ id: "saldo-inicial", saldo: "inicial" as const, data: de, valor: x.saldoInicial }] : []),
-        ...daPagina,
-        ...(pagina === paginas ? [{ id: "saldo-final", saldo: "final" as const, data: ate, valor: x.saldoFinal }] : []),
-    ];
-    const aberto = x.linhas.find((m) => m.id === params.get("movimento")) ?? null;
+    const dias = [...new Set(daPagina.map((m) => m.data))].map((data) => ({ data, movimentos: daPagina.filter((m) => m.data === data) }));
+    // Disponível no fim de cada dia: o saldo depois do último movimento do dia, com ou sem filtro.
+    const fimDoDia = new Map(x.linhas.map((m) => [m.data, m.apos]));
+
+    // O painel abre qualquer movimento dos últimos 90 dias, mesmo fora do período escolhido (agendados, links de outras telas).
+    const aberto = extrato(eventos, limite, HOJE).linhas.find((m) => m.id === params.get("movimento")) ?? null;
+    const agendados = repassesAgendados(eventos);
     const eventosDoPeriodo = [{ id: "todos", label: "Todos os eventos" }, ...[...new Map(x.linhas.map((m) => [m.evento.id, m.evento.nome])).entries()].sort((a, b) => a[1].localeCompare(b[1])).map(([id, label]) => ({ id, label }))];
     const temDados = cenario === "normal" || cenario === "negativo" || bloqueado;
+    const quantos = (n: number) => (n === 1 ? "1 movimento" : `${n} movimentos`);
 
-    const baixar = () => {
+    const baixar = (formato: "csv" | "pdf") => {
+        if (formato === "pdf") {
+            toast(`Aqui baixaria o extrato em PDF, com o resumo do período e ${quantos(visiveis.length)}.`);
+            return;
+        }
+        const emOrdem = visiveis.slice().reverse();
         baixarCsv("financas-extrato.csv", [
             ["Data", "Movimento", "Tipo", "Evento", "Valor", "Disponível após"],
             [dataDoCsv(de), `Disponível em ${dataCurta(de)}`, "", "", "", x.saldoInicial],
-            ...visiveis.map((m) => [dataDoCsv(m.data), m.titulo, ROTULO_DO_MOVIMENTO[m.tipo], m.evento.nome, m.valor, m.efeito === 0 ? (m.semEfeito ?? "") : m.apos]),
+            ...emOrdem.map((m) => [dataDoCsv(m.data), m.titulo, ROTULO_DO_MOVIMENTO[m.tipo], m.evento.nome, m.valor, m.efeito === 0 ? (m.semEfeito ?? "") : m.apos]),
             [dataDoCsv(ate), `Disponível em ${dataCurta(ate)}`, "", "", "", x.saldoFinal],
         ]);
-        toast.success(`Extrato baixado com ${visiveis.length === 1 ? "1 movimento" : `${visiveis.length} movimentos`}.`);
+        toast.success(`Extrato baixado com ${quantos(visiveis.length)}.`);
     };
 
     const conteudo = () => {
@@ -140,17 +295,68 @@ export function FinancasExtrato() {
                         <p>Você não precisa pagar nada. {compensa}</p>
                     </Aviso>
                 )}
+
+                <ResumoDoPeriodo x={x} />
+
+                {agendados.length > 0 && (
+                    <Secao
+                        titulo="Repasses agendados"
+                        selo={
+                            <Badge size="sm" type="modern" color="gray">
+                                {reais(agendados.reduce((s, a) => s + a.repasse.valor, 0))}
+                            </Badge>
+                        }
+                        lateral={<span className="text-sm text-tertiary">Já saíram do Disponível e caem na conta na data prevista</span>}
+                    >
+                        <Lista>
+                            {agendados.map((a) => {
+                                const taxa = TAXA_DA_MODALIDADE[a.repasse.modalidade];
+                                const novo = new URLSearchParams(params);
+                                if (a.movimento) novo.set("movimento", a.movimento);
+                                return (
+                                    <Linha
+                                        key={`${a.evento.id}-${a.repasse.data}`}
+                                        quando={dataComDia(a.repasse.data)}
+                                        titulo={`Repasse para ${a.repasse.conta}`}
+                                        detalhe={`${a.evento.nome} · ${a.repasse.modalidade}${taxa ? ` · taxa de transferência de ${reais(taxa)}` : ""}`}
+                                        valor={reais(a.repasse.valor - taxa)}
+                                        para={a.movimento ? `?${novo}` : undefined}
+                                    />
+                                );
+                            })}
+                        </Lista>
+                    </Secao>
+                )}
+
                 <Secao
                     titulo="Movimentos"
                     selo={
                         <Badge size="sm" type="modern" color="gray">
-                            {visiveis.length === x.linhas.length ? `${x.linhas.length} movimentos` : `${visiveis.length} de ${x.linhas.length} movimentos`}
+                            {visiveis.length === totalDoPeriodo ? quantos(totalDoPeriodo) : `${visiveis.length} de ${quantos(totalDoPeriodo)}`}
                         </Badge>
+                    }
+                    lateral={
+                            <ButtonGroup
+                                size="sm"
+                                aria-label="Mostrar entradas ou saídas"
+                                selectedKeys={new Set([sentido])}
+                                disallowEmptySelection
+                                onSelectionChange={(chaves) => {
+                                    const escolhido = [...chaves][0];
+                                    if (escolhido) mudar({ sentido: escolhido === "tudo" ? null : String(escolhido) });
+                                }}
+                            >
+                                {SENTIDOS.map((t) => (
+                                    <ButtonGroupItem key={t.id} id={t.id}>
+                                        {t.label}
+                                    </ButtonGroupItem>
+                                ))}
+                            </ButtonGroup>
                     }
                 >
                     <FilterBar.Root className="items-center border-b border-secondary px-6 py-4">
                         <FilterBar.Content className="items-center">
-                            <div className="w-64">
+                            <div className="w-52">
                                 <Input size="sm" icon={SearchLg} aria-label="Buscar movimento" placeholder="Buscar movimento" value={busca} onChange={(valor) => mudar({ busca: valor })} />
                             </div>
                             <DateRangePicker
@@ -162,12 +368,12 @@ export function FinancasExtrato() {
                                 value={{ start: parseDate(de), end: parseDate(ate) }}
                                 onChange={(periodo) => periodo && mudar({ de: periodo.start.toString(), ate: periodo.end.toString(), periodo: null })}
                             />
-                            <div className="w-56">
+                            <div className="w-48">
                                 <Select size="sm" aria-label="Filtrar por evento" selectedKey={eventosDoPeriodo.some((e) => e.id === eventoId) ? eventoId : "todos"} onSelectionChange={(chave) => mudar({ evento: chave === "todos" ? null : String(chave) })} items={eventosDoPeriodo}>
                                     {(item) => <Select.Item id={item.id}>{item.label}</Select.Item>}
                                 </Select>
                             </div>
-                            <div className="w-56">
+                            <div className="w-44">
                                 <Select size="sm" aria-label="Filtrar por tipo de movimento" selectedKey={filtro} onSelectionChange={(chave) => mudar({ tipo: chave === "todos" ? null : String(chave) })} items={TIPOS}>
                                     {(item) => <Select.Item id={item.id}>{item.label}</Select.Item>}
                                 </Select>
@@ -188,7 +394,7 @@ export function FinancasExtrato() {
                                 </EmptyState.Header>
                                 <EmptyState.Content>
                                     <EmptyState.Title>{semMovimentos ? "Nenhum movimento neste período" : "Nenhum movimento com esse filtro"}</EmptyState.Title>
-                                    {semMovimentos && temDados && eventos.length === 0 && <EmptyState.Description>Vendas, liberações e repasses aparecem aqui.</EmptyState.Description>}
+                                    {semMovimentos && temDados && eventos.length === 0 && <EmptyState.Description>Liberações, repasses e devoluções aparecem aqui.</EmptyState.Description>}
                                 </EmptyState.Content>
                                 <EmptyState.Footer>
                                     {semMovimentos ? (
@@ -206,61 +412,41 @@ export function FinancasExtrato() {
                             </EmptyState>
                         </div>
                     ) : (
-                        <Table aria-label="Extrato" onRowAction={(chave) => !String(chave).startsWith("saldo-") && mudar({ movimento: String(chave), pagina: String(pagina) })}>
-                            <Table.Header>
-                                <Table.Head id="data" label="Data" isRowHeader />
-                                <Table.Head id="movimento" label="Movimento" />
-                                <Table.Head id="evento" label="Evento" />
-                                <Table.Head id="valor" label="Valor" className="text-right" />
-                                <Table.Head id="apos" label="Disponível após" className="text-right" />
-                            </Table.Header>
-                            <Table.Body items={linhas}>
-                                {(linha) =>
-                                    linha.saldo ? (
-                                        <Table.Row id={linha.id} className="bg-secondary">
-                                            <Table.Cell className="whitespace-nowrap">{dataCurta(linha.data)}</Table.Cell>
-                                            <Table.Cell>
-                                                <span className="font-semibold text-primary">Disponível em {dataCurta(linha.data)}</span>
-                                            </Table.Cell>
-                                            <Table.Cell />
-                                            <Table.Cell />
-                                            <Table.Cell className="text-right">
-                                                <span className={cx("font-semibold tabular-nums", linha.valor < 0 ? "text-error-primary" : "text-primary")}>{reais(linha.valor)}</span>
-                                            </Table.Cell>
-                                        </Table.Row>
-                                    ) : (
-                                        <Table.Row id={linha.id} className="cursor-pointer">
-                                            <Table.Cell className="whitespace-nowrap">{linha.data === HOJE ? "Hoje" : dataComDia(linha.data)}</Table.Cell>
-                                            <Table.Cell>
-                                                <span className="flex flex-wrap items-center gap-2">
-                                                    <Badge size="sm" type="pill-color" color={COR_DO_TIPO[linha.tipo]}>
-                                                        {ROTULO_DO_MOVIMENTO[linha.tipo]}
-                                                    </Badge>
-                                                    <span className="font-medium text-primary">{linha.titulo}</span>
-                                                </span>
-                                            </Table.Cell>
-                                            <Table.Cell>{linha.evento.nome}</Table.Cell>
-                                            <Table.Cell className="text-right">
-                                                <span className={cx("font-medium whitespace-nowrap tabular-nums", linha.tipo === "repasse" || linha.tipo === "venda" ? "text-primary" : linha.valor > 0 ? "text-success-primary" : "text-error-primary")}>
-                                                    {linha.valor > 0 ? "+ " : ""}
-                                                    {reais(linha.valor)}
-                                                </span>
-                                            </Table.Cell>
-                                            <Table.Cell className="text-right">
-                                                {linha.efeito === 0 ? (
-                                                    <span className="flex flex-col items-end">
-                                                        <span aria-hidden="true">—</span>
-                                                        <span className="text-xs text-tertiary">{linha.semEfeito}</span>
-                                                    </span>
-                                                ) : (
-                                                    <span className={cx("font-medium whitespace-nowrap tabular-nums", linha.apos < 0 ? "text-error-primary" : "text-primary")}>{reais(linha.apos)}</span>
-                                                )}
-                                            </Table.Cell>
-                                        </Table.Row>
-                                    )
-                                }
-                            </Table.Body>
-                        </Table>
+                        <>
+                            <div aria-hidden="true" className="flex items-center gap-4 border-b border-secondary px-6 py-2 text-xs font-semibold text-quaternary">
+                                <span className="flex-1">Movimento</span>
+                                <span className={COLUNA}>Valor</span>
+                                <span className={COLUNA}>Disponível após</span>
+                                <span className={SETA} />
+                            </div>
+                            <ol aria-label="Movimentos por dia, do mais recente para o mais antigo" className="flex flex-col">
+                                {dias.map((dia) => (
+                                    <li key={dia.data}>
+                                        <div className="flex items-center gap-4 border-b border-secondary bg-secondary px-6 py-2">
+                                            <h3 className="flex-1 text-sm font-semibold text-secondary">{dia.data === HOJE ? `Hoje, ${dataCurta(dia.data)}` : dataComDia(dia.data)}</h3>
+                                            <span className="text-xs text-tertiary">Disponível no fim do dia</span>
+                                            <span className={cx(COLUNA, "text-sm font-semibold whitespace-nowrap tabular-nums", (fimDoDia.get(dia.data) ?? 0) < 0 ? "text-error-primary" : "text-primary")}>{reais(fimDoDia.get(dia.data) ?? 0)}</span>
+                                            <span className={SETA} />
+                                        </div>
+                                        <ul className="flex flex-col divide-y divide-secondary border-b border-secondary">
+                                            {dia.movimentos.map((m) => (
+                                                <Movimento key={m.id} m={m} aoAbrir={() => mudar({ movimento: m.id, pagina: pagina === 1 ? null : String(pagina) })} />
+                                            ))}
+                                        </ul>
+                                    </li>
+                                ))}
+                            </ol>
+                        </>
+                    )}
+                    {semEfeito > 0 && filtro === "todos" && sentido === "tudo" && (
+                        <p className="flex flex-wrap items-center gap-x-2 gap-y-1 px-6 py-3 text-sm text-tertiary">
+                            {mostrarSemEfeito
+                                ? `A lista inclui ${quantos(semEfeito)} que não ${semEfeito === 1 ? "mudou" : "mudaram"} o Disponível.`
+                                : `${semEfeito === 1 ? "1 movimento não mudou" : `${semEfeito} movimentos não mudaram`} o Disponível e não ${semEfeito === 1 ? "aparece" : "aparecem"} na lista: vendas em processamento e devoluções que saíram do Antecipável.`}
+                            <Button size="sm" color="link-gray" onClick={() => mudar({ semefeito: mostrarSemEfeito ? null : "1" })}>
+                                {mostrarSemEfeito ? "Ocultar" : "Mostrar na lista"}
+                            </Button>
+                        </p>
                     )}
                     {paginas > 1 && <Paginacao pagina={pagina} total={paginas} aoMudar={(p) => mudar({ pagina: p === 1 ? null : String(p) })} />}
                 </Secao>
@@ -279,9 +465,17 @@ export function FinancasExtrato() {
                 }
                 acoes={
                     temDados && (
-                        <Button size="md" color="secondary" iconLeading={Download01} onClick={baixar}>
-                            Baixar extrato
-                        </Button>
+                        <Dropdown.Root>
+                            <Button size="md" color="secondary" iconLeading={Download01} iconTrailing={ChevronDown}>
+                                Baixar extrato
+                            </Button>
+                            <Dropdown.Popover className="w-56" isNonModal>
+                                <Dropdown.Menu aria-label="Formato do extrato" onAction={(chave) => baixar(chave as "csv" | "pdf")}>
+                                    <Dropdown.Item id="pdf" label="PDF" icon={File06} />
+                                    <Dropdown.Item id="csv" label="Planilha (CSV)" icon={IconeDePlanilha} />
+                                </Dropdown.Menu>
+                            </Dropdown.Popover>
+                        </Dropdown.Root>
                     )
                 }
             />

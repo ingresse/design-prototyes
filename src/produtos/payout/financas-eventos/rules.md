@@ -30,7 +30,7 @@ quanto já repassou.
 - **FEV-10** Cabeçalho: título, "Atualizado em dd/mm/aaaa, hh:mm" (informação neutra) e "Solicitar repasse".
 - **FEV-11** Três cards de ação, os únicos números com centavos: Disponível para repasse (card inteiro clicável, leva à lista filtrada por "Com dinheiro disponível"), Antecipável (próxima liberação e "Antecipar", sem taxa) e Repassado (agendados e "Ver repasses", que abre o Extrato filtrado por Repasses).
 - **FEV-12** "A conta de todos os eventos": a cascata e "Onde está o seu líquido" (barra de proporção com tooltip em cada parte e legenda de seis itens). Cada bloco com valor > 0 tem "Ver detalhe"; o Líquido não tem.
-- **FEV-13** Cada item da legenda é clicável: Em processamento, Retido e Antecipável abrem o Calendário filtrado; Disponível abre a lista filtrada; Agendado e Repassado abrem o Extrato filtrado.
+- **FEV-13** Cada item da legenda é clicável: Em processamento, Retido e Antecipável abrem o Calendário filtrado; Disponível abre a lista filtrada; Agendado abre o Extrato (os agendados ficam no topo) e Repassado abre o Extrato filtrado por repasses pagos.
 - **FEV-14** A conta e os cards são sempre da organização inteira: busca e filtro da lista não mudam nenhum dos dois.
 - **FEV-15** "Próximas liberações": as 3 próximas datas (uma linha por data e tipo; vários eventos viram "N eventos"). "Últimos movimentos": os 3 mais recentes que mudaram o Disponível. Cada um leva à sua tela.
 - **FEV-16** "Seus eventos": pastas sem colunas de valores, com contagem, busca, filtro por situação e período, ordenação (padrão "Pendentes primeiro"), paginação de 10 em 10 e "Baixar relatório" do resultado.
@@ -51,11 +51,14 @@ quanto já repassou.
 
 ### Extrato _(pages/extrato.tsx, components/painel-do-movimento.tsx)_
 - **FEV-40** Período padrão: um mês (17/10 a 17/11). O extrato cobre os últimos 90 dias.
-- **FEV-41** Ordem cronológica. Primeira linha: "Disponível em" a data inicial; última: "Disponível em" a data final, igual ao Disponível do card quando o período termina hoje.
-- **FEV-42** Saldo inicial + movimentos que afetam o Disponível = saldo final. Movimento que não mexe no Disponível mostra "—" e o motivo.
-- **FEV-43** Filtros (busca, período, evento, tipo) escondem linhas; "Disponível após" é sempre o saldo da organização.
-- **FEV-44** A linha abre o painel do movimento: o que foi, o que mudou em cada parte, dados do repasse ou da antecipação e o link de prova. A taxa da antecipação e a taxa de transferência só aparecem aqui e na linha de repasse do evento.
-- **FEV-45** Paginação de 20 em 20 e "Baixar extrato" (CSV do resultado, com os saldos).
+- **FEV-41** Resumo do período no topo, em quatro partes que fecham a conta: Disponível no início + Entradas − Saídas = Disponível no fim (igual ao card quando o período termina hoje). Entradas e Saídas abrem por tipo de movimento. O resumo não muda com os filtros.
+- **FEV-42** "Repasses agendados" fica à parte, entre o resumo e os movimentos: data prevista, conta, evento, modalidade e valor que cai na conta. Soma o Agendado da legenda. Não muda com os filtros.
+- **FEV-43** Movimentos do mais recente para o mais antigo, agrupados por dia; o cabeçalho do dia mostra o Disponível no fim do dia. Cada linha tem ícone de direção, título, tipo · evento (e conta, no repasse), valor e "Disponível após".
+- **FEV-44** Por padrão a lista só tem o que mudou o Disponível. Vendas em processamento e devoluções que saíram do Antecipável ficam de fora, com um aviso e "Mostrar na lista"; filtrar por um tipo também mostra.
+- **FEV-45** Entrada em verde, saída em cor neutra. Vermelho só para saldo negativo.
+- **FEV-46** Filtros: Tudo / Entradas / Saídas, busca, período, evento e tipo. Escondem linhas; "Disponível após" e o saldo do dia são sempre os da organização.
+- **FEV-47** A linha abre o painel do movimento: o que foi, o que mudou em cada parte, dados do repasse ou da antecipação e o link de prova. O repasse mostra "De onde veio este valor", e as linhas somam o valor do repasse. A taxa da antecipação e a taxa de transferência só aparecem aqui, nos agendados e na linha de repasse do evento.
+- **FEV-48** Paginação de 20 em 20. "Baixar extrato" oferece PDF (simulado) e Planilha (CSV do resultado, em ordem cronológica, com os saldos).
 
 ### Página do evento _(pages/evento.tsx)_
 - **FEV-50** Nesta ordem: a conta do evento, calendário de liberações, repasses, devoluções e o que ainda pode mudar.
@@ -69,7 +72,7 @@ quanto já repassou.
 - **FEV-62** Sem eventos: a tela aparece inteira, zerada, com o vazio de cada seção.
 
 ### Design System
-- **FEV-70** Cartões são `TableCard`; filtros ficam em `FilterBar`; o Extrato é `Table`; painéis são `SlideoutMenu`. Sem valores arbitrários de Tailwind (exceção: a altura do menu lateral, copiada do Backstage).
+- **FEV-70** Cartões são `TableCard`; filtros ficam em `FilterBar`; o Extrato é uma lista por dia (a `Table` do DS não agrupa linhas); painéis são `SlideoutMenu`. Sem valores arbitrários de Tailwind (exceção: a altura do menu lateral, copiada do Backstage).
 - **FEV-71** Tamanhos que mudam entre 1280 e 1440 usam consulta de contêiner (`@6xl`).
 
 ### Contas
