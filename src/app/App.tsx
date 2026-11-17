@@ -438,6 +438,8 @@ export default function App() {
         <Route path="/carteira-web" element={<CarteiraWeb />} />
         {/* Atalho de teste: abre a Carteira web com o modal da oferta Uber */}
         <Route path="/carteira-web/uber" element={<CarteiraWeb />} />
+        {/* Cada evento da Carteira web tem sua URL (lista de ingressos do evento) */}
+        <Route path="/carteira-web/evento/:eventId" element={<CarteiraWeb />} />
         <Route path="/carteira-web/transferir" element={<CarteiraWebTransferir />} />
         <Route path="/carteira-web/troca-onboarding" element={<CarteiraWebTrocaOnboarding />} />
         <Route path="/carteira-web/dependentes/onboarding" element={<CarteiraWeb />} />

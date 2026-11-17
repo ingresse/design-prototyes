@@ -1,6 +1,6 @@
 import type { FC } from "react";
 import { useEffect, useState } from "react";
-import { useLocation, useNavigate } from "react-router";
+import { useLocation, useNavigate, useParams } from "react-router";
 import { AlertTriangle, ArrowLeft, Calendar, ChevronRight, ClockRewind, FilterLines, MarkerPin01, Package, Ticket01 } from "@untitledui/icons";
 import { Badge } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
@@ -185,8 +185,6 @@ const ANTERIORES: EventoCard[] = [
 ];
 
 const SS = PROXIMOS.find((e) => e.comboId === "combo-sao-silvestre")!;
-/** A São Silvestre tem o fluxo próprio da inscrição; os demais abrem a lista de ingressos do evento (dados em eventos.ts). */
-const ehSaoSilvestre = (e: EventoCard) => e.comboId === "combo-sao-silvestre";
 /** No perfil de um dependente: só os eventos com ingressos dele que essa conta pode acessar (como no app). */
 const doPerfil = (lista: EventoCard[], perfil: PerfilAtivo | null) =>
     !perfil
@@ -562,8 +560,18 @@ export function Carteira() {
     const [editandoFormulario, setEditandoFormulario] = useState<string | null>(null);
     // Cenário de erro: formulário não enviado corretamente
     const [erroFormulario, setErroFormulario] = useState(false);
+    // Cada evento tem sua URL: /carteira-web/evento/:eventId abre a lista de ingressos do evento
+    // (o voltar do navegador volta para a Carteira). O ingresso aberto dentro dele (alvo) fica no estado.
+    const { eventId: eventoDaUrl } = useParams();
+    const [alvo, setAlvo] = useState<Alvo | undefined>();
+    useEffect(() => setAlvo(undefined), [eventoDaUrl]);
     // Demais eventos (fora a São Silvestre): lista de ingressos do evento → detalhe. Vale para desktop e mobile.
-    const [outro, setOutro] = useState<{ eventId: string; alvo?: Alvo } | null>(null);
+    const outro = eventoDaUrl && eventoDaUrl !== "sao-silvestre" && getEvento(eventoDaUrl) ? { eventId: eventoDaUrl, alvo } : null;
+    const setOutro = (o: { eventId: string; alvo?: Alvo } | null) => {
+        if (!o) return navigate("/carteira-web");
+        if (o.eventId !== eventoDaUrl) navigate(`/carteira-web/evento/${o.eventId}`);
+        setAlvo(o.alvo);
+    };
     const perfilAtivo = usePerfilAtivo();
     // Onboarding dos perfis: para quem tem dependentes, na 1ª vez; pelo link /carteira-web/dependentes/onboarding, sempre
     const location = useLocation();
@@ -596,6 +604,8 @@ export function Carteira() {
         // /carteira-web/uber (atalho) ou ?oferta=uber abrem a oferta mesmo se já foi vista
         const forcar = location.pathname.endsWith("/uber") || new URLSearchParams(location.search).get("oferta") === "uber";
         if (!forcar && lerFlag(OFERTA_UBER_VISTA)) return;
+        // Entrando direto pela URL de um evento: a oferta é da Carteira, não aparece aqui
+        if (eventoDaUrl) return;
         const t = setTimeout(() => setOfertaUber(true), 700);
         return () => clearTimeout(t);
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -607,12 +617,19 @@ export function Carteira() {
     const eventoOutro = eventoBase && paraOPerfil(eventoBase, perfilAtivo);
     useEffect(() => {
         window.scrollTo(0, 0);
-    }, [outro, desktopDetalhe, desktopForm]);
-    const abrirCard = (card: EventoCard) => {
-        if (!ehSaoSilvestre(card)) return setOutro({ eventId: card.id });
-        if (viewport === "desktop") setDesktopDetalhe(true);
-        else setMobileScreen("ingressos");
-    };
+    }, [eventoDaUrl, alvo, desktopDetalhe, desktopForm]);
+    const abrirCard = (card: EventoCard) => navigate(`/carteira-web/evento/${card.id}`);
+    // São Silvestre (fluxo próprio de inscrição): a URL do evento abre a tela de detalhe; sem evento, volta à lista
+    useEffect(() => {
+        if (eventoDaUrl === "sao-silvestre") {
+            if (viewport === "desktop") setDesktopDetalhe(true);
+            else setMobileScreen((m) => (m === "lista" ? "ingressos" : m));
+        } else {
+            setDesktopDetalhe(false);
+            setDesktopForm(false);
+            setMobileScreen("lista");
+        }
+    }, [eventoDaUrl, viewport]);
     const telaOutro =
         outro && eventoOutro ? (
             outro.alvo ? (
@@ -681,7 +698,7 @@ export function Carteira() {
                             />
                         ) : desktopDetalhe ? (
                             <DesktopDetalhe
-                                onBack={() => setDesktopDetalhe(false)}
+                                onBack={() => navigate("/carteira-web")}
                                 onTransfer={(combo) => navigate("/carteira-web/transferir", { state: { viewport, comboId: combo.id } })}
                                 erro={erroFormulario}
                                 onResponderFormulario={() => setDesktopForm(true)}
@@ -693,7 +710,7 @@ export function Carteira() {
                     ) : mobileScreen === "lista" ? (
                         <MobileEventList onEventClick={abrirCard} />
                     ) : mobileScreen === "ingressos" ? (
-                        <MobileIngressos card={SS} erro={erroFormulario} onBack={() => setMobileScreen("lista")} onOpen={() => setMobileScreen("detalhe")} />
+                        <MobileIngressos card={SS} erro={erroFormulario} onBack={() => navigate("/carteira-web")} onOpen={() => setMobileScreen("detalhe")} />
                     ) : mobileScreen === "editar-formulario" ? (
                         <EditarFormularioMobile comboId={SAO_SILVESTRE.combos[0].id} onBack={() => setMobileScreen("detalhe")} />
                     ) : mobileScreen === "formulario" ? (
