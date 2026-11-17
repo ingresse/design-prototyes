@@ -146,6 +146,7 @@ Princípios aplicados: claro, conciso, consistente, útil, humano; CTA com verbo
 | Extrato, agendados | Título "Repasses agendados" + "Já saíram do Disponível e caem na conta na data prevista"; linha "Repasse para Itaú ···4521" | Aceita | Responde "isso ainda sai do meu saldo?". "Lançamentos futuros" foi recusada: é fala de banco e inclui o que não é repasse |
 | Extrato, cabeçalho do dia | "Disponível no fim do dia"; "Hoje, 17/11" | Aceita | "Saldo do dia" foi recusada: o glossário usa "Disponível", não "saldo" |
 | Extrato, atalhos | "Tudo" / "Entradas" / "Saídas"; filtro "Todos os tipos" | Aceita | Uma palavra cada; "Todos os movimentos" ficou redundante com "Tudo" |
+| Extrato, filtro de evento | Campo com busca, com "Todos os eventos" como texto do campo vazio | Aceita | Vazio já quer dizer todos: não precisa de um item "Todos os eventos" na lista |
 | Extrato, baixar | "Baixar extrato" → "PDF" e "Planilha (CSV)" | Aceita | "Planilha" é a palavra do produtor; CSV fica entre parênteses para quem procura |
 | Painel do repasse | "De onde veio este valor", com "Já estava no Disponível do evento" / "Ficou no Disponível do evento" | Aceita | Pergunta do produtor, na voz dele; as linhas de ajuste dizem para onde foi a diferença |
 | Extrato, liberação | "Antecipável liberado" / "Retido liberado" | Aceita | Diz de onde veio em duas palavras |

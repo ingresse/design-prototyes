@@ -56,7 +56,7 @@ quanto já repassou.
 - **FEV-43** Movimentos do mais recente para o mais antigo, agrupados por dia; o cabeçalho do dia mostra o Disponível no fim do dia. Cada linha tem ícone de direção, título, tipo · evento (e conta, no repasse), valor e "Disponível após".
 - **FEV-44** Por padrão a lista só tem o que mudou o Disponível. Vendas em processamento e devoluções que saíram do Antecipável ficam de fora, com um aviso e "Mostrar na lista"; filtrar por um tipo também mostra.
 - **FEV-45** Entrada em verde, saída em cor neutra. Vermelho só para saldo negativo.
-- **FEV-46** Filtros: Tudo / Entradas / Saídas, busca, período, evento e tipo. Escondem linhas; "Disponível após" e o saldo do dia são sempre os da organização.
+- **FEV-46** Filtros: Tudo / Entradas / Saídas, busca, período, evento e tipo. O evento é um campo com busca (`Select.ComboBox` do DS), porque a organização pode ter dezenas de eventos; vazio quer dizer todos. Escondem linhas; "Disponível após" e o saldo do dia são sempre os da organização.
 - **FEV-47** A linha abre o painel do movimento: o que foi, o que mudou em cada parte, dados do repasse ou da antecipação e o link de prova. O repasse mostra "De onde veio este valor", e as linhas somam o valor do repasse. A taxa da antecipação e a taxa de transferência só aparecem aqui, nos agendados e na linha de repasse do evento.
 - **FEV-48** Paginação de 20 em 20. "Baixar extrato" oferece PDF (simulado) e Planilha (CSV do resultado, em ordem cronológica, com os saldos).
 

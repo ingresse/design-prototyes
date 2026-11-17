@@ -264,7 +264,7 @@ export function FinancasExtrato() {
     // O painel abre qualquer movimento dos últimos 90 dias, mesmo fora do período escolhido (agendados, links de outras telas).
     const aberto = extrato(eventos, limite, HOJE).linhas.find((m) => m.id === params.get("movimento")) ?? null;
     const agendados = repassesAgendados(eventos);
-    const eventosDoPeriodo = [{ id: "todos", label: "Todos os eventos" }, ...[...new Map(x.linhas.map((m) => [m.evento.id, m.evento.nome])).entries()].sort((a, b) => a[1].localeCompare(b[1])).map(([id, label]) => ({ id, label }))];
+    const eventosDoPeriodo = [...new Map(x.linhas.map((m) => [m.evento.id, m.evento.nome])).entries()].sort((a, b) => a[1].localeCompare(b[1])).map(([id, label]) => ({ id, label }));
     const temDados = cenario === "normal" || cenario === "negativo" || bloqueado;
     const quantos = (n: number) => (n === 1 ? "1 movimento" : `${n} movimentos`);
 
@@ -356,7 +356,7 @@ export function FinancasExtrato() {
                 >
                     <FilterBar.Root className="items-center border-b border-secondary px-6 py-4">
                         <FilterBar.Content className="items-center">
-                            <div className="w-52">
+                            <div className="w-44">
                                 <Input size="sm" icon={SearchLg} aria-label="Buscar movimento" placeholder="Buscar movimento" value={busca} onChange={(valor) => mudar({ busca: valor })} />
                             </div>
                             <DateRangePicker
@@ -368,12 +368,22 @@ export function FinancasExtrato() {
                                 value={{ start: parseDate(de), end: parseDate(ate) }}
                                 onChange={(periodo) => periodo && mudar({ de: periodo.start.toString(), ate: periodo.end.toString(), periodo: null })}
                             />
-                            <div className="w-48">
-                                <Select size="sm" aria-label="Filtrar por evento" selectedKey={eventosDoPeriodo.some((e) => e.id === eventoId) ? eventoId : "todos"} onSelectionChange={(chave) => mudar({ evento: chave === "todos" ? null : String(chave) })} items={eventosDoPeriodo}>
+                            {/* Campo com busca: uma organização pode ter dezenas de eventos. Vazio = todos os eventos. */}
+                            <div className="w-52">
+                                <Select.ComboBox
+                                    size="sm"
+                                    shortcut={false}
+                                    aria-label="Filtrar por evento"
+                                    placeholder="Todos os eventos"
+                                    popoverClassName="w-80"
+                                    selectedKey={eventosDoPeriodo.some((e) => e.id === eventoId) ? eventoId : null}
+                                    onSelectionChange={(chave) => mudar({ evento: chave ? String(chave) : null })}
+                                    items={eventosDoPeriodo}
+                                >
                                     {(item) => <Select.Item id={item.id}>{item.label}</Select.Item>}
-                                </Select>
+                                </Select.ComboBox>
                             </div>
-                            <div className="w-44">
+                            <div className="w-40">
                                 <Select size="sm" aria-label="Filtrar por tipo de movimento" selectedKey={filtro} onSelectionChange={(chave) => mudar({ tipo: chave === "todos" ? null : String(chave) })} items={TIPOS}>
                                     {(item) => <Select.Item id={item.id}>{item.label}</Select.Item>}
                                 </Select>
