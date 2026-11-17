@@ -26,7 +26,7 @@ import { cx } from "@/utils/cx";
 
 const segmento = (isPlaceholder: boolean, type: string) =>
     cx(
-        "rounded px-0.5 text-primary tabular-nums caret-transparent focus:bg-brand-solid focus:font-medium focus:text-base-white focus:outline-hidden",
+        "rounded px-0.5 text-primary tabular-nums caret-transparent focus:bg-brand-solid focus:font-medium focus:text-white focus:outline-hidden",
         isPlaceholder && "text-placeholder uppercase",
         type === "literal" && "text-fg-quaternary",
     );

@@ -616,6 +616,17 @@ function ConfigAtividade({
                 })}
             </div>
 
+            {/* Atraso antes de "Tarefa concluída": útil quando a pessoa precisa ver o resultado da ação; na criação de evento, por exemplo, não precisa. */}
+            {(!!critRota || !!critClique) && (
+                <Checkbox
+                    size="sm"
+                    isSelected={bloco.atrasoNaConclusao !== false}
+                    onChange={(v) => patch({ atrasoNaConclusao: v })}
+                    label="Esperar 5 segundos antes de mostrar a conclusão"
+                    hint="Na conclusão por tela ou por clique, deixa a pessoa ver o resultado da própria ação antes da mensagem de sucesso cobrir a tela."
+                />
+            )}
+
             <Input label="Mensagem de sucesso (opcional)" placeholder="Boa! Tarefa concluída." value={bloco.mensagemSucesso ?? ""} onChange={(v) => patch({ mensagemSucesso: v })} />
         </>
     );

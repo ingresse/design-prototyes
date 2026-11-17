@@ -4,8 +4,12 @@ import { createContext, useContext, useEffect, useState } from "react";
 type Theme = "light" | "dark" | "system";
 
 interface ThemeContextType {
+    /** Tema em uso: o escolhido pela pessoa ou, sem escolha, o padrão da tela. */
     theme: Theme;
+    /** Escolha da pessoa: fica gravada e vale em qualquer tela. */
     setTheme: (theme: Theme) => void;
+    /** Padrão da tela atual, usado só enquanto a pessoa não escolheu (ex.: o Backstage começa escuro). */
+    setPadrao: (theme: Theme) => void;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -40,13 +44,14 @@ interface ThemeProviderProps {
 }
 
 export const ThemeProvider = ({ children, defaultTheme = "system", storageKey = "ui-theme", darkModeClass = "dark-mode" }: ThemeProviderProps) => {
-    const [theme, setTheme] = useState<Theme>(() => {
-        if (typeof window !== "undefined") {
-            const savedTheme = localStorage.getItem(storageKey) as Theme | null;
-            return savedTheme || defaultTheme;
-        }
-        return defaultTheme;
-    });
+    // Escolha gravada (inclusive "system") e padrão da tela; sem escolha, vale o padrão.
+    const [salvo, setSalvo] = useState<Theme | null>(() => (typeof window !== "undefined" ? (localStorage.getItem(storageKey) as Theme | null) : null));
+    const [padrao, setPadrao] = useState<Theme>(defaultTheme);
+    const theme = salvo ?? padrao;
+    const setTheme = (t: Theme) => {
+        setSalvo(t);
+        localStorage.setItem(storageKey, t);
+    };
 
     useEffect(() => {
         const applyTheme = () => {
@@ -56,10 +61,8 @@ export const ThemeProvider = ({ children, defaultTheme = "system", storageKey = 
                 const systemTheme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 
                 root.classList.toggle(darkModeClass, systemTheme === "dark");
-                localStorage.removeItem(storageKey);
             } else {
                 root.classList.toggle(darkModeClass, theme === "dark");
-                localStorage.setItem(storageKey, theme);
             }
         };
 
@@ -78,5 +81,5 @@ export const ThemeProvider = ({ children, defaultTheme = "system", storageKey = 
         return () => mediaQuery.removeEventListener("change", handleChange);
     }, [theme]);
 
-    return <ThemeContext.Provider value={{ theme, setTheme }}>{children}</ThemeContext.Provider>;
+    return <ThemeContext.Provider value={{ theme, setTheme, setPadrao }}>{children}</ThemeContext.Provider>;
 };

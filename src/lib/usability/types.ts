@@ -58,6 +58,11 @@ export interface BlocoAtividade extends BlocoBase {
     criterios: Criterio[];
     /** Mensagem exibida ao concluir com sucesso (opcional). */
     mensagemSucesso?: string;
+    /**
+     * Na conclusão automática (rota ou clique), espera alguns segundos antes de mostrar "Tarefa concluída",
+     * para a pessoa ver o resultado da própria ação. Sem valor, espera (o comportamento de antes).
+     */
+    atrasoNaConclusao?: boolean;
     /** Quando exibir o bloco de declaração (Desisti/Concluí): 0 = sempre em tela; >0 = após N segundos. */
     declaracaoApos: number;
     /** Pede justificativa ao participante ao clicar em "Desisti". */

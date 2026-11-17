@@ -237,13 +237,15 @@ function HomeScreen() {
 }
 
 export default function App() {
-  const { theme } = useTheme();
+  const { theme, setPadrao } = useTheme();
   // Backstage e Freepass usam a marca neutra; os outros produtos seguem o vermelho do tema (BKS-70).
   const { pathname } = useLocation();
   useLayoutEffect(() => {
     const backstage = pathname.startsWith('/backstage') || pathname.startsWith('/freepass');
     document.documentElement.classList.toggle('tema-backstage', backstage);
-  }, [pathname]);
+    // Backstage e Freepass começam no escuro; quem escolheu um tema em Ajustes continua com ele (BKS-73).
+    setPadrao(backstage ? 'dark' : 'system');
+  }, [pathname, setPadrao]);
   return (
     <RemixProvider>
     <CortesiasProvider>

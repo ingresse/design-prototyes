@@ -226,7 +226,8 @@ function CamadaDoTeste() {
                 duracaoMs: new Date(agora).getTime() - new Date(atual.iniciadaEmBloco).getTime(),
             });
             if (resultado !== "sucesso") avancarBloco();
-            else if (comoConcluiu === "rota" || comoConcluiu === "clique") setSucessoPendente(true);
+            // Conclusão automática: espera para a pessoa ver o resultado, a menos que a tarefa dispense o atraso.
+            else if ((comoConcluiu === "rota" || comoConcluiu === "clique") && (blocoAtual as BlocoAtividade).atrasoNaConclusao !== false) setSucessoPendente(true);
             else setMostrandoSucesso(true);
         },
         [registrarEvento, avancarBloco],
@@ -738,7 +739,8 @@ function TelaExibicaoExposicao({ bloco, restante }: { bloco: BlocoExposicao; res
             ) : (
                 <p className="text-sm text-tertiary">Nenhuma tela configurada.</p>
             )}
-            <span className="fixed top-5 right-5 z-[10001] flex size-12 items-center justify-center rounded-full bg-primary-solid text-lg font-semibold text-white shadow-lg tabular-nums">
+            {/* bg-primary-solid fica branco no escuro e text-white inverte no AFTER DS v8: escuro usa bg-primary e o branco fixo. */}
+            <span className="fixed top-5 right-5 z-[10001] flex size-12 items-center justify-center rounded-full bg-primary-solid text-lg font-semibold text-base-white shadow-lg tabular-nums ring-1 ring-transparent dark:bg-primary dark:ring-secondary">
                 {restante}
             </span>
         </motion.div>
