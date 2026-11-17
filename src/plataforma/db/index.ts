@@ -32,7 +32,7 @@ const ENDPOINT = "/api/db";
 const LOCAL_KEY = "plataforma:db:v1";
 const POLL_MS = 8000;
 
-const vazio = (): Tabelas => ({ eventos: {}, pedidos: {}, ingressos: {}, usuarios: {}, historico: {}, organizacoes: {} });
+const vazio = (): Tabelas => ({ eventos: {}, pedidos: {}, ingressos: {}, usuarios: {}, historico: {}, organizacoes: {}, criacoes: {}, categorias: {} });
 
 let estado: Estado = { modo: "carregando", tabelas: vazio(), versao: 0, erro: null };
 const ouvintes = new Set<() => void>();
@@ -76,6 +76,8 @@ function lerLocal(): Tabelas | null {
         if (!raw) return null;
         const p = JSON.parse(raw) as { versao?: string; tabelas?: Tabelas };
         if (!p.tabelas) return null;
+        // Coleção criada depois da gravação (ex.: criacoes, categorias): começa vazia.
+        for (const c of COLECOES) p.tabelas[c] ??= {} as never;
         // Seed nova: completa com o que falta, sem sobrescrever o que já existe.
         if (p.versao !== SEED_VERSAO) {
             const seed = indexar(SEED);

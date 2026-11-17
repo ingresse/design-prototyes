@@ -317,8 +317,10 @@ export interface Evento {
     /* Campos da criação por tipo. Opcionais: eventos antigos e da seed não têm. */
     tipo?: TipoEvento;
     modalidade?: Modalidade;
-    /** Categoria do show ou festa (id da lista da criação). */
+    /** Categoria do show ou festa (id da coleção `categorias`), escolhida pela classificação. */
     categoria?: string;
+    /** O que a pessoa escreveu sobre o tipo do show ou festa, no campo aberto da criação. */
+    categoriaTexto?: string;
     /** Fim do evento (ISO local). */
     fim?: string;
     /** Código ISO da moeda (ex.: BRL). */
@@ -432,6 +434,52 @@ export interface HistoricoVendas {
     serie: [number, number, number][];
 }
 
+/**
+ * Cada show ou festa criado, com o que a pessoa escreveu no campo aberto e o que o Claude leu do banner.
+ * É o que forma a lista de categorias e o que mostra as que faltam (criações sem categoria).
+ */
+export interface CriacaoDeEvento {
+    id: string;
+    eventoId: string;
+    produtora: string;
+    nome: string;
+    /** O que a pessoa escreveu sobre o tipo do evento. */
+    texto: string;
+    /** Descrição em texto puro. */
+    descricao?: string;
+    /** Leitura do banner pelo Claude, em uma frase. */
+    bannerDescricao?: string;
+    /** Embedding (modelo do Hugging Face) do texto, nome, descrição e banner. Guardado para reclassificar se o catálogo mudar. */
+    vetor?: number[];
+    /** Categoria escolhida. Sem ela, nenhuma categoria passou do limiar: sinal de que falta uma no catálogo. */
+    categoriaId?: string;
+    /** Similaridade com a categoria mais parecida (0 a 1), escolhida ou não. */
+    similaridade?: number;
+    /** Categoria mais parecida, mesmo abaixo do limiar ou fora da lista: ajuda a ler as criações sem categoria. */
+    maisParecidaId?: string;
+    criadoEm: string;
+}
+
+/**
+ * Categoria da lista do banco: uma candidata do catálogo (categorias-catalogo.ts) que um evento real
+ * usou. Entra na lista na primeira criação classificada nela, durante os 2 meses de formação.
+ */
+export interface Categoria {
+    /** Id da candidata no catálogo. */
+    id: string;
+    nome: string;
+    grupo: string;
+    /** Quantos eventos caíram nela. */
+    criacoes: number;
+    /** O que as pessoas escreveram nos últimos eventos dela (até 5, mais recente primeiro). */
+    textos: string[];
+    /** Nomes dos últimos eventos dela (até 5, mais recente primeiro). */
+    exemplos: string[];
+    /** Primeira e última criação classificada nela. */
+    primeiraEm: string;
+    ultimaEm: string;
+}
+
 /** Coleções do banco e o tipo de cada uma. */
 export interface Colecoes {
     eventos: Evento;
@@ -440,7 +488,9 @@ export interface Colecoes {
     usuarios: Usuario;
     historico: HistoricoVendas;
     organizacoes: Organizacao;
+    criacoes: CriacaoDeEvento;
+    categorias: Categoria;
 }
 
 export type NomeColecao = keyof Colecoes;
-export const COLECOES: NomeColecao[] = ["eventos", "pedidos", "ingressos", "usuarios", "historico", "organizacoes"];
+export const COLECOES: NomeColecao[] = ["eventos", "pedidos", "ingressos", "usuarios", "historico", "organizacoes", "criacoes", "categorias"];

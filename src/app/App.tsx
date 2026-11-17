@@ -33,6 +33,7 @@ import { Eventos as BackstageEventos } from '../produtos/backstage/eventos/pages
 import { CriarEvento as BackstageCriarEvento } from '../produtos/backstage/eventos/pages/CriarEvento';
 import { VisaoGeralEvento } from '../produtos/backstage/eventos/pages/VisaoGeralEvento';
 import { InformacoesEvento } from '../produtos/backstage/eventos/pages/InformacoesEvento';
+import { Categorias as BackstageCategorias } from '../produtos/backstage/categorias/pages/categorias';
 import { MembrosV2 } from '../produtos/backstage/membros-v2/pages/MembrosV2';
 import { NovoGrupoV2 } from '../produtos/backstage/membros-v2/pages/NovoGrupoV2';
 import { Membros } from '../produtos/backstage/membros/pages/Membros';
@@ -257,6 +258,7 @@ export default function App() {
         <Route path="/backstage" element={<SelecaoOrganizacao />} />
         <Route path="/backstage/eventos" element={<BackstageEventos />} />
         <Route path="/backstage/eventos/novo" element={<BackstageCriarEvento />} />
+        <Route path="/backstage/categorias" element={<BackstageCategorias />} />
         <Route path="/backstage/evento/visao-geral" element={<VisaoGeralEvento />} />
         <Route path="/backstage/informacoes-evento" element={<InformacoesEvento />} />
         <Route path="/backstage/pedidos" element={<PedidosPosCompra />} />

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type FC, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type FC, type ReactNode, type RefObject } from "react";
 import { Navigate, useNavigate, useSearchParams } from "react-router";
 import { toast } from "sonner";
 import { AnimatePresence, motion } from "motion/react";
@@ -14,6 +14,7 @@ import { Select } from "@/components/base/select/select";
 import { Toggle } from "@/components/base/toggle/toggle";
 import { Surgir, useTransicao } from "@/components/foundations/transicao";
 import type { ConfiguracoesAvancadas, Modalidade, TipoEvento } from "@/plataforma";
+import { registrarCriacao } from "@/plataforma/categorias";
 import { cx } from "@/utils/cx";
 import { BackstageLayout, prepararGuiaDoEventoNovo } from "../../components/Backstage";
 import { DescricaoRica, paragrafosDoHtml } from "../../components/descricao-rica";
@@ -23,6 +24,7 @@ import { CronogramaDeSessoes, temCronograma, type SessaoExtra } from "../compone
 import { PeriodoDoEvento } from "../components/periodo-do-evento";
 import { IDADES_COM_CLASSIFICACAO } from "../components/classificacao-indicativa";
 import { criarEvento } from "../data/eventos";
+import { useCategoriaDoEvento, type EstadoDaCategoria } from "../data/categoria-do-evento";
 import { CampoBanner, CampoBannerCompacto, exportarRecorte, useBannerNaColuna, type ImagemDoBanner, type Recorte } from "../components/campo-banner";
 import { buscarLocais, useOpcoesEvento, type LocalEncontrado, type Opcao } from "../data/opcoes-evento";
 import { tipoDeEvento } from "../data/tipos-evento";
@@ -65,8 +67,10 @@ interface Formulario {
     visitanteId: string;
     programaMembrosId: string;
     modalidade: Modalidade | "";
-    /** Categoria do show ou festa (EVT-97). */
-    categoriaId: string;
+    /** Show ou festa: o que o campo Tipo de evento mostra. Achada a categoria, vira o nome dela (EVT-97). */
+    categoriaTexto: string;
+    /** O que a pessoa escreveu no Tipo de evento. É o que vai para a busca e para o banco, mesmo depois da troca. */
+    categoriaEscrito: string;
     nome: string;
     /** O nome foi digitado: para de seguir a sugestão "Mandante x Visitante". */
     nomeEditado: boolean;
@@ -100,7 +104,8 @@ const INICIAL: Omit<Formulario, "tipo"> = {
     visitanteId: "",
     programaMembrosId: "",
     modalidade: "",
-    categoriaId: "",
+    categoriaTexto: "",
+    categoriaEscrito: "",
     nome: "",
     nomeEditado: false,
     local: null,
@@ -159,7 +164,7 @@ function validar(f: Formulario): Erros {
         else if (f.visitanteId === f.mandanteId) e.visitante = "Escolha outro time: o visitante não pode ser o mandante.";
     }
     if (f.tipo === "esportivo" && !f.modalidade) e.modalidade = "Escolha a modalidade.";
-    if (f.tipo === "show" && !f.categoriaId) e.categoria = "Escolha a categoria do evento.";
+    if (f.tipo === "show" && !f.categoriaTexto.trim()) e.categoria = "Conte que tipo de evento é.";
     if (!f.nome.trim()) e.nome = "Dê um nome ao evento.";
     if (!f.local) e.local = "Busque e escolha o local do evento.";
     if (!paragrafosDoHtml(f.descricao).length) e.descricao = "Conte o que vai acontecer no evento.";
@@ -206,6 +211,23 @@ function FormularioDeEvento({ tipo, titulo }: { tipo: TipoEvento; titulo: string
     const voc = vocabularioDe(t, f.tipo);
     const itemDoCronograma = f.tipo === "esportivo" ? "largada" : "sessão";
     const erros = useMemo(() => (tentou ? validar(f) : {}), [f, tentou]);
+    // Show ou festa: a categoria é lida ao sair do campo aberto, do nome ou da descrição, e quando o banner muda (EVT-97).
+    const descricaoEmTexto = useMemo(() => paragrafosDoHtml(f.descricao).join("\n\n"), [f.descricao]);
+    const categoria = useCategoriaDoEvento({ ativo: f.tipo === "show", texto: f.categoriaEscrito, nome: f.nome, descricao: descricaoEmTexto, banner: f.banner, recorte: f.recorteBanner });
+    const lerCategoria = () => void categoria.ler();
+    // Categoria achada: o campo passa a mostrar o nome dela. Sem categoria, volta ao que a pessoa escreveu.
+    useEffect(() => {
+        if (categoria.estado.status !== "pronto") return;
+        const nome = categoria.estado.resultado.categoria?.nome;
+        setF((a) => ({ ...a, categoriaTexto: nome ?? a.categoriaEscrito }));
+    }, [categoria.estado]);
+    const procurandoCategoria = categoria.estado.status === "lendo";
+    // Último estado fora da busca: a dica não muda enquanto busca, só o campo mostra "Buscando…".
+    const ultimoEstado = useRef<EstadoDaCategoria>({ status: "vazio" });
+    if (!procurandoCategoria) ultimoEstado.current = categoria.estado;
+    const dicaEstavel = ultimoEstado.current;
+    const caixaDoTipo = useRef<HTMLDivElement>(null);
+    const [criando, setCriando] = useState(false);
     const ruins = useMemo(() => (tentou ? sessoesInvalidas(f) : new Set<number>()), [f, tentou]);
     const times = opcoes.dados?.times ?? [];
     const nomeDoTime = (id: string) => times.find((t) => t.id === id)?.label;
@@ -258,6 +280,9 @@ function FormularioDeEvento({ tipo, titulo }: { tipo: TipoEvento; titulo: string
             requestAnimationFrame(() => document.querySelector<HTMLElement>("[data-erro]")?.scrollIntoView({ behavior: "smooth", block: "center" }));
             return;
         }
+        setCriando(true);
+        // A categoria fecha antes de gravar: espera o banner e a leitura em curso (EVT-97).
+        const classificacao = f.tipo === "show" ? await categoria.garantir() : null;
         // Em sessões, o evento começa na primeira e termina no fim da última; direto, uma sessão só, no início (EVT-89, EVT-98).
         const ordenadas = emSessoes(f) ? [...f.sessoesExtras].sort((a, b) => a.valor.localeCompare(b.valor)) : [];
         const inicioDoEvento = ordenadas[0]?.valor ?? f.inicio;
@@ -278,7 +303,8 @@ function FormularioDeEvento({ tipo, titulo }: { tipo: TipoEvento; titulo: string
             extras: {
                 tipo: f.tipo,
                 modalidade: f.tipo === "esportivo" ? (f.modalidade as Modalidade) : undefined,
-                categoria: f.tipo === "show" ? f.categoriaId : undefined,
+                categoria: classificacao?.categoria?.id,
+                categoriaTexto: f.tipo === "show" ? f.categoriaEscrito.trim() : undefined,
                 fim: fimDoEvento,
                 moeda: f.moeda,
                 // Limites não se definem na criação: nasce ilimitado e se ajusta em Itens › Configurações de ingressos (EVT-57).
@@ -293,6 +319,12 @@ function FormularioDeEvento({ tipo, titulo }: { tipo: TipoEvento; titulo: string
                 ...(f.descricao ? { vitrine: { descricao: paragrafosDoHtml(f.descricao), descricaoHtml: f.descricao } } : {}),
             },
         });
+        // A criação vai para o banco de categorias: forma a lista nos 2 primeiros meses e mostra o que falta.
+        if (f.tipo === "show")
+            void registrarCriacao(
+                { eventoId: novo.id, produtora: organizacao?.nome ?? "", nome: f.nome.trim(), texto: f.categoriaEscrito, descricao: descricaoEmTexto, bannerDescricao: categoria.bannerDescricao ?? undefined },
+                classificacao ?? { categoria: null, maisParecida: null, similaridade: 0, novaNaLista: false, vetor: null },
+            );
         // Sem toast: quem anuncia o evento criado é o holofote do guia de configuração, que só toca aqui (EVT-10, GDC-14).
         prepararGuiaDoEventoNovo(novo.id);
         navigate("/backstage/catalogo/ingressos");
@@ -340,7 +372,7 @@ function FormularioDeEvento({ tipo, titulo }: { tipo: TipoEvento; titulo: string
                     <div className="flex min-w-0 flex-col gap-8">
                         {/* Nome num campo do DS. */}
                         <div className="flex gap-4" data-erro={erros.nome ? "" : undefined}>
-                            <div className="min-w-0 flex-1">
+                            <div className="min-w-0 flex-1" onBlur={lerCategoria}>
                                 <Input
                                     id="nome-do-evento"
                                     label="Nome do evento"
@@ -433,21 +465,28 @@ function FormularioDeEvento({ tipo, titulo }: { tipo: TipoEvento; titulo: string
                             </div>
                         )}
 
-                        {/* Show ou festa: categoria logo depois do nome, como a modalidade do esportivo (EVT-97). */}
+                        {/* Show ou festa: logo depois do nome, a pessoa conta com as próprias palavras que tipo de evento é.
+                            A categoria sai desse texto, do nome, da descrição e do banner (EVT-97). */}
                         {f.tipo === "show" && (
-                            <div className="flex gap-4">
-                                <div id="campo-categoria" className="min-w-0 flex-1 sm:max-w-xs">
-                                    <CampoSelect
-                                        label="Categoria"
-                                        icone={Tag01}
+                            <div className="flex gap-4" data-erro={erros.categoria ? "" : undefined}>
+                                <div id="campo-categoria" className="relative min-w-0 flex-1" onBlur={lerCategoria}>
+                                    <Input
+                                        label="Tipo de evento"
+                                        icon={Tag01}
                                         isRequired
-                                        opcoes={opcoes.dados?.categorias ?? []}
-                                        valor={f.categoriaId}
-                                        onChange={(v) => set("categoriaId", v)}
-                                        placeholder={listaVazia}
-                                        isDisabled={carregando}
-                                        erro={erros.categoria}
+                                        // Enquanto busca, o campo trava e mostra "Buscando…" na ponta direita, como o Local.
+                                        groupRef={caixaDoTipo}
+                                        isDisabled={procurandoCategoria}
+                                        inputClassName={procurandoCategoria ? "pr-28" : undefined}
+                                        value={f.categoriaTexto}
+                                        // Editar o campo, inclusive o nome da categoria já trocado, vale como texto novo da pessoa.
+                                        onChange={(v) => setF((a) => ({ ...a, categoriaTexto: v, categoriaEscrito: v }))}
+                                        placeholder="Ex.: pagode na laje com open bar"
+                                        isInvalid={!!erros.categoria}
+                                        // Durante a busca a dica fica como estava: o estado aparece só dentro do campo.
+                                        hint={erros.categoria ?? <DicaDaCategoria estado={dicaEstavel} escrito={f.categoriaEscrito} />}
                                     />
+                                    <BuscandoNoCampo alvo={caixaDoTipo} buscando={procurandoCategoria} />
                                 </div>
                             </div>
                         )}
@@ -518,7 +557,13 @@ function FormularioDeEvento({ tipo, titulo }: { tipo: TipoEvento; titulo: string
 
 
                         {/* Sobre o evento: rótulo do mesmo tamanho e a formatação dentro da caixa (EVT-86). */}
-                        <div id="campo-sobre" className="flex gap-4" data-erro={erros.descricao ? "" : undefined}>
+                        <div
+                            id="campo-sobre"
+                            className="flex gap-4"
+                            data-erro={erros.descricao ? "" : undefined}
+                            // A barra de formatação e o texto ficam no mesmo bloco: só conta sair do bloco inteiro.
+                            onBlur={(e) => !e.currentTarget.contains(e.relatedTarget as Node | null) && lerCategoria()}
+                        >
                             <DescricaoRica
                                 label="Sobre o evento"
                                 isRequired
@@ -628,7 +673,7 @@ function FormularioDeEvento({ tipo, titulo }: { tipo: TipoEvento; titulo: string
                         <Button color="secondary" size="md" onClick={sair}>
                             Cancelar
                         </Button>
-                        <Button color="primary" size="md" onClick={criar}>
+                        <Button color="primary" size="md" onClick={criar} isLoading={criando} showTextWhileLoading>
                             Criar evento
                         </Button>
                     </div>
@@ -678,6 +723,58 @@ const formatarDataHora = (v: string, locale: string) => {
     const d = new Date(v);
     return Number.isNaN(d.getTime()) ? v : new Intl.DateTimeFormat(locale, { dateStyle: "long", timeStyle: "short" }).format(d);
 };
+
+/**
+ * "Buscando…" na ponta direita da caixa do Tipo de evento enquanto a categoria é buscada (EVT-97), com
+ * o mesmo spinner e texto do Local (EVT-65). O Input do DS não tem espaço de status como o ComboBox,
+ * então o indicador fica por cima, alinhado à caixa e fora dela (a caixa esmaece travada, ele não).
+ * Sempre presente para o leitor de tela anunciar quando a busca começa.
+ */
+function BuscandoNoCampo({ alvo, buscando }: { alvo: RefObject<HTMLDivElement | null>; buscando: boolean }) {
+    const { t } = useTextos();
+    const ref = useRef<HTMLSpanElement>(null);
+    const [caixa, setCaixa] = useState<{ top: number; right: number; height: number } | null>(null);
+    useEffect(() => {
+        const medir = () => {
+            const el = alvo.current;
+            const base = ref.current?.offsetParent;
+            if (!el || !base) return;
+            const a = el.getBoundingClientRect();
+            const b = base.getBoundingClientRect();
+            setCaixa({ top: a.top - b.top, right: b.right - a.right, height: a.height });
+        };
+        medir();
+        window.addEventListener("resize", medir);
+        return () => window.removeEventListener("resize", medir);
+    }, [alvo, buscando]);
+    return (
+        <span
+            ref={ref}
+            role="status"
+            aria-live="polite"
+            className={cx("pointer-events-none absolute flex items-center gap-1.5 pr-3.5 text-sm whitespace-nowrap text-tertiary", !(buscando && caixa) && "sr-only")}
+            style={caixa ?? undefined}
+        >
+            {buscando && (
+                <>
+                    <span aria-hidden="true" className="size-4 animate-spin rounded-full border-2 border-secondary border-t-fg-brand-primary motion-reduce:animate-none" />
+                    {t.buscando}
+                </>
+            )}
+        </span>
+    );
+}
+
+/** Texto de apoio do Tipo de evento: o que fazer antes, a leitura em curso e a categoria encontrada (EVT-97). */
+function DicaDaCategoria({ estado, escrito }: { estado: EstadoDaCategoria; escrito: string }) {
+    if (estado.status === "erro") return <>Não deu para ler agora. A categoria é definida quando o evento for criado.</>;
+    if (estado.status === "pronto") {
+        if (!estado.resultado.categoria) return <>Nenhuma categoria parecida. O evento fica sem categoria por enquanto.</>;
+        // O campo já mostra a categoria: a dica lembra de onde ela veio.
+        return <>Categoria encontrada a partir de “{escrito.trim()}”.</>;
+    }
+    return <>Com as suas palavras. A categoria sai daqui, do nome, da descrição e do banner.</>;
+}
 
 /** Seção do formulário: título e, se precisar, subtítulo (UI-VIS-014). */
 const Secao = ({ titulo, descricao, children }: { titulo: string; descricao?: string; children: ReactNode }) => (
