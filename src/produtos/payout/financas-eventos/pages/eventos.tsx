@@ -218,7 +218,7 @@ export function FinancasEventos() {
                             retido: comCenario(`${BASE}/calendario?tipo=retido`),
                             aLiberar: comCenario(`${BASE}/calendario?tipo=antecipavel`),
                             disponivel: comCenario(`${BASE}?situacao=disponivel`),
-                            agendado: comCenario(`${BASE}/extrato`),
+                            agendado: comCenario(`${BASE}/extrato?tipo=repasse&periodo=90`),
                             recebido: comCenario(`${BASE}/extrato?tipo=repasse-pago&periodo=90`),
                         }}
                     />

@@ -19,10 +19,8 @@ import {
     DIAS_DO_EXTRATO,
     HOJE,
     ROTULO_DO_MOVIMENTO,
-    TAXA_DA_MODALIDADE,
     eventosDoCenario,
     extrato,
-    repassesAgendados,
     somarDias,
     totalizar,
     type Extrato,
@@ -32,7 +30,6 @@ import {
 import { Aviso, AvisoDeBloqueio, Carregando, ErroAoCarregar } from "../../components/financas/estados";
 import { dataComDia, dataCurta, reais } from "../../components/financas/formato";
 import { fraseDeCompensacao } from "../../components/financas/frases";
-import { Linha, Lista } from "../../components/financas/linha";
 import { CabecalhoDaPagina, FinancasShell, useCenario } from "../../components/financas/shell";
 import { Paginacao } from "../components/paginacao";
 import { PainelDoMovimento } from "../components/painel-do-movimento";
@@ -42,10 +39,9 @@ import { PainelDoMovimento } from "../components/painel-do-movimento";
  * Pergunta que responde: o que aconteceu com o meu dinheiro, e por que o meu Disponível mudou?
  * Lê-se como extrato de banco:
  *  - o resumo do período fecha a conta (Disponível no início + entradas − saídas = Disponível no fim);
- *  - os repasses agendados ficam à parte: é o que ainda vai cair na conta;
  *  - os movimentos vêm do mais recente para o mais antigo, agrupados por dia, com o Disponível no
  *    fim de cada dia. Por padrão só aparece o que mudou o Disponível.
- * O resumo e os agendados não mudam com os filtros; "Disponível após" é sempre o saldo da organização.
+ * O resumo não muda com os filtros; "Disponível após" é sempre o saldo da organização.
  */
 
 const BASE = "/payout/financas-eventos";
@@ -261,9 +257,8 @@ export function FinancasExtrato() {
     // Disponível no fim de cada dia: o saldo depois do último movimento do dia, com ou sem filtro.
     const fimDoDia = new Map(x.linhas.map((m) => [m.data, m.apos]));
 
-    // O painel abre qualquer movimento dos últimos 90 dias, mesmo fora do período escolhido (agendados, links de outras telas).
+    // O painel abre qualquer movimento dos últimos 90 dias, mesmo fora do período escolhido (links de outras telas).
     const aberto = extrato(eventos, limite, HOJE).linhas.find((m) => m.id === params.get("movimento")) ?? null;
-    const agendados = repassesAgendados(eventos);
     const eventosDoPeriodo = [...new Map(x.linhas.map((m) => [m.evento.id, m.evento.nome])).entries()].sort((a, b) => a[1].localeCompare(b[1])).map(([id, label]) => ({ id, label }));
     const temDados = cenario === "normal" || cenario === "negativo" || bloqueado;
     const quantos = (n: number) => (n === 1 ? "1 movimento" : `${n} movimentos`);
@@ -297,36 +292,6 @@ export function FinancasExtrato() {
                 )}
 
                 <ResumoDoPeriodo x={x} />
-
-                {agendados.length > 0 && (
-                    <Secao
-                        titulo="Repasses agendados"
-                        selo={
-                            <Badge size="sm" type="modern" color="gray">
-                                {reais(agendados.reduce((s, a) => s + a.repasse.valor, 0))}
-                            </Badge>
-                        }
-                        lateral={<span className="text-sm text-tertiary">Já saíram do Disponível e caem na conta na data prevista</span>}
-                    >
-                        <Lista>
-                            {agendados.map((a) => {
-                                const taxa = TAXA_DA_MODALIDADE[a.repasse.modalidade];
-                                const novo = new URLSearchParams(params);
-                                if (a.movimento) novo.set("movimento", a.movimento);
-                                return (
-                                    <Linha
-                                        key={`${a.evento.id}-${a.repasse.data}`}
-                                        quando={dataComDia(a.repasse.data)}
-                                        titulo={`Repasse para ${a.repasse.conta}`}
-                                        detalhe={`${a.evento.nome} · ${a.repasse.modalidade}${taxa ? ` · taxa de transferência de ${reais(taxa)}` : ""}`}
-                                        valor={reais(a.repasse.valor - taxa)}
-                                        para={a.movimento ? `?${novo}` : undefined}
-                                    />
-                                );
-                            })}
-                        </Lista>
-                    </Secao>
-                )}
 
                 <Secao
                     titulo="Movimentos"
