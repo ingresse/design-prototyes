@@ -28,8 +28,9 @@ quanto já repassou.
 
 ### Finanças (tela principal) _(pages/eventos.tsx)_
 - **FEV-10** Cabeçalho: título, "Atualizado em dd/mm/aaaa, hh:mm" (informação neutra) e "Solicitar repasse".
-- **FEV-11** Três cards de ação, os únicos números com centavos: Disponível para repasse (card inteiro clicável, leva à lista filtrada por "Com dinheiro disponível"), Antecipável (próxima liberação e "Antecipar", sem taxa) e Repassado (agendados e "Ver repasses", que abre o Extrato filtrado por Repasses).
-- **FEV-12** "A conta de todos os eventos": a cascata e "Onde está o seu líquido" (barra de proporção com tooltip em cada parte e legenda de seis itens). Cada bloco com valor > 0 tem "Ver detalhe"; o Líquido não tem.
+- **FEV-11** Três cards de ação, os únicos números com centavos: Disponível para repasse (em quantos eventos; não é clicável), Antecipável (próxima liberação e "Antecipar", sem taxa) e Repassado (agendados e "Ver repasses", que abre o Extrato filtrado por Repasses).
+- **FEV-11b** Copy sem quebra de linha em 1280: os blocos da conta não têm legenda fixa (a definição fica no tooltip) e a legenda de "Líquido por situação" traz só o dado novo ("R$ 150.000 em 19/11").
+- **FEV-12** "Resumo financeiro": a cascata e "Líquido por situação" (barra de proporção com tooltip em cada parte e legenda de seis itens). Cada bloco com valor > 0 tem "Ver detalhe"; o Líquido não tem.
 - **FEV-13** Cada item da legenda é clicável: Em processamento, Retido e Antecipável abrem o Calendário filtrado; Disponível abre a lista filtrada; Agendado abre o Extrato filtrado por repasses e Repassado abre o Extrato filtrado por repasses pagos.
 - **FEV-14** A conta e os cards são sempre da organização inteira: busca e filtro da lista não mudam nenhum dos dois.
 - **FEV-15** "Próximas liberações": as 3 próximas datas (uma linha por data e tipo; vários eventos viram "N eventos"). "Últimos movimentos": os 3 mais recentes que mudaram o Disponível. Cada um leva à sua tela.

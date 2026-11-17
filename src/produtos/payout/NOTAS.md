@@ -57,14 +57,14 @@ Regras de negócio decididas (seção 6 dos ajustes)
 
 Decisões de interface
 
-8. **Topo:** voltaram os três cards de ação (Disponível para repasse, Antecipável, Repassado), acima de "A conta de todos os eventos". A repetição dos três valores na legenda é intencional: card para agir, legenda para conferir. Só os três cards têm centavos.
-9. **O card Disponível para repasse é inteiro clicável** e leva à lista filtrada por "Com dinheiro disponível". Ele diz isso ("Ver eventos com dinheiro disponível"): sem o texto, nada indicava que o card era clicável.
+8. **Topo:** voltaram os três cards de ação (Disponível para repasse, Antecipável, Repassado), acima de "Resumo financeiro". A repetição dos três valores na legenda é intencional: card para agir, legenda para conferir. Só os três cards têm centavos.
+9. **O card Disponível para repasse não é mais clicável** (pedido de 17/11): o link "Ver eventos com dinheiro disponível" saiu e, no lugar, o card diz em quantos eventos o valor está ("Em 16 eventos"). O caminho para a lista filtrada continua no item "Disponível" da legenda.
 10. **A taxa da antecipação não aparece** em card, botão ou linha. Só no painel de um movimento de Antecipação já feito, no Extrato.
 11. **"Extrato" e não "Histórico"; "Calendário" e não "Agenda"** (decisão de copy dos ajustes).
 12. **Vendido da organização** abre "Vendido por evento"; na página do evento, o Vendido leva direto ao relatório de vendas.
 13. **Resumo do Calendário em três faixas que não se sobrepõem.** Os rótulos são os pedidos ("Próximos 7 dias", "Próximos 30 dias", "Depois de 30 dias"), e a linha de apoio diz as datas de cada faixa ("Até 24/11", "De 25/11 a 17/12", "A partir de 18/12"). Sem isso, "Próximos 30 dias" pareceria incluir os 7 primeiros e a soma das três não fecharia.
 14. **Pix parcelado não tem data:** fica no grupo "Sem data definida", no fim do Calendário, e entra na faixa "Depois de 30 dias" com o aviso "inclui R$ 15.000 sem data".
-15. **Filtro "Retido (os dois tipos)" no Calendário:** não estava na lista pedida, mas a legenda de "Onde está o seu líquido" precisa abrir o Calendário com os dois tipos de retido de uma vez.
+15. **Filtro "Retido (os dois tipos)" no Calendário:** não estava na lista pedida, mas a legenda de "Líquido por situação" precisa abrir o Calendário com os dois tipos de retido de uma vez.
 16. **Extrato do mais recente para o mais antigo, agrupado por dia** (crítica de design de 17/11). Muda a decisão anterior, que seguia o pedido "saldo inicial no topo, saldo final no fim": os dois saldos saíram da lista e foram para o resumo do período, e a lista passou a ler como extrato de banco. Cada dia mostra o Disponível no fim do dia. **A validar com o briefing v3 (seção 4.2).**
 17. **Filtros do Extrato escondem linhas, mas "Disponível após" e o saldo do dia são sempre os da organização.** O resumo do período também não muda com os filtros.
 18. **O Extrato não mostra repasses agendados em bloco próprio** (pedido de 17/11: o agendamento de repasses fica em outro lugar). O filtro "Repasses agendados" também saiu. O pedido do repasse ("Repasse solicitado") segue no histórico, porque foi quando o valor saiu do Disponível, e o filtro "Repasses pagos" continua: é como a legenda (Repassado) abre o Extrato. A legenda "Agendado" abre o Extrato filtrado por Repasses.
@@ -78,6 +78,7 @@ Decisões de interface
 26. **Período padrão do Extrato: do primeiro dia do mês até hoje** (pedido de 17/11), com o atalho "Este mês". Antes era um mês para trás (17/10 a 17/11).
 27. **Resumo do Extrato com três números: Entradas, Saídas e Disponível hoje** (pedido de 17/11). O "Disponível em" a data inicial saiu, e com ele os sinais + − =: sem o saldo do início, "entradas − saídas" não dá o Disponível de hoje, e o sinal de igual afirmaria uma conta que não fecha na tela. A conta completa continua verificada pelo script e os saldos seguem no CSV.
 28. **Repasse não concluído fora do resumo do Extrato** (pedido de 17/11). O valor que saiu e voltou no mesmo período (Ivete Clareou Turnê, R$ 123.480) não soma em Entradas nem em Saídas: o Disponível não mudou. Na lista, "Repasse solicitado" e "Repasse não concluído" continuam, para o saldo de cada dia fechar. Se só uma das pontas cair no período, ela ainda conta no resumo.
+29. **Revisão de copy da tela principal** (17/11, `/design:ux-copy`): tom mais financeiro, frases mais curtas e nenhuma quebra de linha em 1280. Os termos do glossário v3 não mudaram. As legendas fixas dos blocos Créditos, Devoluções e Líquido saíram: repetiam a definição, que continua no tooltip.
 
 ## Suposições (dados inventados)
 
@@ -114,7 +115,7 @@ Decisões de interface
 | Painel lateral com grupos expansíveis | `SlideoutMenu` + `Accordion` do DS (Taxas e custos da organização). O Accordion tem borda e fundo próprios, pensados para página, não para painel |
 | Lista de extrato agrupada por dia, com saldo do dia e colunas de valor | Lista local (`ol` por dia, linha como `button` com foco e hover do DS, `FeaturedIcon` para a direção). A `Table` do DS não agrupa linhas nem alinha à direita o rótulo das colunas de valor |
 | Select com busca (`Select.ComboBox`) com seta à direita e sem lupa | A seta entra no espaço de `status` do ComboBox e a lupa é trocada por um ícone vazio (filtro de evento do Extrato). O texto do campo vazio fica na cor de placeholder, mais apagado que o do `Select` ao lado |
-| Resumo em blocos com operadores (+ − =) | Blocos locais iguais aos de "A conta de todos os eventos" |
+| Resumo em blocos com operadores (+ − =) | Blocos locais iguais aos de "Resumo financeiro" |
 | Selos de tipo (liberação) com cor por tipo | `Badge` do DS com as cores existentes. No Extrato o selo saiu: a linha usa ícone de direção |
 | Card de métrica clicável, com centavos menores e sem menu de ações | `TableCard.Root` + `NumeroGrande` local; o card clicável é um `button` com os estados de foco e hover do DS |
 | Tooltip no tema escuro: fundo claro e título `text-white`, invisível | Título com o token `text-bg-primary`, que inverte junto com o fundo (`dica.tsx`) |
@@ -162,6 +163,22 @@ Princípios aplicados: claro, conciso, consistente, útil, humano; CTA com verbo
 | "Ver detalhe" virar "Ver taxas", "Ver créditos" | Rótulo específico | Não aceita | Mantido o texto pedido; o leitor de tela lê "Ver detalhe de Taxas e custos" |
 | "Antecipável" como rótulo | Termo técnico: o briefing original proibia "antecipável" | Não aceita | A v3 tem prioridade e define o termo; o tooltip explica ("O que você pode receber antes, antecipando") |
 | "Atualizado em" com frase de ressalva | — | Não aplicado | Pedido explícito: informação neutra, só data e hora |
+
+### Revisão de 17/11 (tela principal)
+
+| Onde | Antes | Agora | Motivo |
+| --- | --- | --- | --- |
+| Título do bloco | "A conta de todos os eventos" | "Resumo financeiro" (no evento: "Resumo financeiro do evento") | Nome que o produtor reconhece de banco e de relatório; mais curto |
+| Subtítulo da barra | "Onde está o seu líquido" | "Líquido por situação" | Diz o que a barra mostra: o mesmo líquido, dividido pela situação de cada parte |
+| Blocos Créditos, Devoluções e Líquido | Legenda fixa ("Bonificações e incentivos", "Cancelamentos, reembolsos e contestações", "Tudo o que é seu") | Sem legenda; a definição fica no tooltip | A legenda de Devoluções quebrava em duas linhas e desalinhava os blocos |
+| Legenda de Retido, Antecipável e Agendado | "Próxima: R$ 150.000 em 19/11" | "R$ 150.000 em 19/11" | "Próxima:" fazia a linha quebrar; valor e data bastam |
+| Card Disponível para repasse | "Ver eventos com dinheiro disponível →" | "Em 16 eventos" | Link removido a pedido; a linha de apoio dá um dado novo |
+| Últimos movimentos | "Crédito · Rebate por meta de vendas" | "Rebate por meta de vendas" | O tipo repetia o título e quebrava a linha |
+| Filtro de situação | "Com dinheiro disponível" | "Com valor disponível" | Paralelo a "Com valor antecipável" |
+| Frase da pasta | "Nada disponível" | "Sem valor disponível" | Tom mais financeiro |
+| Vazios | "o dinheiro dele aparece aqui"; "Vendas, liberações e repasses aparecem aqui" | "os valores aparecem aqui"; "Liberações, repasses e devoluções aparecem aqui" | Vendas não entram mais nos movimentos |
+| Tooltips do glossário | Ex.: "O que já caiu na sua conta." | Ex.: "Já pago na sua conta bancária." | Definições reescritas com vocabulário financeiro simples; os termos não mudaram |
+| Avisos de erro e de bloqueio | "seu dinheiro não foi afetado" | Mantido | Recusada a troca por "valores": em erro, a fala direta tranquiliza mais |
 
 ## Fora deste teste
 

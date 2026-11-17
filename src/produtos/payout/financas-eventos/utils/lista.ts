@@ -11,7 +11,7 @@ export type Ordem = "pendentes" | "data" | "disponivel" | "a-liberar";
 
 export const SITUACOES: Array<{ id: Situacao; label: string }> = [
     { id: "todos", label: "Todos os eventos" },
-    { id: "disponivel", label: "Com dinheiro disponível" },
+    { id: "disponivel", label: "Com valor disponível" },
     { id: "a-liberar", label: "Com valor antecipável" },
     { id: "negativo", label: "Com saldo negativo" },
     { id: "ajuste", label: "Com devolução recente" },

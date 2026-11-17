@@ -26,7 +26,7 @@ const BASE = "/payout/financas-eventos";
 
 type Filtro = "todos" | "antecipavel" | "retido" | "retido-evento" | "retido-seguranca" | "processamento";
 
-/* "Retido" (os dois tipos juntos) existe porque a legenda de "Onde está o seu líquido" abre o
+/* "Retido" (os dois tipos juntos) existe porque a legenda de "Líquido por situação" abre o
    Calendário filtrado pelos dois de uma vez. */
 const TIPOS: Array<{ id: Filtro; label: string; tipos?: TipoDeEntrada[] }> = [
     { id: "todos", label: "Todos os tipos" },

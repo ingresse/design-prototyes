@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { parseDate } from "@internationalized/date";
 import { Link, useSearchParams } from "react-router";
-import { ArrowRight, Calendar, ChevronRight, Download01, SearchLg } from "@untitledui/icons";
+import { Calendar, ChevronRight, Download01, SearchLg } from "@untitledui/icons";
 import { toast } from "sonner";
 import { DateRangePicker } from "@/components/application/date-picker/date-range-picker";
 import { FilterBar } from "@/components/application/filter-bar/filter-bar";
@@ -15,7 +15,7 @@ import { Select } from "@/components/base/select/select";
 import { cx } from "@/utils/cx";
 import { capaDoEvento } from "../../components/financas/capa";
 import { Cascata, Distribuicao, NumeroGrande, PARTES_COM_DETALHE, Secao } from "../../components/financas/cascata";
-import { HOJE, ROTULO_DA_ENTRADA, ROTULO_DO_MOVIMENTO, calendario, entradasDoCalendario, eventosDoCenario, movimentos, totalizar, type Entrada, type Evento } from "../../components/financas/dados";
+import { HOJE, ROTULO_DA_ENTRADA, calendario, entradasDoCalendario, eventosDoCenario, movimentos, totalizar, type Entrada, type Evento } from "../../components/financas/dados";
 import { Aviso, AvisoDeBloqueio, Carregando, ErroAoCarregar, TelaFinal, type AcaoFinal } from "../../components/financas/estados";
 import { dataComDia, dataCurta, dataDoEvento, reais } from "../../components/financas/formato";
 import { detalhesDaDistribuicao, fraseDeCompensacao, statusDoDinheiro } from "../../components/financas/frases";
@@ -28,7 +28,7 @@ import { ORDENS, POR_PAGINA, SITUACOES, baixarRelatorio, filtrarEOrdenar, type O
 
 /*
  * Finanças · a fonte da verdade do produtor (ajustes v3, 17/11/2026).
- * De cima para baixo: três cards de ação (para agir), "A conta de todos os eventos" (para conferir:
+ * De cima para baixo: três cards de ação (para agir), "Resumo financeiro" (para conferir:
  * de onde veio e onde está o Líquido), "Próximas liberações" e "Últimos movimentos" (portas para o
  * Calendário e o Extrato) e "Seus eventos" (as pastas, com busca, filtro, ordenação e paginação).
  */
@@ -144,6 +144,7 @@ export function FinancasEventos() {
     const daPagina = resultado.slice((pagina - 1) * POR_PAGINA, pagina * POR_PAGINA);
     const comFiltro = situacao !== "todos" || Boolean(de || ate);
     const contagem = (n: number) => (n === 1 ? "1 evento" : `${n} eventos`);
+    const comDisponivel = eventos.filter((e) => e.disponivel > 0).length;
 
     const conteudo = () => {
         if (acao) return <TelaFinal acao={acao} valor={acao === "repasse" ? totais.disponivel : acao === "antecipar" ? totais.aLiberar : undefined} aoVoltar={() => setAcao(null)} />;
@@ -163,15 +164,7 @@ export function FinancasEventos() {
 
                 {/* Cards de ação: servem para agir. Os mesmos três valores voltam na legenda da conta, para conferir. */}
                 <section aria-label="O que você pode fazer agora" className="grid grid-cols-3 gap-6">
-                    <button
-                        type="button"
-                        onClick={() => {
-                            mudarLista({ situacao: "disponivel" });
-                            document.getElementById("seus-eventos")?.scrollIntoView({ behavior: "smooth" });
-                        }}
-                        aria-label={`Disponível para repasse: ${reais(totais.disponivel)}. Ver os eventos com dinheiro disponível`}
-                        className="group flex cursor-pointer rounded-xl bg-primary px-6 py-5 text-left shadow-xs ring-1 ring-secondary outline-focus-ring transition duration-100 ease-linear hover:bg-primary_hover focus-visible:outline-2 focus-visible:outline-offset-2"
-                    >
+                    <TableCard.Root className="px-6 py-5">
                         <CardDeAcao
                             rotulo="Disponível para repasse"
                             selo={
@@ -183,13 +176,9 @@ export function FinancasEventos() {
                             }
                             valor={totais.disponivel}
                             cor={totais.disponivel < 0 ? "text-error-primary" : bloqueado ? "text-primary" : "text-success-primary"}
-                        >
-                            <span className="flex items-center gap-1 text-sm font-semibold text-tertiary transition duration-100 ease-linear group-hover:text-tertiary_hover">
-                                Ver eventos com dinheiro disponível
-                                <ArrowRight className="size-4" aria-hidden="true" />
-                            </span>
-                        </CardDeAcao>
-                    </button>
+                            apoio={comDisponivel > 0 ? `Em ${contagem(comDisponivel)}` : undefined}
+                        />
+                    </TableCard.Root>
                     <TableCard.Root className="px-6 py-5">
                         <CardDeAcao rotulo="Antecipável" valor={totais.aLiberar} cor="text-utility-blue-500" apoio={proximaAntecipavel ? `Próxima liberação: ${reais(proximaAntecipavel.valor)} em ${dataCurta(proximaAntecipavel.data)}` : undefined}>
                             {totais.aLiberar > 0 && (
@@ -208,7 +197,7 @@ export function FinancasEventos() {
                     </TableCard.Root>
                 </section>
 
-                <Secao titulo="A conta de todos os eventos">
+                <Secao titulo="Resumo financeiro">
                     <Cascata totais={totais} aoAbrir={setDetalhe} creditoPendente={eventos.some((e) => e.creditoPendente)} />
                     <Distribuicao
                         totais={totais}
@@ -259,14 +248,14 @@ export function FinancasEventos() {
                         }
                     >
                         {ultimos.length === 0 ? (
-                            <Vazio>Nenhum movimento ainda. Vendas, liberações e repasses aparecem aqui.</Vazio>
+                            <Vazio>Nenhum movimento ainda. Liberações, repasses e devoluções aparecem aqui.</Vazio>
                         ) : (
                             <Lista>
                                 {ultimos.map((m) => (
                                     <Linha
                                         key={m.id}
                                         quando={m.data === HOJE ? "Hoje" : dataComDia(m.data)}
-                                        titulo={m.tipo === "repasse" ? m.titulo : `${ROTULO_DO_MOVIMENTO[m.tipo]} · ${m.titulo}`}
+                                        titulo={m.titulo}
                                         detalhe={m.evento.nome}
                                         valor={`${m.valor > 0 ? "+ " : ""}${reais(m.valor)}`}
                                         corDoValor={m.valor > 0 ? "text-success-primary" : "text-primary"}
@@ -346,7 +335,7 @@ export function FinancasEventos() {
                                 </EmptyState.Header>
                                 <EmptyState.Content>
                                     <EmptyState.Title>Você ainda não tem eventos com vendas</EmptyState.Title>
-                                    <EmptyState.Description>Quando um evento começar a vender, o dinheiro dele aparece aqui.</EmptyState.Description>
+                                    <EmptyState.Description>Quando um evento começar a vender, os valores aparecem aqui.</EmptyState.Description>
                                 </EmptyState.Content>
                                 <EmptyState.Footer>
                                     <Button size="md" color="primary" onClick={() => setAcao("eventos")}>

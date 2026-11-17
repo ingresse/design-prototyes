@@ -7,15 +7,15 @@ import { dataComDia, dataCurta, reais } from "./formato";
  * O rótulo explica; a legenda só entra quando traz um dado novo (data, prazo, motivo).
  */
 
-/** "Libera em 13/01/2027" quando há uma liberação só; "Próxima: R$ 260.000 em 21/11" quando há mais. */
+/** "Libera em 13/01/2027" quando há uma liberação só; "R$ 260.000 em 21/11" (a próxima) quando há mais. */
 function proximaLiberacao(eventos: Evento[], tipos: TipoLiberacao[]): string | undefined {
     const lista = calendario(eventos, tipos);
     if (lista.length === 0) return undefined;
     if (lista.length === 1) return `Libera em ${dataCurta(lista[0].data)}`;
-    return `Próxima: ${reais(lista[0].valor)} em ${dataCurta(lista[0].data)}`;
+    return `${reais(lista[0].valor)} em ${dataCurta(lista[0].data)}`;
 }
 
-/** Legenda de cada parte de "Onde está o seu líquido": só o dado novo de cada uma. */
+/** Legenda de cada parte de "Líquido por situação": só o dado novo de cada uma. */
 export function detalhesDaDistribuicao(eventos: Evento[]): Partial<Record<ParteDaDistribuicao, string>> {
     const emProcessamento = eventos.filter((e) => e.processamento > 0);
     const entraHoje = emProcessamento.filter((e) => e.previsaoProcessamento === "hoje").reduce((s, e) => s + e.processamento, 0);
@@ -29,7 +29,7 @@ export function detalhesDaDistribuicao(eventos: Evento[]): Partial<Record<ParteD
         processamento,
         retido: proximaLiberacao(eventos, ["retidoEvento", "retidoSeguranca"]),
         aLiberar: proximaLiberacao(eventos, ["aLiberar"]),
-        agendado: agendados.length === 1 ? `Para ${dataCurta(agendados[0].data)}` : agendados[0] ? `Próximo: ${reais(agendados[0].valor)} em ${dataCurta(agendados[0].data)}` : undefined,
+        agendado: agendados.length === 1 ? `Para ${dataCurta(agendados[0].data)}` : agendados[0] ? `${reais(agendados[0].valor)} em ${dataCurta(agendados[0].data)}` : undefined,
     };
 }
 
@@ -40,7 +40,7 @@ export function statusDoDinheiro(e: Evento): string {
         const reduz = proxima ? ` · ${reais(proxima.valor)} retidos liberam em ${dataCurta(proxima.data)}` : "";
         return `Saldo negativo de ${reais(-e.disponivel)}${reduz}`;
     }
-    const partes = [e.disponivel > 0 ? `${reais(e.disponivel)} disponíveis` : "Nada disponível"];
+    const partes = [e.disponivel > 0 ? `${reais(e.disponivel)} disponíveis` : "Sem valor disponível"];
     // Diz qual dinheiro é: antecipável e retido são partes diferentes no resto da tela.
     if (proxima) partes.push(proxima.tipo === "aLiberar" ? `${reais(proxima.valor)} antecipáveis liberam em ${dataCurta(proxima.data)}` : `${reais(proxima.valor)} retidos até ${dataCurta(proxima.data)}`);
     else if (e.recebido > 0) partes.push(`${reais(e.recebido)} repassados`);

@@ -41,17 +41,17 @@ export const ROTULO_DA_PARTE: Record<Parte, string> = {
 
 /** Glossário único: a definição curta de cada termo, igual em todo o protótipo. */
 export const DEFINICAO: Record<Parte, string> = {
-    vendido: "Vendas aprovadas, com desconto. Mesmo valor de “Valor total c/ desconto” no relatório de vendas do evento.",
-    taxas: "Taxas e custos cobrados de você.",
-    creditos: "Bonificações e incentivos do seu contrato.",
-    ajustes: "Valores devolvidos aos compradores.",
-    seuDinheiro: "Tudo o que é seu depois de taxas, créditos e devoluções.",
-    processamento: "Vendas recentes que ainda vão entrar.",
-    retido: "Guardado até o evento ou por segurança, com data para liberar.",
-    aLiberar: "O que você pode receber antes, antecipando.",
-    disponivel: "Pronto para você solicitar o repasse.",
-    agendado: "Repasse solicitado, esperando a data.",
-    recebido: "O que já caiu na sua conta.",
+    vendido: "Total das vendas aprovadas, já com descontos. É o “Valor total c/ desconto” do relatório de vendas.",
+    taxas: "Taxas e custos descontados das suas vendas.",
+    creditos: "Bonificações e incentivos previstos no seu contrato.",
+    ajustes: "Cancelamentos, reembolsos e contestações devolvidos aos compradores.",
+    seuDinheiro: "O que é seu: vendido, menos taxas e devoluções, mais créditos.",
+    processamento: "Vendas recentes, ainda em confirmação.",
+    retido: "Reservado até o evento ou por segurança, com data de liberação.",
+    aLiberar: "Valor com liberação futura, que você pode antecipar.",
+    disponivel: "Pronto para repasse.",
+    agendado: "Repasse solicitado, com pagamento na data marcada.",
+    recebido: "Já pago na sua conta bancária.",
 };
 
 /** Número de destaque do topo: centavos menores, para o olho parar no valor inteiro. */
@@ -147,11 +147,11 @@ export const Cascata = ({ totais, aoAbrir, aoVerRelatorio, creditoPendente }: Ca
             <Operador sinal="−" />
             <Bloco parte="taxas" valor={totais.taxas} leitura="menos" acao={totais.taxas > 0 ? verDetalhe("taxas") : undefined} />
             <Operador sinal="+" />
-            <Bloco parte="creditos" valor={totais.creditos} leitura="mais" legenda="Bonificações e incentivos" acao={totais.creditos > 0 || creditoPendente ? verDetalhe("creditos") : undefined} />
+            <Bloco parte="creditos" valor={totais.creditos} leitura="mais" acao={totais.creditos > 0 || creditoPendente ? verDetalhe("creditos") : undefined} />
             <Operador sinal="−" />
-            <Bloco parte="ajustes" valor={totais.ajustes} leitura="menos" tom="erro" legenda="Cancelamentos, reembolsos e contestações" acao={totais.ajustes > 0 ? verDetalhe("ajustes") : undefined} />
+            <Bloco parte="ajustes" valor={totais.ajustes} leitura="menos" tom="erro" acao={totais.ajustes > 0 ? verDetalhe("ajustes") : undefined} />
             <Operador sinal="=" />
-            <Bloco parte="seuDinheiro" valor={totais.seuDinheiro} leitura="igual a" resultado legenda="Tudo o que é seu" />
+            <Bloco parte="seuDinheiro" valor={totais.seuDinheiro} leitura="igual a" resultado />
         </div>
     );
 };
@@ -187,10 +187,10 @@ interface DistribuicaoProps {
 export const Distribuicao = ({ totais, detalhes, destinos }: DistribuicaoProps) => (
     <div className="flex flex-col gap-4 px-6 pb-5">
         <div className="flex flex-col gap-1 border-t border-secondary pt-4">
-            <h3 className="text-sm font-semibold text-primary">Onde está o seu líquido</h3>
+            <h3 className="text-sm font-semibold text-primary">Líquido por situação</h3>
             {/* Barra de proporção. Cada parte mostra, ao passar o mouse ou focar pelo teclado, o que é e
                 quanto vale. A área de toque é mais alta que a barra, para a parte fina não escapar do cursor. */}
-            <div role="group" aria-label="Proporção de cada parte" className="flex w-full items-center gap-0.5">
+            <div role="group" aria-label="Proporção de cada situação no líquido" className="flex w-full items-center gap-0.5">
                 {ORDEM_DAS_PARTES.filter((p) => totais[p] > 0).map((p) => (
                     <Tooltip key={p} title={tituloDeTooltip(ROTULO_DA_PARTE[p])} description={`${reais(totais[p])} · ${porcentagem(totais[p], totais.seuDinheiro)} do Líquido`} delay={0} closeDelay={0} arrow>
                         <TooltipTrigger

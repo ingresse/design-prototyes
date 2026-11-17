@@ -133,7 +133,7 @@ export function FinancasEvento() {
                         </Aviso>
                     )}
 
-                    <Secao titulo="A conta deste evento">
+                    <Secao titulo="Resumo financeiro do evento">
                         <Cascata
                             totais={{ ...evento, seuDinheiro: seuDinheiro(evento) }}
                             aoAbrir={setDetalhe}

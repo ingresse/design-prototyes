@@ -140,7 +140,7 @@ export const SemEventos = ({ aoIrParaEventos }: { aoIrParaEventos: () => void })
     <EstadoCentral
         icone={Calendar}
         titulo="Você ainda não tem eventos com vendas"
-        descricao="Quando um evento começar a vender, o dinheiro dele aparece aqui."
+        descricao="Quando um evento começar a vender, os valores aparecem aqui."
         acao={
             <Button size="md" color="primary" onClick={aoIrParaEventos}>
                 Ir para Eventos
