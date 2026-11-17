@@ -34,7 +34,7 @@ quanto já repassou.
 - **FEV-13** Cada item da legenda é clicável: Em processamento, Retido e Antecipável abrem o Calendário filtrado; Disponível abre a lista filtrada; Agendado abre o Extrato filtrado por repasses e Repassado abre o Extrato filtrado por repasses pagos.
 - **FEV-14** A conta e os cards são sempre da organização inteira: busca e filtro da lista não mudam nenhum dos dois.
 - **FEV-15** "Próximas liberações": as 3 próximas datas (uma linha por data e tipo; vários eventos viram "N eventos"). "Últimos movimentos": os 3 mais recentes que mudaram o Disponível. Cada um leva à sua tela.
-- **FEV-16** "Seus eventos": pastas sem colunas de valores, com contagem, busca, filtro por situação e período, ordenação (padrão "Pendentes primeiro"), paginação de 10 em 10 e "Baixar relatório" do resultado.
+- **FEV-16** "Saldo por evento": lista (não tabela) em que cada linha lê como conta de banco. À direita, o Disponível do evento é o número mais forte (vermelho com "−" quando negativo, apagado quando zero); à esquerda, nome, data e selos; embaixo, sempre a próxima liberação no mesmo formato ("Próxima liberação: R$ 260.000 em 21/11 · Antecipável"). Acima da lista, o total de Disponível do resultado filtrado (todas as páginas). Busca, filtro por situação e data do evento na barra; ordenação e "Baixar saldos por evento" no cabeçalho; paginação de 10 em 10. Evento quitado leva o selo "Totalmente repassado".
 - **FEV-17** Abrir um evento ou voltar para a lista começa do topo da página; a volta mantém busca, filtro e página.
 
 ### Painéis de "Ver detalhe" _(components/financas/painel-do-detalhe.tsx)_

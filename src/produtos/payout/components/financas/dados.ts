@@ -87,7 +87,10 @@ export interface PodeMudar {
     ate?: string;
 }
 
-export type Selo = "Saldo negativo" | "Devolução recente" | "Em vendas";
+export type Selo = "Saldo negativo" | "Devolução recente" | "Em vendas" | "Totalmente repassado";
+
+/** Quitado: tudo o que era do produtor já foi repassado. Não há nada para entrar, sair ou acompanhar. */
+export const quitado = (e: Evento) => e.processamento + e.retidoEvento + e.retidoSeguranca + e.aLiberar + e.agendado === 0 && e.disponivel === 0;
 
 export interface Evento {
     id: string;
@@ -624,6 +627,7 @@ export function selosDoEvento(e: Evento): Selo[] {
     // "Recente": ajuste nos últimos 30 dias.
     if (e.ajustesLista.some((a) => a.data >= somarDias(HOJE, -30))) selos.push("Devolução recente");
     if (e.emVendas) selos.push("Em vendas");
+    if (quitado(e) && e.recebido > 0) selos.push("Totalmente repassado");
     return selos;
 }
 

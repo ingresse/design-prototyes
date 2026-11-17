@@ -15,10 +15,10 @@ import { Select } from "@/components/base/select/select";
 import { cx } from "@/utils/cx";
 import { capaDoEvento } from "../../components/financas/capa";
 import { Cascata, Distribuicao, NumeroGrande, PARTES_COM_DETALHE, Secao } from "../../components/financas/cascata";
-import { HOJE, ROTULO_DA_ENTRADA, calendario, entradasDoCalendario, eventosDoCenario, movimentos, totalizar, type Entrada, type Evento } from "../../components/financas/dados";
+import { HOJE, ROTULO_DA_ENTRADA, quitado, calendario, entradasDoCalendario, eventosDoCenario, movimentos, totalizar, type Entrada, type Evento } from "../../components/financas/dados";
 import { Aviso, AvisoDeBloqueio, Carregando, ErroAoCarregar, TelaFinal, type AcaoFinal } from "../../components/financas/estados";
 import { dataComDia, dataCurta, dataDoEvento, reais } from "../../components/financas/formato";
-import { detalhesDaDistribuicao, fraseDeCompensacao, statusDoDinheiro } from "../../components/financas/frases";
+import { detalhesDaDistribuicao, fraseDeCompensacao, proximaLiberacaoDoEvento } from "../../components/financas/frases";
 import { Linha, Lista, Vazio } from "../../components/financas/linha";
 import { PainelDoDetalhe } from "../../components/financas/painel-do-detalhe";
 import { CabecalhoDaPagina, FinancasShell, useCenario, useParametro } from "../../components/financas/shell";
@@ -30,7 +30,7 @@ import { ORDENS, POR_PAGINA, SITUACOES, baixarRelatorio, filtrarEOrdenar, type O
  * Finanças · a fonte da verdade do produtor (ajustes v3, 17/11/2026).
  * De cima para baixo: três cards de ação (para agir), "Resumo financeiro" (para conferir:
  * de onde veio e onde está o Líquido), "Próximas liberações" e "Últimos movimentos" (portas para o
- * Calendário e o Extrato) e "Seus eventos" (as pastas, com busca, filtro, ordenação e paginação).
+ * Calendário e o Extrato) e "Saldo por evento" (as pastas, com busca, filtro, ordenação e paginação).
  */
 
 const ACOES: AcaoFinal[] = ["repasse", "antecipar", "eventos"];
@@ -77,26 +77,40 @@ function proximasLiberacoes(entradas: Entrada[], quantas: number) {
 
 const TIPO_NO_CALENDARIO: Record<Entrada["tipo"], string> = { processamento: "processamento", retidoEvento: "retido-evento", retidoSeguranca: "retido-seguranca", aLiberar: "antecipavel" };
 
-const PastaDoEvento = ({ evento, sufixo, lista }: { evento: Evento; sufixo: string; lista: string }) => (
-    <li>
-        <Link
-            to={`/payout/financas-eventos/${evento.id}${sufixo}`}
-            state={{ lista }}
-            className="group flex items-center gap-4 px-6 py-4 outline-focus-ring transition duration-100 ease-linear hover:bg-primary_hover focus-visible:outline-2 focus-visible:-outline-offset-2"
-        >
-            <Avatar size="md" rounded={false} src={capaDoEvento(evento.id)} alt="" />
-            <div className="flex min-w-0 flex-1 flex-col gap-1">
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                    <span className="text-md font-semibold text-primary">{evento.nome}</span>
-                    <span className="text-sm text-tertiary">{dataDoEvento(evento.data)}</span>
-                    <SelosDoEvento evento={evento} />
+/** Largura da coluna de saldo: a mesma na linha de total e em cada evento, para os números alinharem. */
+const COLUNA_DE_SALDO = "w-44 shrink-0 text-right";
+
+/**
+ * Linha de um evento, lida como conta de banco: o saldo disponível é o número mais forte, à direita;
+ * nome, data e selos identificam; a linha de apoio diz sempre a próxima liberação.
+ */
+const PastaDoEvento = ({ evento, sufixo, lista }: { evento: Evento; sufixo: string; lista: string }) => {
+    const encerrado = quitado(evento);
+    return (
+        <li>
+            <Link
+                to={`/payout/financas-eventos/${evento.id}${sufixo}`}
+                state={{ lista }}
+                className="group flex items-center gap-4 px-6 py-4 outline-focus-ring transition duration-100 ease-linear hover:bg-primary_hover focus-visible:outline-2 focus-visible:-outline-offset-2"
+            >
+                <Avatar size="sm" rounded={false} src={capaDoEvento(evento.id)} alt="" />
+                <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                        <span className={cx("text-sm font-semibold", encerrado ? "text-secondary" : "text-primary")}>{evento.nome}</span>
+                        <span className="text-sm text-tertiary">{dataDoEvento(evento.data)}</span>
+                        <SelosDoEvento evento={evento} />
+                    </div>
+                    <span className="truncate text-sm text-tertiary">{proximaLiberacaoDoEvento(evento)}</span>
                 </div>
-                <span className={cx("text-sm", evento.disponivel < 0 ? "text-error-primary" : "text-secondary")}>{statusDoDinheiro(evento)}</span>
-            </div>
-            <ChevronRight className="size-5 shrink-0 text-fg-quaternary transition duration-100 ease-linear group-hover:text-fg-secondary" aria-hidden="true" />
-        </Link>
-    </li>
-);
+                <span className={cx(COLUNA_DE_SALDO, "flex flex-col")}>
+                    <span className="text-xs text-tertiary">Disponível</span>
+                    <span className={cx("text-md font-semibold whitespace-nowrap tabular-nums", evento.disponivel < 0 ? "text-error-primary" : evento.disponivel === 0 ? "text-tertiary" : "text-primary")}>{reais(evento.disponivel)}</span>
+                </span>
+                <ChevronRight className="size-5 shrink-0 text-fg-quaternary transition duration-100 ease-linear group-hover:text-fg-secondary" aria-hidden="true" />
+            </Link>
+        </li>
+    );
+};
 
 export function FinancasEventos() {
     const [cenario, setCenario] = useCenario();
@@ -144,6 +158,7 @@ export function FinancasEventos() {
     const daPagina = resultado.slice((pagina - 1) * POR_PAGINA, pagina * POR_PAGINA);
     const comFiltro = situacao !== "todos" || Boolean(de || ate);
     const contagem = (n: number) => (n === 1 ? "1 evento" : `${n} eventos`);
+    const totalDoResultado = resultado.reduce((soma, e) => soma + e.disponivel, 0);
     const comDisponivel = eventos.filter((e) => e.disponivel > 0).length;
 
     const conteudo = () => {
@@ -269,41 +284,59 @@ export function FinancasEventos() {
 
                 <Secao
                     id="seus-eventos"
-                    titulo="Seus eventos"
+                    titulo="Saldo por evento"
                     selo={
                         <Badge size="sm" type="modern" color="gray">
                             {resultado.length === eventos.length ? contagem(eventos.length) : `${resultado.length} de ${contagem(eventos.length)}`}
                         </Badge>
                     }
                     lateral={
-                        <Button
-                            size="sm"
-                            color="secondary"
-                            iconLeading={Download01}
-                            isDisabled={resultado.length === 0}
-                            onClick={() => {
-                                baixarRelatorio(resultado);
-                                toast.success(`Relatório baixado com ${contagem(resultado.length)}.`);
-                            }}
-                        >
-                            Baixar relatório
-                        </Button>
+                        <div className="flex items-center gap-3">
+                            {eventos.length > 0 && (
+                                <>
+                                    <span id="rotulo-ordem" className="text-sm text-tertiary">
+                                        Ordenar por
+                                    </span>
+                                    <div className="w-64">
+                                        <Select size="sm" aria-labelledby="rotulo-ordem" selectedKey={ordem} onSelectionChange={(chave) => mudarLista({ ordem: chave === ORDENS[0].id ? null : (chave as Ordem) })} items={ORDENS}>
+                                            {(item) => <Select.Item id={item.id}>{item.label}</Select.Item>}
+                                        </Select>
+                                    </div>
+                                </>
+                            )}
+                            <Button
+                                size="sm"
+                                color="secondary"
+                                iconLeading={Download01}
+                                isDisabled={resultado.length === 0}
+                                onClick={() => {
+                                    baixarRelatorio(resultado);
+                                    toast.success(`Saldos de ${contagem(resultado.length)} baixados.`.replace("1 evento baixados", "1 evento baixado"));
+                                }}
+                            >
+                                Baixar saldos por evento
+                            </Button>
+                        </div>
                     }
                 >
                     {eventos.length > 0 && (
                         <FilterBar.Root className="items-center border-b border-secondary px-6 py-4">
                             <FilterBar.Content className="items-center">
-                                <div className="w-72">
+                                <div className="w-52">
                                     <Input size="sm" icon={SearchLg} aria-label="Buscar evento pelo nome" placeholder="Buscar evento" value={busca} onChange={(valor) => mudarLista({ busca: valor })} />
                                 </div>
-                                <div className="w-60">
+                                <div className="w-52">
                                     <Select size="sm" aria-label="Filtrar por situação" selectedKey={situacao} onSelectionChange={(chave) => mudarLista({ situacao: chave === "todos" ? null : (chave as Situacao) })} items={SITUACOES}>
                                         {(item) => <Select.Item id={item.id}>{item.label}</Select.Item>}
                                     </Select>
                                 </div>
+                                {/* Lacuna do DS: o seletor de datas não aceita texto próprio no campo vazio ("Selecione as datas"). */}
+                                <span id="rotulo-data" className="text-sm text-tertiary">
+                                    Data do evento
+                                </span>
                                 <DateRangePicker
                                     size="sm"
-                                    aria-label="Período da data do evento"
+                                    aria-labelledby="rotulo-data"
                                     presets={PERIODOS}
                                     value={de && ate ? { start: parseDate(de), end: parseDate(ate) } : null}
                                     onChange={(periodo) => mudarLista({ de: periodo?.start.toString() ?? null, ate: periodo?.end.toString() ?? null })}
@@ -314,16 +347,6 @@ export function FinancasEventos() {
                                     </Button>
                                 )}
                             </FilterBar.Content>
-                            <FilterBar.Actions>
-                                <span id="rotulo-ordem" className="text-sm text-tertiary">
-                                    Ordenar por
-                                </span>
-                                <div className="w-52">
-                                    <Select size="sm" aria-labelledby="rotulo-ordem" selectedKey={ordem} onSelectionChange={(chave) => mudarLista({ ordem: chave === ORDENS[0].id ? null : (chave as Ordem) })} items={ORDENS}>
-                                        {(item) => <Select.Item id={item.id}>{item.label}</Select.Item>}
-                                    </Select>
-                                </div>
-                            </FilterBar.Actions>
                         </FilterBar.Root>
                     )}
 
@@ -362,11 +385,22 @@ export function FinancasEventos() {
                             </EmptyState>
                         </div>
                     ) : (
-                        <ul className="flex flex-col divide-y divide-secondary">
-                            {daPagina.map((e) => (
-                                <PastaDoEvento key={e.id} evento={e} sufixo={sufixo} lista={`?${params.toString()}`} />
-                            ))}
-                        </ul>
+                        <>
+                            {/* Total do resultado (todas as páginas): filtrar por situação mostra quanto esses eventos somam. */}
+                            <div className="flex items-center gap-4 border-b border-secondary bg-secondary px-6 py-2">
+                                <span className="flex-1 text-sm font-semibold text-secondary">Total de {contagem(resultado.length)}</span>
+                                <span className={cx(COLUNA_DE_SALDO, "flex flex-col")}>
+                                    <span className="text-xs text-tertiary">Disponível</span>
+                                    <span className={cx("text-md font-semibold whitespace-nowrap tabular-nums", totalDoResultado < 0 ? "text-error-primary" : "text-primary")}>{reais(totalDoResultado)}</span>
+                                </span>
+                                <span aria-hidden="true" className="size-5 shrink-0" />
+                            </div>
+                            <ul className="flex flex-col divide-y divide-secondary">
+                                {daPagina.map((e) => (
+                                    <PastaDoEvento key={e.id} evento={e} sufixo={sufixo} lista={`?${params.toString()}`} />
+                                ))}
+                            </ul>
+                        </>
                     )}
                     {paginas > 1 && <Paginacao pagina={pagina} total={paginas} aoMudar={(p) => mudarLista({ pagina: p === 1 ? null : String(p) })} />}
                 </Secao>

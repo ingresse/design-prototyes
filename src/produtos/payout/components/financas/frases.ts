@@ -33,18 +33,16 @@ export function detalhesDaDistribuicao(eventos: Evento[]): Partial<Record<ParteD
     };
 }
 
-/** Frase de status do dinheiro do evento, para a lista de pastas. */
-export function statusDoDinheiro(e: Evento): string {
+/**
+ * Linha de apoio do evento na lista "Saldo por evento": sempre a próxima liberação, no mesmo formato.
+ * O saldo disponível não entra aqui: ele é o número em destaque à direita da linha.
+ */
+export function proximaLiberacaoDoEvento(e: Evento): string {
     const proxima = e.liberacoes.slice().sort((a, b) => a.data.localeCompare(b.data))[0];
-    if (e.disponivel < 0) {
-        const reduz = proxima ? ` · ${reais(proxima.valor)} retidos liberam em ${dataCurta(proxima.data)}` : "";
-        return `Saldo negativo de ${reais(-e.disponivel)}${reduz}`;
-    }
-    const partes = [e.disponivel > 0 ? `${reais(e.disponivel)} disponíveis` : "Sem valor disponível"];
-    // Diz qual dinheiro é: antecipável e retido são partes diferentes no resto da tela.
-    if (proxima) partes.push(proxima.tipo === "aLiberar" ? `${reais(proxima.valor)} antecipáveis liberam em ${dataCurta(proxima.data)}` : `${reais(proxima.valor)} retidos até ${dataCurta(proxima.data)}`);
-    else if (e.recebido > 0) partes.push(`${reais(e.recebido)} repassados`);
-    return partes.join(" · ");
+    if (proxima) return `Próxima liberação: ${reais(proxima.valor)} em ${dataCurta(proxima.data)} · ${proxima.tipo === "aLiberar" ? "Antecipável" : "Retido"}`;
+    if (e.processamento > 0) return `${reais(e.processamento)} em processamento`;
+    if (e.recebido > 0) return `${reais(e.recebido)} repassados`;
+    return "Sem liberações previstas";
 }
 
 /** Como o Disponível negativo da organização é compensado, em uma frase. `null` se não há débito. */

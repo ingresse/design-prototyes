@@ -1,5 +1,5 @@
 import { baixarCsv } from "../../components/financas/csv";
-import { HOJE, selosDoEvento, type Evento } from "../../components/financas/dados";
+import { HOJE, quitado, selosDoEvento, type Evento } from "../../components/financas/dados";
 
 /* Busca, filtro, ordenação e relatório da lista de eventos. Tudo aqui vale só para a lista:
    a conta do topo é sempre da organização inteira. */
@@ -10,8 +10,8 @@ export type Situacao = "todos" | "disponivel" | "a-liberar" | "negativo" | "ajus
 export type Ordem = "pendentes" | "data" | "disponivel" | "a-liberar";
 
 export const SITUACOES: Array<{ id: Situacao; label: string }> = [
-    { id: "todos", label: "Todos os eventos" },
-    { id: "disponivel", label: "Com valor disponível" },
+    { id: "todos", label: "Todas as situações" },
+    { id: "disponivel", label: "Com saldo disponível" },
     { id: "a-liberar", label: "Com valor antecipável" },
     { id: "negativo", label: "Com saldo negativo" },
     { id: "ajuste", label: "Com devolução recente" },
@@ -19,10 +19,10 @@ export const SITUACOES: Array<{ id: Situacao; label: string }> = [
 ];
 
 export const ORDENS: Array<{ id: Ordem; label: string }> = [
-    { id: "pendentes", label: "Pendentes primeiro" },
+    { id: "pendentes", label: "Com valores a receber primeiro" },
     { id: "data", label: "Data do evento" },
-    { id: "disponivel", label: "Maior disponível" },
-    { id: "a-liberar", label: "Maior antecipável" },
+    { id: "disponivel", label: "Maior saldo disponível" },
+    { id: "a-liberar", label: "Maior valor antecipável" },
 ];
 
 const NA_SITUACAO: Record<Situacao, (e: Evento) => boolean> = {
@@ -42,8 +42,6 @@ const simples = (texto: string) =>
         .toLowerCase()
         .trim();
 
-/** Quitado: tudo o que era do produtor já foi recebido. Não há nada para entrar, sair ou acompanhar. */
-const quitado = (e: Evento) => e.processamento + e.retidoEvento + e.retidoSeguranca + e.aLiberar + e.agendado === 0 && e.disponivel === 0;
 /** Dias entre a data do evento e hoje, para qualquer lado: o que está acontecendo agora vem antes. */
 const distanciaDeHoje = (e: Evento) => Math.abs(Date.parse(e.data) - Date.parse(HOJE));
 

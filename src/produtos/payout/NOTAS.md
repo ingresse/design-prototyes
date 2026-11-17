@@ -79,6 +79,7 @@ Decisões de interface
 27. **Resumo do Extrato com três números: Entradas, Saídas e Disponível hoje** (pedido de 17/11). O "Disponível em" a data inicial saiu, e com ele os sinais + − =: sem o saldo do início, "entradas − saídas" não dá o Disponível de hoje, e o sinal de igual afirmaria uma conta que não fecha na tela. A conta completa continua verificada pelo script e os saldos seguem no CSV.
 28. **Repasse não concluído fora do resumo do Extrato** (pedido de 17/11). O valor que saiu e voltou no mesmo período (Ivete Clareou Turnê, R$ 123.480) não soma em Entradas nem em Saídas: o Disponível não mudou. Na lista, "Repasse solicitado" e "Repasse não concluído" continuam, para o saldo de cada dia fechar. Se só uma das pontas cair no período, ela ainda conta no resumo.
 29. **Revisão de copy da tela principal** (17/11, `/design:ux-copy`): tom mais financeiro, frases mais curtas e nenhuma quebra de linha em 1280. Os termos do glossário v3 não mudaram. As legendas fixas dos blocos Créditos, Devoluções e Líquido saíram: repetiam a definição, que continua no tooltip.
+30. **"Seus eventos" virou "Saldo por evento"** (crítica e revisão de copy de 17/11, diretriz "somos o banco do produtor"). Continua lista, não tabela (decisão da Laricia). O Disponível de cada evento saiu da frase e virou o número em destaque à direita; a linha de apoio diz sempre a próxima liberação, no mesmo formato. Acima da lista, o total de Disponível do resultado filtrado. Evento quitado ganhou o selo "Totalmente repassado". A ordenação subiu para o cabeçalho da seção, para a barra de filtros caber em uma linha em 1280.
 
 ## Suposições (dados inventados)
 
@@ -179,6 +180,20 @@ Princípios aplicados: claro, conciso, consistente, útil, humano; CTA com verbo
 | Vazios | "o dinheiro dele aparece aqui"; "Vendas, liberações e repasses aparecem aqui" | "os valores aparecem aqui"; "Liberações, repasses e devoluções aparecem aqui" | Vendas não entram mais nos movimentos |
 | Tooltips do glossário | Ex.: "O que já caiu na sua conta." | Ex.: "Já pago na sua conta bancária." | Definições reescritas com vocabulário financeiro simples; os termos não mudaram |
 | Avisos de erro e de bloqueio | "seu dinheiro não foi afetado" | Mantido | Recusada a troca por "valores": em erro, a fala direta tranquiliza mais |
+
+### Revisão de 17/11 (Saldo por evento)
+
+| Onde | Antes | Agora | Motivo |
+| --- | --- | --- | --- |
+| Título | "Seus eventos" | "Saldo por evento" | Diz o que a lista mostra; fala de banco |
+| Linha do evento | "R$ 412.400 disponíveis · R$ 260.000 antecipáveis liberam em 21/11" (texto pedido na v3) | "Disponível R$ 412.400" à direita + "Próxima liberação: R$ 260.000 em 21/11 · Antecipável" | O saldo vira o número mais forte e a frase tem sempre o mesmo formato |
+| Evento negativo | "Saldo negativo de R$ 14.000 · …" | "− R$ 14.000" em vermelho, com o selo "Saldo negativo" | A frase repetia o selo |
+| Evento quitado | "Sem valor disponível · R$ X repassados" | Selo "Totalmente repassado" + "R$ X repassados" | "Quitado" e "Liquidado" foram recusadas: são fala de dentro |
+| Total | (não havia) | "Total de 16 eventos" + Disponível | Filtrar por situação mostra quanto esses eventos somam |
+| Filtro | "Todos os eventos" / "Com valor disponível" | "Todas as situações" / "Com saldo disponível" | O filtro é de situação, não de evento |
+| Ordenação | "Pendentes primeiro" / "Maior disponível" / "Maior antecipável" | "Com valores a receber primeiro" / "Maior saldo disponível" / "Maior valor antecipável" | "Pendentes" não dizia pendente de quê |
+| Data | Campo vazio "Selecione as datas" | Rótulo "Data do evento" ao lado do campo | Dizia que era data, não de quê. O texto do campo vazio é do DS (lacuna) |
+| Exportar | "Baixar relatório" | "Baixar saldos por evento" | Diz o que vem no arquivo |
 
 ## Fora deste teste
 
