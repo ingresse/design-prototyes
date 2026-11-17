@@ -51,7 +51,7 @@ quanto já repassou.
 
 ### Extrato _(pages/extrato.tsx, components/painel-do-movimento.tsx)_
 - **FEV-40** Período padrão: do primeiro dia do mês até hoje (01/11 a 17/11), com o atalho "Este mês". O extrato cobre os últimos 90 dias.
-- **FEV-41** Resumo do período no topo, com três números: Entradas, Saídas e Disponível hoje (ou "Disponível em" a data final, quando o período não termina hoje; igual ao card quando termina). Entradas e Saídas abrem por tipo de movimento. Sem operadores entre os blocos: sem o Disponível do início, a conta não fecharia na tela. O resumo não muda com os filtros.
+- **FEV-41** Resumo do período no topo, com três números: Entradas, Saídas e Disponível hoje (ou "Disponível em" a data final, quando o período não termina hoje; igual ao card quando termina). Entradas e Saídas abrem por tipo de movimento. Repasse não concluído (saiu e voltou dentro do período) não entra em Entradas nem em Saídas; na lista, as duas linhas continuam. Sem operadores entre os blocos: sem o Disponível do início, a conta não fecharia na tela. O resumo não muda com os filtros.
 - **FEV-42** O Extrato não tem bloco de repasses agendados: o agendamento de repasses fica em outro lugar. O pedido do repasse ("Repasse solicitado") aparece no histórico, porque foi quando o valor saiu do Disponível.
 - **FEV-43** Movimentos do mais recente para o mais antigo, agrupados por dia; o cabeçalho do dia mostra o Disponível no fim do dia. Cada linha tem ícone de direção, título, tipo · evento (e conta, no repasse), valor e "Disponível após".
 - **FEV-44** Por padrão a lista só tem o que mudou o Disponível. Vendas em processamento e devoluções que saíram do Antecipável ficam de fora, com um aviso e "Mostrar na lista"; filtrar por um tipo também mostra.

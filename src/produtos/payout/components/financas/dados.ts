@@ -991,7 +991,7 @@ export interface Extrato {
     ate: string;
     saldoInicial: number;
     saldoFinal: number;
-    /** Tudo o que entrou no Disponível no período (soma dos efeitos positivos). */
+    /** Tudo o que entrou no Disponível no período (sem o repasse não concluído que saiu e voltou no período). */
     entradas: number;
     /** Tudo o que saiu do Disponível no período, como número positivo. */
     saidas: number;
@@ -1014,9 +1014,13 @@ export function extrato(eventos: Evento[], de: string, ate: string): Extrato {
     const saldoInicial = saldoFinal - doPeriodo.reduce((s, m) => s + m.efeito, 0);
     let corrente = saldoInicial;
     const linhas = doPeriodo.map((m) => ({ ...m, apos: (corrente += m.efeito) }));
+    // Repasse não concluído: o valor saiu e voltou. Com as duas pontas no período, ele não conta nem
+    // como saída nem como entrada no resumo (o saldo não muda); na lista, as duas linhas continuam.
+    const voltou = new Set(doPeriodo.filter((m) => m.situacao === "devolvido").map((m) => m.repasse));
+    const anulados = new Set(doPeriodo.filter((m) => m.situacao === "falhou" && voltou.has(m.repasse)).map((m) => m.repasse));
     const agrupar = (sinal: 1 | -1) => {
         const mapa = new Map<TipoDeMovimento, number>();
-        for (const m of doPeriodo) if (m.efeito * sinal > 0) mapa.set(m.tipo, (mapa.get(m.tipo) ?? 0) + m.efeito * sinal);
+        for (const m of doPeriodo) if (m.efeito * sinal > 0 && !(m.repasse && anulados.has(m.repasse))) mapa.set(m.tipo, (mapa.get(m.tipo) ?? 0) + m.efeito * sinal);
         return [...mapa.entries()].map(([tipo, valor]) => ({ tipo, valor })).sort((a, b) => b.valor - a.valor);
     };
     const porTipo = { entradas: agrupar(1), saidas: agrupar(-1) };
