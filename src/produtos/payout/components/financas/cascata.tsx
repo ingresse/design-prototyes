@@ -159,7 +159,7 @@ export const Cascata = ({ totais, aoAbrir, aoVerRelatorio, creditoPendente }: Ca
 /* ---------------- onde está ---------------- */
 
 /* Uma cor por parte, sempre a mesma na barra e na legenda. Vermelho fica só para valor negativo. */
-const COR_DA_PARTE: Record<ParteDaDistribuicao, string> = {
+export const COR_DA_PARTE: Record<ParteDaDistribuicao, string> = {
     processamento: "bg-utility-neutral-300",
     retido: "bg-utility-amber-500",
     aLiberar: "bg-utility-blue-500",

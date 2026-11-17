@@ -45,10 +45,11 @@ quanto já repassou.
 - **FEV-24** Devoluções: por tipo, cada linha com de onde saiu ("Saiu do disponível" ou "Saiu do antecipável") e "Ver no relatório de transações".
 
 ### Calendário de liberações _(pages/calendario.tsx)_
-- **FEV-30** Resumo em três faixas que não se sobrepõem e somam Em processamento + Retido + Antecipável da organização. O resumo não muda com os filtros.
-- **FEV-31** Lista por mês e por dia, com total do dia quando há mais de uma linha. O que não tem data (Pix parcelado) fica em "Sem data definida", no fim.
-- **FEV-32** Linhas Antecipável têm "Antecipar", sem taxa. Retido não é antecipável.
-- **FEV-33** Filtros: evento (busca), tipo e período.
+- **FEV-30** Topo com um número: "Total a liberar" (Em processamento + Retido + Antecipável da organização), com as faixas acumuladas "Até" 7 dias e "Até" 30 dias e, quando há, "Sem data definida" (Pix parcelado). O topo não muda com os filtros.
+- **FEV-31** "Liberações por semana": oito semanas a partir de hoje e "Depois de", em barras empilhadas por tipo (Antecipável, Retido, Em processamento, com as cores da legenda da tela principal). Semanas + depois + sem data = total a liberar. Clicar em uma semana filtra a lista por data; clicar de novo tira o filtro.
+- **FEV-32** "Próximas liberações": lista por mês (com total do mês) e por dia. Cada dia é uma linha com data, evento ou número de eventos, tipos e total; abre para mostrar cada evento, que leva à página do evento. "Abrir tudo" / "Recolher tudo" no cabeçalho. Com um evento filtrado, os dias já abrem. O que não tem data fica em "Sem data definida", no fim.
+- **FEV-33** "Antecipar" aparece uma vez, no topo ("Você pode antecipar R$ …"), sem taxa. Não há botão por linha.
+- **FEV-34** Filtros: evento (campo com busca, igual ao do Extrato), tipo e data da liberação.
 
 ### Extrato _(pages/extrato.tsx, components/painel-do-movimento.tsx)_
 - **FEV-40** Período padrão: do primeiro dia do mês até hoje (01/11 a 17/11), com o atalho "Este mês". O extrato cobre os últimos 90 dias.

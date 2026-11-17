@@ -734,8 +734,8 @@ export function entradasDoCalendario(eventos: Evento[]): Entrada[] {
         if (e.processamento > 0) {
             entradas.push(
                 e.previsaoProcessamento === "hoje"
-                    ? { data: HOJE, tipo: "processamento", valor: e.processamento, evento: e, nota: "Entra hoje" }
-                    : { tipo: "processamento", valor: e.processamento, evento: e, nota: "Pix parcelado: entra quando as parcelas forem pagas" },
+                    ? { data: HOJE, tipo: "processamento", valor: e.processamento, evento: e, nota: "Libera hoje" }
+                    : { tipo: "processamento", valor: e.processamento, evento: e, nota: "Pix parcelado: libera a cada parcela paga" },
             );
         }
         for (const l of e.liberacoes) entradas.push({ ...l, nota: l.tipo === "retidoEvento" ? "Libera depois do evento" : l.nota, evento: e });
@@ -768,6 +768,48 @@ export function resumoDoCalendario(entradas: Entrada[]): ResumoDoCalendario {
         else r.depois += e.valor;
     }
     return r;
+}
+
+/** Como o Calendário agrupa os tipos: os dois retidos contam juntos, com a cor do Retido da legenda. */
+export type GrupoDeEntrada = "processamento" | "retido" | "aLiberar";
+export const GRUPO_DA_ENTRADA: Record<TipoDeEntrada, GrupoDeEntrada> = { processamento: "processamento", retidoEvento: "retido", retidoSeguranca: "retido", aLiberar: "aLiberar" };
+
+export interface PeriodoDoCalendario {
+    /** Primeiro e último dia (ISO). O último período ("depois") não tem fim. */
+    de: string;
+    ate?: string;
+    porGrupo: Record<GrupoDeEntrada, number>;
+    total: number;
+}
+
+export interface SemanasDoCalendario {
+    semanas: PeriodoDoCalendario[];
+    /** Tudo o que tem data depois da última semana. */
+    depois: PeriodoDoCalendario;
+    /** O que não tem data (Pix parcelado): fora do gráfico. */
+    semData: number;
+    total: number;
+}
+
+/**
+ * As próximas semanas a partir de hoje (hoje + 6 dias, e assim por diante), para o gráfico do
+ * Calendário. Semanas + depois + sem data = o calendário inteiro (`conferirContas`).
+ */
+export function semanasDoCalendario(entradas: Entrada[], quantas = 8): SemanasDoCalendario {
+    const vazio = (de: string, ate?: string): PeriodoDoCalendario => ({ de, ate, porGrupo: { processamento: 0, retido: 0, aLiberar: 0 }, total: 0 });
+    const semanas = Array.from({ length: quantas }, (_, i) => vazio(somarDias(HOJE, i * 7), somarDias(HOJE, i * 7 + 6)));
+    const depois = vazio(somarDias(HOJE, quantas * 7));
+    let semData = 0;
+    for (const e of entradas) {
+        if (!e.data) {
+            semData += e.valor;
+            continue;
+        }
+        const periodo = semanas.find((s) => e.data! >= s.de && e.data! <= s.ate!) ?? depois;
+        periodo.porGrupo[GRUPO_DA_ENTRADA[e.tipo]] += e.valor;
+        periodo.total += e.valor;
+    }
+    return { semanas, depois, semData, total: semanas.reduce((s, x) => s + x.total, 0) + depois.total + semData };
 }
 
 /* ---------------- extrato ---------------- */
@@ -1141,6 +1183,10 @@ export function conferirContas(): string[] {
         if (soma(entradas, (x) => x.valor) !== aEntrar) erros.push(`${cenario}: o Calendário soma ${soma(entradas, (x) => x.valor)}, eram ${aEntrar}`);
         const resumo = resumoDoCalendario(entradas);
         if (resumo.em7 + resumo.em30 + resumo.depois !== aEntrar) erros.push(`${cenario}: as três faixas do Calendário não somam o total`);
+        const semanas = semanasDoCalendario(entradas);
+        if (semanas.total !== aEntrar) erros.push(`${cenario}: o gráfico por semana do Calendário soma ${semanas.total}, eram ${aEntrar}`);
+        if (semanas.semData !== resumo.semData) erros.push(`${cenario}: o "sem data" do gráfico e o do resumo do Calendário não batem`);
+        for (const s of [...semanas.semanas, semanas.depois]) if (s.porGrupo.processamento + s.porGrupo.retido + s.porGrupo.aLiberar !== s.total) erros.push(`${cenario}: semana de ${s.de} não soma os seus tipos`);
         // Extrato: 30 dias (padrão) e 90 dias.
         for (const dias of [30, DIAS_DO_EXTRATO]) {
             const x = extrato(eventos, somarDias(HOJE, -dias), HOJE);

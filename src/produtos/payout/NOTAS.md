@@ -41,7 +41,7 @@ Confere, nos cenários com dados (normal, total negativo, bloqueado), e sai com 
 - **painéis de detalhe:** a soma das linhas = o valor do bloco (Vendido, Taxas e custos, Créditos, Devoluções);
 - cards do topo e legenda leem o mesmo total.
 
-Resultado em 17/11/2026: todas as contas fecham. Calendário: R$ 572.020 + R$ 2.045.515 + R$ 1.543.250 = R$ 4.160.785. Extrato de um mês: R$ 1.173.930 (17/10) + R$ 5.483.165 de entradas − R$ 3.811.000 de saídas = R$ 2.846.095.
+Resultado em 17/11/2026: todas as contas fecham. Calendário: R$ 572.020 + R$ 2.045.515 + R$ 1.543.250 = R$ 4.160.785; as oito semanas do gráfico, o "depois" (R$ 762.580) e o sem data (R$ 15.000) somam o mesmo total. Extrato de um mês: R$ 1.173.930 (17/10) + R$ 5.483.165 de entradas − R$ 3.811.000 de saídas = R$ 2.846.095.
 
 ## Decisões desta rodada (v3)
 
@@ -80,6 +80,8 @@ Decisões de interface
 28. **Repasse não concluído fora do resumo do Extrato** (pedido de 17/11). O valor que saiu e voltou no mesmo período (Ivete Clareou Turnê, R$ 123.480) não soma em Entradas nem em Saídas: o Disponível não mudou. Na lista, "Repasse solicitado" e "Repasse não concluído" continuam, para o saldo de cada dia fechar. Se só uma das pontas cair no período, ela ainda conta no resumo.
 29. **Revisão de copy da tela principal** (17/11, `/design:ux-copy`): tom mais financeiro, frases mais curtas e nenhuma quebra de linha em 1280. Os termos do glossário v3 não mudaram. As legendas fixas dos blocos Créditos, Devoluções e Líquido saíram: repetiam a definição, que continua no tooltip.
 30. **"Seus eventos" virou "Saldo por evento"** (crítica e revisão de copy de 17/11, diretriz "somos o banco do produtor"). Continua lista, não tabela (decisão da Laricia). O Disponível de cada evento saiu da frase e virou o número em destaque à direita; a linha de apoio diz sempre a próxima liberação, no mesmo formato. Acima da lista, o total de Disponível do resultado filtrado. Evento quitado ganhou o selo "Totalmente repassado". A ordenação subiu para o cabeçalho da seção, para a barra de filtros caber em uma linha em 1280.
+31. **Calendário de liberações refeito** (crítica e revisão de copy de 17/11). Topo com um número, "Total a liberar", e faixas **acumuladas** (até 7 dias, até 30 dias): antes eram três faixas que não se sobrepunham, e "Próximos 30 dias" não incluía os 7 primeiros (muda a decisão 13). Entrou o gráfico "Liberações por semana", empilhado por tipo e clicável. A lista passou a ter uma linha por dia, que abre para mostrar os eventos. "Antecipar" saiu das linhas e ficou uma vez, no topo. O filtro de evento é o mesmo campo com busca do Extrato. O título "Calendário de liberações" foi mantido (decisão 11); "Agenda de recebíveis" ficou como alternativa a decidir.
+32. **Pix parcelado no Calendário:** aparece no topo como "Sem data definida", fora do gráfico e fora das faixas "Até". Antes entrava em "Depois de 30 dias".
 
 ## Suposições (dados inventados)
 
@@ -116,6 +118,8 @@ Decisões de interface
 | Painel lateral com grupos expansíveis | `SlideoutMenu` + `Accordion` do DS (Taxas e custos da organização). O Accordion tem borda e fundo próprios, pensados para página, não para painel |
 | Lista de extrato agrupada por dia, com saldo do dia e colunas de valor | Lista local (`ol` por dia, linha como `button` com foco e hover do DS, `FeaturedIcon` para a direção). A `Table` do DS não agrupa linhas nem alinha à direita o rótulo das colunas de valor |
 | Select com busca (`Select.ComboBox`) com seta à direita e sem lupa | A seta entra no espaço de `status` do ComboBox e a lupa é trocada por um ícone vazio (filtro de evento do Extrato). O texto do campo vazio fica na cor de placeholder, mais apagado que o do `Select` ao lado |
+| Gráfico de barras empilhadas, clicável | Barras locais (colunas com `Tooltip` do DS e as cores `utility` da legenda). O DS só tem a base do Recharts (`charts-base`), sem gráfico de barras pronto |
+| Linha que abre para mostrar detalhes dentro de uma lista | `button` com `aria-expanded` e os estados de foco e hover do DS. O `Accordion` do DS tem borda e fundo de página |
 | Resumo em blocos com operadores (+ − =) | Blocos locais iguais aos de "Resumo financeiro" |
 | Selos de tipo (liberação) com cor por tipo | `Badge` do DS com as cores existentes. No Extrato o selo saiu: a linha usa ícone de direção |
 | Card de métrica clicável, com centavos menores e sem menu de ações | `TableCard.Root` + `NumeroGrande` local; o card clicável é um `button` com os estados de foco e hover do DS |
@@ -194,6 +198,22 @@ Princípios aplicados: claro, conciso, consistente, útil, humano; CTA com verbo
 | Ordenação | "Pendentes primeiro" / "Maior disponível" / "Maior antecipável" | "Com valores a receber primeiro" / "Maior saldo disponível" / "Maior valor antecipável" | "Pendentes" não dizia pendente de quê |
 | Data | Campo vazio "Selecione as datas" | Rótulo "Data do evento" ao lado do campo | Dizia que era data, não de quê. O texto do campo vazio é do DS (lacuna) |
 | Exportar | "Baixar relatório" | "Baixar saldos por evento" | Diz o que vem no arquivo |
+
+### Revisão de 17/11 (Calendário de liberações)
+
+| Onde | Antes | Agora | Motivo |
+| --- | --- | --- | --- |
+| Número principal | (não havia) | "Total a liberar" + "Entra no seu Disponível nas datas abaixo" | A pergunta da tela ganha um número; "liberar" e "Disponível" são do glossário. "A receber" foi recusada: pode ser lida como repasse na conta |
+| Faixas | "Próximos 7 dias" / "Próximos 30 dias" / "Depois de 30 dias" | "Até 24/11" (Próximos 7 dias) / "Até 17/12" (Próximos 30 dias) | Acumuladas, como o produtor lê; a data é o rótulo e o prazo é o apoio |
+| Sem data | "inclui R$ 15.000 sem data" | "Sem data definida" · "Pix parcelado" | Deixa de ficar escondido em outra faixa |
+| Antecipar | Botão em cada linha | "Você pode antecipar R$ 2.180.000" + "Antecipar" | Uma ação, com o valor |
+| Gráfico | (não havia) | "Liberações por semana"; rótulos "17/11 a 23/11", "Depois de 11/01" | Datas, não "Semana 1" |
+| Seção | "Liberações" · "53 liberações" | "Próximas liberações" · "53 liberações em 36 dias" | Mesmo nome do bloco da tela principal |
+| Linha do dia | "Total do dia: R$ 143.400" | "Hoje, 17/11 · 8 eventos · Em processamento · R$ 143.400" | O total fica sempre visível, sem rótulo |
+| Nota | "Entra hoje"; "Pix parcelado: entra quando as parcelas forem pagas" | "Libera hoje"; "Pix parcelado: libera a cada parcela paga" | O verbo da tela é "liberar" |
+| Filtro de tipo | "Retido (os dois tipos)" | "Retido" | O parêntese era explicação de dentro |
+| Data | Campo vazio "Selecione as datas" | Rótulo "Data da liberação" ao lado | Mesmo ajuste de "Saldo por evento" |
+| Abrir e recolher | (não havia) | "Abrir tudo" / "Recolher tudo" | Verbos simples; "Expandir" foi recusada |
 
 ## Fora deste teste
 
