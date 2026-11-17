@@ -75,6 +75,8 @@ Decisões de interface
 23. **Linha do Extrato sem selo colorido de tipo:** ícone de direção (entrou, saiu, não mudou), título e, embaixo, tipo · evento · conta.
 24. **Painel do repasse mostra "De onde veio este valor":** os movimentos mais recentes do evento que formaram o Disponível, até cobrir o valor do repasse.
 25. **"Baixar extrato" oferece PDF e Planilha (CSV).** O PDF é simulado (mostra um aviso); o CSV baixa de verdade.
+26. **Período padrão do Extrato: do primeiro dia do mês até hoje** (pedido de 17/11), com o atalho "Este mês". Antes era um mês para trás (17/10 a 17/11).
+27. **Resumo do Extrato com três números: Entradas, Saídas e Disponível hoje** (pedido de 17/11). O "Disponível em" a data inicial saiu, e com ele os sinais + − =: sem o saldo do início, "entradas − saídas" não dá o Disponível de hoje, e o sinal de igual afirmaria uma conta que não fecha na tela. A conta completa continua verificada pelo script e os saldos seguem no CSV.
 
 ## Suposições (dados inventados)
 
@@ -141,7 +143,7 @@ Princípios aplicados: claro, conciso, consistente, útil, humano; CTA com verbo
 | Calendário, faixas | Linha de apoio com as datas de cada faixa | Aceita | Sem ela, "Próximos 30 dias" é ambíguo |
 | Calendário, Retido até o evento | "Libera depois do evento" | Aceita (texto pedido) | — |
 | Calendário, vazio | Título "Nenhuma liberação prevista" + "Quando um evento começar a vender, as datas aparecem aqui." | Aceita | O texto pedido não dizia como seguir |
-| Extrato, resumo | "Resumo de 17/10 a hoje": "Disponível em 17/10" + "Entradas" − "Saídas" = "Disponível hoje" | Aceita | Palavras de extrato de banco; "hoje" em vez da data quando o período termina hoje |
+| Extrato, resumo | "Resumo de 01/11 a hoje": "Entradas", "Saídas" e "Disponível hoje" | Aceita | Palavras de extrato de banco; "hoje" em vez da data quando o período termina hoje |
 | Extrato, entradas por tipo | "Repasses não concluídos" para o valor que voltou | Aceita | "Repasses" em Entradas pareceria erro |
 | Extrato, o que ficou de fora | "25 movimentos não mudaram o Disponível e não aparecem na lista: vendas em processamento e devoluções que saíram do Antecipável." + "Mostrar na lista" / "Ocultar" | Aceita | Diz o que é e por que não está; a ação nomeia o que acontece. "Ver todos" foi recusada: não diz o quê |
 | Extrato, cabeçalho do dia | "Disponível no fim do dia"; "Hoje, 17/11" | Aceita | "Saldo do dia" foi recusada: o glossário usa "Disponível", não "saldo" |

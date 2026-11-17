@@ -38,7 +38,7 @@ import { PainelDoMovimento } from "../components/painel-do-movimento";
  * Extrato (ajustes v3, seção 4.2, refeito depois da crítica de design de 17/11).
  * Pergunta que responde: o que aconteceu com o meu dinheiro, e por que o meu Disponível mudou?
  * Lê-se como extrato de banco:
- *  - o resumo do período fecha a conta (Disponível no início + entradas − saídas = Disponível no fim);
+ *  - o resumo do período mostra três números: Entradas, Saídas e o Disponível no fim do período;
  *  - os movimentos vêm do mais recente para o mais antigo, agrupados por dia, com o Disponível no
  *    fim de cada dia. Por padrão só aparece o que mudou o Disponível.
  * O resumo não muda com os filtros; "Disponível após" é sempre o saldo da organização.
@@ -81,9 +81,10 @@ const NO_RESUMO: Record<TipoDeMovimento, string> = {
 
 const hoje = parseDate(HOJE);
 const dias = (n: number) => ({ start: hoje.subtract({ days: n }), end: hoje });
-/** Período padrão: do mesmo dia do mês passado até hoje (17/10 a 17/11). */
-const UM_MES_ATRAS = hoje.subtract({ months: 1 }).toString();
+/** Período padrão: do primeiro dia do mês até hoje (01/11 a 17/11). */
+const INICIO_DO_MES = hoje.set({ day: 1 }).toString();
 const PERIODOS = {
+    mes: { label: "Este mês", value: { start: hoje.set({ day: 1 }), end: hoje } },
     d7: { label: "Últimos 7 dias", value: dias(7) },
     d30: { label: "Últimos 30 dias", value: { start: hoje.subtract({ months: 1 }), end: hoje } },
     d90: { label: "Últimos 90 dias", value: dias(DIAS_DO_EXTRATO) },
@@ -97,15 +98,8 @@ const simples = (t: string) =>
 
 /* ---------------- resumo do período ---------------- */
 
-const Sinal = ({ sinal }: { sinal: string }) => (
-    <span aria-hidden="true" className="flex w-4 shrink-0 items-center justify-center text-xl font-medium text-quaternary">
-        {sinal}
-    </span>
-);
-
 interface ParteDoResumoProps {
     rotulo: string;
-    leitura?: string;
     valor: number;
     cor?: string;
     resultado?: boolean;
@@ -114,10 +108,9 @@ interface ParteDoResumoProps {
     rotuloDoTipo?: (tipo: TipoDeMovimento) => string;
 }
 
-const ParteDoResumo = ({ rotulo, leitura, valor, cor = "text-primary", resultado, porTipo, vazio, rotuloDoTipo = (t) => NO_RESUMO[t] }: ParteDoResumoProps) => (
+const ParteDoResumo = ({ rotulo, valor, cor = "text-primary", resultado, porTipo, vazio, rotuloDoTipo = (t) => NO_RESUMO[t] }: ParteDoResumoProps) => (
     <div className={cx("flex min-w-0 flex-1 flex-col gap-1 rounded-xl p-3 ring-1 ring-inset @6xl:p-4", resultado ? "bg-secondary ring-primary" : "bg-primary ring-secondary")}>
         <dt className="text-sm font-medium text-secondary">
-            {leitura && <span className="sr-only">{leitura} </span>}
             {rotulo}
         </dt>
         <dd className="flex flex-col gap-2">
@@ -141,22 +134,18 @@ const ParteDoResumo = ({ rotulo, leitura, valor, cor = "text-primary", resultado
 
 const ResumoDoPeriodo = ({ x }: { x: Extrato }) => (
     <Secao titulo={`Resumo de ${dataCurta(x.de)} a ${x.ate === HOJE ? "hoje" : dataCurta(x.ate)}`}>
-        <dl className="flex items-stretch gap-2 px-6 py-5">
-            <ParteDoResumo rotulo={`Disponível em ${dataCurta(x.de)}`} valor={x.saldoInicial} />
-            <Sinal sinal="+" />
+        {/* Três números, sem operadores: sem o Disponível do início, "entradas − saídas" não dá o Disponível de hoje. */}
+        <dl className="flex items-stretch gap-4 px-6 py-5">
             <ParteDoResumo
                 rotulo="Entradas"
-                leitura="mais"
                 valor={x.entradas}
                 cor="text-success-primary"
                 porTipo={x.porTipo.entradas}
                 vazio="Nada entrou no período"
                 rotuloDoTipo={(t) => (t === "repasse" ? "Repasses não concluídos" : NO_RESUMO[t])}
             />
-            <Sinal sinal="−" />
-            <ParteDoResumo rotulo="Saídas" leitura="menos" valor={x.saidas} porTipo={x.porTipo.saidas} vazio="Nada saiu no período" />
-            <Sinal sinal="=" />
-            <ParteDoResumo rotulo={x.ate === HOJE ? "Disponível hoje" : `Disponível em ${dataCurta(x.ate)}`} leitura="igual a" valor={x.saldoFinal} resultado />
+            <ParteDoResumo rotulo="Saídas" valor={x.saidas} porTipo={x.porTipo.saidas} vazio="Nada saiu no período" />
+            <ParteDoResumo rotulo={x.ate === HOJE ? "Disponível hoje" : `Disponível em ${dataCurta(x.ate)}`} valor={x.saldoFinal} resultado />
         </dl>
     </Secao>
 );
@@ -215,9 +204,9 @@ export function FinancasExtrato() {
     const comCenario = (rota: string) => `${rota}${cenario === "normal" ? "" : `${rota.includes("?") ? "&" : "?"}cenario=${cenario}`}`;
     const compensa = fraseDeCompensacao(eventos);
 
-    // Período: `de`/`ate` na URL, ou o atalho `periodo=90` (usado pelos links que chegam aqui), ou um mês.
+    // Período: `de`/`ate` na URL, ou o atalho `periodo=90` (usado pelos links que chegam aqui), ou o mês corrente.
     const limite = somarDias(HOJE, -DIAS_DO_EXTRATO);
-    const de = [params.get("de") ?? (params.get("periodo") === "90" ? limite : UM_MES_ATRAS), limite].sort()[1];
+    const de = [params.get("de") ?? (params.get("periodo") === "90" ? limite : INICIO_DO_MES), limite].sort()[1];
     const ate = [params.get("ate") ?? HOJE, HOJE].sort()[0];
     const busca = params.get("busca") ?? "";
     const filtro = TIPOS.find((t) => t.id === params.get("tipo"))?.id ?? "todos";
