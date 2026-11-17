@@ -61,6 +61,10 @@ const T = {
     viradaDoLote: "Ao atingir estoque",
     vincular: "Vincular",
     vincularNoLote: "Vincular Passkey no {lote}",
+    vincularNoIngresso: "Vincular Passkey em {ingresso}",
+    passkeysDoIngresso: "Passkeys de {ingresso}",
+    passkeysDoIngressoDica: "Com Passkey vinculada ao ingresso, só quem tem uma delas compra qualquer lote dele. As Passkeys são criadas em Marketing › Passkey.",
+    passkeysDoIngressoSalvas: "Passkeys de {ingresso} salvas.",
     passkeysDoLote: "Passkeys do {lote}",
     contagemPasskeys: { one: "{n} Passkey", other: "{n} Passkeys" },
     passkeysDica: "Com Passkey vinculada, só quem tem uma delas compra este lote. As Passkeys são criadas em Marketing › Passkey.",
@@ -579,6 +583,17 @@ function LinhaDoIngresso({ evento, tipo, alca }: { evento: Evento; tipo: TipoIng
     const abrir = () => navigate(`/backstage/catalogo/ingressos/${tipo.id}`);
     // Lotes abertos na própria lista, sem entrar no ingresso (ITM-93).
     const [lotesAbertos, setLotesAbertos] = useState(false);
+    // Seletor de Passkeys do ingresso inteiro, aberto pelo "Vincular" da linha.
+    const [seletorDePasskey, setSeletorDePasskey] = useState(false);
+    const vincularNoIngresso = async (ids: string[]) => {
+        const antes = evento.sessoes;
+        try {
+            await salvarSessoes(evento, comIngresso(evento, { ...tipo, chaves: ids.length ? ids : undefined }));
+            toast.success(formatar(T.passkeysDoIngressoSalvas, { ingresso: tipo.nome }), { action: { label: T.desfazer, onClick: () => salvarSessoes(evento, antes) } });
+        } catch {
+            toast.error(t.erroAoSalvar);
+        }
+    };
     const apoio = [janela?.janela === "agendado" ? formatar(T.abreEm, { quando: quando(janela.inicio) }) : null, resumoVendas(tipo.vendas) || null].filter(Boolean) as string[];
 
     const alternar = async (ativo: boolean) => {
@@ -620,8 +635,8 @@ function LinhaDoIngresso({ evento, tipo, alca }: { evento: Evento; tipo: TipoIng
                                     <span className="line-clamp-2 text-md font-semibold break-words text-primary">{tipo.nome}</span>
                                 </button>
                             </span>
-                            {/* Badge só quando foge do normal: À venda e Pausado o toggle já diz (ITM-10); "Sem abertura de vendas" não aparece na lista. */}
-                            {estado !== "a-venda" && estado !== "pausado" && estado !== "sem-abertura" && <EstadoBadge estado={estado} />}
+                            {/* Badge só quando foge do normal: À venda e Pausado o toggle já diz (ITM-10); "Sem abertura de vendas" e "Agendado" não aparecem na lista. */}
+                            {estado !== "a-venda" && estado !== "pausado" && estado !== "sem-abertura" && estado !== "agendado" && <EstadoBadge estado={estado} />}
                         </div>
                         {apoio.length > 0 && (
                             <div className={cx("flex min-w-0 flex-col gap-0.5", RECUO_DO_NOME)}>
@@ -634,11 +649,21 @@ function LinhaDoIngresso({ evento, tipo, alca }: { evento: Evento; tipo: TipoIng
                         )}
                     </div>
                     <dl className={cx("grid grid-cols-2 gap-3 text-sm md:flex md:items-center md:gap-4", RECUO_DO_NOME, "md:pl-0")}>
-                        {/* Passkey: só quando o ingresso ou um lote tem; abre o slideout com o detalhe (ITM-33). */}
+                        {/* Passkey: com Passkey, a contagem abre o slideout (ITM-33); sem, "Vincular" abre o seletor do ingresso e grava na hora. */}
                         {totalDeChaves(tipo) ? (
                             <BotaoChaves tipo={tipo} onEditar={abrir} className={COLUNA.passkey} />
                         ) : (
-                            <div aria-hidden="true" className={cx("hidden md:block", COLUNA.passkey)} />
+                            <Celula rotulo={T.passkey} className={COLUNA.passkey}>
+                                <button
+                                    type="button"
+                                    onClick={() => setSeletorDePasskey(true)}
+                                    aria-label={formatar(T.vincularNoIngresso, { ingresso: tipo.nome })}
+                                    className="relative z-10 flex cursor-pointer items-center gap-1 rounded font-medium whitespace-nowrap text-utility-blue-600 outline-focus-ring transition duration-100 ease-linear hover:text-utility-blue-700 focus-visible:outline-2"
+                                >
+                                    <Key01 className="size-4 shrink-0" aria-hidden="true" />
+                                    {T.vincular}
+                                </button>
+                            </Celula>
                         )}
                         {/* Virada de lote: o padrão é "individual" (ITM-92). */}
                         <Celula rotulo={T.virada} className={COLUNA.virada}>
@@ -674,6 +699,20 @@ function LinhaDoIngresso({ evento, tipo, alca }: { evento: Evento; tipo: TipoIng
             <Surgir visivel={lotesAbertos}>
                 <LotesDoIngresso evento={evento} tipo={tipo} comAlca={!!alca} />
             </Surgir>
+            {seletorDePasskey && (
+                <SeletorDeLista
+                    titulo={formatar(T.passkeysDoIngresso, { ingresso: tipo.nome })}
+                    descricao={T.passkeysDoIngressoDica}
+                    vazio={T.passkeysVazio}
+                    opcoes={CHAVES_DE_EXEMPLO.map((c) => ({ id: c, rotulo: c }))}
+                    selecionados={tipo.chaves ?? []}
+                    onFechar={() => setSeletorDePasskey(false)}
+                    onConfirmar={(ids) => {
+                        void vincularNoIngresso(ids);
+                        setSeletorDePasskey(false);
+                    }}
+                />
+            )}
         </div>
     );
 }
