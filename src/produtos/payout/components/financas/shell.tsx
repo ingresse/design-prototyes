@@ -13,7 +13,7 @@ import { Avatar } from "@/components/base/avatar/avatar";
 import { ButtonGroup, ButtonGroupItem } from "@/components/base/button-group/button-group";
 import { iconeAnimado } from "@/components/foundations/icone-animado";
 import { cx } from "@/utils/cx";
-import { CENARIOS, ORGANIZACAO, type Cenario } from "./dados";
+import { ATUALIZADO_EM, CENARIOS, ORGANIZACAO, type Cenario } from "./dados";
 
 /*
  * Shell dos protótipos de Finanças do produtor.
@@ -210,7 +210,11 @@ export const CabecalhoDaPagina = ({ titulo, acima, abaixo, acoes }: { titulo: st
         {acima}
         <div className="flex min-h-10 items-center justify-between gap-6">
             <h1 className={TITULO_PAGINA}>{titulo}</h1>
-            {acoes && <div className="flex shrink-0 items-center gap-3">{acoes}</div>}
+            <div className="flex shrink-0 items-center gap-4">
+                {/* Mesmo padrão dos relatórios do evento. Informação neutra: só a data e a hora. */}
+                <span className="text-sm whitespace-nowrap text-tertiary">Atualizado em {ATUALIZADO_EM}</span>
+                {acoes && <div className="flex items-center gap-3">{acoes}</div>}
+            </div>
         </div>
         {abaixo}
     </header>

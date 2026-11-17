@@ -1,173 +1,152 @@
 # NOTAS · Protótipo de pesquisa · Finanças do produtor
 
-> Briefing de 16/11/2026 e **ajustes v2** do mesmo dia (Laricia Barbosa, Payout). Estímulo para 3 a 5 entrevistas com produtores.
-> No ar só a direção **Eventos como pastas (B + D)**: a conta que fecha no topo e os eventos como pastas. A jornada "Cascata que fecha" como tela própria foi retirada (código no commit `0770df9`). A direção A (Extrato) não foi construída.
+> Briefing de 16/11/2026, ajustes v2 (16/11) e **ajustes v3 (17/11/2026)**, de Laricia Barbosa (Payout). Quando há conflito, vale a v3.
+> **Missão da tela (v3):** Finanças é a fonte da verdade de todos os eventos da organização. O produtor precisa saber o que aconteceu, acontece e vai acontecer com o dinheiro dele, e conseguir provar isso sozinho.
 
 ## O que existe
 
-| Tela | Rota |
-| --- | --- |
-| Finanças (conta da organização + 48 eventos) | `/payout/financas-eventos` |
-| Página do evento | `/payout/financas-eventos/:eventoId` |
+| Tela | Rota | Pergunta que responde |
+| --- | --- | --- |
+| Finanças | `/payout/financas-eventos` | Quanto é meu, onde está e o que eu posso fazer agora? |
+| Calendário de liberações | `/payout/financas-eventos/calendario` | Quando o meu dinheiro entra no Disponível? |
+| Extrato | `/payout/financas-eventos/extrato` | O que aconteceu com o meu dinheiro, e por que o meu Disponível mudou? |
+| Página do evento | `/payout/financas-eventos/:eventoId` | A mesma conta, só deste evento |
 
-- Código: `payout/financas-eventos/` (telas) e `payout/components/financas/` (dados, cascata, painel, estados, shell).
-- Cenário pela barra do protótipo ou pela URL: `?cenario=negativo`, `bloqueado`, `carregando`, `erro`, `sem-eventos`. Sem o parâmetro, é o normal.
-- Busca, filtro, ordem e página também ficam na URL (`busca`, `situacao`, `de`, `ate`, `ordem`, `pagina`): dá para mandar o link da entrevista já no estado certo. Ex.: `?busca=zzz` (busca sem resultado), `?situacao=negativo`.
+- Código: `payout/financas-eventos/` (telas) e `payout/components/financas/` (dados, conta, painéis, estados, shell).
+- Cenário pela barra do protótipo ou pela URL: `?cenario=negativo`, `bloqueado`, `carregando`, `erro`, `sem-eventos`.
+- Busca, filtros, página e painel aberto ficam na URL em todas as telas: dá para mandar o link da entrevista já no estado certo. Exemplos: `/calendario?tipo=antecipavel`, `/extrato?tipo=repasse-pago&periodo=90`, `?detalhe=taxas`.
 - Eventos do briefing: `carnaval`, `ivete`, `numanice`, `arraial`.
 
-### Tarefas da entrevista e onde cada uma se resolve
+## A equação que a tela inteira conta
 
-| Tarefa | Onde se resolve |
-| --- | --- |
-| 1. Quanto pode sacar hoje | Disponível agora, primeiro número do topo |
-| 2. Vendido do Carnaval bate com o relatório | Pasta do Carnaval › A conta deste evento › "Ver no relatório de vendas" |
-| 3. Quando cai o dinheiro do Numanice | Pasta do Numanice › Calendário de liberações |
-| 4. Por que o Arraial está negativo | Pasta do Arraial › aviso no topo e Ajustes |
-| 5. O que pode mudar no Ivete, até quando | Pasta do Ivete › O que ainda pode mudar |
-| 6. Se precisasse do dinheiro antes | Antecipar, no topo e na pasta |
+```
+De onde veio:  Vendido − Taxas e custos + Créditos − Devoluções = Líquido
+Onde está:     Líquido = Em processamento + Retido + Antecipável + Disponível + Agendado + Repassado
+```
 
-Com 48 eventos, achar a pasta passa a fazer parte da tarefa (busca, filtro ou paginação).
+Organização em 17/11/2026: R$ 37.415.000 − R$ 569.225 + R$ 72.000 − R$ 43.800 = **R$ 36.873.975**, em R$ 158.400 + R$ 1.822.385 + R$ 2.180.000 + R$ 2.846.095 + R$ 600.000 + R$ 29.267.095. O Líquido é o mesmo da v2; Taxas e custos subiu R$ 8.000 e Devoluções caiu R$ 8.000 (regra 4 da seção 6: custo de operação é Taxas e custos).
 
-## Verificação automática das contas
+## Verificação automática
 
 ```bash
 node src/produtos/payout/financas-eventos/utils/conferir-contas.ts
 ```
 
-Confere, nos cenários com dados (normal, saldo negativo, bloqueado): em cada evento, a cascata e as seis partes somam Seu dinheiro; calendário, ajustes, créditos, taxas e repasses de cada evento somam os totais do evento; a soma dos 48 eventos é igual à cascata do topo. Sai com erro se alguma soma não fechar. As mesmas checagens rodam no navegador em desenvolvimento e acusam no console.
+Confere, nos cenários com dados (normal, total negativo, bloqueado), e sai com erro se algo não fechar:
 
-Resultado em 16/11/2026: todas as contas fecham. Total da organização: R$ 37.415.000 − R$ 561.225 + R$ 72.000 − R$ 51.800 = **R$ 36.873.975**, distribuídos em R$ 158.400 + R$ 1.822.385 + R$ 2.180.000 + R$ 2.846.095 + R$ 600.000 + R$ 29.267.095.
+- cada evento: as duas linhas da equação, e as listas (liberações, devoluções, créditos, taxas, repasses) contra os totais do evento;
+- a soma dos 48 eventos = a conta da organização;
+- **Calendário:** a soma das liberações = Em processamento + Retido + Antecipável (organização e cada evento), e as três faixas do resumo somam o total;
+- **Extrato:** saldo inicial + movimentos que afetam o Disponível = saldo final = Disponível do card (em 30 e em 90 dias), e a última linha termina no saldo final;
+- **painéis de detalhe:** a soma das linhas = o valor do bloco (Vendido, Taxas e custos, Créditos, Devoluções);
+- cards do topo e legenda leem o mesmo total.
 
-## A conta do topo não muda com busca nem filtro
+Resultado em 17/11/2026: todas as contas fecham. Calendário: R$ 572.020 + R$ 2.045.515 + R$ 1.543.250 = R$ 4.160.785. Extrato de um mês: começa em R$ 1.173.930 (17/10) e termina em R$ 2.846.095.
 
-A cascata e "Onde está seu dinheiro" são sempre da **organização inteira**. Buscar, filtrar, ordenar ou paginar a lista muda só a lista e a contagem ("12 de 48 eventos"). "Baixar relatório" baixa os eventos do resultado da lista.
+## Decisões desta rodada (v3)
 
-## Suposições
+Regras de negócio decididas (seção 6 dos ajustes)
 
-Dados e contas
+1. **Saldo negativo de um evento já é descontado do Disponível da organização.** Redação: "Você não precisa pagar nada: o valor já foi descontado do Disponível dos seus outros eventos. Em 26/11, R$ 5.700 retidos são liberados e reduzem o saldo negativo para R$ 19.500." **É um estado futuro:** hoje a alocação entre eventos é manual. Fecha a pendência que estava aberta desde a v2.
+2. **Contestação depois da liberação do retido:** "Até dd/mm, contestações saem do retido. Depois disso, saem do seu disponível." Prazo: 120 dias depois do **evento** (a validar com Fraude). Evento com o retido já liberado diz que as contestações saem do disponível.
+3. **Em processamento:** "Entra hoje" (sem hora) e "Pix parcelado: entra quando as parcelas forem pagas".
+4. **Custo de operação** lançado depois do fechamento é **Taxas e custos**. No Arraial, os R$ 8.000 de equipe extra saíram de Devoluções (ficaram R$ 22.000) e entraram em Taxas e custos (R$ 12.500). O Líquido do evento não mudou.
+5. **Antecipar** vale só para o Antecipável. O botão só aparece no card Antecipável, nas linhas Antecipável do Calendário e na página do evento.
+6. **Repasses** mostram conta de destino, modalidade, taxa de transferência e valor líquido recebido (página do evento e painel do Extrato). O repasse do Arraial vai para conta de terceiro.
+7. **Bloqueado:** o card Disponível para repasse mostra o selo "Pausado" e o valor em cor neutra.
 
-1. Os números dos 4 eventos do briefing foram usados sem alteração. Uma data mudou: a bonificação do Carnaval passou de 10/11 para 15/11 (correção 1 da crítica: era antes do evento).
-2. **Os outros 44 eventos são fictícios,** gerados de uma semente (nome, data, vendido) com as proporções dos eventos do briefing: Taxas e custos = 1,5% do Vendido; Retido por segurança = 1,9% do Vendido, liberado 60 dias depois do evento; evento em vendas tem 2% em processamento, retido até o evento e a liberar. São 32 já encerrados sem nada retido, 5 encerrados há menos de 60 dias e 7 em vendas. Com os do briefing: 8 em vendas, 2 com saldo negativo (Arraial e Sunset no Cais), 3 com ajuste recente (Ivete, Oktober da Serra 2026, Sunset no Cais).
-3. **Liberações e repasses dos eventos gerados** foram datados para não mudar as frases do briefing: a próxima liberação de A liberar da organização continua sendo R$ 150.000 em 19/11 e o único agendado continua em 24/11.
-4. **Composição de Taxas e custos** (painel "Ver detalhe"): Taxa de serviço 1,0%, Processamento de pagamentos 0,4% e Emissão de cortesias 0,1% do Vendido. A divisão é inventada; só o total (1,5%) vem do briefing. "MDR" não aparece na tela: virou "Processamento de pagamentos", em linguagem de cliente.
-5. **Cenário "Saldo negativo":** a organização já recebeu todo o disponível em 13/11 e sobram os débitos dos dois eventos negativos. Disponível agora total = −R$ 39.200; Já recebido = R$ 32.152.390. As somas continuam fechando.
-6. **Datas e motivos que o briefing não deu** foram inventados: ajustes do Arraial (12/10 e 08/10), repasse do Ivete que falhou (R$ 123.480 em 10/11, de volta ao Disponível agora), ajustes dos eventos gerados.
-7. **Selo "Ajuste recente"** = ajuste nos últimos 30 dias.
-8. **"Até quando" das contestações** = data do evento + 120 dias. Evento com esse prazo vencido mostra "Nada mais pode mudar neste evento".
-9. **Em processamento** tem duas previsões: "Até hoje, 18h" (vendas recentes em confirmação) e "Quando as parcelas forem pagas" (Pix parcelado, só no Numanice).
+Decisões de interface
 
-Interface
+8. **Topo:** voltaram os três cards de ação (Disponível para repasse, Antecipável, Repassado), acima de "A conta de todos os eventos". A repetição dos três valores na legenda é intencional: card para agir, legenda para conferir. Só os três cards têm centavos.
+9. **O card Disponível para repasse é inteiro clicável** e leva à lista filtrada por "Com dinheiro disponível". Ele diz isso ("Ver eventos com dinheiro disponível"): sem o texto, nada indicava que o card era clicável.
+10. **A taxa da antecipação não aparece** em card, botão ou linha. Só no painel de um movimento de Antecipação já feito, no Extrato.
+11. **"Extrato" e não "Histórico"; "Calendário" e não "Agenda"** (decisão de copy dos ajustes).
+12. **Vendido da organização** abre "Vendido por evento"; na página do evento, o Vendido leva direto ao relatório de vendas.
+13. **Resumo do Calendário em três faixas que não se sobrepõem.** Os rótulos são os pedidos ("Próximos 7 dias", "Próximos 30 dias", "Depois de 30 dias"), e a linha de apoio diz as datas de cada faixa ("Até 24/11", "De 25/11 a 17/12", "A partir de 18/12"). Sem isso, "Próximos 30 dias" pareceria incluir os 7 primeiros e a soma das três não fecharia.
+14. **Pix parcelado não tem data:** fica no grupo "Sem data definida", no fim do Calendário, e entra na faixa "Depois de 30 dias" com o aviso "inclui R$ 15.000 sem data".
+15. **Filtro "Retido (os dois tipos)" no Calendário:** não estava na lista pedida, mas a legenda de "Onde está o seu líquido" precisa abrir o Calendário com os dois tipos de retido de uma vez.
+16. **Extrato em ordem cronológica** (do mais antigo para o mais recente), como pede "saldo inicial no topo, saldo final no fim". Com paginação, o saldo inicial fica no topo da primeira página e o saldo final no fim da última.
+17. **Filtros do Extrato escondem linhas, mas "Disponível após" é sempre o saldo da organização** depois daquele movimento.
+18. **Filtros "Repasses pagos" e "Repasses agendados" no Extrato:** é como a legenda (Agendado, Repassado) abre o Extrato "filtrado por status".
+19. **Sem eventos:** a tela principal aparece inteira, zerada, com o vazio de cada seção, em vez de um vazio único.
+20. **Cenário "Total negativo":** o aviso do topo continua dizendo que o valor "sai das suas próximas liberações". Vale para a organização inteira negativa; a regra 1 trata de um evento negativo dentro de uma organização positiva.
 
-10. **Topo (depois da crítica de design):** um cartão só. A cascata da organização e, dentro de "Onde está seu dinheiro", Disponível agora, A liberar e Já recebido como números de destaque (os únicos com centavos). Cada número aparece uma vez. Os três cartões separados saíram: repetiam os mesmos valores e empurravam a lista para fora da primeira dobra (a lista começava em 810px; agora começa em cerca de 600px, em 1280 e 1440).
-11. **"Solicitar repasse" fica no cabeçalho,** como na Tela guardiã do Figma; "Antecipar" fica no card A liberar.
-12. **Imagem do evento:** o protótipo não tem as capas reais. Cada evento ganha uma capa ilustrativa gerada (`components/financas/capa.ts`) dentro do Avatar do DS. É conteúdo, não estilo: por isso as cores dela não vêm dos tokens. Trocar pelas capas reais quando houver.
-13. **Título de página:** Text xl / Semibold, lido do componente "Cabeçalho da página / Finanças" da Tela guardiã no Figma.
-14. **Título da aba:** "Finanças · Protótipo de pesquisa" vale enquanto o protótipo está aberto. O `index.html` é do repositório inteiro e não foi alterado.
-15. **"Ver no relatório de vendas"** e os fluxos de repasse e antecipação não fazem parte do teste: o link mostra um aviso e os botões param numa tela final.
-16. **Bloco com R$ 0** (Créditos ou Ajustes zerados) não é clicável: não há composição para abrir.
-17. **Shell:** menu lateral do Backstage refeito em `shell.tsx` (produto não importa de outro produto; a Arena Produções não existe no banco compartilhado). Botão primário vermelho, como no Figma. Tela escura forçada enquanto o protótipo está aberto.
-18. **"Baixar relatório"** baixa um CSV de verdade com os eventos do resultado, com os mesmos nomes da tela.
-19. Só desktop (1440 e 1280). Em 1280 os valores da cascata e da distribuição usam um degrau menor da escala de tipo do DS para não cortar.
-20. **Ordem padrão da lista: "Pendentes primeiro".** Os ajustes v2 pediam data do evento como padrão. Com 48 eventos, isso abria a lista com eventos de 2027 e deixava 32 pastas quitadas ("Nada disponível agora") misturadas. Agora vêm antes os eventos com dinheiro para entrar, sair ou acompanhar, do mais próximo de hoje para o mais distante. "Data do evento" continua como opção.
-21. **Frase da pasta** diz qual dinheiro é ("R$ 260.000 a liberar em 21/11", "R$ 18.620 retidos até 18/11") em vez de "chegam em", que juntava duas partes diferentes.
-22. **Cenário "Saldo negativo" virou "Total negativo",** e a barra do protótipo diz o que cada cenário muda. Motivo: na página de um evento negativo (Arraial, Sunset no Cais) os cenários Normal e Total negativo mostram a mesma tela, porque o cenário mexe no total da organização, não no evento.
+## Suposições (dados inventados)
 
-## Regras a validar com a engenharia
+1. **44 dos 48 eventos são fictícios,** gerados de uma semente (nome, data, vendido) com as proporções dos eventos do briefing. "Hoje" do protótipo passou a ser **17/11/2026** (era 16/11), para casar com "Atualizado em 17/11/2026, 09:30". Nenhum valor mudou por causa disso.
+2. **Composição de Taxas e custos é ilustrativa.** Emissão de cortesias (× R$ 0,99), Pré-impressos (× R$ 0,32), Juros de parcelamento (0,2% do Vendido), Taxa de serviço (0,3%, só em 3 eventos em que o produtor assumiu) e Processamento de pagamentos, que fecha a conta. As quantidades são sempre múltiplos que dão valor inteiro em reais. Só o total vem do briefing.
+3. **Créditos por tipo:** Carnaval virou Rebate (0,5% do Vendido acima de R$ 2.000.000 = R$ 12.000, creditado); Arraial virou Bonificação de custo (Equipe de portaria, R$ 5.000 de R$ 10.000 da verba); os gerados cobrem Rebate, Bonificação de custo, Luvas e Ajuste a crédito. **Numanice tem um rebate de R$ 3.250 aguardando nota fiscal,** que não soma em Créditos.
+4. **Devoluções por tipo:** os R$ 22.000 do Arraial viraram Cancelamento (R$ 18.000) e Reembolso parcial (R$ 4.000); os R$ 14.000 do Sunset no Cais viraram Cancelamento (R$ 11.500) e Ingresso suspenso (R$ 2.500); a contestação do Oktober da Serra 2026 "saiu do antecipável", as outras "saíram do disponível".
+5. **Repasses:** conta da organização "Itaú ···4521"; modalidades com taxa de transferência de R$ 0 (Básico), R$ 10 (Expresso) e R$ 25 (Turbo). A taxa não entra na conta do Líquido: "Repassado" é o valor do repasse; "valor recebido na conta" é o repasse menos a taxa.
+6. **Extrato cobre os últimos 90 dias** (desde 19/08). Os movimentos saem dos dados de cada evento: repasses, devoluções, créditos e custos já existiam; **liberações passadas, vendas do dia e uma antecipação foram inventadas** para o extrato contar uma história completa. Vendas do dia de hoje são o que está Em processamento. A antecipação (Festival de Verão Salvador 2027, R$ 80.000 com taxa de R$ 1.600) é ilustrativa: a taxa dela não está em Taxas e custos do evento.
+7. **O saldo inicial do Extrato é calculado de trás para a frente** a partir do Disponível de hoje. Por evento, a história do extrato não é reconciliada com o Disponível do evento; só o saldo da organização é verificado.
+8. **Cenário "Total negativo":** a organização já teve todo o disponível repassado em 13/11. Disponível = −R$ 39.200; Repassado = R$ 32.152.390.
+9. **Imagem do evento:** capas ilustrativas geradas, dentro do Avatar do DS (cores de conteúdo, não de interface).
 
-Novas nesta rodada
+## Regras a validar
 
-1. **DECIDIR ANTES DA ENTREVISTA · Saldo negativo de um evento: de onde sai o resto?** A tela diz, como pedido na correção 3: "Em 26/11, R$ 5.700 retidos são liberados e abatem o saldo negativo. Os R$ 19.500 restantes saem das próximas liberações dos seus outros eventos." **Atenção:** o briefing original diz que o Disponível agora total *já desconta* o débito, e é assim que a conta do topo fecha (o −R$ 25.200 do Arraial está dentro dos R$ 2.846.095). As duas coisas não são verdade ao mesmo tempo: ou o débito já saiu do disponível dos outros eventos, ou vai sair das próximas liberações. A frase "já está descontado do seu Disponível agora total" saiu do aviso para a tela não se contradizer, mas a regra precisa ser decidida antes da entrevista. As duas redações prontas, para trocar em `explicacaoDoNegativo`/aviso de `pages/evento.tsx` conforme a resposta:
-   - *Se já foi descontado:* "Você não precisa pagar nada: o valor já foi descontado do Disponível agora dos seus outros eventos. Em 26/11, R$ 5.700 retidos são liberados e reduzem o saldo negativo para R$ 19.500."
-   - *Se sai das próximas liberações (texto atual):* "Você não precisa pagar nada. Em 26/11, R$ 5.700 retidos são liberados e abatem o saldo negativo. Os R$ 19.500 restantes saem das próximas liberações dos seus outros eventos." Neste caso o Disponível agora do topo **não** deveria somar o −R$ 25.200, e os números do briefing precisam mudar.
-2. **Contestação no cartão sai do retido por segurança?** "O que ainda pode mudar" afirma que o retido fica "guardado para esses casos" (correção 12: mantido). O retido libera em 60 dias e a contestação pode vir até 120: de onde sai o valor de uma contestação depois da liberação?
-3. **Composição de Taxas e custos:** quais linhas existem de verdade e com que nome para o produtor (suposição 4)? Emissão de cortesias é custo cobrado do produtor?
-4. **Créditos são sempre "Bonificações do contrato"?** A legenda do bloco afirma isso. Se existir crédito de outro tipo, a legenda fica errada.
-
-Do briefing original (seguem em aberto)
-
-5. Vendido × Em processamento × Disponível fecham com o relatório de vendas? O protótipo assume que sim.
-6. "Em processamento" pode ser aberto por motivo e com previsão ("até hoje, 18h", "quando as parcelas forem pagas")?
-7. Saldo negativo de um evento é compensado com dinheiro de outros eventos da mesma organização, ou só do mesmo contrato?
-8. Quando o total da organização fica negativo, a compensação é automática, em ordem de data? O produtor pode ser cobrado? ("Você não precisa pagar nada" é suposição.)
-9. Liberação do retido de um evento negativo abate o saldo do próprio evento (como está) ou vai para o disponível geral?
-10. Prazo de contestação: 120 dias contam da compra ou do evento?
-11. Dá para pedir repasse de um evento só ("Solicitar repasse deste evento")?
-12. Antecipar vale só para A liberar ou também para o retido? A taxa é conhecida antes?
-13. Repasse que falha: o valor volta para o Disponível agora na hora? Quais motivos o produtor pode ler?
-14. Custo de operação cobrado depois do fechamento entra como Ajuste (como no Arraial) ou como Taxas e custos?
-15. Comprovante de repasse existe para todo repasse pago?
-
-### Telas que dependem das regras 5 e 6
-
-| Onde | Depende de |
-| --- | --- |
-| Topo › A conta de todos os eventos e Onde está seu dinheiro | As partes fecharem com o Vendido |
-| Página do evento › A conta deste evento e "Ver no relatório de vendas" | Vendido do evento somar com o relatório |
-| Calendário de liberações › linha Em processamento | Motivo e previsão do processamento |
-| Numanice › O que ainda pode mudar › "sempre igual ao seu relatório de vendas" | Vendido somar com o relatório enquanto o evento vende |
+1. **Prazo de contestação conta da data do evento?** (Fraude.) A tela afirma 120 dias depois do evento.
+2. **Alocação automática do saldo negativo entre eventos** é estado futuro: quando entra, e vale entre eventos de contratos diferentes?
+3. **Devolução que "saiu do antecipável":** o produtor consegue ver isso hoje em algum relatório? O Extrato promete o link "Ver no relatório de transações".
+4. **Ingresso suspenso** volta ao Líquido automaticamente quando liberado?
+5. **Rebate aguardando nota fiscal:** existe prazo? O que acontece se a nota não vier?
+6. **Taxa de serviço assumida pelo produtor:** aparece como linha de Taxas e custos, como está?
+7. **Taxa de transferência por modalidade** e nomes das modalidades (Básico, Expresso, Turbo): valores reais.
+8. **Vendas agrupadas por dia no Extrato:** a contagem de ingressos bate com o relatório de vendas do dia?
+9. **Repasse "não concluído":** o valor volta ao Disponível no dia seguinte, como no protótipo?
+10. Seguem abertas, do briefing original: Vendido × relatório de vendas (o protótipo assume que fecha), repasse de um evento só, antecipação vale para quais partes, comprovante para todo repasse pago.
 
 ## Lacunas do DS
 
 | Faltou | O que foi usado no lugar |
 | --- | --- |
-| Cartão de seção e barra de filtros | Agora são `TableCard` e `FilterBar` do DS (antes eram composições locais: corrigido depois da crítica) |
-| Tooltip no tema escuro: o fundo fica claro e o título continua `text-white`, invisível | Título com o token `text-bg-primary`, que inverte junto com o fundo (barra de "Onde está seu dinheiro") |
-| Pagination "Page minimal center aligned" em português e com 16px de padding (`PaginationPageMinimalCenter` traz "Previous" e "Next" fixos e padding próprio) | A mesma composição com as peças do DS (`Pagination` base + `Button`), em português: `financas-eventos/components/paginacao.tsx` |
-| Limpar o período no Date range picker (não há "limpar" dentro do componente) | "Limpar filtros" ao lado dos filtros |
-| Rótulo acessível em português no Date range picker (o padrão é "Date range picker") | `aria-label` passado pela tela; o do diálogo interno continua em inglês |
-| Imagem de evento (capa) como componente | Avatar do DS, quadrado, com capa ilustrativa |
-| Cascata / equação de valores (blocos com operador entre eles, bloco clicável com "Ver detalhe") | Cartões `ring-secondary` e operadores em texto: `cascata.tsx` |
-| Barra de proporção com vários segmentos (o `ProgressBar` tem um valor só) | `div` com segmentos em tokens `utility-*` (neutral-300, amber-500, blue-500, green-500, purple-500, neutral-600) |
-| Linha de lista com data, descrição e valor (calendário, repasses, ajustes) | `grid` de três colunas com divisor: `Linha` em `evento.tsx` |
-| Linha de "pasta" (item navegável com imagem, selos e frase de status) | `Link` com `Avatar`, `Badge` e chevron |
-| Número de destaque com centavos menores (`MetricsSimple` não separa os centavos e traz um menu de ações fixo) | `NumeroGrande` em `cascata.tsx` |
-| Ponto de quebra entre 1280 e 1440 (o DS tem `xl` 1280 e `2xl` 1536) | Consulta de contêiner `@6xl` no cartão |
-| Esqueleto de carregamento | Blocos `bg-tertiary` com `animate-pulse` |
-| Alerta em linha que não corta o texto (`AlertFloating` trunca em uma linha) | `Aviso` em `estados.tsx`, mesma anatomia |
-| Rail da organização como componente (só existe dentro do `BackstageLayout`) | Cópia local no shell |
+| Painel lateral com grupos expansíveis | `SlideoutMenu` + `Accordion` do DS (Taxas e custos da organização). O Accordion tem borda e fundo próprios, pensados para página, não para painel |
+| Linha de extrato com saldo (linha de saldo inicial e final dentro da tabela) | `Table` do DS com duas linhas de fundo `bg-secondary` e células vazias. O cabeçalho da `Table` não alinha o rótulo à direita em colunas de valor |
+| Selos de tipo (movimento, liberação) com cor por tipo | `Badge` do DS com as cores existentes (gray, blue, warning, success, error, purple). Não há mapa oficial de cor por tipo de movimento |
+| Card de métrica clicável, com centavos menores e sem menu de ações | `TableCard.Root` + `NumeroGrande` local; o card clicável é um `button` com os estados de foco e hover do DS |
+| Tooltip no tema escuro: fundo claro e título `text-white`, invisível | Título com o token `text-bg-primary`, que inverte junto com o fundo (`dica.tsx`) |
+| Link que envolve conteúdo composto (item da legenda, linha clicável) | `Link` do roteador com os estados de foco e hover do DS |
+| Pagination "Page minimal center aligned" em português e com 16px de padding | Mesma composição com `Pagination` base + `Button`: `paginacao.tsx` |
+| Limpar período e rótulo em português no Date range picker | "Limpar filtros" ao lado; `aria-label` passado pela tela |
+| Cascata (blocos com operador), barra de proporção com segmentos, linha de pasta, linha de lista com data e valor, esqueleto, alerta sem truncar, rail da organização | Composições locais com tokens do DS (já registradas na v2) |
+| Ponto de quebra entre 1280 e 1440 | Consulta de contêiner `@6xl` no cartão |
+
+Usados do DS nesta rodada, além dos anteriores: `Table`, `Accordion`, `ProgressBarBase` (uso da verba), `Tooltip`.
 
 ## Revisão de copy (skill `/design:ux-copy`)
 
-As substituições da seção 4 dos ajustes v2 foram aplicadas como pedido. Depois, as duas telas e os estados foram revistos com os princípios da skill (claro, conciso, consistente, útil, humano; CTA com verbo; vazio = o que é + por quê + como seguir; erro = o que houve + por quê + como resolver).
+Princípios aplicados: claro, conciso, consistente, útil, humano; CTA com verbo; vazio = o que é + por quê + como seguir; erro = o que houve + por quê + como resolver. O glossário da seção 3 foi aplicado em todo o protótipo, inclusive CSV, filtros, selos e leitores de tela.
 
-Tela principal
-
-| Sugestão da skill | Decisão | Motivo |
-| --- | --- | --- |
-| Card A liberar: mesma fórmula da legenda da distribuição ("Próximo: R$ 150.000 em 19/11") em vez de "Próxima liberação: … em qua, 19/11." | Aceita | Mesmo dado, mesma frase nos dois lugares |
-| Contagem dizer o recorte quando há filtro ("12 de 48 eventos") | Aceita | Sem isso o selo parece dizer que a organização tem 12 eventos |
-| Rótulo "Ordenar por" antes do Select de ordem | Aceita | O valor sozinho ("Data do evento") não diz que é ordenação |
-| Estado vazio de filtro explicar o porquê ("Nenhum evento está nessa situação neste período") | Não aceita | Mantido o texto pedido ("Nenhum evento com esse filtro" + "Limpar filtros"): é curto e a ação resolve |
-| Aviso de Disponível negativo: trocar "compensado sozinho" por "sai das suas próximas liberações" | Aceita | Mesma expressão da página do evento; "saldo" saiu das frases que falam do disponível |
-| Selo "Evento em vendas" virar "Em vendas", igual ao filtro | Não aceita (decidir) | O selo vem do briefing original; é a única diferença de termo que sobrou, vale escolher um |
-| Frase da pasta dizer qual dinheiro é, em vez de "chegam em" | Aceita (na crítica de design) | "chegam em" juntava A liberar e Retido; ficou "a liberar em" e "retidos até" |
-| Toast do relatório dizer quantos eventos foram baixados | Aceita | Confirma que o download seguiu o filtro |
-
-Página do evento
-
-| Sugestão da skill | Decisão | Motivo |
-| --- | --- | --- |
-| "Total a liberar" (proposto) no fim do calendário | Não aceita | Colide com o termo único "A liberar": no Numanice o total é R$ 514.925 e A liberar é R$ 300.000. Ficou "Total que entra no disponível", como pede a regra de usar "entra no disponível" |
-| Legendas sem dado novo ficarem vazias, inclusive nos zerados ("Nada em processamento", "Nenhum repasse agendado", "1 repasse pago") | Aceita | R$ 0 já diz; contagem de repasses está na seção Repasses |
-| Retido: "Libera em dd/mm" com uma liberação e "Próximo: R$ X em dd/mm" com mais de uma | Aceita | No Numanice há duas datas de retido; "Libera em" sozinho esconderia a segunda |
-| Linha Em processamento do Pix parcelado: "Pix parcelado: entra quando as parcelas forem pagas" | Aceita | A frase proposta ("Vendas recentes em confirmação") só vale para o caso "até hoje, 18h" |
-| Aviso de saldo negativo mais curto no "Por quê" e com o fim da história no "O que acontece agora" | Aceita | Três frases curtas: o que recebeu, o que saiu, quanto falta; e depois quanto abate e de onde sai o resto |
-| "Ver detalhe" virar rótulo específico ("Ver taxas", "Ver créditos") | Não aceita | Mantido o texto pedido; o rótulo do bloco logo acima já dá o contexto, e o leitor de tela lê "Taxas e custos: R$ 36.000. Ver detalhe" |
-| Legenda "Bonificações do contrato" sumir quando Créditos é R$ 0 | Não aceita | Mantida sempre: ensina o que é o bloco mesmo zerado e mantém os blocos alinhados |
-| Vazio de "O que ainda pode mudar" dizer o porquê | Aceita | "Nada mais pode mudar neste evento. O prazo de contestação no cartão terminou em dd/mm." |
-| "Contestações no cartão": tirar "sai do retido por segurança e aparece aqui como ajuste" | Aceita | Texto pedido; a relação com o retido ficou só na linha da liberação (regra 2 a validar) |
-
-Estados
-
-| Sugestão da skill | Decisão | Motivo |
-| --- | --- | --- |
-| Bloqueado: cortar "os valores desta tela seguem atualizados" | Aceita | Não ajuda a resolver; ficou o que houve, o porquê e o que acontece depois |
-| Sem eventos: descrição em uma frase | Aceita | "Quando um evento começar a vender, o dinheiro dele aparece aqui." |
-| Erro ao carregar | Sem mudança | Já tem o que houve, o porquê ("do nosso lado") e a ação "Tentar de novo" |
-| Repasse não concluído | Sem mudança | Motivo + para onde foi o valor + "Falar com o atendimento" |
+| Onde | Sugestão da skill | Decisão | Motivo |
+| --- | --- | --- | --- |
+| Card Disponível para repasse | Dizer para onde o clique leva ("Ver eventos com dinheiro disponível") | Aceita | Card clicável sem rótulo de ação não parece clicável |
+| Card Repassado | "R$ 600.000 agendados para 24/11" | Aceita (texto pedido) | Dado novo: valor e data |
+| Legenda, Agendado | "Para 24/11" em vez de "Em 24/11" | Aceita | Combina com "agendados para" do card |
+| Legenda, Retido e Antecipável | "Próxima: R$ X em dd/mm" (feminino) | Aceita | Concorda com "liberação", como no card ("Próxima liberação") |
+| Bloco Líquido | Legenda "Tudo o que é seu" | Aceita (texto pedido) | Curta; a definição completa fica no tooltip |
+| Tooltips do glossário | Ícone de ajuda ao lado do rótulo de cada bloco | Aceita | A definição fica a um toque, sem virar legenda fixa |
+| Frase da pasta | "R$ 260.000 antecipáveis liberam em 21/11" | Aceita (texto pedido) | Diz qual dinheiro é |
+| Frase da pasta, evento negativo | "Saldo negativo de R$ 25.200 · R$ 5.700 retidos liberam em 26/11" | Aceita | "abatem" saiu: a regra 1 fala em "reduzem o saldo negativo" |
+| Selo e filtro | "Devolução recente" no lugar de "Ajuste recente" | Aceita | "Ajustes" virou "Devoluções" no glossário |
+| Calendário, faixas | Linha de apoio com as datas de cada faixa | Aceita | Sem ela, "Próximos 30 dias" é ambíguo |
+| Calendário, Retido até o evento | "Libera depois do evento" | Aceita (texto pedido) | — |
+| Calendário, vazio | Título "Nenhuma liberação prevista" + "Quando um evento começar a vender, as datas aparecem aqui." | Aceita | O texto pedido não dizia como seguir |
+| Extrato, linha de saldo | "Disponível em 17/10" | Aceita (texto pedido) | — |
+| Extrato, sem efeito no Disponível | "—" com o motivo embaixo ("Em processamento", "Saiu do antecipável") | Aceita | O traço sozinho não explica |
+| Extrato, liberação | "Antecipável liberado" / "Retido liberado" | Aceita | Diz de onde veio em duas palavras |
+| Painel do movimento | Seções "O que foi" e "O que mudou no seu líquido" | Aceita | "Efeito em cada parte" é fala de dentro; o produtor quer saber o que mudou |
+| Painel do movimento, repasse | "Valor recebido na conta" (pago) e "Valor a receber na conta" (agendado) | Aceita | O tempo do verbo segue a situação |
+| Painel de Créditos | "R$ 3.250 aguardando sua nota fiscal" + "Não entra no total acima." | Aceita | Evita a pergunta "por que o total não bate?" |
+| Painel de Devoluções | "Saiu do disponível" / "Saiu do antecipável" | Aceita (texto pedido) | — |
+| Página do evento, Repasses | Uma linha: conta · modalidade · taxa de transferência · quanto recebeu | Aceita | Quatro dados novos sem abrir painel |
+| Página do evento, seção | "Devoluções" no lugar de "Ajustes depois do fechamento" | Aceita | Mesmo termo do bloco |
+| Vazio de repasses | "Você ainda não solicitou repasse deste evento." | Aceita | "Solicitar repasse" é o termo do botão |
+| "Ver detalhe" virar "Ver taxas", "Ver créditos" | Rótulo específico | Não aceita | Mantido o texto pedido; o leitor de tela lê "Ver detalhe de Taxas e custos" |
+| "Antecipável" como rótulo | Termo técnico: o briefing original proibia "antecipável" | Não aceita | A v3 tem prioridade e define o termo; o tooltip explica ("O que você pode receber antes, antecipando") |
+| "Atualizado em" com frase de ressalva | — | Não aplicado | Pedido explícito: informação neutra, só data e hora |
 
 ## Fora deste teste
 
-- Fluxo de repasse e de antecipação, relatório de vendas e conversa com o atendimento: param numa tela final ou num aviso.
-- Direção A (Extrato).
-- Figma: nada foi editado; foi lido só para o título de página e a paginação. As telas escolhidas depois da validação vão para o arquivo Finanças - AWA pelo plugin "Importar tela".
+- Fluxo de repasse e de antecipação (param numa tela final), relatório de vendas, relatório de transações, regra do contrato, comprovante e conversa com o atendimento (mostram um aviso).
+- Direção A (Extrato como tela principal) e a jornada "Cascata que fecha" como tela própria (retirada; código no commit `0770df9`).
+- Figma: nada foi editado.

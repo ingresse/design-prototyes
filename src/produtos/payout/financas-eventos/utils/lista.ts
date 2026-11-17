@@ -1,3 +1,4 @@
+import { baixarCsv } from "../../components/financas/csv";
 import { HOJE, selosDoEvento, type Evento } from "../../components/financas/dados";
 
 /* Busca, filtro, ordenação e relatório da lista de eventos. Tudo aqui vale só para a lista:
@@ -11,9 +12,9 @@ export type Ordem = "pendentes" | "data" | "disponivel" | "a-liberar";
 export const SITUACOES: Array<{ id: Situacao; label: string }> = [
     { id: "todos", label: "Todos os eventos" },
     { id: "disponivel", label: "Com dinheiro disponível" },
-    { id: "a-liberar", label: "Com valor a liberar" },
+    { id: "a-liberar", label: "Com valor antecipável" },
     { id: "negativo", label: "Com saldo negativo" },
-    { id: "ajuste", label: "Com ajuste recente" },
+    { id: "ajuste", label: "Com devolução recente" },
     { id: "vendas", label: "Em vendas" },
 ];
 
@@ -21,7 +22,7 @@ export const ORDENS: Array<{ id: Ordem; label: string }> = [
     { id: "pendentes", label: "Pendentes primeiro" },
     { id: "data", label: "Data do evento" },
     { id: "disponivel", label: "Maior disponível" },
-    { id: "a-liberar", label: "Maior a liberar" },
+    { id: "a-liberar", label: "Maior antecipável" },
 ];
 
 const NA_SITUACAO: Record<Situacao, (e: Evento) => boolean> = {
@@ -29,7 +30,7 @@ const NA_SITUACAO: Record<Situacao, (e: Evento) => boolean> = {
     disponivel: (e) => e.disponivel > 0,
     "a-liberar": (e) => e.aLiberar > 0,
     negativo: (e) => e.disponivel < 0,
-    ajuste: (e) => selosDoEvento(e).includes("Ajuste recente"),
+    ajuste: (e) => selosDoEvento(e).includes("Devolução recente"),
     vendas: (e) => e.emVendas,
 };
 
@@ -72,22 +73,14 @@ export function baixarRelatorio(eventos: Evento[]) {
         ["Vendido", (e) => e.vendido],
         ["Taxas e custos", (e) => e.taxas],
         ["Créditos", (e) => e.creditos],
-        ["Ajustes", (e) => e.ajustes],
-        ["Seu dinheiro", (e) => e.vendido - e.taxas + e.creditos - e.ajustes],
+        ["Devoluções", (e) => e.ajustes],
+        ["Líquido", (e) => e.vendido - e.taxas + e.creditos - e.ajustes],
         ["Em processamento", (e) => e.processamento],
         ["Retido", (e) => e.retidoEvento + e.retidoSeguranca],
-        ["A liberar", (e) => e.aLiberar],
-        ["Disponível agora", (e) => e.disponivel],
+        ["Antecipável", (e) => e.aLiberar],
+        ["Disponível", (e) => e.disponivel],
         ["Agendado", (e) => e.agendado],
-        ["Já recebido", (e) => e.recebido],
+        ["Repassado", (e) => e.recebido],
     ];
-    const celula = (valor: string | number) => (typeof valor === "number" ? String(valor) : `"${valor.replace(/"/g, '""')}"`);
-    const linhas = [colunas.map(([nome]) => celula(nome)), ...eventos.map((e) => colunas.map(([, valor]) => celula(valor(e))))];
-    // BOM: o Excel abre com os acentos certos.
-    const arquivo = new Blob([`﻿${linhas.map((l) => l.join(";")).join("\n")}`], { type: "text/csv;charset=utf-8" });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(arquivo);
-    link.download = "financas-eventos.csv";
-    link.click();
-    URL.revokeObjectURL(link.href);
+    baixarCsv("financas-eventos.csv", [colunas.map(([nome]) => nome), ...eventos.map((e) => colunas.map(([, valor]) => valor(e)))]);
 }

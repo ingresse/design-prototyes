@@ -1,10 +1,12 @@
+import type { ReactNode } from "react";
 import { parseDate } from "@internationalized/date";
 import { Link, useSearchParams } from "react-router";
-import { ChevronRight, Download01, SearchLg } from "@untitledui/icons";
+import { ArrowRight, Calendar, ChevronRight, Download01, SearchLg } from "@untitledui/icons";
 import { toast } from "sonner";
 import { DateRangePicker } from "@/components/application/date-picker/date-range-picker";
 import { FilterBar } from "@/components/application/filter-bar/filter-bar";
 import { EmptyState } from "@/components/application/empty-state/empty-state";
+import { TableCard } from "@/components/application/table/table";
 import { Avatar } from "@/components/base/avatar/avatar";
 import { Badge } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
@@ -12,11 +14,12 @@ import { Input } from "@/components/base/input/input";
 import { Select } from "@/components/base/select/select";
 import { cx } from "@/utils/cx";
 import { capaDoEvento } from "../../components/financas/capa";
-import { Cascata, Distribuicao, Secao, type ParteComDetalhe } from "../../components/financas/cascata";
-import { HOJE, eventosDoCenario, totalizar, type Evento } from "../../components/financas/dados";
-import { Aviso, AvisoDeBloqueio, Carregando, ErroAoCarregar, SemEventos, TelaFinal, type AcaoFinal } from "../../components/financas/estados";
-import { dataDoEvento, reais } from "../../components/financas/formato";
+import { Cascata, Distribuicao, NumeroGrande, PARTES_COM_DETALHE, Secao } from "../../components/financas/cascata";
+import { HOJE, ROTULO_DA_ENTRADA, ROTULO_DO_MOVIMENTO, calendario, entradasDoCalendario, eventosDoCenario, movimentos, totalizar, type Entrada, type Evento } from "../../components/financas/dados";
+import { Aviso, AvisoDeBloqueio, Carregando, ErroAoCarregar, TelaFinal, type AcaoFinal } from "../../components/financas/estados";
+import { dataComDia, dataCurta, dataDoEvento, reais } from "../../components/financas/formato";
 import { detalhesDaDistribuicao, fraseDeCompensacao, statusDoDinheiro } from "../../components/financas/frases";
+import { Linha, Lista, Vazio } from "../../components/financas/linha";
 import { PainelDoDetalhe } from "../../components/financas/painel-do-detalhe";
 import { CabecalhoDaPagina, FinancasShell, useCenario, useParametro } from "../../components/financas/shell";
 import { Paginacao } from "../components/paginacao";
@@ -24,14 +27,13 @@ import { SelosDoEvento } from "../components/selos-do-evento";
 import { ORDENS, POR_PAGINA, SITUACOES, baixarRelatorio, filtrarEOrdenar, type Ordem, type Situacao } from "../utils/lista";
 
 /*
- * Finanças · "Eventos como pastas" (direções B + D do briefing de 16/11/2026, ajustes v2).
- * Topo: a conta que fecha, para a organização inteira, com os números de destaque dentro da soma. Abaixo: todos os eventos como pastas, sem
- * colunas de valores, com busca, filtro, ordenação e paginação. O que explica o dinheiro de um
- * evento mora dentro da pasta, na página do evento.
+ * Finanças · a fonte da verdade do produtor (ajustes v3, 17/11/2026).
+ * De cima para baixo: três cards de ação (para agir), "A conta de todos os eventos" (para conferir:
+ * de onde veio e onde está o Líquido), "Próximas liberações" e "Últimos movimentos" (portas para o
+ * Calendário e o Extrato) e "Seus eventos" (as pastas, com busca, filtro, ordenação e paginação).
  */
 
 const ACOES: AcaoFinal[] = ["repasse", "antecipar", "eventos"];
-const PARTES: ParteComDetalhe[] = ["taxas", "creditos", "ajustes"];
 
 /* Atalhos de período da data do evento, contados a partir do "hoje" do protótipo. */
 const hoje = parseDate(HOJE);
@@ -41,6 +43,39 @@ const PERIODOS = {
     esteAno: { label: "Este ano", value: { start: hoje.set({ month: 1, day: 1 }), end: hoje.set({ month: 12, day: 31 }) } },
     anoPassado: { label: "Ano passado", value: { start: hoje.subtract({ years: 1 }).set({ month: 1, day: 1 }), end: hoje.subtract({ years: 1 }).set({ month: 12, day: 31 }) } },
 };
+
+const BASE = "/payout/financas-eventos";
+
+/** Card de ação do topo: um número (o único tipo de número com centavos na tela), uma linha de apoio e uma ação. */
+const CardDeAcao = ({ rotulo, selo, valor, cor, apoio, children }: { rotulo: string; selo?: ReactNode; valor: number; cor: string; apoio?: string; children?: ReactNode }) => (
+    <div className="flex min-w-0 flex-col gap-3">
+        <div className="flex flex-col gap-1">
+            <span className="flex items-center gap-2 text-sm font-medium text-secondary">
+                {rotulo}
+                {selo}
+            </span>
+            <NumeroGrande valor={valor} className={cx("text-display-xs", cor)} classeDosCentavos="text-lg" />
+            {apoio && <span className="text-sm text-tertiary">{apoio}</span>}
+        </div>
+        {children}
+    </div>
+);
+
+/** Próximas liberações: uma linha por data e tipo. Vários eventos na mesma data e tipo viram uma linha só. */
+function proximasLiberacoes(entradas: Entrada[], quantas: number) {
+    const grupos: Array<{ data?: string; tipo: Entrada["tipo"]; valor: number; itens: Entrada[] }> = [];
+    for (const e of entradas) {
+        if (!e.data) continue;
+        const grupo = grupos.find((g) => g.data === e.data && g.tipo === e.tipo);
+        if (grupo) {
+            grupo.valor += e.valor;
+            grupo.itens.push(e);
+        } else grupos.push({ data: e.data, tipo: e.tipo, valor: e.valor, itens: [e] });
+    }
+    return grupos.slice(0, quantas);
+}
+
+const TIPO_NO_CALENDARIO: Record<Entrada["tipo"], string> = { processamento: "processamento", retidoEvento: "retido-evento", retidoSeguranca: "retido-seguranca", aLiberar: "antecipavel" };
 
 const PastaDoEvento = ({ evento, sufixo, lista }: { evento: Evento; sufixo: string; lista: string }) => (
     <li>
@@ -73,10 +108,18 @@ export function FinancasEventos() {
     const totais = totalizar(eventos);
     const bloqueado = cenario === "bloqueado";
     const acao = ACOES.find((a) => a === acaoAberta);
-    const detalhe = PARTES.find((p) => p === detalheAberto) ?? null;
+    const detalhe = PARTES_COM_DETALHE.find((p) => p === detalheAberto) ?? null;
     const sufixo = cenario === "normal" ? "" : `?cenario=${cenario}`;
     const compensa = fraseDeCompensacao(eventos);
     const negativos = eventos.filter((e) => e.disponivel < 0);
+    const comCenario = (rota: string) => `${rota}${cenario === "normal" ? "" : `${rota.includes("?") ? "&" : "?"}cenario=${cenario}`}`;
+    const proximaAntecipavel = calendario(eventos, ["aLiberar"])[0];
+    const agendado = eventos.flatMap((e) => e.repasses.filter((r) => r.situacao === "agendado")).sort((a, b) => a.data.localeCompare(b.data))[0];
+    const proximas = proximasLiberacoes(entradasDoCalendario(eventos), 3);
+    const ultimos = movimentos(eventos)
+        .filter((m) => m.efeito !== 0)
+        .slice(-3)
+        .reverse();
 
     /* ---- lista: busca, filtro, ordem e página ficam na URL, para o "voltar" do evento devolver a lista como estava ---- */
     const busca = params.get("busca") ?? "";
@@ -106,26 +149,137 @@ export function FinancasEventos() {
         if (acao) return <TelaFinal acao={acao} valor={acao === "repasse" ? totais.disponivel : acao === "antecipar" ? totais.aLiberar : undefined} aoVoltar={() => setAcao(null)} />;
         if (cenario === "carregando") return <Carregando />;
         if (cenario === "erro") return <ErroAoCarregar aoTentar={() => setCenario("normal")} />;
-        if (cenario === "sem-eventos") return <SemEventos aoIrParaEventos={() => setAcao("eventos")} />;
         return (
             <>
                 {bloqueado && <AvisoDeBloqueio />}
                 {compensa && (
-                    <Aviso tom="erro" titulo={`Seu Disponível agora está negativo em ${reais(-totais.disponivel)}`}>
+                    <Aviso tom="erro" titulo={`Seu Disponível está negativo em ${reais(-totais.disponivel)}`}>
                         <p>
-                            {negativos.length === 1 ? `O evento ${negativos[0].nome} teve` : `${negativos.length} eventos tiveram`} ajustes depois do último repasse, e você já recebeu o que estava disponível nos outros
-                            eventos.
+                            {negativos.length === 1 ? `O evento ${negativos[0].nome} teve` : `${negativos.length} eventos tiveram`} devoluções depois do último repasse, e o que estava disponível nos outros eventos já foi repassado.
                         </p>
                         <p>Você não precisa pagar nada. {compensa}</p>
                     </Aviso>
                 )}
 
-                <Secao titulo="A conta de todos os eventos" semCabecalho>
-                    <Cascata totais={totais} aoAbrir={setDetalhe} aoVerRelatorio={() => toast("Aqui abriria o relatório de vendas de todos os eventos.")} />
-                    <Distribuicao totais={totais} detalhes={detalhesDaDistribuicao(eventos)} destaque={{ aoAntecipar: () => setAcao("antecipar"), bloqueado }} />
+                {/* Cards de ação: servem para agir. Os mesmos três valores voltam na legenda da conta, para conferir. */}
+                <section aria-label="O que você pode fazer agora" className="grid grid-cols-3 gap-6">
+                    <button
+                        type="button"
+                        onClick={() => {
+                            mudarLista({ situacao: "disponivel" });
+                            document.getElementById("seus-eventos")?.scrollIntoView({ behavior: "smooth" });
+                        }}
+                        aria-label={`Disponível para repasse: ${reais(totais.disponivel)}. Ver os eventos com dinheiro disponível`}
+                        className="group flex cursor-pointer rounded-xl bg-primary px-6 py-5 text-left shadow-xs ring-1 ring-secondary outline-focus-ring transition duration-100 ease-linear hover:bg-primary_hover focus-visible:outline-2 focus-visible:outline-offset-2"
+                    >
+                        <CardDeAcao
+                            rotulo="Disponível para repasse"
+                            selo={
+                                bloqueado && (
+                                    <Badge size="sm" type="pill-color" color="warning">
+                                        Pausado
+                                    </Badge>
+                                )
+                            }
+                            valor={totais.disponivel}
+                            cor={totais.disponivel < 0 ? "text-error-primary" : bloqueado ? "text-primary" : "text-success-primary"}
+                        >
+                            <span className="flex items-center gap-1 text-sm font-semibold text-tertiary transition duration-100 ease-linear group-hover:text-tertiary_hover">
+                                Ver eventos com dinheiro disponível
+                                <ArrowRight className="size-4" aria-hidden="true" />
+                            </span>
+                        </CardDeAcao>
+                    </button>
+                    <TableCard.Root className="px-6 py-5">
+                        <CardDeAcao rotulo="Antecipável" valor={totais.aLiberar} cor="text-utility-blue-500" apoio={proximaAntecipavel ? `Próxima liberação: ${reais(proximaAntecipavel.valor)} em ${dataCurta(proximaAntecipavel.data)}` : undefined}>
+                            {totais.aLiberar > 0 && (
+                                <Button size="sm" color="secondary" className="self-start" isDisabled={bloqueado} onClick={() => setAcao("antecipar")}>
+                                    Antecipar
+                                </Button>
+                            )}
+                        </CardDeAcao>
+                    </TableCard.Root>
+                    <TableCard.Root className="px-6 py-5">
+                        <CardDeAcao rotulo="Repassado" valor={totais.recebido} cor="text-primary" apoio={agendado ? `${reais(totais.agendado)} agendados para ${dataCurta(agendado.data)}` : undefined}>
+                            <Button size="sm" color="link-gray" className="self-start" href={comCenario(`${BASE}/extrato?tipo=repasse`)}>
+                                Ver repasses
+                            </Button>
+                        </CardDeAcao>
+                    </TableCard.Root>
+                </section>
+
+                <Secao titulo="A conta de todos os eventos">
+                    <Cascata totais={totais} aoAbrir={setDetalhe} creditoPendente={eventos.some((e) => e.creditoPendente)} />
+                    <Distribuicao
+                        totais={totais}
+                        detalhes={detalhesDaDistribuicao(eventos)}
+                        destinos={{
+                            processamento: comCenario(`${BASE}/calendario?tipo=processamento`),
+                            retido: comCenario(`${BASE}/calendario?tipo=retido`),
+                            aLiberar: comCenario(`${BASE}/calendario?tipo=antecipavel`),
+                            disponivel: comCenario(`${BASE}?situacao=disponivel`),
+                            agendado: comCenario(`${BASE}/extrato?tipo=repasse-agendado&periodo=90`),
+                            recebido: comCenario(`${BASE}/extrato?tipo=repasse-pago&periodo=90`),
+                        }}
+                    />
                 </Secao>
 
+                <div className="grid grid-cols-2 items-start gap-6">
+                    <Secao
+                        titulo="Próximas liberações"
+                        lateral={
+                            <Button size="sm" color="link-gray" href={comCenario(`${BASE}/calendario`)}>
+                                Ver calendário
+                            </Button>
+                        }
+                    >
+                        {proximas.length === 0 ? (
+                            <Vazio>Nenhuma liberação prevista. Quando um evento começar a vender, as próximas datas aparecem aqui.</Vazio>
+                        ) : (
+                            <Lista>
+                                {proximas.map((g) => (
+                                    <Linha
+                                        key={`${g.data}-${g.tipo}`}
+                                        quando={g.data === HOJE ? "Hoje" : dataComDia(g.data!)}
+                                        titulo={ROTULO_DA_ENTRADA[g.tipo]}
+                                        detalhe={g.itens.length === 1 ? g.itens[0].evento.nome : `${g.itens.length} eventos`}
+                                        valor={reais(g.valor)}
+                                        para={g.itens.length === 1 ? comCenario(`${BASE}/${g.itens[0].evento.id}`) : comCenario(`${BASE}/calendario?tipo=${TIPO_NO_CALENDARIO[g.tipo]}`)}
+                                    />
+                                ))}
+                            </Lista>
+                        )}
+                    </Secao>
+                    <Secao
+                        titulo="Últimos movimentos"
+                        lateral={
+                            <Button size="sm" color="link-gray" href={comCenario(`${BASE}/extrato`)}>
+                                Ver extrato
+                            </Button>
+                        }
+                    >
+                        {ultimos.length === 0 ? (
+                            <Vazio>Nenhum movimento ainda. Vendas, liberações e repasses aparecem aqui.</Vazio>
+                        ) : (
+                            <Lista>
+                                {ultimos.map((m) => (
+                                    <Linha
+                                        key={m.id}
+                                        quando={m.data === HOJE ? "Hoje" : dataComDia(m.data)}
+                                        titulo={m.tipo === "repasse" ? m.titulo : `${ROTULO_DO_MOVIMENTO[m.tipo]} · ${m.titulo}`}
+                                        detalhe={m.evento.nome}
+                                        valor={`${m.valor > 0 ? "+ " : ""}${reais(m.valor)}`}
+                                        corDoValor={m.tipo === "repasse" ? "text-primary" : m.valor > 0 ? "text-success-primary" : "text-error-primary"}
+                                        para={comCenario(`${BASE}/extrato?periodo=90&movimento=${m.id}`)}
+                                    />
+                                ))}
+                            </Lista>
+                        )}
+                    </Secao>
+                </div>
+
                 <Secao
+                    id="seus-eventos"
                     titulo="Seus eventos"
                     selo={
                         <Badge size="sm" type="modern" color="gray">
@@ -147,42 +301,61 @@ export function FinancasEventos() {
                         </Button>
                     }
                 >
-                    <FilterBar.Root className="items-center border-b border-secondary px-6 py-4">
-                        <FilterBar.Content className="items-center">
-                            <div className="w-72">
-                                <Input size="sm" icon={SearchLg} aria-label="Buscar evento pelo nome" placeholder="Buscar evento" value={busca} onChange={(valor) => mudarLista({ busca: valor })} />
-                            </div>
-                            <div className="w-60">
-                                <Select size="sm" aria-label="Filtrar por situação" selectedKey={situacao} onSelectionChange={(chave) => mudarLista({ situacao: chave === "todos" ? null : (chave as Situacao) })} items={SITUACOES}>
-                                    {(item) => <Select.Item id={item.id}>{item.label}</Select.Item>}
-                                </Select>
-                            </div>
-                            <DateRangePicker
-                                size="sm"
-                                aria-label="Período da data do evento"
-                                presets={PERIODOS}
-                                value={de && ate ? { start: parseDate(de), end: parseDate(ate) } : null}
-                                onChange={(periodo) => mudarLista({ de: periodo?.start.toString() ?? null, ate: periodo?.end.toString() ?? null })}
-                            />
-                            {(busca || comFiltro) && (
-                                <Button size="sm" color="link-gray" onClick={limpar}>
-                                    Limpar filtros
-                                </Button>
-                            )}
-                        </FilterBar.Content>
-                        <FilterBar.Actions>
-                            <span id="rotulo-ordem" className="text-sm text-tertiary">
-                                Ordenar por
-                            </span>
-                            <div className="w-52">
-                                <Select size="sm" aria-labelledby="rotulo-ordem" selectedKey={ordem} onSelectionChange={(chave) => mudarLista({ ordem: chave === ORDENS[0].id ? null : (chave as Ordem) })} items={ORDENS}>
-                                    {(item) => <Select.Item id={item.id}>{item.label}</Select.Item>}
-                                </Select>
-                            </div>
-                        </FilterBar.Actions>
-                    </FilterBar.Root>
+                    {eventos.length > 0 && (
+                        <FilterBar.Root className="items-center border-b border-secondary px-6 py-4">
+                            <FilterBar.Content className="items-center">
+                                <div className="w-72">
+                                    <Input size="sm" icon={SearchLg} aria-label="Buscar evento pelo nome" placeholder="Buscar evento" value={busca} onChange={(valor) => mudarLista({ busca: valor })} />
+                                </div>
+                                <div className="w-60">
+                                    <Select size="sm" aria-label="Filtrar por situação" selectedKey={situacao} onSelectionChange={(chave) => mudarLista({ situacao: chave === "todos" ? null : (chave as Situacao) })} items={SITUACOES}>
+                                        {(item) => <Select.Item id={item.id}>{item.label}</Select.Item>}
+                                    </Select>
+                                </div>
+                                <DateRangePicker
+                                    size="sm"
+                                    aria-label="Período da data do evento"
+                                    presets={PERIODOS}
+                                    value={de && ate ? { start: parseDate(de), end: parseDate(ate) } : null}
+                                    onChange={(periodo) => mudarLista({ de: periodo?.start.toString() ?? null, ate: periodo?.end.toString() ?? null })}
+                                />
+                                {(busca || comFiltro) && (
+                                    <Button size="sm" color="link-gray" onClick={limpar}>
+                                        Limpar filtros
+                                    </Button>
+                                )}
+                            </FilterBar.Content>
+                            <FilterBar.Actions>
+                                <span id="rotulo-ordem" className="text-sm text-tertiary">
+                                    Ordenar por
+                                </span>
+                                <div className="w-52">
+                                    <Select size="sm" aria-labelledby="rotulo-ordem" selectedKey={ordem} onSelectionChange={(chave) => mudarLista({ ordem: chave === ORDENS[0].id ? null : (chave as Ordem) })} items={ORDENS}>
+                                        {(item) => <Select.Item id={item.id}>{item.label}</Select.Item>}
+                                    </Select>
+                                </div>
+                            </FilterBar.Actions>
+                        </FilterBar.Root>
+                    )}
 
-                    {resultado.length === 0 ? (
+                    {eventos.length === 0 ? (
+                        <div className="flex justify-center px-6 py-16">
+                            <EmptyState size="sm">
+                                <EmptyState.Header>
+                                    <EmptyState.FeaturedIcon icon={Calendar} color="gray" theme="modern" />
+                                </EmptyState.Header>
+                                <EmptyState.Content>
+                                    <EmptyState.Title>Você ainda não tem eventos com vendas</EmptyState.Title>
+                                    <EmptyState.Description>Quando um evento começar a vender, o dinheiro dele aparece aqui.</EmptyState.Description>
+                                </EmptyState.Content>
+                                <EmptyState.Footer>
+                                    <Button size="md" color="primary" onClick={() => setAcao("eventos")}>
+                                        Ir para Eventos
+                                    </Button>
+                                </EmptyState.Footer>
+                            </EmptyState>
+                        </div>
+                    ) : resultado.length === 0 ? (
                         <div className="flex justify-center px-6 py-16">
                             <EmptyState size="sm">
                                 <EmptyState.Header>
@@ -212,7 +385,7 @@ export function FinancasEventos() {
         );
     };
 
-    const temDados = !acao && (cenario === "normal" || cenario === "negativo" || bloqueado);
+    const temDados = !acao && (cenario === "normal" || cenario === "negativo" || bloqueado || cenario === "sem-eventos");
 
     return (
         <FinancasShell jornada="Jornada · Eventos como pastas">

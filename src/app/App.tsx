@@ -213,6 +213,8 @@ import { Eventos as CashoutEventos } from '../produtos/payout/contrato-quick-win
 import { Produtoras as CashoutProdutoras } from '../produtos/payout/contrato-quick-win-finance/pages/produtoras';
 import { FinancasEventos } from '../produtos/payout/financas-eventos/pages/eventos';
 import { FinancasEvento } from '../produtos/payout/financas-eventos/pages/evento';
+import { FinancasCalendario } from '../produtos/payout/financas-eventos/pages/calendario';
+import { FinancasExtrato } from '../produtos/payout/financas-eventos/pages/extrato';
 
 function HomeScreen() {
   const [params, setParams] = useState({
@@ -489,6 +491,8 @@ export default function App() {
         <Route path="/payout/contrato-quick-win-finance/produtoras" element={<CashoutProdutoras />} />
         {/* Finanças do produtor: protótipos de pesquisa, jornada Eventos como pastas. */}
         <Route path="/payout/financas-eventos" element={<FinancasEventos />} />
+        <Route path="/payout/financas-eventos/calendario" element={<FinancasCalendario />} />
+        <Route path="/payout/financas-eventos/extrato" element={<FinancasExtrato />} />
         <Route path="/payout/financas-eventos/:eventoId" element={<FinancasEvento />} />
         <Route path="/checkout/melhorias-de-compra" element={<CheckoutPagamento />} />
         <Route path="/checkout/melhorias-de-compra/cartao" element={<CheckoutCartao />} />

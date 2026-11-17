@@ -1,36 +1,57 @@
 import type { ReactNode } from "react";
+import { Link } from "react-router";
 import { ChevronRight } from "@untitledui/icons";
 import { TableCard } from "@/components/application/table/table";
 import { Button } from "@/components/base/buttons/button";
 import { Tooltip, TooltipTrigger } from "@/components/base/tooltip/tooltip";
 import { cx } from "@/utils/cx";
 import type { Totais } from "./dados";
+import { Dica, tituloDeTooltip } from "./dica";
 import { reais, reaisComCentavos } from "./formato";
 
 /*
- * A conta que fecha: Vendido − Taxas e custos + Créditos − Ajustes = Seu dinheiro, e logo abaixo
- * onde está "Seu dinheiro", parte por parte. A mesma conta, com os mesmos nomes e a mesma ordem,
- * no total da organização (topo de Finanças) e em cada evento.
+ * A equação que a tela inteira conta (ajustes v3):
+ *   De onde veio:  Vendido − Taxas e custos + Créditos − Devoluções = Líquido
+ *   Onde está:     Líquido = Em processamento + Retido + Antecipável + Disponível + Agendado + Repassado
+ * A mesma conta, com os mesmos nomes e a mesma ordem, na organização e em cada evento.
+ * Os nomes internos (ajustes, seuDinheiro, aLiberar, recebido) vêm da v2; o que o produtor lê está
+ * em ROTULO_DA_PARTE.
  */
 
 export type ParteDaCascata = "vendido" | "taxas" | "creditos" | "ajustes" | "seuDinheiro";
 export type ParteDaDistribuicao = "processamento" | "retido" | "aLiberar" | "disponivel" | "agendado" | "recebido";
 export type Parte = ParteDaCascata | ParteDaDistribuicao;
 /** Partes da cascata que abrem o painel com a composição. */
-export type ParteComDetalhe = "taxas" | "creditos" | "ajustes";
+export type ParteComDetalhe = "vendido" | "taxas" | "creditos" | "ajustes";
+export const PARTES_COM_DETALHE: ParteComDetalhe[] = ["vendido", "taxas", "creditos", "ajustes"];
 
 export const ROTULO_DA_PARTE: Record<Parte, string> = {
     vendido: "Vendido",
     taxas: "Taxas e custos",
     creditos: "Créditos",
-    ajustes: "Ajustes",
-    seuDinheiro: "Seu dinheiro",
+    ajustes: "Devoluções",
+    seuDinheiro: "Líquido",
     processamento: "Em processamento",
     retido: "Retido",
-    aLiberar: "A liberar",
-    disponivel: "Disponível agora",
+    aLiberar: "Antecipável",
+    disponivel: "Disponível",
     agendado: "Agendado",
-    recebido: "Já recebido",
+    recebido: "Repassado",
+};
+
+/** Glossário único: a definição curta de cada termo, igual em todo o protótipo. */
+export const DEFINICAO: Record<Parte, string> = {
+    vendido: "Vendas aprovadas, com desconto. Mesmo valor de “Valor total c/ desconto” no relatório de vendas do evento.",
+    taxas: "Taxas e custos cobrados de você.",
+    creditos: "Bonificações e incentivos do seu contrato.",
+    ajustes: "Valores devolvidos aos compradores.",
+    seuDinheiro: "Tudo o que é seu depois de taxas, créditos e devoluções.",
+    processamento: "Vendas recentes que ainda vão entrar.",
+    retido: "Guardado até o evento ou por segurança, com data para liberar.",
+    aLiberar: "O que você pode receber antes, antecipando.",
+    disponivel: "Pronto para você solicitar o repasse.",
+    agendado: "Repasse solicitado, esperando a data.",
+    recebido: "O que já caiu na sua conta.",
 };
 
 /** Número de destaque do topo: centavos menores, para o olho parar no valor inteiro. */
@@ -46,17 +67,16 @@ export const NumeroGrande = ({ valor, className, classeDosCentavos = "text-sm" }
 
 /**
  * Cartão de seção: `TableCard` do DS (título, selo ao lado do título e ações à direita).
- * `semCabecalho`: o título fica só para leitor de tela (topo de Finanças, onde a conta abre a página).
  * É um contêiner (`@container`): o que está dentro se ajusta à largura do cartão, não à da janela.
  */
-export const Secao = ({ titulo, semCabecalho, selo, lateral, children, className }: { titulo: string; semCabecalho?: boolean; selo?: ReactNode; lateral?: ReactNode; children: ReactNode; className?: string }) => (
-    <TableCard.Root role="region" aria-label={titulo} className={cx("@container", className)}>
-        {!semCabecalho && <TableCard.Header title={titulo} badge={selo} contentTrailing={lateral} className="md:items-center" />}
+export const Secao = ({ titulo, selo, lateral, children, className, id }: { titulo: string; selo?: ReactNode; lateral?: ReactNode; children: ReactNode; className?: string; id?: string }) => (
+    <TableCard.Root id={id} role="region" aria-label={titulo} className={cx("@container scroll-mt-16", className)}>
+        <TableCard.Header title={titulo} badge={selo} contentTrailing={lateral} className="md:items-center" />
         {children}
     </TableCard.Root>
 );
 
-/* ---------------- cascata ---------------- */
+/* ---------------- de onde veio ---------------- */
 
 const Operador = ({ sinal }: { sinal: string }) => (
     <span aria-hidden="true" className="flex w-4 shrink-0 items-center justify-center text-xl font-medium text-quaternary">
@@ -67,82 +87,78 @@ const Operador = ({ sinal }: { sinal: string }) => (
 interface BlocoProps {
     parte: ParteDaCascata;
     valor: number;
-    /** Só quando traz um dado novo: o rótulo já explica o bloco. */
+    /** Só quando traz um dado novo: o rótulo já diz o que é o bloco. */
     legenda?: string;
     /** Como ler o bloco em voz alta: "menos", "mais", "igual a". */
     leitura?: string;
     resultado?: boolean;
     tom?: "erro";
-    /** Bloco clicável: abre a composição no painel lateral. */
-    aoAbrir?: () => void;
-    /** Ação própria dentro do bloco (o link do Vendido). */
+    /** "Ver detalhe" (painel lateral) ou o link do relatório de vendas, na página do evento. */
     acao?: ReactNode;
 }
 
-const Bloco = ({ parte, valor, legenda, leitura, resultado, tom, aoAbrir, acao }: BlocoProps) => {
-    const conteudo = (
-        <>
-            <span className="text-sm font-medium text-secondary">
+const Bloco = ({ parte, valor, legenda, leitura, resultado, tom, acao }: BlocoProps) => (
+    <div className={cx("flex min-w-0 flex-1 flex-col gap-1 rounded-xl p-3 ring-1 ring-inset @6xl:p-4", resultado ? "bg-secondary ring-primary" : "bg-primary ring-secondary")}>
+        <span className="flex items-center gap-1.5 text-sm font-medium text-secondary">
+            <span>
                 {leitura && <span className="sr-only">{leitura} </span>}
                 {ROTULO_DA_PARTE[parte]}
             </span>
-            <span className={cx("font-semibold whitespace-nowrap tabular-nums", resultado ? "text-xl @6xl:text-display-xs" : "text-lg @6xl:text-xl", tom === "erro" && valor !== 0 ? "text-error-primary" : "text-primary")}>{reais(valor)}</span>
-            {legenda && <span className="text-xs text-tertiary">{legenda}</span>}
-            {aoAbrir && (
-                <span className="mt-auto flex items-center gap-1 pt-1 text-sm font-semibold whitespace-nowrap text-tertiary transition duration-100 ease-linear group-hover:text-tertiary_hover">
-                    Ver detalhe
-                    <ChevronRight className="size-4" aria-hidden="true" />
-                </span>
-            )}
-            {acao && <span className="mt-auto pt-1">{acao}</span>}
-        </>
-    );
-    const classe = cx("group flex min-w-0 flex-1 flex-col gap-1 rounded-xl p-3 text-left ring-1 ring-inset @6xl:p-4", resultado ? "bg-secondary ring-primary" : "bg-primary ring-secondary");
-    if (!aoAbrir) return <div className={classe}>{conteudo}</div>;
-    return (
-        <button
-            type="button"
-            onClick={aoAbrir}
-            aria-label={`${ROTULO_DA_PARTE[parte]}: ${reais(valor)}. Ver detalhe`}
-            className={cx(classe, "cursor-pointer outline-focus-ring transition duration-100 ease-linear hover:bg-primary_hover focus-visible:outline-2 focus-visible:outline-offset-2")}
-        >
-            {conteudo}
-        </button>
-    );
-};
-
-interface CascataProps {
-    totais: Pick<Totais, ParteDaCascata>;
-    /** Abre a composição de Taxas e custos, Créditos ou Ajustes. */
-    aoAbrir: (parte: ParteComDetalhe) => void;
-    aoVerRelatorio: () => void;
-}
-
-export const Cascata = ({ totais, aoAbrir, aoVerRelatorio }: CascataProps) => (
-    <div className="flex items-stretch gap-2 px-6 py-5">
-        <Bloco
-            parte="vendido"
-            valor={totais.vendido}
-            acao={
-                <Button size="sm" color="link-gray" className="text-left whitespace-normal" onClick={aoVerRelatorio}>
-                    Ver no relatório de vendas
-                </Button>
-            }
-        />
-        <Operador sinal="−" />
-        <Bloco parte="taxas" valor={totais.taxas} leitura="menos" aoAbrir={() => aoAbrir("taxas")} />
-        <Operador sinal="+" />
-        <Bloco parte="creditos" valor={totais.creditos} leitura="mais" legenda="Bonificações do contrato" aoAbrir={totais.creditos ? () => aoAbrir("creditos") : undefined} />
-        <Operador sinal="−" />
-        <Bloco parte="ajustes" valor={totais.ajustes} leitura="menos" tom="erro" legenda="Depois do fechamento" aoAbrir={totais.ajustes ? () => aoAbrir("ajustes") : undefined} />
-        <Operador sinal="=" />
-        <Bloco parte="seuDinheiro" valor={totais.seuDinheiro} leitura="igual a" resultado />
+            <Dica termo={ROTULO_DA_PARTE[parte]} texto={DEFINICAO[parte]} />
+        </span>
+        <span className={cx("font-semibold whitespace-nowrap tabular-nums", resultado ? "text-xl @6xl:text-display-xs" : "text-lg @6xl:text-xl", tom === "erro" && valor !== 0 ? "text-error-primary" : "text-primary")}>{reais(valor)}</span>
+        {legenda && <span className="text-xs text-tertiary">{legenda}</span>}
+        {acao && <span className="mt-auto pt-1">{acao}</span>}
     </div>
 );
 
-/* ---------------- onde está "Seu dinheiro" ---------------- */
+interface CascataProps {
+    totais: Pick<Totais, ParteDaCascata>;
+    /** Abre a composição de Vendido (só na organização), Taxas e custos, Créditos ou Devoluções. */
+    aoAbrir: (parte: ParteComDetalhe) => void;
+    /** Página do evento: o Vendido leva direto ao relatório de vendas do evento. */
+    aoVerRelatorio?: () => void;
+    /** Há crédito esperando nota fiscal: o bloco abre mesmo com R$ 0. */
+    creditoPendente?: boolean;
+}
 
-/* Uma cor por estado, sempre a mesma na barra e na legenda. Vermelho fica só para valor negativo. */
+export const Cascata = ({ totais, aoAbrir, aoVerRelatorio, creditoPendente }: CascataProps) => {
+    const verDetalhe = (parte: ParteComDetalhe) => (
+        <Button size="sm" color="link-gray" iconTrailing={ChevronRight} aria-label={`Ver detalhe de ${ROTULO_DA_PARTE[parte]}`} onClick={() => aoAbrir(parte)}>
+            Ver detalhe
+        </Button>
+    );
+    return (
+        <div className="flex items-stretch gap-2 px-6 py-5">
+            <Bloco
+                parte="vendido"
+                valor={totais.vendido}
+                legenda={aoVerRelatorio ? "Valor total c/ desconto no relatório" : undefined}
+                acao={
+                    aoVerRelatorio ? (
+                        <Button size="sm" color="link-gray" className="text-left whitespace-normal" onClick={aoVerRelatorio}>
+                            Ver no relatório de vendas
+                        </Button>
+                    ) : totais.vendido > 0 ? (
+                        verDetalhe("vendido")
+                    ) : undefined
+                }
+            />
+            <Operador sinal="−" />
+            <Bloco parte="taxas" valor={totais.taxas} leitura="menos" acao={totais.taxas > 0 ? verDetalhe("taxas") : undefined} />
+            <Operador sinal="+" />
+            <Bloco parte="creditos" valor={totais.creditos} leitura="mais" legenda="Bonificações e incentivos" acao={totais.creditos > 0 || creditoPendente ? verDetalhe("creditos") : undefined} />
+            <Operador sinal="−" />
+            <Bloco parte="ajustes" valor={totais.ajustes} leitura="menos" tom="erro" legenda="Cancelamentos, reembolsos e contestações" acao={totais.ajustes > 0 ? verDetalhe("ajustes") : undefined} />
+            <Operador sinal="=" />
+            <Bloco parte="seuDinheiro" valor={totais.seuDinheiro} leitura="igual a" resultado legenda="Tudo o que é seu" />
+        </div>
+    );
+};
+
+/* ---------------- onde está ---------------- */
+
+/* Uma cor por parte, sempre a mesma na barra e na legenda. Vermelho fica só para valor negativo. */
 const COR_DA_PARTE: Record<ParteDaDistribuicao, string> = {
     processamento: "bg-utility-neutral-300",
     retido: "bg-utility-amber-500",
@@ -152,108 +168,73 @@ const COR_DA_PARTE: Record<ParteDaDistribuicao, string> = {
     recebido: "bg-utility-neutral-600",
 };
 
-/** Fatia de Seu dinheiro, com uma casa decimal: "7,7%". Abaixo de 0,1% diz "menos de 0,1%". */
+export const ORDEM_DAS_PARTES: ParteDaDistribuicao[] = ["processamento", "retido", "aLiberar", "disponivel", "agendado", "recebido"];
+
+/** Fatia do Líquido, com uma casa decimal: "7,7%". Abaixo de 0,1% diz "menos de 0,1%". */
 const porcentagem = (valor: number, total: number) => {
     const fatia = total > 0 ? (valor / total) * 100 : 0;
     return fatia > 0 && fatia < 0.1 ? "menos de 0,1%" : `${fatia.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%`;
 };
 
-const ORDEM: ParteDaDistribuicao[] = ["processamento", "retido", "aLiberar", "disponivel", "agendado", "recebido"];
-
 interface DistribuicaoProps {
     totais: Pick<Totais, ParteDaDistribuicao | "seuDinheiro">;
     /** Legenda de cada parte, só quando há dado novo (data, prazo). */
     detalhes: Partial<Record<ParteDaDistribuicao, string>>;
-    /**
-     * Topo de Finanças: Disponível agora, A liberar e Já recebido viram os números de destaque
-     * (os únicos com centavos) dentro da própria soma, em vez de se repetirem em cartões à parte.
-     */
-    destaque?: { aoAntecipar: () => void; bloqueado?: boolean };
+    /** Para onde cada item leva (Calendário, Extrato ou lista de eventos filtrada). Sem destino, o item não é clicável. */
+    destinos?: Partial<Record<ParteDaDistribuicao, string>>;
 }
 
-const DESTAQUES: ParteDaDistribuicao[] = ["disponivel", "aLiberar", "recebido"];
-
-const Rotulo = ({ parte, negativo }: { parte: ParteDaDistribuicao; negativo: boolean }) => (
-    <dt className="flex items-center gap-1.5 text-sm font-medium whitespace-nowrap text-secondary">
-        <span aria-hidden="true" className={cx("size-2 shrink-0 rounded-full", negativo ? "bg-utility-red-500" : COR_DA_PARTE[parte])} />
-        {ROTULO_DA_PARTE[parte]}
-    </dt>
-);
-
-export const Distribuicao = ({ totais, detalhes, destaque }: DistribuicaoProps) => {
-    const menores = destaque ? ORDEM.filter((p) => !DESTAQUES.includes(p)) : ORDEM;
-    return (
-        <div className="flex flex-col gap-4 px-6 pb-5">
-            <div className="flex flex-col gap-1 border-t border-secondary pt-4">
-                <h3 className="text-sm font-semibold text-primary">Onde está seu dinheiro</h3>
-                {/* Barra de proporção. Cada parte mostra, ao passar o mouse ou focar pelo teclado, o que é e
-                    quanto vale. A área de toque é mais alta que a barra, para a parte fina não escapar do cursor. */}
-                {/* Lacuna do DS: no tema escuro o fundo do Tooltip fica claro e o título continua `text-white`
-                    (some). O título recebe o token do fundo da página, que inverte junto com o tooltip. */}
-                <div role="group" aria-label="Proporção de cada parte" className="flex w-full items-center gap-0.5">
-                    {ORDEM.filter((p) => totais[p] > 0).map((p) => (
-                        <Tooltip key={p} title={<span className="text-bg-primary">{ROTULO_DA_PARTE[p]}</span>} description={`${reais(totais[p])} · ${porcentagem(totais[p], totais.seuDinheiro)} de Seu dinheiro`} delay={0} closeDelay={0} arrow>
-                            <TooltipTrigger
-                                aria-label={`${ROTULO_DA_PARTE[p]}: ${reais(totais[p])}`}
-                                className="group flex h-6 min-w-2 cursor-default items-center rounded-full outline-focus-ring focus-visible:outline-2"
-                                style={{ flexGrow: totais[p], flexBasis: 0 }}
-                            >
-                                <span className={cx("h-2 w-full rounded-full transition duration-100 ease-linear group-hover:h-3 group-focus-visible:h-3", COR_DA_PARTE[p])} />
-                            </TooltipTrigger>
-                        </Tooltip>
-                    ))}
-                </div>
+export const Distribuicao = ({ totais, detalhes, destinos }: DistribuicaoProps) => (
+    <div className="flex flex-col gap-4 px-6 pb-5">
+        <div className="flex flex-col gap-1 border-t border-secondary pt-4">
+            <h3 className="text-sm font-semibold text-primary">Onde está o seu líquido</h3>
+            {/* Barra de proporção. Cada parte mostra, ao passar o mouse ou focar pelo teclado, o que é e
+                quanto vale. A área de toque é mais alta que a barra, para a parte fina não escapar do cursor. */}
+            <div role="group" aria-label="Proporção de cada parte" className="flex w-full items-center gap-0.5">
+                {ORDEM_DAS_PARTES.filter((p) => totais[p] > 0).map((p) => (
+                    <Tooltip key={p} title={tituloDeTooltip(ROTULO_DA_PARTE[p])} description={`${reais(totais[p])} · ${porcentagem(totais[p], totais.seuDinheiro)} do Líquido`} delay={0} closeDelay={0} arrow>
+                        <TooltipTrigger
+                            aria-label={`${ROTULO_DA_PARTE[p]}: ${reais(totais[p])}`}
+                            className="group flex h-6 min-w-2 cursor-default items-center rounded-full outline-focus-ring focus-visible:outline-2"
+                            style={{ flexGrow: totais[p], flexBasis: 0 }}
+                        >
+                            <span className={cx("h-2 w-full rounded-full transition duration-100 ease-linear group-hover:h-3 group-focus-visible:h-3", COR_DA_PARTE[p])} />
+                        </TooltipTrigger>
+                    </Tooltip>
+                ))}
             </div>
-            <dl className="flex flex-col gap-4">
-                {destaque && (
-                    <div className="-mx-4 grid grid-cols-3 divide-x divide-secondary">
-                        {DESTAQUES.map((parte) => {
-                            const valor = totais[parte];
-                            const cor = valor < 0 ? "text-error-primary" : parte === "disponivel" ? "text-success-primary" : parte === "aLiberar" ? "text-utility-blue-500" : "text-primary";
-                            return (
-                                <div key={parte} className="flex min-w-0 flex-wrap items-center justify-between gap-3 px-4">
-                                    <div className="flex min-w-0 flex-col gap-1">
-                                        <Rotulo parte={parte} negativo={valor < 0} />
-                                        <dd>
-                                            <NumeroGrande valor={valor} className={cx(parte === "disponivel" ? "text-display-xs @6xl:text-display-sm" : "text-xl @6xl:text-display-xs", cor)} classeDosCentavos="text-md" />
-                                        </dd>
-                                        {detalhes[parte] && <dd className="text-xs text-tertiary">{detalhes[parte]}</dd>}
-                                    </div>
-                                    {parte === "aLiberar" && valor > 0 && (
-                                        <dd className="shrink-0">
-                                            <Button size="sm" color="secondary" isDisabled={destaque.bloqueado} onClick={destaque.aoAntecipar}>
-                                                Antecipar
-                                            </Button>
-                                        </dd>
-                                    )}
-                                </div>
-                            );
-                        })}
-                    </div>
-                )}
-                <div className={cx("-mx-4 grid divide-x divide-secondary", destaque ? "grid-cols-3 border-t border-secondary pt-4" : "grid-cols-6")}>
-                    {menores.map((parte) => {
-                        const valor = totais[parte];
-                        const classeDoValor = cx("font-semibold whitespace-nowrap tabular-nums", valor < 0 ? "text-error-primary" : "text-primary");
-                        return destaque ? (
-                            // No topo, as três partes menores ficam em uma linha cada: rótulo e valor lado a lado.
-                            <div key={parte} className="flex min-w-0 flex-col gap-0.5 px-4">
-                                <div className="flex items-baseline justify-between gap-3">
-                                    <Rotulo parte={parte} negativo={valor < 0} />
-                                    <dd className={cx("text-md", classeDoValor)}>{reais(valor)}</dd>
-                                </div>
-                                {detalhes[parte] && <dd className="text-right text-xs text-tertiary">{detalhes[parte]}</dd>}
-                            </div>
-                        ) : (
-                            <div key={parte} className="flex min-w-0 flex-col gap-1 px-4">
-                                <Rotulo parte={parte} negativo={valor < 0} />
-                                <dd className={cx("text-md @6xl:text-lg", classeDoValor)}>{reais(valor)}</dd>
-                                {detalhes[parte] && <dd className="text-xs text-tertiary">{detalhes[parte]}</dd>}
-                            </div>
-                        );
-                    })}
-                </div>
-            </dl>
         </div>
-    );
-};
+        {/* Legenda: serve para conferir que as seis partes somam o Líquido. Degrau menor da escala de tipo. */}
+        <dl className="-mx-2 grid grid-cols-6 divide-x divide-secondary">
+            {ORDEM_DAS_PARTES.map((parte) => {
+                const valor = totais[parte];
+                const conteudo = (
+                    <>
+                        <dt className="flex items-center gap-1.5 text-sm font-medium whitespace-nowrap text-secondary">
+                            <span aria-hidden="true" className={cx("size-2 shrink-0 rounded-full", valor < 0 ? "bg-utility-red-500" : COR_DA_PARTE[parte])} />
+                            {ROTULO_DA_PARTE[parte]}
+                        </dt>
+                        <dd className={cx("text-md font-semibold whitespace-nowrap tabular-nums", valor < 0 ? "text-error-primary" : "text-primary")}>{reais(valor)}</dd>
+                        {detalhes[parte] && <dd className="text-xs text-tertiary">{detalhes[parte]}</dd>}
+                    </>
+                );
+                const destino = destinos?.[parte];
+                return (
+                    <div key={parte} className="min-w-0 px-2">
+                        {destino ? (
+                            <Link
+                                to={destino}
+                                title={DEFINICAO[parte]}
+                                className="flex h-full flex-col gap-1 rounded-lg p-2 outline-focus-ring transition duration-100 ease-linear hover:bg-primary_hover focus-visible:outline-2 focus-visible:outline-offset-2"
+                            >
+                                {conteudo}
+                            </Link>
+                        ) : (
+                            <div className="flex flex-col gap-1 p-2">{conteudo}</div>
+                        )}
+                    </div>
+                );
+            })}
+        </dl>
+    </div>
+);

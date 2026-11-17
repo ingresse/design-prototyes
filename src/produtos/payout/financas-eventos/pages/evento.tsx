@@ -1,43 +1,25 @@
-import type { ReactNode } from "react";
 import { useLocation, useNavigate, useParams } from "react-router";
 import { ArrowLeft, Download01 } from "@untitledui/icons";
 import { toast } from "sonner";
 import { Badge } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
-import { cx } from "@/utils/cx";
-import { Cascata, Distribuicao, Secao, type ParteComDetalhe } from "../../components/financas/cascata";
-import { ROTULO_LIBERACAO, eventosDoCenario, retido, seuDinheiro, somarDias, type Evento, type Repasse } from "../../components/financas/dados";
+import { Cascata, Distribuicao, PARTES_COM_DETALHE, Secao } from "../../components/financas/cascata";
+import { ROTULO_LIBERACAO, TAXA_DA_MODALIDADE, eventosDoCenario, retido, seuDinheiro, somarDias, type Evento, type Repasse } from "../../components/financas/dados";
 import { Aviso, AvisoDeBloqueio, Carregando, ErroAoCarregar, SemEventos, TelaFinal, type AcaoFinal } from "../../components/financas/estados";
 import { dataComDia, dataCurta, dataDoEvento, reais } from "../../components/financas/formato";
 import { detalhesDaDistribuicao } from "../../components/financas/frases";
+import { Linha, Lista, Vazio } from "../../components/financas/linha";
 import { PainelDoDetalhe } from "../../components/financas/painel-do-detalhe";
 import { CabecalhoDaPagina, FinancasShell, useCenario, useParametro } from "../../components/financas/shell";
 import { SelosDoEvento } from "../components/selos-do-evento";
 
 /*
  * Página do evento (a pasta aberta): a mesma conta do total, só deste evento; o calendário de
- * liberações; os repasses; os ajustes depois do fechamento; e o que ainda pode mudar, até quando.
- * Copy dos ajustes v2: o rótulo explica; a legenda só entra quando traz data, prazo ou motivo.
+ * liberações; os repasses; as devoluções; e o que ainda pode mudar, até quando.
+ * O rótulo explica; a legenda só entra quando traz data, prazo ou motivo. Termos e regras dos ajustes v3.
  */
 
 const ACOES: AcaoFinal[] = ["repasse", "antecipar"];
-const PARTES: ParteComDetalhe[] = ["taxas", "creditos", "ajustes"];
-
-/** Linha com guia visual: data à esquerda, o que é no meio, valor à direita, divisor entre linhas. */
-const Linha = ({ quando, titulo, detalhe, valor, corDoValor = "text-primary", extra }: { quando: string; titulo: ReactNode; detalhe?: ReactNode; valor?: string; corDoValor?: string; extra?: ReactNode }) => (
-    <li className="flex items-baseline gap-4 px-6 py-4">
-        <span className="w-36 shrink-0 text-sm font-medium whitespace-nowrap text-secondary">{quando}</span>
-        <div className="flex min-w-0 flex-1 flex-col gap-1">
-            <span className="text-sm font-medium text-primary">{titulo}</span>
-            {detalhe && <span className="text-sm text-tertiary">{detalhe}</span>}
-            {extra}
-        </div>
-        {valor && <span className={cx("text-sm font-semibold whitespace-nowrap tabular-nums", corDoValor)}>{valor}</span>}
-    </li>
-);
-
-const Lista = ({ children }: { children: ReactNode }) => <ul className="flex flex-col divide-y divide-secondary">{children}</ul>;
-const Vazio = ({ children }: { children: ReactNode }) => <p className="px-6 py-5 text-sm text-tertiary">{children}</p>;
 
 const SITUACAO: Record<Repasse["situacao"], { rotulo: string; cor: "gray" | "success" | "error" }> = {
     agendado: { rotulo: "Agendado", cor: "gray" },
@@ -45,8 +27,20 @@ const SITUACAO: Record<Repasse["situacao"], { rotulo: string; cor: "gray" | "suc
     falhou: { rotulo: "Não concluído", cor: "error" },
 };
 
-const explicacaoDoNegativo = (e: Evento) =>
-    `Você recebeu ${reais(e.recebido)} deste evento. Depois, saíram ${reais(e.ajustes)} em ajustes${e.creditos ? ` e entraram ${reais(e.creditos)} em créditos` : ""}. Com ${reais(retido(e))} ainda retidos, faltam ${reais(-e.disponivel)}.`;
+const ORIGEM = { disponivel: "Saiu do disponível", antecipavel: "Saiu do antecipável" };
+
+const explicacaoDoNegativo = (e: Evento) => {
+    const custos = (e.custosExtras ?? []).reduce((s, c) => s + c.valor, 0);
+    const saidas = [e.ajustes ? `${reais(e.ajustes)} em devoluções` : "", custos ? `${reais(custos)} em custos` : ""].filter(Boolean).join(" e ");
+    return `Você recebeu ${reais(e.recebido)} deste evento. Depois, saíram ${saidas}${e.creditos ? `, e entraram ${reais(e.creditos)} em créditos` : ""}. Com ${reais(retido(e))} ainda retidos, faltam ${reais(-e.disponivel)}.`;
+};
+
+/** Conta, modalidade, taxa de transferência e valor que chega (regra 6 dos ajustes v3). */
+const detalheDoRepasse = (r: Repasse) => {
+    const taxa = TAXA_DA_MODALIDADE[r.modalidade];
+    const chega = r.situacao === "pago" ? "você recebeu" : r.situacao === "agendado" ? "você recebe" : "";
+    return `${r.conta} · ${r.modalidade} · ${taxa ? `taxa de transferência de ${reais(taxa)}` : "sem taxa de transferência"}${chega ? ` · ${chega} ${reais(r.valor - taxa)}` : ""}`;
+};
 
 export function FinancasEvento() {
     const navigate = useNavigate();
@@ -61,7 +55,8 @@ export function FinancasEvento() {
     const bloqueado = cenario === "bloqueado";
     const acao = ACOES.find((a) => a === acaoAberta);
     const sufixo = cenario === "normal" ? "" : `?cenario=${cenario}`;
-    const detalhe = PARTES.find((p) => p === detalheAberto) ?? null;
+    // Na página do evento o Vendido leva direto ao relatório: não há painel "Vendido por evento".
+    const detalhe = PARTES_COM_DETALHE.find((p) => p === detalheAberto && p !== "vendido") ?? null;
     // Volta para a lista como ela estava (busca, filtro, página), no cenário atual.
     const voltar = () => {
         const lista = new URLSearchParams((state as { lista?: string } | null)?.lista ?? "");
@@ -132,29 +127,33 @@ export function FinancasEvento() {
                             </p>
                             <p>
                                 <span className="font-medium text-secondary">O que acontece agora: </span>
-                                você não precisa pagar nada.
-                                {proximaRetida && ` Em ${dataCurta(proximaRetida.data)}, ${reais(proximaRetida.valor)} retidos são liberados e abatem o saldo negativo.`}
-                                {restoDoNegativo > 0 && ` ${proximaRetida ? `Os ${reais(restoDoNegativo)} restantes` : reais(restoDoNegativo)} saem das próximas liberações dos seus outros eventos.`}
+                                você não precisa pagar nada: o valor já foi descontado do Disponível dos seus outros eventos.
+                                {proximaRetida && ` Em ${dataCurta(proximaRetida.data)}, ${reais(proximaRetida.valor)} retidos são liberados e reduzem o saldo negativo para ${reais(restoDoNegativo)}.`}
                             </p>
                         </Aviso>
                     )}
 
                     <Secao titulo="A conta deste evento">
-                        <Cascata totais={{ ...evento, seuDinheiro: seuDinheiro(evento) }} aoAbrir={setDetalhe} aoVerRelatorio={() => toast("Aqui abriria o relatório de vendas deste evento.")} />
+                        <Cascata
+                            totais={{ ...evento, seuDinheiro: seuDinheiro(evento) }}
+                            aoAbrir={setDetalhe}
+                            aoVerRelatorio={() => toast("Aqui abriria o relatório de vendas deste evento.")}
+                            creditoPendente={Boolean(evento.creditoPendente)}
+                        />
                         <Distribuicao totais={{ ...evento, retido: retido(evento), seuDinheiro: seuDinheiro(evento) }} detalhes={detalhesDaDistribuicao([evento])} />
                     </Secao>
 
                     <div className="grid grid-cols-2 items-start gap-6">
                         <Secao titulo="Calendário de liberações">
                             {totalDoCalendario === 0 ? (
-                                <Vazio>Nenhum valor a liberar neste evento.</Vazio>
+                                <Vazio>Nenhuma liberação prevista neste evento.</Vazio>
                             ) : (
                                 <Lista>
                                     {evento.processamento > 0 && (
                                         <Linha
-                                            quando={evento.previsaoProcessamento === "hoje" ? "Hoje, até 18h" : "Sem data fixa"}
+                                            quando={evento.previsaoProcessamento === "hoje" ? "Hoje" : "Sem data"}
                                             titulo="Em processamento"
-                                            detalhe={evento.previsaoProcessamento === "hoje" ? "Vendas recentes em confirmação" : "Pix parcelado: entra quando as parcelas forem pagas"}
+                                            detalhe={evento.previsaoProcessamento === "hoje" ? "Vendas recentes. Entra hoje." : "Pix parcelado: entra quando as parcelas forem pagas."}
                                             valor={reais(evento.processamento)}
                                         />
                                     )}
@@ -178,7 +177,7 @@ export function FinancasEvento() {
 
                         <Secao titulo="Repasses">
                             {evento.repasses.length === 0 ? (
-                                <Vazio>Você ainda não pediu repasse deste evento.</Vazio>
+                                <Vazio>Você ainda não solicitou repasse deste evento.</Vazio>
                             ) : (
                                 <Lista>
                                     {evento.repasses.map((r) => (
@@ -193,7 +192,17 @@ export function FinancasEvento() {
                                                     </Badge>
                                                 </span>
                                             }
-                                            detalhe={r.nota}
+                                            detalhe={
+                                                <>
+                                                    {detalheDoRepasse(r)}
+                                                    {r.nota && (
+                                                        <>
+                                                            <br />
+                                                            {r.nota}
+                                                        </>
+                                                    )}
+                                                </>
+                                            }
                                             valor={reais(r.valor)}
                                             extra={
                                                 r.situacao === "pago" ? (
@@ -214,13 +223,26 @@ export function FinancasEvento() {
                     </div>
 
                     <div className="grid grid-cols-2 items-start gap-6">
-                        <Secao titulo="Ajustes depois do fechamento">
+                        <Secao titulo="Devoluções">
                             {evento.ajustesLista.length === 0 ? (
-                                <Vazio>Nenhum ajuste depois do fechamento.</Vazio>
+                                <Vazio>Nenhuma devolução neste evento.</Vazio>
                             ) : (
                                 <Lista>
                                     {evento.ajustesLista.map((a) => (
-                                        <Linha key={a.titulo} quando={dataCurta(a.data)} titulo={a.titulo} detalhe={a.motivo} valor={reais(-a.valor)} corDoValor="text-error-primary" />
+                                        <Linha
+                                            key={a.titulo}
+                                            quando={dataCurta(a.data)}
+                                            titulo={a.titulo}
+                                            detalhe={
+                                                <>
+                                                    {ORIGEM[a.origem ?? "disponivel"]}
+                                                    <br />
+                                                    {a.motivo}
+                                                </>
+                                            }
+                                            valor={reais(-a.valor)}
+                                            corDoValor="text-error-primary"
+                                        />
                                     ))}
                                 </Lista>
                             )}

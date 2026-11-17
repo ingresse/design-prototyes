@@ -56,32 +56,53 @@ export const AvisoDeBloqueio = () => (
 /* Lacuna do DS: não existe componente de esqueleto. Mesmo recurso do Figma atual: bloco bg-tertiary. */
 const Bloco = ({ className }: { className?: string }) => <div aria-hidden="true" className={cx("animate-pulse rounded-md bg-tertiary", className)} />;
 
-export const Carregando = () => (
-    <div role="status" aria-label="Carregando suas finanças" className="flex flex-col gap-6">
-        <div className="flex flex-col gap-5 rounded-xl bg-primary p-6 ring-1 ring-secondary">
-            <Bloco className="h-5 w-56" />
-            <div className="grid grid-cols-5 gap-6">
-                {Array.from({ length: 5 }, (_, i) => (
-                    <div key={i} className="flex flex-col gap-3">
-                        <Bloco className="h-3 w-24" />
-                        <Bloco className="h-8 w-full" />
-                    </div>
-                ))}
+const CartoesEmEspera = () => (
+    <div className="grid grid-cols-3 gap-6">
+        {Array.from({ length: 3 }, (_, i) => (
+            <div key={i} className="flex flex-col gap-3 rounded-xl bg-primary px-6 py-5 ring-1 ring-secondary">
+                <Bloco className="h-3 w-28" />
+                <Bloco className="h-8 w-48" />
+                <Bloco className="h-3 w-40" />
             </div>
-            <Bloco className="h-2 w-full rounded-full" />
-        </div>
-        <div className="flex flex-col gap-5 rounded-xl bg-primary p-6 ring-1 ring-secondary">
-            <Bloco className="h-5 w-40" />
-            {Array.from({ length: 4 }, (_, i) => (
-                <div key={i} className="flex items-center gap-4">
-                    <Bloco className="size-10 rounded-md" />
-                    <div className="flex flex-1 flex-col gap-2">
-                        <Bloco className="h-4 w-72" />
-                        <Bloco className="h-3 w-96" />
-                    </div>
+        ))}
+    </div>
+);
+
+const ListaEmEspera = ({ linhas }: { linhas: number }) => (
+    <div className="flex flex-col gap-5 rounded-xl bg-primary p-6 ring-1 ring-secondary">
+        <Bloco className="h-5 w-40" />
+        {Array.from({ length: linhas }, (_, i) => (
+            <div key={i} className="flex items-center gap-4">
+                <Bloco className="size-10 rounded-md" />
+                <div className="flex flex-1 flex-col gap-2">
+                    <Bloco className="h-4 w-72" />
+                    <Bloco className="h-3 w-96" />
                 </div>
-            ))}
-        </div>
+                <Bloco className="h-4 w-24" />
+            </div>
+        ))}
+    </div>
+);
+
+/** `variante="lista"`: Calendário e Extrato (resumo e lista). Padrão: Finanças e página do evento (cards, conta e lista). */
+export const Carregando = ({ variante }: { variante?: "lista" }) => (
+    <div role="status" aria-label="Carregando suas finanças" className="flex flex-col gap-6">
+        <CartoesEmEspera />
+        {variante !== "lista" && (
+            <div className="flex flex-col gap-5 rounded-xl bg-primary p-6 ring-1 ring-secondary">
+                <Bloco className="h-5 w-56" />
+                <div className="grid grid-cols-5 gap-6">
+                    {Array.from({ length: 5 }, (_, i) => (
+                        <div key={i} className="flex flex-col gap-3">
+                            <Bloco className="h-3 w-24" />
+                            <Bloco className="h-8 w-full" />
+                        </div>
+                    ))}
+                </div>
+                <Bloco className="h-2 w-full rounded-full" />
+            </div>
+        )}
+        <ListaEmEspera linhas={variante === "lista" ? 6 : 4} />
     </div>
 );
 
@@ -152,7 +173,7 @@ export const TelaFinal = ({ acao, evento, valor, aoVoltar }: TelaFinalProps) => 
         antecipar: {
             icone: CoinsHand,
             titulo: "Aqui começa a antecipação",
-            descricao: `A antecipação abre ${escopo}${valor !== undefined ? ` e ${reais(valor)} a liberar` : ""}. A taxa aparece antes de você confirmar.`,
+            descricao: `A antecipação abre ${escopo}${valor !== undefined ? ` e ${reais(valor)} antecipáveis` : ""}. A taxa aparece antes de você confirmar.`,
         },
         eventos: { icone: Calendar, titulo: "Aqui você vai para Eventos", descricao: "A lista de eventos da organização abre a partir daqui." },
     }[acao];

@@ -25,9 +25,11 @@ Associação de contratos a eventos. Implementa o refinamento do Figma
 Protótipo de pesquisa de **Finanças do produtor** (Backstage). Não usa o Cashout: o shell é o menu
 lateral do Backstage, em `components/financas/shell.tsx`.
 
-- **Eventos como pastas** (`/payout/financas-eventos`): a conta que fecha para a organização, os
-  48 eventos como pastas (busca, filtro, ordenação, paginação) e a página de cada evento (conta,
-  calendário de liberações, repasses, ajustes, o que pode mudar)
+- **Finanças** (`/payout/financas-eventos`): cards de ação, a conta da organização (de onde veio e
+  onde está o Líquido), próximas liberações, últimos movimentos e os 48 eventos como pastas
+- **Calendário de liberações** (`/payout/financas-eventos/calendario`) e **Extrato**
+  (`/payout/financas-eventos/extrato`)
+- **Página do evento** (`/payout/financas-eventos/:eventoId`)
 - Verificação das contas: `node src/produtos/payout/financas-eventos/utils/conferir-contas.ts`
 
 Dados, cenários (`?cenario=`), suposições, lacunas do DS e dúvidas de negócio: [`NOTAS.md`](NOTAS.md).

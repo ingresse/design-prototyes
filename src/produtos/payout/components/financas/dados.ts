@@ -11,8 +11,10 @@
  * Este arquivo não importa nada, de propósito: assim o script roda direto no Node.
  */
 
-/** "Hoje" do protótipo: segunda, 16/11/2026. */
-export const HOJE = "2026-11-16";
+/** "Hoje" do protótipo: terça, 17/11/2026. */
+export const HOJE = "2026-11-17";
+/** Mesmo padrão dos relatórios do evento: "Atualizado em dd/mm/aaaa, hh:mm". */
+export const ATUALIZADO_EM = "17/11/2026, 09:30";
 export const ORGANIZACAO = { nome: "Arena Produções", sigla: "AP", curto: "Arena" };
 
 export type Cenario = "normal" | "negativo" | "bloqueado" | "carregando" | "erro" | "sem-eventos";
@@ -37,18 +39,45 @@ export interface Liberacao {
     nota?: string;
 }
 
+export type TipoDeDevolucao = "cancelamento" | "reembolso" | "contestacao" | "suspenso";
+export type TipoDeCredito = "bonificacao" | "rebate" | "luvas" | "ajuste";
+
 export interface Lancamento {
     data: string;
     titulo: string;
     motivo: string;
     valor: number;
+    /** Devolução: que tipo é e de onde o valor saiu. */
+    devolucao?: TipoDeDevolucao;
+    origem?: "disponivel" | "antecipavel";
+    /** Crédito: que tipo é. Bonificação de custo traz o uso da verba do contrato. */
+    credito?: TipoDeCredito;
+    verba?: { usado: number; total: number };
 }
+
+export type Modalidade = "Básico" | "Expresso" | "Turbo";
+/** Taxa de transferência de cada modalidade (valores ilustrativos, ver NOTAS.md). */
+export const TAXA_DA_MODALIDADE: Record<Modalidade, number> = { Básico: 0, Expresso: 10, Turbo: 25 };
+export const CONTA_DA_ORGANIZACAO = "Itaú ···4521";
+export const CONTA_DE_TERCEIRO = "Conta de terceiro · Bradesco ···8830";
 
 export interface Repasse {
     data: string;
     valor: number;
     situacao: "agendado" | "pago" | "falhou";
     nota?: string;
+    /** Conta de destino (banco e final da conta). */
+    conta: string;
+    modalidade: Modalidade;
+    /** Agendado: quando o repasse foi solicitado (é quando o valor sai do Disponível). */
+    pedidoEm?: string;
+}
+
+/** Antecipação já feita: o valor saiu do Antecipável; o líquido (valor − taxa) entrou no Disponível. */
+export interface Antecipacao {
+    data: string;
+    valor: number;
+    taxa: number;
 }
 
 export interface PodeMudar {
@@ -58,7 +87,7 @@ export interface PodeMudar {
     ate?: string;
 }
 
-export type Selo = "Saldo negativo" | "Ajuste recente" | "Evento em vendas";
+export type Selo = "Saldo negativo" | "Devolução recente" | "Em vendas";
 
 export interface Evento {
     id: string;
@@ -79,12 +108,21 @@ export interface Evento {
     /** Quando o valor em processamento entra no disponível: hoje até 18h ou conforme as parcelas do Pix. */
     previsaoProcessamento?: "hoje" | "parcelas";
     liberacoes: Liberacao[];
-    /** Ajustes depois do fechamento (tiraram dinheiro). */
+    /** Devoluções (valores devolvidos aos compradores). O campo se chama `ajustes` por herança da v2. */
     ajustesLista: Lancamento[];
     /** Créditos (somaram dinheiro). */
     creditosLista: Lancamento[];
     repasses: Repasse[];
     podeMudar: PodeMudar[];
+    /** Custos lançados à parte (ex.: custo de operação depois do fechamento). Fazem parte de Taxas e custos. */
+    custosExtras?: Lancamento[];
+    /** Taxa de serviço assumida pelo produtor (em vez de cobrada do comprador). */
+    servicoAssumido?: boolean;
+    /** Rebate que ainda depende da nota fiscal do produtor: não soma em Créditos. */
+    creditoPendente?: { valor: number; motivo: string };
+    /** Liberações que já aconteceram (para o Extrato): o valor entrou no Disponível nesta data. */
+    liberadas?: Liberacao[];
+    antecipacoes?: Antecipacao[];
 }
 
 /** Prazo máximo de contestação no cartão, contado da última compra possível (a data do evento). */
@@ -96,11 +134,20 @@ export function somarDias(iso: string, dias: number): string {
     return d.toISOString().slice(0, 10);
 }
 
-const contestacoes = (dataDoEvento: string): PodeMudar => ({
-    titulo: "Contestações no cartão",
-    texto: "Compras contestadas pelo comprador. Podem acontecer até 120 dias depois da compra.",
-    ate: somarDias(dataDoEvento, DIAS_DE_CONTESTACAO),
-});
+/** Regra 2 dos ajustes v3: até a liberação do retido, a contestação sai do retido; depois, do disponível. */
+const contestacoes = (dataDoEvento: string): PodeMudar => {
+    const liberaRetido = somarDias(dataDoEvento, 60);
+    const [, mes, dia] = liberaRetido.split("-");
+    const quando = `${dia}/${mes}${liberaRetido.slice(0, 4) === HOJE.slice(0, 4) ? "" : `/${liberaRetido.slice(0, 4)}`}`;
+    return {
+        titulo: "Contestações no cartão",
+        texto:
+            liberaRetido > HOJE
+                ? `Podem acontecer até 120 dias depois do evento. Até ${quando}, contestações saem do retido. Depois disso, saem do seu disponível.`
+                : "Podem acontecer até 120 dias depois do evento. O retido já foi liberado: se acontecerem, saem do seu disponível.",
+        ate: somarDias(dataDoEvento, DIAS_DE_CONTESTACAO),
+    };
+};
 
 const EVENTOS_BASE: Evento[] = [
     {
@@ -126,10 +173,16 @@ const EVENTOS_BASE: Evento[] = [
             { data: "2027-01-13", tipo: "retidoSeguranca", valor: 45_600 },
         ],
         ajustesLista: [],
-        creditosLista: [{ data: "2026-11-15", titulo: "Bonificação por meta de vendas", motivo: "Crédito combinado em contrato ao atingir a meta de vendas do evento.", valor: 12_000 }],
+        creditosLista: [
+            { data: "2026-11-15", credito: "rebate", titulo: "Rebate por meta de vendas", motivo: "Regra do contrato: 0,5% do Vendido ao passar de R$ 2.000.000 em vendas.", valor: 12_000 },
+        ],
         repasses: [
-            { data: "2026-11-24", valor: 600_000, situacao: "agendado" },
-            { data: "2026-10-20", valor: 750_000, situacao: "pago" },
+            { data: "2026-11-24", valor: 600_000, situacao: "agendado", conta: CONTA_DA_ORGANIZACAO, modalidade: "Básico", pedidoEm: "2026-11-12" },
+            { data: "2026-10-20", valor: 750_000, situacao: "pago", conta: CONTA_DA_ORGANIZACAO, modalidade: "Expresso" },
+        ],
+        liberadas: [
+            { data: "2026-10-18", tipo: "aLiberar", valor: 750_000 },
+            { data: "2026-11-05", tipo: "aLiberar", valor: 1_000_400 },
         ],
         podeMudar: [contestacoes("2026-11-14")],
     },
@@ -153,20 +206,29 @@ const EVENTOS_BASE: Evento[] = [
         ajustesLista: [
             {
                 data: "2026-11-02",
+                devolucao: "contestacao",
+                origem: "disponivel",
                 titulo: "Contestação no cartão",
-                motivo: "Um comprador contestou a compra com o banco depois do fechamento do evento. O valor foi devolvido a ele.",
+                motivo: "Um comprador contestou a compra com o banco. O valor foi devolvido a ele.",
                 valor: 3_200,
             },
         ],
         creditosLista: [],
+        servicoAssumido: true,
         repasses: [
             {
                 data: "2026-11-10",
                 valor: 123_480,
                 situacao: "falhou",
-                nota: "O banco recusou a transferência: os dados da conta não conferem. O valor voltou para o seu Disponível agora.",
+                nota: "O banco recusou a transferência: os dados da conta não conferem. O valor voltou para o seu Disponível.",
+                conta: CONTA_DA_ORGANIZACAO,
+                modalidade: "Expresso",
             },
-            { data: "2026-09-30", valor: 820_000, situacao: "pago" },
+            { data: "2026-09-30", valor: 820_000, situacao: "pago", conta: CONTA_DA_ORGANIZACAO, modalidade: "Básico" },
+        ],
+        liberadas: [
+            { data: "2026-09-28", tipo: "aLiberar", valor: 820_000 },
+            { data: "2026-10-01", tipo: "aLiberar", valor: 126_680 },
         ],
         podeMudar: [contestacoes("2026-09-19")],
     },
@@ -195,7 +257,9 @@ const EVENTOS_BASE: Evento[] = [
         ],
         ajustesLista: [],
         creditosLista: [],
+        creditoPendente: { valor: 3_250, motivo: "Rebate de 0,5% do Vendido. Entra em Créditos quando você enviar a nota fiscal." },
         repasses: [],
+        liberadas: [{ data: "2026-11-05", tipo: "aLiberar", valor: 125_325 }],
         podeMudar: [
             {
                 titulo: "Novas vendas e cancelamentos",
@@ -211,9 +275,10 @@ const EVENTOS_BASE: Evento[] = [
         data: "2026-09-27",
         emVendas: false,
         vendido: 300_000,
-        taxas: 4_500,
+        // Regra 4 dos ajustes v3: o custo de operação (R$ 8.000) é Taxas e custos, não Devoluções.
+        taxas: 12_500,
         creditos: 5_000,
-        ajustes: 30_000,
+        ajustes: 22_000,
         processamento: 0,
         retidoEvento: 0,
         retidoSeguranca: 5_700,
@@ -221,23 +286,40 @@ const EVENTOS_BASE: Evento[] = [
         disponivel: -25_200,
         agendado: 0,
         recebido: 290_000,
-        liberacoes: [{ data: "2026-11-26", tipo: "retidoSeguranca", valor: 5_700, nota: "Abate o saldo negativo deste evento." }],
+        liberacoes: [{ data: "2026-11-26", tipo: "retidoSeguranca", valor: 5_700, nota: "Reduz o saldo negativo deste evento." }],
         ajustesLista: [
             {
                 data: "2026-10-12",
+                devolucao: "cancelamento",
+                origem: "disponivel",
                 titulo: "Cancelamentos depois do repasse",
-                motivo: "Compradores cancelaram ingressos depois que o repasse de 05/10 já tinha sido pago. O valor foi devolvido a eles.",
-                valor: 22_000,
+                motivo: "Compradores cancelaram ingressos depois que o repasse de 05/10 já tinha sido pago.",
+                valor: 18_000,
             },
             {
-                data: "2026-10-08",
-                titulo: "Custo de operação · equipe extra",
-                motivo: "Equipe extra contratada para o dia do evento, cobrada depois do fechamento.",
-                valor: 8_000,
+                data: "2026-10-14",
+                devolucao: "reembolso",
+                origem: "disponivel",
+                titulo: "Reembolso parcial de meia-entrada",
+                motivo: "Diferença devolvida a compradores que comprovaram meia-entrada depois da compra.",
+                valor: 4_000,
             },
         ],
-        creditosLista: [{ data: "2026-10-08", titulo: "Bonificação de equipe", motivo: "Crédito da Ingresse referente à equipe do evento.", valor: 5_000 }],
-        repasses: [{ data: "2026-10-05", valor: 290_000, situacao: "pago" }],
+        custosExtras: [
+            { data: "2026-10-20", titulo: "Custo de operação · equipe extra", motivo: "Equipe extra contratada para o dia do evento, lançada depois do fechamento.", valor: 8_000 },
+        ],
+        creditosLista: [
+            {
+                data: "2026-10-08",
+                credito: "bonificacao",
+                titulo: "Equipe de portaria",
+                motivo: "Custo de equipe bonificado pela verba do seu contrato.",
+                valor: 5_000,
+                verba: { usado: 5_000, total: 10_000 },
+            },
+        ],
+        repasses: [{ data: "2026-10-05", valor: 290_000, situacao: "pago", conta: CONTA_DE_TERCEIRO, modalidade: "Turbo" }],
+        liberadas: [{ data: "2026-10-03", tipo: "aLiberar", valor: 290_000 }],
         podeMudar: [contestacoes("2026-09-27")],
     },
 ];
@@ -260,10 +342,16 @@ interface Semente {
     /** Quanto do que já podia ser sacado foi sacado, em % (padrão: tudo, ou nada se está em vendas). */
     sacado?: number;
     credito?: number;
+    tipoDoCredito?: TipoDeCredito;
     ajustes?: Lancamento[];
+    servicoAssumido?: boolean;
+    antecipacoes?: Antecipacao[];
     /** O repasse saiu antes dos ajustes: o evento fica com saldo negativo no valor deles. */
     negativo?: boolean;
 }
+
+/** O Extrato do protótipo cobre os últimos 90 dias. */
+export const DIAS_DO_EXTRATO = 90;
 
 const diasEntre = (de: string, ate: string) => Math.round((Date.parse(`${ate}T12:00:00Z`) - Date.parse(`${de}T12:00:00Z`)) / 86_400_000);
 const emMilhar = (valor: number) => Math.floor(valor / 1000) * 1000;
@@ -300,7 +388,7 @@ function gerar(s: Semente): Evento {
     }
     const retidoSeguranca = diasDepois < 60 ? s.mil * 19 : 0;
     if (retidoSeguranca) {
-        liberacoes.push({ data: somarDias(s.data, 60), tipo: "retidoSeguranca", valor: retidoSeguranca, nota: s.negativo ? "Abate o saldo negativo deste evento." : undefined });
+        liberacoes.push({ data: somarDias(s.data, 60), tipo: "retidoSeguranca", valor: retidoSeguranca, nota: s.negativo ? "Reduz o saldo negativo deste evento." : undefined });
     }
 
     const livre = seu - processamento - retidoEvento - retidoSeguranca - aLiberar;
@@ -310,6 +398,23 @@ function gerar(s: Semente): Evento {
     const podeMudar: PodeMudar[] = [];
     if (emVendas) podeMudar.push({ titulo: "Novas vendas e cancelamentos", texto: "O Vendido muda a cada compra ou cancelamento, sempre igual ao seu relatório de vendas.", ate: s.data });
     if (diasDepois <= DIAS_DE_CONTESTACAO) podeMudar.push(contestacoes(s.data));
+
+    const semente = [...s.id].reduce((t, letra) => t + letra.charCodeAt(0), 0);
+    const modalidade = (["Básico", "Expresso", "Turbo"] as const)[semente % 3];
+    const disponivel = livre - recebido;
+    const dataDoRepasse = emVendas ? somarDias(HOJE, -20) : somarDias(s.data, 7);
+    // Para o Extrato: o que foi repassado nos últimos 90 dias entrou no Disponível dois dias antes; e o
+    // que está disponível hoje, em evento recente, entrou nos últimos dias.
+    const liberadas: Liberacao[] = [];
+    if (recebido > 0 && dataDoRepasse >= somarDias(HOJE, -DIAS_DO_EXTRATO + 3)) liberadas.push({ data: somarDias(dataDoRepasse, -2), tipo: "aLiberar", valor: recebido });
+    if (disponivel > 0 && (emVendas || diasDepois < 60)) liberadas.push({ data: somarDias(HOJE, -(3 + (semente % 20))), tipo: "aLiberar", valor: disponivel });
+    const creditoPorTipo: Record<TipoDeCredito, Pick<Lancamento, "titulo" | "motivo">> = {
+        rebate: { titulo: "Rebate por meta de vendas", motivo: "Regra do contrato: percentual do Vendido ao atingir a meta de vendas do evento." },
+        bonificacao: { titulo: "Equipe de portaria", motivo: "Custo de equipe bonificado pela verba do seu contrato." },
+        luvas: { titulo: "Luvas de renovação", motivo: "Valor combinado na renovação do contrato." },
+        ajuste: { titulo: "Ajuste a crédito", motivo: "Correção de uma taxa cobrada a mais." },
+    };
+    const tipoDoCredito = s.tipoDoCredito ?? "rebate";
 
     return {
         id: s.id,
@@ -324,15 +429,28 @@ function gerar(s: Semente): Evento {
         retidoEvento,
         retidoSeguranca,
         aLiberar,
-        disponivel: livre - recebido,
+        disponivel,
         agendado: 0,
         recebido,
         previsaoProcessamento: processamento ? "hoje" : undefined,
         liberacoes,
         ajustesLista,
-        creditosLista: creditos ? [{ data: somarDias(s.data, 5), titulo: "Bonificação por meta de vendas", motivo: "Crédito combinado em contrato ao atingir a meta de vendas do evento.", valor: creditos }] : [],
-        repasses: recebido > 0 ? [{ data: emVendas ? somarDias(HOJE, -20) : somarDias(s.data, 7), valor: recebido, situacao: "pago" }] : [],
+        creditosLista: creditos
+            ? [
+                  {
+                      data: somarDias(s.data, 5),
+                      credito: tipoDoCredito,
+                      ...creditoPorTipo[tipoDoCredito],
+                      valor: creditos,
+                      verba: tipoDoCredito === "bonificacao" ? { usado: creditos, total: creditos + 2_000 } : undefined,
+                  },
+              ]
+            : [],
+        repasses: recebido > 0 ? [{ data: dataDoRepasse, valor: recebido, situacao: "pago", conta: CONTA_DA_ORGANIZACAO, modalidade }] : [],
         podeMudar,
+        servicoAssumido: s.servicoAssumido,
+        liberadas,
+        antecipacoes: s.antecipacoes,
     };
 }
 
@@ -342,9 +460,9 @@ const SEMENTES: Semente[] = [
     { id: "bloco-lua-cheia", nome: "Bloco da Lua Cheia Rio de Janeiro", data: "2025-02-22", mil: 420 },
     { id: "baile-olinda", nome: "Baile de Carnaval de Olinda", data: "2025-03-01", mil: 610 },
     { id: "sertanejo-goiania", nome: "Sertanejo na Arena Goiânia", data: "2025-03-29", mil: 890 },
-    { id: "rock-gerais", nome: "Rock das Gerais Belo Horizonte", data: "2025-04-19", mil: 540 },
+    { id: "rock-gerais", nome: "Rock das Gerais Belo Horizonte", data: "2025-04-19", mil: 540, servicoAssumido: true },
     { id: "rodeio-ouro-2025", nome: "Rodeio de Ouro Ribeirão Preto", data: "2025-05-17", mil: 1200 },
-    { id: "sao-joao-serra-2025", nome: "São João da Serra Campina Grande", data: "2025-06-21", mil: 1480, credito: 10_000 },
+    { id: "sao-joao-serra-2025", nome: "São João da Serra Campina Grande", data: "2025-06-21", mil: 1480, credito: 10_000, tipoDoCredito: "bonificacao" },
     { id: "arraia-capital-2025", nome: "Arraiá da Capital Brasília", data: "2025-06-28", mil: 330 },
     { id: "inverno-campos-2025", nome: "Festival de Inverno Campos do Jordão", data: "2025-07-12", mil: 760 },
     { id: "samba-laje-2025", nome: "Samba na Laje Rio de Janeiro", data: "2025-08-09", mil: 280 },
@@ -353,7 +471,7 @@ const SEMENTES: Semente[] = [
     { id: "oktober-serra-2025", nome: "Oktober da Serra Blumenau", data: "2025-10-11", mil: 1050 },
     { id: "halloween-fabrica-2025", nome: "Halloween na Fábrica São Paulo", data: "2025-10-31", mil: 240 },
     { id: "forro-antigas-2025", nome: "Forró das Antigas Fortaleza", data: "2025-11-15", mil: 310 },
-    { id: "reveillon-mar-aberto-2026", nome: "Réveillon Mar Aberto Recife", data: "2025-12-31", mil: 2100, credito: 20_000 },
+    { id: "reveillon-mar-aberto-2026", nome: "Réveillon Mar Aberto Recife", data: "2025-12-31", mil: 2100, credito: 20_000, tipoDoCredito: "luvas" },
     // 2026, já encerrados
     { id: "sol-maior", nome: "Festival Sol Maior Salvador", data: "2026-01-17", mil: 1640 },
     { id: "ensaio-verao", nome: "Ensaio de Verão Porto Seguro", data: "2026-01-31", mil: 480 },
@@ -361,11 +479,11 @@ const SEMENTES: Semente[] = [
     { id: "carnaval-ladeiras-2026", nome: "Carnaval das Ladeiras Ouro Preto", data: "2026-02-16", mil: 560 },
     { id: "baile-aurora", nome: "Baile da Aurora Recife", data: "2026-02-17", mil: 390 },
     { id: "sertanejo-londrina", nome: "Sertanejo Universitário Londrina", data: "2026-03-21", mil: 450 },
-    { id: "trap-praca", nome: "Trap na Praça Belo Horizonte", data: "2026-04-11", mil: 270 },
+    { id: "trap-praca", nome: "Trap na Praça Belo Horizonte", data: "2026-04-11", mil: 270, servicoAssumido: true },
     { id: "raizes-samba", nome: "Festival Raízes do Samba Rio de Janeiro", data: "2026-04-25", mil: 830 },
     { id: "micareta-vale", nome: "Micareta do Vale Feira de Santana", data: "2026-05-02", mil: 990 },
     { id: "rodeio-ouro-2026", nome: "Rodeio de Ouro Ribeirão Preto 2026", data: "2026-05-16", mil: 1320 },
-    { id: "sao-joao-serra-2026", nome: "São João da Serra Campina Grande 2026", data: "2026-06-20", mil: 1560, credito: 10_000 },
+    { id: "sao-joao-serra-2026", nome: "São João da Serra Campina Grande 2026", data: "2026-06-20", mil: 1560, credito: 10_000, tipoDoCredito: "ajuste" },
     { id: "arraia-capital-2026", nome: "Arraiá da Capital Brasília 2026", data: "2026-06-27", mil: 350 },
     { id: "inverno-campos-2026", nome: "Festival de Inverno Campos do Jordão 2026", data: "2026-07-11", mil: 810 },
     { id: "pagode-parque-2026", nome: "Pagode do Parque Curitiba 2026", data: "2026-08-08", mil: 400, sacado: 80 },
@@ -382,8 +500,10 @@ const SEMENTES: Semente[] = [
         ajustes: [
             {
                 data: "2026-10-28",
+                devolucao: "contestacao",
+                origem: "antecipavel",
                 titulo: "Contestação no cartão",
-                motivo: "Um comprador contestou a compra com o banco depois do fechamento do evento. O valor foi devolvido a ele.",
+                motivo: "Um comprador contestou a compra com o banco. O valor foi devolvido a ele antes de ser liberado para você.",
                 valor: 4_600,
             },
         ],
@@ -397,9 +517,19 @@ const SEMENTES: Semente[] = [
         ajustes: [
             {
                 data: "2026-10-30",
+                devolucao: "cancelamento",
+                origem: "disponivel",
                 titulo: "Cancelamentos depois do repasse",
-                motivo: "Compradores cancelaram ingressos depois que o repasse de 24/10 já tinha sido pago. O valor foi devolvido a eles.",
-                valor: 14_000,
+                motivo: "Compradores cancelaram ingressos depois que o repasse de 24/10 já tinha sido pago.",
+                valor: 11_500,
+            },
+            {
+                data: "2026-11-03",
+                devolucao: "suspenso",
+                origem: "disponivel",
+                titulo: "Ingressos suspensos",
+                motivo: "Ingressos suspensos para análise. Pode voltar ao seu líquido se o ingresso for liberado.",
+                valor: 2_500,
             },
         ],
     },
@@ -409,7 +539,7 @@ const SEMENTES: Semente[] = [
     { id: "forro-antigas-2026", nome: "Forró das Antigas Fortaleza 2026", data: "2026-11-28", mil: 340 },
     { id: "natal-iluminado", nome: "Natal Iluminado Gramado", data: "2026-12-19", mil: 450 },
     { id: "reveillon-mar-aberto-2027", nome: "Réveillon Mar Aberto Recife 2027", data: "2026-12-31", mil: 1900, sacado: 40 },
-    { id: "verao-salvador-2027", nome: "Festival de Verão Salvador 2027", data: "2027-01-23", mil: 1300, sacado: 30 },
+    { id: "verao-salvador-2027", nome: "Festival de Verão Salvador 2027", data: "2027-01-23", mil: 1300, sacado: 30, antecipacoes: [{ data: "2026-11-08", valor: 80_000, taxa: 1_600 }] },
     { id: "bloco-vem-comigo-2027", nome: "Bloco Vem Comigo São Paulo 2027", data: "2027-02-06", mil: 380 },
     { id: "carnaval-ladeiras-2027", nome: "Carnaval das Ladeiras Ouro Preto 2027", data: "2027-02-08", mil: 220 },
     { id: "rodeio-ouro-2027", nome: "Rodeio de Ouro Ribeirão Preto 2027", data: "2027-05-15", mil: 180 },
@@ -435,7 +565,7 @@ export function eventosDoCenario(cenario: Cenario): Evento[] {
             ...e,
             disponivel: 0,
             recebido: e.recebido + e.disponivel,
-            repasses: [{ data: DATA_DO_SAQUE_TOTAL, valor: e.disponivel, situacao: "pago" as const }, ...e.repasses.filter((r) => r.situacao !== "falhou")],
+            repasses: [{ data: DATA_DO_SAQUE_TOTAL, valor: e.disponivel, situacao: "pago" as const, conta: CONTA_DA_ORGANIZACAO, modalidade: "Básico" as const }, ...e.repasses.filter((r) => r.situacao !== "falhou")],
         };
     });
 }
@@ -484,7 +614,7 @@ export function calendario(eventos: Evento[], tipos?: TipoLiberacao[]): Liberaca
 export const ROTULO_LIBERACAO: Record<TipoLiberacao, string> = {
     retidoEvento: "Retido até o evento",
     retidoSeguranca: "Retido por segurança",
-    aLiberar: "A liberar",
+    aLiberar: "Antecipável",
 };
 
 /** Selos de situação do evento na lista (no máximo os três do briefing). */
@@ -492,8 +622,8 @@ export function selosDoEvento(e: Evento): Selo[] {
     const selos: Selo[] = [];
     if (e.disponivel < 0) selos.push("Saldo negativo");
     // "Recente": ajuste nos últimos 30 dias.
-    if (e.ajustesLista.some((a) => a.data >= somarDias(HOJE, -30))) selos.push("Ajuste recente");
-    if (e.emVendas) selos.push("Evento em vendas");
+    if (e.ajustesLista.some((a) => a.data >= somarDias(HOJE, -30))) selos.push("Devolução recente");
+    if (e.emVendas) selos.push("Em vendas");
     return selos;
 }
 
@@ -522,53 +652,436 @@ export function compensacao(eventos: Evento[]): Compensacao | null {
     return { passos, sobra: saldo };
 }
 
-/** O que compõe Taxas e custos, sempre nas mesmas proporções do Vendido (suposição, ver NOTAS.md). */
-export function composicaoDasTaxas(e: Pick<Evento, "vendido" | "taxas">): Array<{ titulo: string; detalhe: string; valor: number }> {
-    const servico = (e.vendido * 10) / 1000;
-    const pagamentos = (e.vendido * 4) / 1000;
-    return [
-        { titulo: "Taxa de serviço", detalhe: "Pelo uso da plataforma de vendas.", valor: servico },
-        { titulo: "Processamento de pagamentos", detalhe: "Custo de cartão e Pix de cada compra.", valor: pagamentos },
-        { titulo: "Emissão de cortesias", detalhe: "Ingressos de cortesia emitidos para o evento.", valor: e.taxas - servico - pagamentos },
+/* ---------------- taxas e custos, por tipo ---------------- */
+
+export type TipoDeTaxa = "cortesias" | "pre-impressos" | "pagamentos" | "servico" | "juros" | "operacao";
+
+export interface LinhaDeTaxa {
+    tipo: TipoDeTaxa;
+    titulo: string;
+    valor: number;
+    /** Quantidade e preço unitário, quando a taxa é por unidade ("312 × R$ 0,99"). */
+    quantidade?: number;
+    unitario?: string;
+    /** Custo lançado à parte, com data. */
+    data?: string;
+    motivo?: string;
+}
+
+export const ROTULO_DA_TAXA: Record<TipoDeTaxa, string> = {
+    cortesias: "Emissão de cortesias",
+    "pre-impressos": "Pré-impressos",
+    pagamentos: "Processamento de pagamentos",
+    servico: "Taxa de serviço",
+    juros: "Juros de parcelamento",
+    operacao: "Custo de operação",
+};
+
+/**
+ * O que compõe Taxas e custos de um evento. As proporções são ilustrativas (ver NOTAS.md); as
+ * quantidades são sempre múltiplos que dão valor inteiro em reais, e "Processamento de pagamentos"
+ * fecha a conta: a soma das linhas é sempre igual a Taxas e custos do evento.
+ */
+export function composicaoDasTaxas(e: Pick<Evento, "vendido" | "taxas" | "servicoAssumido" | "custosExtras">): LinhaDeTaxa[] {
+    const mil = e.vendido / 1000;
+    const cortesias = Math.ceil(mil / 200) * 100; // × R$ 0,99 = R$ 99 a cada 100
+    const preImpressos = Math.round(mil / 5) * 25; // × R$ 0,32 = R$ 8 a cada 25
+    const juros = mil * 2;
+    const servico = e.servicoAssumido ? mil * 3 : 0;
+    const extras = e.custosExtras ?? [];
+    const valorDasCortesias = (cortesias / 100) * 99;
+    const valorDosPreImpressos = (preImpressos / 25) * 8;
+    const pagamentos = e.taxas - extras.reduce((t, c) => t + c.valor, 0) - valorDasCortesias - valorDosPreImpressos - juros - servico;
+    const linhas: LinhaDeTaxa[] = [
+        { tipo: "pagamentos", titulo: ROTULO_DA_TAXA.pagamentos, valor: pagamentos },
+        { tipo: "juros", titulo: ROTULO_DA_TAXA.juros, valor: juros },
+        { tipo: "pre-impressos", titulo: ROTULO_DA_TAXA["pre-impressos"], valor: valorDosPreImpressos, quantidade: preImpressos, unitario: "R$ 0,32" },
+        { tipo: "cortesias", titulo: ROTULO_DA_TAXA.cortesias, valor: valorDasCortesias, quantidade: cortesias, unitario: "R$ 0,99" },
     ];
+    if (servico) linhas.push({ tipo: "servico", titulo: ROTULO_DA_TAXA.servico, valor: servico });
+    for (const c of extras) linhas.push({ tipo: "operacao", titulo: c.titulo, valor: c.valor, data: c.data, motivo: c.motivo });
+    return linhas;
+}
+
+/* ---------------- calendário de liberações ---------------- */
+
+export type TipoDeEntrada = TipoLiberacao | "processamento";
+
+/** Uma entrada futura no Disponível. Sem `data`: Pix parcelado, entra conforme as parcelas são pagas. */
+export interface Entrada {
+    data?: string;
+    tipo: TipoDeEntrada;
+    valor: number;
+    evento: Evento;
+    nota?: string;
+}
+
+export const ROTULO_DA_ENTRADA: Record<TipoDeEntrada, string> = {
+    processamento: "Em processamento",
+    retidoEvento: "Retido até o evento",
+    retidoSeguranca: "Retido por segurança",
+    aLiberar: "Antecipável",
+};
+
+/** Tudo o que ainda vai entrar no Disponível, em ordem de data. A soma é Em processamento + Retido + Antecipável. */
+export function entradasDoCalendario(eventos: Evento[]): Entrada[] {
+    const entradas: Entrada[] = [];
+    for (const e of eventos) {
+        if (e.processamento > 0) {
+            entradas.push(
+                e.previsaoProcessamento === "hoje"
+                    ? { data: HOJE, tipo: "processamento", valor: e.processamento, evento: e, nota: "Entra hoje" }
+                    : { tipo: "processamento", valor: e.processamento, evento: e, nota: "Pix parcelado: entra quando as parcelas forem pagas" },
+            );
+        }
+        for (const l of e.liberacoes) entradas.push({ ...l, nota: l.tipo === "retidoEvento" ? "Libera depois do evento" : l.nota, evento: e });
+    }
+    // Sem data vai para o fim.
+    return entradas.sort((a, b) => (a.data ?? "9999").localeCompare(b.data ?? "9999") || b.valor - a.valor);
+}
+
+export interface ResumoDoCalendario {
+    em7: number;
+    em30: number;
+    depois: number;
+    /** Parte de `depois` que não tem data (Pix parcelado). */
+    semData: number;
+    limite7: string;
+    limite30: string;
+}
+
+/** Três faixas que não se sobrepõem: até 7 dias, de 8 a 30 dias e depois de 30 dias. Somam o calendário inteiro. */
+export function resumoDoCalendario(entradas: Entrada[]): ResumoDoCalendario {
+    const limite7 = somarDias(HOJE, 7);
+    const limite30 = somarDias(HOJE, 30);
+    const r = { em7: 0, em30: 0, depois: 0, semData: 0, limite7, limite30 };
+    for (const e of entradas) {
+        if (!e.data) {
+            r.depois += e.valor;
+            r.semData += e.valor;
+        } else if (e.data <= limite7) r.em7 += e.valor;
+        else if (e.data <= limite30) r.em30 += e.valor;
+        else r.depois += e.valor;
+    }
+    return r;
+}
+
+/* ---------------- extrato ---------------- */
+
+export type TipoDeMovimento = "venda" | "liberacao" | "taxa" | "credito" | "devolucao" | "repasse" | "antecipacao";
+
+export const ROTULO_DO_MOVIMENTO: Record<TipoDeMovimento, string> = {
+    venda: "Venda",
+    liberacao: "Liberação",
+    taxa: "Taxa ou custo",
+    credito: "Crédito",
+    devolucao: "Devolução",
+    repasse: "Repasse",
+    antecipacao: "Antecipação",
+};
+
+export type Prova = "vendas" | "transacoes" | "comprovante" | "contrato" | "calendario";
+
+export interface Movimento {
+    id: string;
+    data: string;
+    tipo: TipoDeMovimento;
+    /** O que foi, em uma linha ("Vendas do dia · 312 ingressos"). */
+    titulo: string;
+    evento: Evento;
+    /** Valor do movimento, com sinal: positivo entrou, negativo saiu. */
+    valor: number;
+    /** Quanto o movimento mudou o Disponível. Zero: não mexeu no Disponível ("—"). */
+    efeito: number;
+    /** Por que o Disponível não mudou ("Saiu do antecipável"). */
+    semEfeito?: string;
+    /** Situação do repasse. */
+    situacao?: "pago" | "agendado" | "falhou" | "devolvido";
+    /** Painel de detalhe: o que foi, o efeito em cada parte e o link de prova. */
+    descricao: string;
+    partes: Array<{ parte: string; valor: number }>;
+    prova: Prova;
+    repasse?: Repasse;
+    antecipacao?: Antecipacao;
+}
+
+const ROTULO_DA_DEVOLUCAO_CURTO: Record<TipoDeDevolucao, string> = { cancelamento: "Cancelamento", reembolso: "Reembolso parcial", contestacao: "Contestação no cartão", suspenso: "Ingresso suspenso" };
+
+/**
+ * Todos os movimentos dos últimos 90 dias, do mais antigo para o mais recente. Saem dos dados de
+ * cada evento: o Extrato não tem números próprios, só conta em ordem o que os eventos já dizem.
+ */
+export function movimentos(eventos: Evento[]): Movimento[] {
+    const inicio = somarDias(HOJE, -DIAS_DO_EXTRATO);
+    const lista: Movimento[] = [];
+    const incluir = (m: Omit<Movimento, "id">) => {
+        if (m.data >= inicio && m.data <= HOJE) lista.push({ ...m, id: `${m.evento.id}-${m.tipo}-${m.data}-${lista.length}` });
+    };
+    for (const e of eventos) {
+        const mil = e.vendido / 1000;
+        if (e.emVendas) {
+            // Vendas dos últimos três dias. As de hoje são o que está em processamento (quando entra hoje).
+            [mil * 20, mil * 17, mil * 23].forEach((valor, dias) => {
+                const ingressos = Math.round(valor / 140);
+                incluir({
+                    data: somarDias(HOJE, -dias),
+                    tipo: "venda",
+                    titulo: `Vendas do dia · ${ingressos} ingressos`,
+                    evento: e,
+                    valor,
+                    efeito: 0,
+                    semEfeito: "Em processamento",
+                    descricao: `${ingressos} ingressos vendidos neste dia. As vendas entram primeiro em Em processamento e depois seguem para Retido e Antecipável.`,
+                    partes: [{ parte: "Em processamento", valor }],
+                    prova: "vendas",
+                });
+            });
+        }
+        for (const l of e.liberadas ?? []) {
+            const de = l.tipo === "aLiberar" ? "Antecipável" : "Retido";
+            incluir({
+                data: l.data,
+                tipo: "liberacao",
+                titulo: `${de} liberado`,
+                evento: e,
+                valor: l.valor,
+                efeito: l.valor,
+                descricao: `O valor chegou à data de liberação e passou de ${de} para Disponível.`,
+                partes: [
+                    { parte: de, valor: -l.valor },
+                    { parte: "Disponível", valor: l.valor },
+                ],
+                prova: "calendario",
+            });
+        }
+        for (const c of e.custosExtras ?? []) {
+            incluir({
+                data: c.data,
+                tipo: "taxa",
+                titulo: c.titulo,
+                evento: e,
+                valor: -c.valor,
+                efeito: -c.valor,
+                descricao: c.motivo,
+                partes: [{ parte: "Disponível", valor: -c.valor }],
+                prova: "contrato",
+            });
+        }
+        for (const c of e.creditosLista) {
+            incluir({
+                data: c.data,
+                tipo: "credito",
+                titulo: c.titulo,
+                evento: e,
+                valor: c.valor,
+                efeito: c.valor,
+                descricao: c.motivo,
+                partes: [{ parte: "Disponível", valor: c.valor }],
+                prova: "contrato",
+            });
+        }
+        for (const d of e.ajustesLista) {
+            const doDisponivel = d.origem !== "antecipavel";
+            incluir({
+                data: d.data,
+                tipo: "devolucao",
+                titulo: d.devolucao ? ROTULO_DA_DEVOLUCAO_CURTO[d.devolucao] : d.titulo,
+                evento: e,
+                valor: -d.valor,
+                efeito: doDisponivel ? -d.valor : 0,
+                semEfeito: doDisponivel ? undefined : "Saiu do antecipável",
+                descricao: d.motivo,
+                partes: [{ parte: doDisponivel ? "Disponível" : "Antecipável", valor: -d.valor }],
+                prova: "transacoes",
+            });
+        }
+        for (const a of e.antecipacoes ?? []) {
+            incluir({
+                data: a.data,
+                tipo: "antecipacao",
+                titulo: "Antecipação",
+                evento: e,
+                valor: a.valor - a.taxa,
+                efeito: a.valor - a.taxa,
+                descricao: "Você antecipou parte do Antecipável. O valor líquido, já sem a taxa da antecipação, entrou no Disponível.",
+                partes: [
+                    { parte: "Antecipável", valor: -a.valor },
+                    { parte: "Disponível", valor: a.valor - a.taxa },
+                ],
+                prova: "comprovante",
+                antecipacao: a,
+            });
+        }
+        for (const r of e.repasses) {
+            if (r.situacao === "pago") {
+                incluir({
+                    data: r.data,
+                    tipo: "repasse",
+                    titulo: "Repasse pago",
+                    evento: e,
+                    valor: -r.valor,
+                    efeito: -r.valor,
+                    situacao: "pago",
+                    descricao: "O repasse foi pago na conta de destino.",
+                    partes: [
+                        { parte: "Disponível", valor: -r.valor },
+                        { parte: "Repassado", valor: r.valor },
+                    ],
+                    prova: "comprovante",
+                    repasse: r,
+                });
+            } else if (r.situacao === "agendado") {
+                incluir({
+                    data: r.pedidoEm ?? HOJE,
+                    tipo: "repasse",
+                    titulo: "Repasse solicitado",
+                    evento: e,
+                    valor: -r.valor,
+                    efeito: -r.valor,
+                    situacao: "agendado",
+                    descricao: "O valor saiu do Disponível quando você solicitou o repasse e espera a data de pagamento.",
+                    partes: [
+                        { parte: "Disponível", valor: -r.valor },
+                        { parte: "Agendado", valor: r.valor },
+                    ],
+                    prova: "comprovante",
+                    repasse: r,
+                });
+            } else {
+                incluir({
+                    data: r.data,
+                    tipo: "repasse",
+                    titulo: "Repasse solicitado",
+                    evento: e,
+                    valor: -r.valor,
+                    efeito: -r.valor,
+                    situacao: "falhou",
+                    descricao: "O valor saiu do Disponível quando você solicitou o repasse.",
+                    partes: [{ parte: "Disponível", valor: -r.valor }],
+                    prova: "comprovante",
+                    repasse: r,
+                });
+                incluir({
+                    data: somarDias(r.data, 1),
+                    tipo: "repasse",
+                    titulo: "Repasse não concluído",
+                    evento: e,
+                    valor: r.valor,
+                    efeito: r.valor,
+                    situacao: "devolvido",
+                    descricao: r.nota ?? "O repasse não foi concluído e o valor voltou para o seu Disponível.",
+                    partes: [{ parte: "Disponível", valor: r.valor }],
+                    prova: "comprovante",
+                    repasse: r,
+                });
+            }
+        }
+    }
+    // Do mais antigo para o mais recente; no mesmo dia, o que entra vem antes do que sai.
+    return lista.sort((a, b) => a.data.localeCompare(b.data) || b.efeito - a.efeito);
+}
+
+export interface LinhaDoExtrato extends Movimento {
+    /** Disponível da organização depois deste movimento. */
+    apos: number;
+}
+
+export interface Extrato {
+    de: string;
+    ate: string;
+    saldoInicial: number;
+    saldoFinal: number;
+    linhas: LinhaDoExtrato[];
 }
 
 /**
+ * Extrato de um período: o Disponível no começo, cada movimento com o Disponível depois dele, e o
+ * Disponível no fim. Conta de trás para a frente a partir do Disponível de hoje, e de novo para a
+ * frente: as duas contas têm de dar o mesmo número (`conferirContas`).
+ */
+export function extrato(eventos: Evento[], de: string, ate: string): Extrato {
+    const todos = movimentos(eventos);
+    const hoje = totalizar(eventos).disponivel;
+    const saldoFinal = hoje - todos.filter((m) => m.data > ate).reduce((s, m) => s + m.efeito, 0);
+    const doPeriodo = todos.filter((m) => m.data >= de && m.data <= ate);
+    const saldoInicial = saldoFinal - doPeriodo.reduce((s, m) => s + m.efeito, 0);
+    let corrente = saldoInicial;
+    const linhas = doPeriodo.map((m) => ({ ...m, apos: (corrente += m.efeito) }));
+    return { de, ate, saldoInicial, saldoFinal, linhas };
+}
+
+/* ---------------- verificação ---------------- */
+
+/**
  * Confere as contas em todos os cenários e devolve o que não fecha (lista vazia = tudo certo):
- * as duas regras de soma de cada evento, as listas de cada evento contra os seus totais, e o total
- * da organização (a cascata do topo) contra a soma dos 48 eventos.
+ *  - as duas regras de soma de cada evento e as listas de cada evento contra os seus totais;
+ *  - o total da organização (a conta do topo) contra a soma dos 48 eventos;
+ *  - o Calendário: as liberações somam Em processamento + Retido + Antecipável (organização e evento);
+ *  - o Extrato: saldo inicial + movimentos que afetam o Disponível = saldo final = Disponível do card;
+ *  - cada painel de detalhe: a soma das linhas é o valor do bloco;
+ *  - os cards do topo e os itens da legenda saem do mesmo total.
  */
 export function conferirContas(): string[] {
     const erros: string[] = [];
     const partes = (e: Pick<Evento, (typeof CAMPOS)[number]>) => e.processamento + e.retidoEvento + e.retidoSeguranca + e.aLiberar + e.disponivel + e.agendado + e.recebido;
+    const soma = <T,>(itens: T[], valor: (item: T) => number) => itens.reduce((s, i) => s + valor(i), 0);
     for (const cenario of ["normal", "negativo", "bloqueado"] as const) {
         const eventos = eventosDoCenario(cenario);
         if (eventos.length !== TOTAL_DE_EVENTOS) erros.push(`${cenario}: ${eventos.length} eventos, eram para ser ${TOTAL_DE_EVENTOS}`);
         if (new Set(eventos.map((e) => e.id)).size !== eventos.length) erros.push(`${cenario}: há eventos com o mesmo id`);
         for (const e of eventos) {
             const onde = `${cenario}/${e.id}`;
-            if (partes(e) !== seuDinheiro(e)) erros.push(`${onde}: as partes somam ${partes(e)}, seu dinheiro é ${seuDinheiro(e)}`);
+            if (partes(e) !== seuDinheiro(e)) erros.push(`${onde}: as partes somam ${partes(e)}, o Líquido é ${seuDinheiro(e)}`);
             for (const c of CAMPOS) if (!Number.isInteger(e[c]) || (c !== "disponivel" && e[c] < 0)) erros.push(`${onde}: ${c} = ${e[c]}`);
-            const soma = (tipo: TipoLiberacao) => e.liberacoes.filter((l) => l.tipo === tipo).reduce((s, l) => s + l.valor, 0);
+            const doTipo = (tipo: TipoLiberacao) => soma(e.liberacoes.filter((l) => l.tipo === tipo), (l) => l.valor);
             for (const tipo of ["retidoEvento", "retidoSeguranca", "aLiberar"] as const) {
-                if (soma(tipo) !== e[tipo]) erros.push(`${onde}: calendário de ${tipo} soma ${soma(tipo)}, o evento tem ${e[tipo]}`);
+                if (doTipo(tipo) !== e[tipo]) erros.push(`${onde}: calendário de ${tipo} soma ${doTipo(tipo)}, o evento tem ${e[tipo]}`);
             }
             if (e.liberacoes.some((l) => l.data <= HOJE)) erros.push(`${onde}: liberação com data que já passou`);
-            const lista = (itens: Lancamento[]) => itens.reduce((s, l) => s + l.valor, 0);
-            if (lista(e.ajustesLista) !== e.ajustes) erros.push(`${onde}: a lista de ajustes não soma Ajustes`);
-            if (lista(e.creditosLista) !== e.creditos) erros.push(`${onde}: a lista de créditos não soma Créditos`);
-            if (composicaoDasTaxas(e).reduce((s, t) => s + t.valor, 0) !== e.taxas) erros.push(`${onde}: a composição das taxas não soma Taxas e custos`);
-            const repasses = (s: Repasse["situacao"]) => e.repasses.filter((r) => r.situacao === s).reduce((t, r) => t + r.valor, 0);
-            if (repasses("pago") !== e.recebido) erros.push(`${onde}: repasses pagos somam ${repasses("pago")}, já recebido é ${e.recebido}`);
+            // Calendário do evento: tudo o que ainda entra no Disponível.
+            if (soma(entradasDoCalendario([e]), (x) => x.valor) !== e.processamento + retido(e) + e.aLiberar) erros.push(`${onde}: o calendário não soma Em processamento + Retido + Antecipável`);
+            // Painéis de detalhe do evento.
+            if (soma(e.ajustesLista, (l) => l.valor) !== e.ajustes) erros.push(`${onde}: a lista de devoluções não soma Devoluções`);
+            if (e.ajustesLista.some((l) => !l.devolucao || !l.origem)) erros.push(`${onde}: devolução sem tipo ou sem origem`);
+            if (soma(e.creditosLista, (l) => l.valor) !== e.creditos) erros.push(`${onde}: a lista de créditos não soma Créditos`);
+            if (e.creditosLista.some((l) => !l.credito)) erros.push(`${onde}: crédito sem tipo`);
+            const taxas = composicaoDasTaxas(e);
+            if (soma(taxas, (t) => t.valor) !== e.taxas) erros.push(`${onde}: a composição das taxas soma ${soma(taxas, (t) => t.valor)}, Taxas e custos é ${e.taxas}`);
+            if (taxas.some((t) => !Number.isInteger(t.valor) || t.valor <= 0)) erros.push(`${onde}: linha de taxa com valor inválido`);
+            const repasses = (s: Repasse["situacao"]) => soma(e.repasses.filter((r) => r.situacao === s), (r) => r.valor);
+            if (repasses("pago") !== e.recebido) erros.push(`${onde}: repasses pagos somam ${repasses("pago")}, Repassado é ${e.recebido}`);
             if (repasses("agendado") !== e.agendado) erros.push(`${onde}: repasses agendados não somam Agendado`);
             if (e.repasses.some((r) => r.situacao === "pago" && r.data > HOJE)) erros.push(`${onde}: repasse pago com data no futuro`);
         }
         // O topo (total da organização) contra a soma evento a evento.
         const t = totalizar(eventos);
-        const somaDosEventos = eventos.reduce((s, e) => s + seuDinheiro(e), 0);
-        if (t.seuDinheiro !== somaDosEventos) erros.push(`${cenario}: Seu dinheiro do topo é ${t.seuDinheiro}, a soma dos eventos é ${somaDosEventos}`);
-        if (partes(t) !== t.seuDinheiro) erros.push(`${cenario}: as partes do topo somam ${partes(t)}, Seu dinheiro é ${t.seuDinheiro}`);
-        if (t.vendido - t.taxas + t.creditos - t.ajustes !== t.seuDinheiro) erros.push(`${cenario}: a cascata do topo não fecha`);
+        const liquidoDosEventos = soma(eventos, seuDinheiro);
+        if (t.seuDinheiro !== liquidoDosEventos) erros.push(`${cenario}: o Líquido do topo é ${t.seuDinheiro}, a soma dos eventos é ${liquidoDosEventos}`);
+        if (partes(t) !== t.seuDinheiro) erros.push(`${cenario}: as partes do topo somam ${partes(t)}, o Líquido é ${t.seuDinheiro}`);
+        if (t.vendido - t.taxas + t.creditos - t.ajustes !== t.seuDinheiro) erros.push(`${cenario}: a conta do topo não fecha`);
+        // Painéis de detalhe da organização: a soma das linhas é o valor do bloco.
+        if (soma(eventos, (e) => soma(composicaoDasTaxas(e), (x) => x.valor)) !== t.taxas) erros.push(`${cenario}: o painel de Taxas e custos não soma o bloco`);
+        if (soma(eventos, (e) => soma(e.creditosLista, (l) => l.valor)) !== t.creditos) erros.push(`${cenario}: o painel de Créditos não soma o bloco`);
+        if (soma(eventos, (e) => soma(e.ajustesLista, (l) => l.valor)) !== t.ajustes) erros.push(`${cenario}: o painel de Devoluções não soma o bloco`);
+        if (soma(eventos, (e) => e.vendido) !== t.vendido) erros.push(`${cenario}: o painel de Vendido por evento não soma o bloco`);
+        // Calendário da organização e o resumo em três faixas.
+        const entradas = entradasDoCalendario(eventos);
+        const aEntrar = t.processamento + t.retido + t.aLiberar;
+        if (soma(entradas, (x) => x.valor) !== aEntrar) erros.push(`${cenario}: o Calendário soma ${soma(entradas, (x) => x.valor)}, eram ${aEntrar}`);
+        const resumo = resumoDoCalendario(entradas);
+        if (resumo.em7 + resumo.em30 + resumo.depois !== aEntrar) erros.push(`${cenario}: as três faixas do Calendário não somam o total`);
+        // Extrato: 30 dias (padrão) e 90 dias.
+        for (const dias of [30, DIAS_DO_EXTRATO]) {
+            const x = extrato(eventos, somarDias(HOJE, -dias), HOJE);
+            const afetam = soma(x.linhas, (l) => l.efeito);
+            if (x.saldoInicial + afetam !== x.saldoFinal) erros.push(`${cenario}: Extrato de ${dias} dias: ${x.saldoInicial} + ${afetam} ≠ ${x.saldoFinal}`);
+            if (x.saldoFinal !== t.disponivel) erros.push(`${cenario}: Extrato de ${dias} dias termina em ${x.saldoFinal}, o Disponível do card é ${t.disponivel}`);
+            const ultima = x.linhas[x.linhas.length - 1];
+            if (ultima && ultima.apos !== x.saldoFinal) erros.push(`${cenario}: Extrato de ${dias} dias: a última linha fica em ${ultima.apos}, o saldo final é ${x.saldoFinal}`);
+            if (x.linhas.some((l) => !Number.isInteger(l.apos))) erros.push(`${cenario}: Extrato de ${dias} dias com saldo quebrado`);
+        }
+        // Cards do topo = itens da legenda: os dois leem o mesmo total; o que pode divergir é o Retido.
+        if (t.retido !== t.retidoEvento + t.retidoSeguranca) erros.push(`${cenario}: Retido da legenda ≠ retido até o evento + retido por segurança`);
     }
     return erros;
 }
