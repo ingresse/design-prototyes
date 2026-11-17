@@ -1,5 +1,6 @@
 import { type ReactNode, useEffect, useState } from "react";
 import { ArrowLeft, ChevronRight } from "@untitledui/icons";
+import { CampoNumero } from "../../components/campo-numero";
 import { AccordionComponent as Accordion } from "@/components/application/accordion/accordion";
 import { Dialog, Modal, ModalOverlay } from "@/components/application/modals/modal";
 import { Badge } from "@/components/base/badges/badges";
@@ -207,22 +208,15 @@ export function CamposDeVendas({ valor, onChange }: { valor: RegrasDeVenda | und
                 />
                 <Surgir visivel={v.limitePorPedido != null}>
                     <div className="grid max-w-80 grid-cols-2 gap-3">
-                        <Input
+                        <CampoNumero
                             label={t.vendas.minimoQtd}
-                            type="number"
-                            inputMode="numeric"
-                            value={String(v.minimoPorPedido ?? 1)}
-                            onChange={(x) => set({ minimoPorPedido: Math.max(1, Math.round(Number(x) || 1)) })}
+                            minimo={1}
+                            valor={v.minimoPorPedido ?? 1}
+                            onChange={(x) => x != null && set({ minimoPorPedido: x })}
                             isInvalid={(v.minimoPorPedido ?? 1) > (v.limitePorPedido ?? Infinity)}
                             hint={(v.minimoPorPedido ?? 1) > (v.limitePorPedido ?? Infinity) ? t.vendas.minimoErro : undefined}
                         />
-                        <Input
-                            label={t.vendas.limiteQtd}
-                            type="number"
-                            inputMode="numeric"
-                            value={v.limitePorPedido != null ? String(v.limitePorPedido) : ""}
-                            onChange={(x) => set({ limitePorPedido: Math.max(1, Math.round(Number(x) || 1)) })}
-                        />
+                        <CampoNumero label={t.vendas.limiteQtd} minimo={1} valor={v.limitePorPedido} onChange={(x) => x != null && set({ limitePorPedido: x })} />
                     </div>
                 </Surgir>
             </div>

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router";
+import { CampoNumero } from "../../components/campo-numero";
 import { toast } from "sonner";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { ArrowLeft, MessageQuestionSquare, Plus, Trash01 } from "@untitledui/icons";
@@ -253,13 +254,12 @@ function Editor({ original }: { original: Pergunta | null }) {
                                                         isInvalid={tentou && !!erros.opcoesInvalidas?.includes(o.id)}
                                                         className="col-span-2 sm:col-span-1"
                                                     />
-                                                    <Input
+                                                    <CampoNumero
                                                         aria-label={formatar("{estoque}, {opcao}", { estoque: T.estoque, opcao: nome })}
-                                                        type="number"
-                                                        inputMode="numeric"
                                                         placeholder={T.semLimite}
-                                                        value={o.estoque == null ? "" : String(o.estoque)}
-                                                        onChange={(v) => setOpcao(o.id, { estoque: v === "" ? undefined : Math.max(0, Math.round(Number(v) || 0)) })}
+                                                        vazio
+                                                        valor={o.estoque}
+                                                        onChange={(v) => setOpcao(o.id, { estoque: v })}
                                                         hint={o.estoque === 0 ? T.esgotada : undefined}
                                                     />
                                                     <ButtonUtility

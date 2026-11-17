@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { CampoNumero } from "../../components/campo-numero";
 import { useNavigate, useParams, useSearchParams } from "react-router";
 import { toast } from "sonner";
 import { ArrowLeft, InfoCircle, Key01, Plus, Ticket01, Trash01 } from "@untitledui/icons";
@@ -477,14 +478,12 @@ export function IngressoDetalhe() {
                                                 <div className="flex flex-col gap-2 px-4 py-4">
                                                     <div className={cx(GRADE_LOTES, "grid grid-cols-1 gap-3 md:items-center md:**:data-label:hidden")}>
                                                         <Input label={T.loteNome} aria-label={T.loteNome} value={l.nome} onChange={(v) => setLote(l.id, { nome: v })} placeholder={T.loteNome} />
-                                                        <Input
+                                                        <CampoNumero
                                                             label={T.loteQtd}
                                                             aria-label={formatar(T.loteQtdDe, { lote: nomeDoLote })}
-                                                            type="number"
-                                                            inputMode="numeric"
                                                             placeholder="0"
-                                                            value={l.quantidade ? String(l.quantidade) : ""}
-                                                            onChange={(v) => setLote(l.id, { quantidade: Math.max(0, Math.round(Number(v) || 0)) })}
+                                                            valor={l.quantidade}
+                                                            onChange={(v) => setLote(l.id, { quantidade: v ?? 0 })}
                                                             isInvalid={qtdInvalida}
                                                         />
                                                         <CampoPreco label={T.lotePreco} valor={l.preco} onChange={(v) => setLote(l.id, { preco: v })} />

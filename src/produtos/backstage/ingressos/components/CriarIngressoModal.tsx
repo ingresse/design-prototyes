@@ -63,8 +63,8 @@ export function CriarIngressoModal({ isOpen, onClose, sessoes, gruposExistentes,
                             <Input label="Grupo" hint="Grupo do evento. Se o nome já existir, o ingresso entra nele." placeholder="Ex: Pista, Camarote" value={grupo} onChange={setGrupo} isRequired />
                             <Input label="Nome do ingresso" placeholder="Ex: Inteira" value={nome} onChange={setNome} isRequired />
                             <div className="grid grid-cols-2 gap-4">
-                                <Input label="Preço (R$)" type="number" inputMode="decimal" placeholder="0,00" value={preco} onChange={setPreco} isRequired />
-                                <Input label="Quantidade" type="number" inputMode="numeric" placeholder="Ex: 500" value={quantidade} onChange={setQuantidade} isRequired />
+                                <Input label="Preço (R$)" inputMode="decimal" autoComplete="off" placeholder="0,00" value={preco} onChange={(v) => setPreco(v.replace(/[^\d,.]/g, ""))} isRequired />
+                                <Input label="Quantidade" inputMode="numeric" autoComplete="off" placeholder="Ex: 500" value={quantidade} onChange={(v) => setQuantidade(v.replace(/\D/g, "").slice(0, 9))} isRequired />
                             </div>
                             <Checkbox size="sm" label="Criar também a meia-entrada" hint="Metade do preço, com 40% da quantidade." isSelected={comMeia} onChange={setComMeia} />
                         </div>

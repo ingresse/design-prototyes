@@ -209,11 +209,11 @@ export function ProdutoDetalhe() {
                             />
                             <Input
                                 label={T.estoque}
-                                type="number"
                                 inputMode="numeric"
+                                autoComplete="off"
                                 isRequired
                                 value={atual.estoque}
-                                onChange={(estoque) => editar({ estoque })}
+                                onChange={(estoque) => editar({ estoque: estoque.replace(/\D/g, "").slice(0, 9) })}
                                 isInvalid={tentou && !!erroEstoque}
                                 hint={tentou ? erroEstoque : undefined}
                             />

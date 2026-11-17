@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router";
+import { CampoNumero } from "../../components/campo-numero";
 import { AnimatePresence, motion } from "motion/react";
 import { ArrowLeft, BarChartSquare02, CheckCircle, ChevronDown, CornerDownLeft, Settings01, Shield01, Ticket01, User01, Users01 } from "@untitledui/icons";
 import { toast } from "sonner";
@@ -724,13 +725,12 @@ function RelatoriosConfig({ relatorios, onToggle }: { relatorios: string[]; onTo
 function CotaField({ disabled, value, onSet }: { disabled: boolean; value: number; onSet: (v: number) => void }) {
     return (
         <div className={cx("flex shrink-0 items-center gap-2", disabled && "pointer-events-none opacity-40")}>
-            <Input
-                type="number"
+            <CampoNumero
                 size="sm"
                 aria-label="Cota de cortesias"
                 isDisabled={disabled}
-                value={disabled ? "" : String(value)}
-                onChange={(v) => onSet(Math.max(0, parseInt(v.replace(/\D/g, ""), 10) || 0))}
+                valor={disabled ? undefined : value}
+                onChange={(v) => onSet(v ?? 0)}
                 className="w-24"
             />
             <span className="text-sm text-tertiary">cortesias</span>

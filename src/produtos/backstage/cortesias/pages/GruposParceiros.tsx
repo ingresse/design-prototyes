@@ -1,5 +1,6 @@
 import { Fragment, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
+import { CampoNumero } from "../../components/campo-numero";
 import { AnimatePresence, motion } from "motion/react";
 import { ArrowLeft, Calendar, CheckCircle, ChevronDown, CornerDownLeft, Plus, SearchLg, Ticket01, Users01, UsersPlus, XClose } from "@untitledui/icons";
 import { toast } from "sonner";
@@ -556,14 +557,7 @@ function CotaAnimada({ show, value, onSet }: { show: boolean; value: number; onS
 function CotaField({ value, onSet }: { value: number; onSet: (v: number) => void }) {
     return (
         <div className="flex shrink-0 items-center gap-2">
-            <Input
-                type="number"
-                size="sm"
-                aria-label="Cota de cortesias"
-                value={String(value)}
-                onChange={(v) => onSet(Math.max(0, parseInt(v.replace(/\D/g, ""), 10) || 0))}
-                className="w-24"
-            />
+            <CampoNumero size="sm" aria-label="Cota de cortesias" valor={value} onChange={(v) => onSet(v ?? 0)} className="w-24" />
             <span className="hidden text-sm text-tertiary sm:inline">cortesias</span>
         </div>
     );

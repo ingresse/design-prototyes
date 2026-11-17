@@ -875,11 +875,11 @@ function ModalSetor({ evento, sessaoId: sessaoInicial, nomeDaSessao, setor, onFe
                         <Input label="Acesso na portaria" value={acesso} onChange={setAcesso} placeholder="Ex.: Portão A" hint="Aparece no ingresso. Opcional." />
                         <Input
                             label="Capacidade"
-                            type="number"
                             inputMode="numeric"
+                            autoComplete="off"
                             isRequired
                             value={capacidade}
-                            onChange={setCapacidade}
+                            onChange={(v) => setCapacidade(v.replace(/\D/g, "").slice(0, 9))}
                             placeholder="Ex.: 1200"
                             isInvalid={tentou && !!erroCapacidade}
                             hint={tentou && erroCapacidade ? erroCapacidade : "Lotação do grupo. A soma dos lotes é conferida contra ela."}

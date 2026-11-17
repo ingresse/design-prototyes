@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { CampoNumero } from "../../components/campo-numero";
 import { useNavigate, useParams } from "react-router";
 import { toast } from "sonner";
 import { ArrowLeft, Package, Plus, Trash01 } from "@untitledui/icons";
@@ -409,13 +410,12 @@ function Editor({ original }: { original: Combo | null }) {
                             onChange={(on) => set({ limite: on ? Math.max(1, semLimite) : null })}
                         />
                         <Surgir visivel={r.limite != null}>
-                            <Input
+                            <CampoNumero
                                 label={TEXTOS.estoque.maximo}
                                 hint={TEXTOS.estoque.limitarDica}
-                                type="number"
-                                inputMode="numeric"
-                                value={r.limite != null ? String(r.limite) : ""}
-                                onChange={(x) => set({ limite: Math.max(1, Math.round(Number(x) || 1)) })}
+                                minimo={1}
+                                valor={r.limite}
+                                onChange={(x) => x != null && set({ limite: x })}
                                 className="max-w-60"
                             />
                         </Surgir>
