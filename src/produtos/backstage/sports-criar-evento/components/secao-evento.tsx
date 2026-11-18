@@ -246,9 +246,11 @@ function RegrasDaInscricaoCartao() {
         });
     return (
         <Secao className="@container" titulo="Regras da inscrição" descricao="Valem para o evento inteiro e já vêm com o mais comum.">
-            <div className="grid items-start gap-x-8 gap-y-6 @3xl:grid-cols-2">
+            {/* v0.28 (SCE-259): uma regra abaixo da outra; o texto de apoio quebra linha dentro da largura. */}
+            <div className="flex max-w-3xl flex-col gap-6">
                 <Toggle
                     size="sm"
+                    className="w-full"
                     label="Permitir mais de uma inscrição para o mesmo atleta"
                     hint="Ligado: o mesmo CPF pode ter mais de uma inscrição. Desligado: uma inscrição por CPF no evento."
                     isSelected={regras.variasPorCpf}
@@ -256,6 +258,7 @@ function RegrasDaInscricaoCartao() {
                 />
                 <Toggle
                     size="sm"
+                    className="w-full"
                     label="Permitir compra para terceiros"
                     hint="Ligado: o comprador pode inscrever outras pessoas. Desligado: só inscreve a si mesmo."
                     isSelected={regras.atribuicao === "qualquer"}
@@ -287,13 +290,14 @@ function RegrasDaInscricaoCartao() {
                 <div className="flex flex-col gap-4">
                     <Toggle
                         size="sm"
+                        className="w-full"
                         label="Permitir troca de titularidade depois da compra"
                         hint="O atleta passa a inscrição para outra pessoa pela carteira, no período abaixo."
                         isSelected={regras.trocaDeTitularidade}
                         onChange={(trocaDeTitularidade) => set({ trocaDeTitularidade })}
                     />
                     {/* SCE-241: período sempre visível; desabilitado quando a troca não é permitida. */}
-                    <div className="grid items-start gap-4 @lg:grid-cols-2">
+                    <div className="grid items-start gap-4 pl-14 sm:grid-cols-2">
                         <CampoDataHora
                             id={CAMPO.trocaInicio}
                             label="Troca permitida a partir de"

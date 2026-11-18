@@ -368,6 +368,7 @@ function Detalhe({ modalidade: m, categoria: c, onFechar }: { modalidade: Modali
                     <div id={`campo-cat-${c.id}-pcd`} className="flex scroll-mt-6 flex-col gap-3 border-t border-secondary pt-5">
                         <Toggle
                             size="sm"
+                            className="w-full max-w-3xl"
                             label="Somente pessoas com deficiência (PCD)"
                             hint="O atleta pede a participação pelo formulário do evento e só se inscreve depois de aprovado."
                             isSelected={!!c.pcd}
