@@ -18,7 +18,6 @@ Backstage (cria evento, ingressos, publica)
 | `vendidos.ts` | `useVendidos()`: vendidos por lote de todo o banco (emitidos + histórico). Use sempre este, para todo produto contar o mesmo estoque |
 | `sessao.ts` | Quem está logado como comprador neste navegador (o e-mail é a chave da carteira) |
 | `carteira.ts` | Ingressos de quem está logado, agrupados por evento (base das duas carteiras) |
-| `categorias.ts` | Categorias de show ou festa: embedding (Hugging Face, no navegador), comparação com o catálogo (`categorias-catalogo.ts`), formação da lista em 60 dias e leitura do banner pelo Claude local (`ia-local/plugin.ts`). Coleções `criacoes` e `categorias` |
 | `db/index.ts` | Cliente do banco: `useColecao`, `useDoc`, `salvar`, `resetarBanco` |
 | `db/seed.ts` | Mundo inicial: eventos do Backstage e do novo site, cada um com catálogo gerado, e o histórico de vendas dos eventos publicados do Backstage |
 | `../../api/db.ts` | API na Vercel, no mesmo Upstash Redis das outras APIs (namespace `design-prototyes:db:v1`) |
