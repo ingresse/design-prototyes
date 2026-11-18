@@ -13,7 +13,7 @@ import { useVocabulario } from "../data/vocabulario";
 import { CampoLocal } from "./campo-local";
 import { CampoImagemComRecorte, type RegrasDaImagem } from "./campos-de-arquivo";
 import { CampoTermoDeUso } from "./campo-termo-de-uso";
-import { CampoDataHora, CampoNumero, CampoSelect, CampoTexto, Secao } from "./campos";
+import { CampoDataHora, CampoNumero, CampoSelect, CampoTexto, CampoTextoLongo, Secao } from "./campos";
 import { CampoDescricao } from "./campo-descricao";
 import { useFormulario } from "./contexto";
 
@@ -26,6 +26,8 @@ import { useFormulario } from "./contexto";
 
 /** Banner: a proporção e o tamanho do recorte do Criar evento do AWA (1080 × 1350, 4:5). */
 export const REGRAS_DO_BANNER: RegrasDaImagem = { proporcao: "4:5", recomendado: { largura: 1080, altura: 1350 }, minimo: { largura: 540, altura: 675 }, limite: 5 * 1024 * 1024 };
+/** v0.26 (SCE-257): banner do e-mail de confirmação, 16:9 como no AWA. */
+export const REGRAS_DO_BANNER_DO_EMAIL: RegrasDaImagem = { proporcao: "16:9", recomendado: { largura: 1200, altura: 675 }, minimo: { largura: 600, altura: 338 }, limite: 5 * 1024 * 1024 };
 /** Percurso: o AWA não fixa proporção para o mapa; aqui, paisagem 4:3, que cabe no fluxo de compra. */
 export const REGRAS_DO_PERCURSO: RegrasDaImagem = { proporcao: "4:3", recomendado: { largura: 1600, altura: 1200 }, minimo: { largura: 800, altura: 600 }, limite: 5 * 1024 * 1024 };
 
@@ -136,12 +138,6 @@ export function SecaoEvento() {
                         arquivo={r.imagem}
                         dica="A capa do evento na página de inscrição."
                         // v0.9 (SCE-204): sem configuração de QR Code no e-mail; o banner é o do e-mail de confirmação.
-                        observacao={
-                            <>
-                                <Mail01 className="mt-0.5 size-4 shrink-0 text-fg-quaternary" aria-hidden="true" />
-                                Este banner também vai no e-mail de confirmação que o atleta recebe ao se inscrever.
-                            </>
-                        }
                         onAplicar={(imagem) => atualizar((a) => ({ ...a, imagem }))}
                         onRemover={() => atualizar((a) => ({ ...a, imagem: null }))}
                     />
@@ -155,6 +151,38 @@ export function SecaoEvento() {
                         observacao="O atleta vê esta imagem durante a compra da inscrição."
                         onAplicar={(percurso) => atualizar((a) => ({ ...a, percurso }))}
                         onRemover={() => atualizar((a) => ({ ...a, percurso: null }))}
+                    />
+                </div>
+            </Secao>
+
+            {/* v0.26 (SCE-257): e-mail de confirmação. No esporte o QR Code vai sempre (sem a escolha "Não incluir" do AWA);
+                o organizador só personaliza com um texto e um banner próprios, opcionais. */}
+            <Secao className="@container" titulo="E-mail de confirmação" descricao="Toda inscrição confirmada recebe um e-mail com o QR Code de cada atleta. Você pode acrescentar um recado e uma imagem.">
+                <div className="grid items-start gap-x-8 gap-y-6 @3xl:grid-cols-2">
+                    <CampoTextoLongo
+                        id={CAMPO.emailInfo}
+                        label="Informações adicionais (opcional)"
+                        placeholder="Ex.: entre no grupo de WhatsApp da prova; retirada do kit no sábado, das 9h às 18h."
+                        limite={500}
+                        valor={r.emailInfo ?? ""}
+                        onChange={(emailInfo) => atualizar((a) => ({ ...a, emailInfo }))}
+                        dica="Aparece abaixo do QR Code."
+                    />
+                    <CampoImagemComRecorte
+                        id={CAMPO.emailBanner}
+                        label="Banner do e-mail (opcional)"
+                        titulo="Adicionar banner do e-mail"
+                        regras={REGRAS_DO_BANNER_DO_EMAIL}
+                        arquivo={r.emailBanner ?? null}
+                        dica="Imagem própria do e-mail, diferente do banner do evento. Ex.: instruções de retirada do kit."
+                        observacao={
+                            <>
+                                <Mail01 className="mt-0.5 size-4 shrink-0 text-fg-quaternary" aria-hidden="true" />
+                                Aparece no corpo do e-mail, logo abaixo dos detalhes da inscrição.
+                            </>
+                        }
+                        onAplicar={(emailBanner) => atualizar((a) => ({ ...a, emailBanner }))}
+                        onRemover={() => atualizar((a) => ({ ...a, emailBanner: null }))}
                     />
                 </div>
             </Secao>
@@ -221,15 +249,15 @@ function RegrasDaInscricaoCartao() {
             <div className="grid items-start gap-x-8 gap-y-6 @3xl:grid-cols-2">
                 <Toggle
                     size="sm"
-                    label="Permitir mais de uma inscrição por atleta"
-                    hint="Desligado: cada atleta (CPF) se inscreve uma vez no evento."
+                    label="Permitir mais de uma inscrição para o mesmo atleta"
+                    hint="Ligado: o mesmo CPF pode ter mais de uma inscrição. Desligado: uma inscrição por CPF no evento."
                     isSelected={regras.variasPorCpf}
                     onChange={(variasPorCpf) => set({ variasPorCpf })}
                 />
                 <Toggle
                     size="sm"
-                    label="Permitir comprar para outro atleta"
-                    hint="Desligado: o comprador só inscreve a si mesmo."
+                    label="Permitir compra para terceiros"
+                    hint="Ligado: o comprador pode inscrever outras pessoas. Desligado: só inscreve a si mesmo."
                     isSelected={regras.atribuicao === "qualquer"}
                     onChange={(sim) => set({ atribuicao: sim ? "qualquer" : "comprador" })}
                 />
@@ -245,7 +273,7 @@ function RegrasDaInscricaoCartao() {
                         onChange={(limitePorComprador) => set({ limitePorComprador })}
                         onBlur={() => tocar(CAMPO.limitePorComprador)}
                         erro={e(CAMPO.limitePorComprador)}
-                        dica={limiteUnico ? "Precisa ser 1: o atleta se inscreve uma vez e só para si mesmo." : "Inscrições por pessoa neste evento, somando todos os pedidos."}
+                        dica={limiteUnico ? "Precisa ser 1: uma inscrição por atleta e sem compra para terceiros." : "Inscrições por pessoa neste evento, somando todos os pedidos."}
                     />
                     <Surgir visivel={categoriasAcima.length > 0}>
                         <p className="flex flex-wrap items-center gap-x-2 text-sm text-warning-primary">

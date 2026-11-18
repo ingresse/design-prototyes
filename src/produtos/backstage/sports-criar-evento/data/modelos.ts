@@ -97,6 +97,8 @@ export const rascunhoVazio = (): Rascunho => ({
     termino: "",
     idadeMinima: "0",
     percurso: null,
+    emailInfo: "",
+    emailBanner: null,
     // v0.11: o termo padrão da organização entra sozinho no evento novo (SCE-207).
     termoId: termoPadrao()?.id ?? null,
     regras: { ...REGRAS_PADRAO },

@@ -87,12 +87,21 @@ export function Revisao({ onEditar }: { onEditar: (s: SecaoId) => void }) {
                     {/* Imagem é opcional: só aparece no resumo quando foi enviada (SCE-14). */}
                     {r.imagem && <Linha rotulo="Banner">{r.imagem.nome}</Linha>}
                     {r.percurso && <Linha rotulo="Percurso">{r.percurso.nome}</Linha>}
+                    <Linha rotulo="E-mail de confirmação">
+                        {[
+                            "Com QR Code",
+                            r.emailInfo?.trim() ? "com informações adicionais" : null,
+                            r.emailBanner ? `com banner (${r.emailBanner.nome})` : null,
+                        ]
+                            .filter(Boolean)
+                            .join(", ")}
+                    </Linha>
                     <Linha rotulo="Termo de uso">{termoPorId(r.termoId)?.nome ?? <NaoInformado />}</Linha>
                     {/* v0.19 (SCE-240): regras da inscrição e as categorias com limite próprio. */}
                     <Linha rotulo="Regras da inscrição">
                         <span className="flex flex-col gap-0.5">
-                            <span>{regras.variasPorCpf ? "Mais de uma inscrição por atleta" : "Uma inscrição por atleta"}</span>
-                            <span>{regras.atribuicao === "qualquer" ? "Pode comprar para outro atleta" : "Só para quem compra"}</span>
+                            <span>{regras.variasPorCpf ? "Mais de uma inscrição para o mesmo atleta" : "Uma inscrição por atleta"}</span>
+                            <span>{regras.atribuicao === "qualquer" ? "Permite compra para terceiros" : "Sem compra para terceiros"}</span>
                             <span>{regras.limitePorComprador ? `Limite de compra: ${regras.limitePorComprador} por comprador` : "Limite de compra: não informado"}</span>
                             <span>{regras.trocaDeTitularidade ? `Troca de titularidade de ${regras.trocaInicio ? formatarDataHora(regras.trocaInicio) : "início não informado"} a ${regras.trocaFim ? formatarDataHora(regras.trocaFim) : "fim não informado"}` : "Sem troca de titularidade"}</span>
                             {comLimite.length > 0 && <span className="text-tertiary">Limite próprio: {comLimite.join("; ")}</span>}

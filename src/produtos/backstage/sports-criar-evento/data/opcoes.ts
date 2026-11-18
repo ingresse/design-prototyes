@@ -156,7 +156,7 @@ export const MSG = {
     limiteDoEvento: "Informe quantas inscrições cada comprador pode fazer no evento",
     /** v0.20 (SCE-242): inscrição única por atleta + sem compra para outro atleta = limite 1. */
     limiteUnico:
-        "O limite precisa ser 1: cada atleta só pode ter uma inscrição no evento e não é permitido comprar para outro atleta, então cada comprador só consegue inscrever a si mesmo, uma vez",
+        "O limite precisa ser 1: cada atleta só pode ter uma inscrição no evento e a compra para terceiros está desligada, então cada comprador só consegue inscrever a si mesmo, uma vez",
     trocaInicioVazio: "Informe quando a troca de titularidade começa",
     trocaFimVazio: "Informe até quando a troca de titularidade é permitida",
     trocaFimAntes: "O fim precisa ser depois do início",

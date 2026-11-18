@@ -240,7 +240,8 @@ const montar = (n1: Substantivo, n2: Substantivo, ex: Explicacoes) => {
         opcoesSemQuantidade: (n: number, total: number) => `${n} de ${total} ${total === 1 ? "opção" : "opções"} sem quantidade definida.`,
 
         /* Tour (RN-11) */
-        tourIntro: `Em poucos passos: o evento, ${a1.as} ${n1.muitos} com ${a2.as} ${n2.muitos} e os lotes, e o formulário de inscrição.`,
+        // v0.27 (SCE-258, teste com a Maria Bruna): frase completa, dizendo o que se faz.
+        tourIntro: `Em poucos passos você cria o evento, ${a1.as} ${n1.muitos} com ${a2.as} ${n2.muitos} e os lotes, e o formulário de inscrição.`,
         tourLote: `Lote é o preço e as vagas de cada fase da venda, dentro de cada ${n2.um}. Ex.: 1º lote de R$ 89,90 com 200 vagas. Ele vira sozinho quando esgota ou na data limite.`,
         tourFormulario: `As perguntas que o atleta responde ao se inscrever, como tamanho da camiseta e contato de emergência. Você escolhe em quais ${n2.muitos} cada pergunta aparece.`,
 

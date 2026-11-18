@@ -148,6 +148,9 @@ export interface Rascunho {
     idadeMinima: string;
     /** v0.9 (SCE-202): imagem do percurso (o "Mapa" do AWA), recortada. Opcional. */
     percurso: Arquivo | null;
+    /** v0.26 (SCE-257): e-mail de confirmação (sempre com QR Code): texto adicional e banner próprio, opcionais. */
+    emailInfo?: string;
+    emailBanner?: Arquivo | null;
     /** v0.11 (SCE-207): termo de uso do evento, um dos termos ativos da organização (data/termos.ts). */
     termoId: string | null;
     /** v0.25: o término foi sugerido (largada + 4 h) e acompanha a largada até a pessoa editar. */

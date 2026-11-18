@@ -11,6 +11,8 @@ export const CAMPO = {
     percurso: "campo-percurso",
     termoDeUso: "campo-termo-de-uso",
     limitePorComprador: "campo-limite-por-comprador",
+    emailInfo: "campo-email-info",
+    emailBanner: "campo-email-banner",
     trocaInicio: "campo-troca-inicio",
     trocaFim: "campo-troca-fim",
     descricao: "campo-descricao",
