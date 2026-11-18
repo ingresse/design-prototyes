@@ -1,32 +1,30 @@
-import { CATALOGO, type CategoriaCandidata } from "./categorias-catalogo";
-import { lerColecao, lerDoc, salvar } from "./db";
-import type { Categoria, CriacaoDeEvento } from "./modelo";
+import { CATEGORIAS, GRUPOS_DE_TAG, TAGS, type CategoriaDoMapa, type GrupoDeTag, type Tag } from "./categorias-catalogo";
+import { salvar } from "./db";
+import type { Categoria, CriacaoDeEvento, Evento } from "./modelo";
 import { agora, novoId } from "./regras";
 
 /* ------------------------------------------------------------------ */
-/*  Categorias de show ou festa                                        */
+/*  Categorias e tags de evento                                        */
 /*                                                                     */
-/*  A pessoa escreve com as próprias palavras que tipo de evento é.    */
-/*  Esse texto, o nome, a descrição e a leitura do banner (feita pelo  */
-/*  Claude, ver ia-local/plugin.ts) viram um vetor no modelo do        */
-/*  Hugging Face, comparado com o catálogo longo de candidatas         */
-/*  (categorias-catalogo.ts). Citar a categoria no texto reforça.      */
+/*  Categoria: uma por evento, escolhida pela pessoa (dropdown). As 10 */
+/*  do mapa do Grupo estão na coleção `categorias` (seed).             */
 /*                                                                     */
-/*  Formação: nos 2 primeiros meses de criação (contados da primeira), */
-/*  vale o catálogo inteiro e cada candidata usada entra na lista do   */
-/*  banco. Depois, só a lista vale: o que não cabe nela fica sem       */
-/*  categoria, e essas criações mostram o que falta.                   */
+/*  Tags: o texto aberto, o nome, a descrição e a leitura do banner    */
+/*  (feita pelo Claude, ver ia-local/plugin.ts) viram um vetor no      */
+/*  modelo do Hugging Face, comparado com cada tag do catálogo.        */
+/*  Embedding sozinho erra fácil em tags curtas (calourada saía        */
+/*  "Oktoberfest"), então entra a tag citada no que foi escrito, ou,   */
+/*  só no gênero musical, a que o embedding aponta com nota alta e     */
+/*  folga. Ocasião, sazonais e comodidades só entram citadas, e as     */
+/*  sazonais só com o evento perto da data.                            */
 /* ------------------------------------------------------------------ */
 
 export const MODELO_EMBEDDING = "Xenova/paraphrase-multilingual-MiniLM-L12-v2";
-/** Dias de formação da lista, a partir da primeira criação. */
-export const DIAS_DE_FORMACAO = 60;
-/** Similaridade mínima para o evento cair numa categoria. */
-export const LIMIAR = 0.6;
-/** Reforço quando o texto escrito cita a categoria pelo nome ou por um termo dela. */
-const REFORCO_NOME = 0.15;
-const REFORCO_TERMO = 0.1;
-/** Peso de cada parte no vetor do evento. O texto escrito sobre o tipo é o que mais diz. */
+/** Sem citação, a tag entra só com esta similaridade... */
+export const LIMIAR_SEM_CITACAO = 0.74;
+/** ...e com esta folga sobre a segunda mais parecida do mesmo grupo. */
+export const FOLGA_SEM_CITACAO = 0.05;
+/** Peso de cada parte no vetor do evento. O texto escrito sobre o evento é o que mais diz. */
 const PESOS = { texto: 0.45, banner: 0.25, nome: 0.15, descricao: 0.15 };
 
 /* ---------------- vetores ---------------- */
@@ -66,16 +64,16 @@ export async function vetorDe(texto: string): Promise<number[]> {
     return v;
 }
 
-export interface DadosParaClassificar {
+export interface DadosParaLer {
     texto: string;
     nome?: string;
-    /** Descrição em texto puro. Só o começo entra (o modelo lê até umas 128 palavras). */
+    /** Descrição em texto puro. Só o começo entra no vetor (o modelo lê até umas 128 palavras). */
     descricao?: string;
     bannerDescricao?: string;
 }
 
 /** Vetor do evento: média ponderada das partes que existem. */
-export async function vetorDoEvento(d: DadosParaClassificar): Promise<number[] | null> {
+export async function vetorDoEvento(d: DadosParaLer): Promise<number[] | null> {
     const partes = (
         [
             [d.texto, PESOS.texto],
@@ -91,104 +89,193 @@ export async function vetorDoEvento(d: DadosParaClassificar): Promise<number[] |
     return normalizar(soma);
 }
 
-/* ---------------- catálogo ---------------- */
+/* ---------------- catálogo de tags ---------------- */
 
-let vetoresDoCatalogo: Promise<Map<string, number[]>> | null = null;
+let vetoresDasTags: Promise<Map<string, number[]>> | null = null;
 
-/** Vetores pré-calculados (ia-local/vetores-catalogo.mjs). Candidata nova ou mudada é calculada aqui. */
-function carregarCatalogo() {
-    vetoresDoCatalogo ??= import("./categorias-catalogo-vetores.json").then(async ({ default: arquivo }) => {
+/** Vetores pré-calculados (ia-local/vetores-catalogo.mjs). Tag nova ou mudada é calculada aqui. */
+function carregarTags() {
+    vetoresDasTags ??= import("./categorias-catalogo-vetores.json").then(async ({ default: arquivo }) => {
         const gravados = (arquivo as { vetores: Record<string, { assinatura: string; vetor: number[] }> }).vetores;
         const mapa = new Map<string, number[]>();
-        for (const c of CATALOGO) {
-            const textos = [c.nome, ...c.termos];
-            const gravado = gravados[c.id];
-            if (gravado?.assinatura === textos.join("|")) mapa.set(c.id, gravado.vetor);
+        for (const t of TAGS) {
+            const textos = [t.nome, ...t.termos];
+            const gravado = gravados[t.id];
+            if (gravado?.assinatura === textos.join("|")) mapa.set(t.id, gravado.vetor);
             else {
                 const vs = await Promise.all(textos.map(vetorDe));
-                mapa.set(c.id, normalizar(vs[0].map((_, i) => vs.reduce((s, v) => s + v[i], 0))));
+                mapa.set(t.id, normalizar(vs[0].map((_, i) => vs.reduce((s, v) => s + v[i], 0))));
             }
         }
         return mapa;
     });
-    return vetoresDoCatalogo;
+    return vetoresDasTags;
 }
 
 const semAcento = (t: string) => t.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 const soPalavras = (t: string) => ` ${semAcento(t).replace(/[^a-z0-9]+/g, " ").trim()} `;
 
-/** Quanto o texto escrito cita a candidata: pelo nome vale mais que por um termo. */
-function reforco(texto: string, c: CategoriaCandidata) {
-    const escrito = soPalavras(texto);
-    if (escrito.includes(soPalavras(c.nome))) return REFORCO_NOME;
-    return c.termos.some((t) => escrito.includes(soPalavras(t))) ? REFORCO_TERMO : 0;
+/** O texto cita a tag pelo nome ou por um termo dela, como palavra inteira. */
+const citada = (escrito: string, t: Tag) => [t.nome, ...t.termos].some((x) => escrito.includes(soPalavras(x)));
+
+/* ---------------- leitura das tags ---------------- */
+
+export interface TagLida {
+    id: string;
+    /** Similaridade do evento com a tag (0 a 1). */
+    nota: number;
+    /** Citada no que foi escrito (texto, nome, descrição ou banner). */
+    citada: boolean;
 }
 
-/* ---------------- formação ---------------- */
-
-const DIA = 24 * 60 * 60 * 1000;
-
-export interface Formacao {
-    /** Primeira criação; sem ela, a formação ainda não começou. */
-    inicio: string | null;
-    fim: string | null;
-    aberta: boolean;
-}
-
-export function formacaoDe(criacoes: Pick<CriacaoDeEvento, "criadoEm">[], hoje = new Date()): Formacao {
-    const primeira = criacoes.map((c) => c.criadoEm).sort()[0];
-    if (!primeira) return { inicio: null, fim: null, aberta: true };
-    const fim = new Date(new Date(primeira).getTime() + DIA * DIAS_DE_FORMACAO).toISOString();
-    return { inicio: primeira, fim, aberta: hoje.toISOString() < fim };
-}
-
-/* ---------------- classificação ---------------- */
-
-export interface Classificacao {
-    /** Categoria escolhida (passou do limiar e pode ser usada agora). */
-    categoria: CategoriaCandidata | null;
-    /** A mais parecida, mesmo sem passar ou fora da lista. */
-    maisParecida: CategoriaCandidata | null;
-    similaridade: number;
-    /** A categoria escolhida ainda não está na lista do banco: entra quando o evento for criado. */
-    novaNaLista: boolean;
+export interface LeituraDeTags {
+    /** Todas as que passaram, de todos os grupos. A categoria escolhida filtra depois (`tagsValidas`). */
+    tags: TagLida[];
     vetor: number[] | null;
 }
 
-/**
- * Compara o evento com o catálogo. Na formação vale o catálogo inteiro; depois, só as categorias da
- * lista do banco.
- */
-export async function classificar(d: DadosParaClassificar): Promise<Classificacao> {
+/** Lê as tags do evento: citação no que foi escrito, ou embedding com nota alta e folga. */
+export async function lerTags(d: DadosParaLer): Promise<LeituraDeTags> {
     const vetor = await vetorDoEvento(d);
-    if (!vetor) return { categoria: null, maisParecida: null, similaridade: 0, novaNaLista: false, vetor: null };
-    const catalogo = await carregarCatalogo();
-    const naLista = new Set(lerColecao("categorias").map((c) => c.id));
-    const { aberta } = formacaoDe(lerColecao("criacoes"));
+    if (!vetor) return { tags: [], vetor: null };
+    const vetores = await carregarTags();
+    const escrito = soPalavras([d.texto, d.nome, d.descricao, d.bannerDescricao].filter(Boolean).join(" "));
 
-    const notas = CATALOGO.map((c) => ({ c, nota: cosseno(vetor, catalogo.get(c.id)!) + reforco(d.texto, c) })).sort((a, b) => b.nota - a.nota);
-    const melhor = notas[0];
-    const valendo = notas.find((n) => aberta || naLista.has(n.c.id));
-    const passou = valendo && valendo.nota >= LIMIAR ? valendo : null;
-    return {
-        categoria: passou?.c ?? null,
-        maisParecida: melhor.c,
-        similaridade: Math.min(1, (passou ?? melhor).nota),
-        novaNaLista: !!passou && !naLista.has(passou.c.id),
-        vetor,
-    };
+    const achadas = new Map<string, TagLida>();
+    for (const g of GRUPOS_DE_TAG) {
+        const notas = TAGS.filter((t) => t.grupo === g.id)
+            .map((t) => ({ t, nota: cosseno(vetor, vetores.get(t.id)!), citada: citada(escrito, t) }))
+            .sort((a, b) => b.nota - a.nota);
+        for (const [i, n] of notas.entries()) {
+            const folga = n.nota - (notas[i + 1]?.nota ?? 0);
+            const pelaLeitura = !g.soCitada && i === 0 && n.nota >= LIMIAR_SEM_CITACAO && folga >= FOLGA_SEM_CITACAO;
+            if (n.citada || pelaLeitura) achadas.set(n.t.id, { id: n.t.id, nota: arredondar(n.nota), citada: n.citada });
+        }
+    }
+    // Techno também é eletrônica: a tag mais ampla entra junto, com a nota dela.
+    for (const a of [...achadas.values()]) {
+        for (const id of TAG_POR_ID.get(a.id)?.inclui ?? []) {
+            if (!achadas.has(id)) achadas.set(id, { id, nota: arredondar(cosseno(vetor, vetores.get(id)!)), citada: false });
+        }
+    }
+    return { tags: [...achadas.values()], vetor };
+}
+
+const arredondar = (x: number) => Math.round(x * 100) / 100;
+
+export interface ContextoDasTags {
+    categoriaId?: string;
+    /** Início e fim do evento (ISO). Sem início, nenhuma sazonal vale. */
+    inicio?: string;
+    fim?: string;
+    /** Tags que a pessoa tirou no campo. */
+    removidas?: string[];
+}
+
+/**
+ * Tags que valem para o evento, com o máximo por grupo (citadas primeiro, depois pela nota).
+ * Gênero musical só em eventos de entretenimento; Clássico e Final só em futebol e esportes; sazonais
+ * só com o evento dentro da janela da data.
+ */
+export function tagsValidas<T extends { id: string; nota?: number; citada?: boolean }>(tags: T[], contexto: ContextoDasTags): T[] {
+    const porGrupo = new Map<GrupoDeTag, T[]>();
+    for (const l of tags) {
+        const t = TAG_POR_ID.get(l.id);
+        if (!t || contexto.removidas?.includes(t.id) || !valeNaCategoria(t, contexto.categoriaId) || !valeNaData(t, contexto)) continue;
+        porGrupo.set(t.grupo, [...(porGrupo.get(t.grupo) ?? []), l]);
+    }
+    return GRUPOS_DE_TAG.flatMap((g) =>
+        (porGrupo.get(g.id) ?? []).sort((a, b) => Number(!!b.citada) - Number(!!a.citada) || (b.nota ?? 0) - (a.nota ?? 0)).slice(0, g.maximo),
+    );
+}
+
+function valeNaCategoria(t: Tag, categoriaId: string | undefined) {
+    const doGrupo = GRUPO_POR_ID.get(t.grupo)?.categorias;
+    // Sem categoria escolhida ainda, mostra tudo: a escolha filtra depois.
+    if (!categoriaId) return true;
+    return (!doGrupo || doGrupo.includes(categoriaId)) && (!t.categorias || t.categorias.includes(categoriaId));
+}
+
+const DIA = 24 * 60 * 60 * 1000;
+
+/** O evento toca alguma janela da tag? Olha dia a dia do início ao fim (até 60 dias). */
+function valeNaData(t: Tag, { inicio, fim }: ContextoDasTags) {
+    if (!t.janelas) return true;
+    if (!inicio) return false;
+    const comeco = new Date(inicio.slice(0, 10) + "T12:00:00");
+    const final = fim ? new Date(fim.slice(0, 10) + "T12:00:00") : comeco;
+    if (Number.isNaN(comeco.getTime())) return false;
+    for (let n = 0, d = comeco.getTime(); n <= 60; n++, d += DIA) {
+        const iso = new Date(d).toISOString().slice(0, 10);
+        if (t.janelas.some((j) => naJanela(iso, j))) return true;
+        if (d >= final.getTime()) break;
+    }
+    return false;
+}
+
+function naJanela(iso: string, [de, ate]: [string, string]) {
+    // Com ano: só aquele período.
+    if (de.length === 10) return iso >= de && iso <= ate;
+    // Sem ano: todo ano, e a janela pode virar o ano (26/12 a 02/01).
+    const md = iso.slice(5);
+    return de <= ate ? md >= de && md <= ate : md >= de || md <= ate;
+}
+
+/* ---------------- consultas ---------------- */
+
+export const TAG_POR_ID = new Map(TAGS.map((t) => [t.id, t]));
+export const GRUPO_POR_ID = new Map(GRUPOS_DE_TAG.map((g) => [g.id, g]));
+export const CATEGORIA_POR_ID = new Map(CATEGORIAS.map((c) => [c.id, c]));
+
+/** Só as categorias do mapa: a coleção pode ter documentos da lista anterior, com ids que não estão no mapa. */
+export const doMapa = (categorias: Categoria[]) => categorias.filter((c) => CATEGORIA_POR_ID.has(c.id) && typeof c.ordem === "number");
+
+/** Categorias que a criação de um tipo oferece no dropdown. */
+export const categoriasDoTipo = (categorias: Categoria[], tipo: Evento["tipo"]) => categorias.filter((c) => c.tipo === tipo).sort((a, b) => a.ordem - b.ordem);
+
+/* ---------------- eventos que já existiam ---------------- */
+
+/** Categoria da vitrine do novo site para a categoria do mapa. */
+const DA_VITRINE: Record<string, string> = {
+    eletronica: "festas-e-baladas",
+    sertanejo: "shows",
+    rock: "shows",
+    rap: "shows",
+    teatro: "artes-cenicas",
+    festival: "festivais",
+    standup: "humor",
+};
+
+/**
+ * Categoria do evento. Os criados agora gravam a sua; os da seed e os de antes do mapa saem do tipo
+ * (futebol, esportivo) ou da categoria da vitrine.
+ */
+export function categoriaDoEvento(e: Pick<Evento, "categoria" | "tipo" | "vitrine">): string | undefined {
+    if (e.categoria && CATEGORIA_POR_ID.has(e.categoria)) return e.categoria;
+    if (e.tipo === "futebol") return "futebol";
+    if (e.tipo === "esportivo") return "esportes";
+    const v = e.vitrine;
+    if (v?.categoria === "esportes") return v.tags?.some((t) => soPalavras(t) === " futebol ") ? "futebol" : "esportes";
+    return v?.categoria ? DA_VITRINE[v.categoria] : undefined;
+}
+
+/**
+ * Tags do evento. Os criados agora gravam as suas; os da seed saem das tags soltas da vitrine,
+ * quando batem com o nome ou um termo de uma tag do catálogo.
+ */
+export function tagsDoEvento(e: Pick<Evento, "tags" | "categoria" | "tipo" | "vitrine" | "data" | "fim">): string[] {
+    if (e.tags) return e.tags;
+    const soltas = (e.vitrine?.tags ?? []).map(soPalavras);
+    const achadas = TAGS.filter((t) => [t.nome, ...t.termos].some((x) => soltas.includes(soPalavras(x)))).map((t) => ({ id: t.id, citada: true }));
+    const comAmplas = [...achadas, ...achadas.flatMap((a) => (TAG_POR_ID.get(a.id)?.inclui ?? []).map((id) => ({ id, citada: false })))];
+    const unicas = [...new Map(comAmplas.map((a) => [a.id, a])).values()];
+    return tagsValidas(unicas, { categoriaId: categoriaDoEvento(e), inicio: e.data, fim: e.fim }).map((t) => t.id);
 }
 
 /* ---------------- gravação ---------------- */
 
-const LIMITE_DE_AMOSTRAS = 5;
-
-/**
- * Grava a criação e, se ela caiu numa categoria, põe a categoria na lista (ou atualiza contagem e
- * amostras). Chamado ao criar o evento.
- */
-export async function registrarCriacao(dados: DadosParaClassificar & { eventoId: string; produtora: string; nome: string }, c: Classificacao) {
-    const criadoEm = agora();
+/** Grava a criação: o que foi escrito, a leitura do banner, o vetor e o resultado. Chamado ao criar o evento. */
+export async function registrarCriacao(dados: DadosParaLer & { eventoId: string; produtora: string; nome: string; categoriaId?: string; tags: string[] }, vetor: number[] | null) {
     const criacao: CriacaoDeEvento = {
         id: novoId("criacao"),
         eventoId: dados.eventoId,
@@ -197,27 +284,12 @@ export async function registrarCriacao(dados: DadosParaClassificar & { eventoId:
         texto: dados.texto.trim(),
         descricao: dados.descricao || undefined,
         bannerDescricao: dados.bannerDescricao || undefined,
-        vetor: c.vetor?.map((x) => Math.round(x * 1e4) / 1e4),
-        categoriaId: c.categoria?.id,
-        similaridade: Math.round(c.similaridade * 100) / 100,
-        maisParecidaId: c.maisParecida?.id,
-        criadoEm,
+        vetor: vetor?.map((x) => Math.round(x * 1e4) / 1e4),
+        categoriaId: dados.categoriaId,
+        tags: dados.tags,
+        criadoEm: agora(),
     };
     await salvar("criacoes", criacao);
-    if (!c.categoria) return criacao;
-
-    const atual = lerDoc("categorias", c.categoria.id);
-    const categoria: Categoria = {
-        id: c.categoria.id,
-        nome: c.categoria.nome,
-        grupo: c.categoria.grupo,
-        criacoes: (atual?.criacoes ?? 0) + 1,
-        textos: [criacao.texto, ...(atual?.textos ?? [])].slice(0, LIMITE_DE_AMOSTRAS),
-        exemplos: [dados.nome, ...(atual?.exemplos ?? [])].slice(0, LIMITE_DE_AMOSTRAS),
-        primeiraEm: atual?.primeiraEm ?? criadoEm,
-        ultimaEm: criadoEm,
-    };
-    await salvar("categorias", categoria);
     return criacao;
 }
 
@@ -225,7 +297,7 @@ export async function registrarCriacao(dados: DadosParaClassificar & { eventoId:
 
 /**
  * Leitura do banner pelo Claude logado nesta máquina (ia-local/plugin.ts, só no `npm run dev`).
- * Sem a ponte ou com erro, devolve null e a classificação segue sem o banner.
+ * Sem a ponte ou com erro, devolve null e a leitura segue sem o banner.
  */
 export async function lerBanner(dataUrl: string): Promise<string | null> {
     try {
@@ -238,4 +310,4 @@ export async function lerBanner(dataUrl: string): Promise<string | null> {
     }
 }
 
-export { CATALOGO, type CategoriaCandidata };
+export { CATEGORIAS, GRUPOS_DE_TAG, TAGS, type CategoriaDoMapa, type GrupoDeTag, type Tag };
