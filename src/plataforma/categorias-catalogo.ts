@@ -1,157 +1,105 @@
-import type { TipoEvento } from "./modelo";
-
 /* ------------------------------------------------------------------ */
-/*  Categorias e tags de evento                                        */
+/*  Catálogo de categorias candidatas de show ou festa                 */
 /*                                                                     */
-/*  Categoria: uma por evento, escolhida pela pessoa num dropdown. São  */
-/*  as 10 do mapa do Grupo e vão para a coleção `categorias` do banco  */
-/*  pela seed. Futebol e evento esportivo já nascem com a sua.          */
+/*  Lista longa de propósito: o embedding de cada criação é comparado  */
+/*  com estas candidatas, e a lista de categorias do banco fica só com */
+/*  as que os eventos reais usarem (ver categorias.ts). Os termos são  */
+/*  como as pessoas escrevem, não como um catálogo descreveria: é o    */
+/*  que aproxima o texto livre da candidata certa.                     */
 /*                                                                     */
-/*  Tags: várias por evento, em quatro grupos, achadas por embedding   */
-/*  (ver categorias.ts). Os termos são como as pessoas escrevem, não   */
-/*  como um catálogo descreveria: é o que aproxima o texto livre da    */
-/*  tag certa.                                                         */
-/*                                                                     */
-/*  Mudou uma tag? Rodar                                               */
-/*    node --experimental-strip-types ia-local/vetores-catalogo.mjs    */
+/*  Para mudar: editar aqui e rodar `node ia-local/vetores-catalogo.mjs` */
 /*  para regravar os vetores (categorias-catalogo-vetores.json).       */
 /* ------------------------------------------------------------------ */
 
-export interface CategoriaDoMapa {
+export interface CategoriaCandidata {
     id: string;
     nome: string;
-    /** Ordem no dropdown e na página. */
-    ordem: number;
-    /** Tipo de criação que usa a categoria. Futebol e esportivo têm a sua; show ou festa escolhe entre as outras. */
-    tipo: TipoEvento;
-}
-
-/** As 10 categorias do mapa do Grupo. Ids sem colisão com as candidatas da versão anterior, que podem estar no banco. */
-export const CATEGORIAS: CategoriaDoMapa[] = [
-    { id: "shows", nome: "Shows", ordem: 1, tipo: "show" },
-    { id: "festivais", nome: "Festivais", ordem: 2, tipo: "show" },
-    { id: "festas-e-baladas", nome: "Festas e Baladas", ordem: 3, tipo: "show" },
-    { id: "universitario", nome: "Universitário", ordem: 4, tipo: "show" },
-    { id: "futebol", nome: "Futebol", ordem: 5, tipo: "futebol" },
-    { id: "esportes", nome: "Esportes", ordem: 6, tipo: "esportivo" },
-    { id: "artes-cenicas", nome: "Teatro", ordem: 7, tipo: "show" },
-    { id: "humor", nome: "Stand-up", ordem: 8, tipo: "show" },
-    { id: "kids-e-familia", nome: "Kids e Família", ordem: 9, tipo: "show" },
-    { id: "feiras-e-exposicoes", nome: "Feiras e Exposições", ordem: 10, tipo: "show" },
-];
-
-export type GrupoDeTag = "genero" | "ocasiao" | "sazonal" | "comodidade";
-
-export interface GrupoDaTag {
-    id: GrupoDeTag;
-    nome: string;
-    descricao: string;
-    /** Só vale nestas categorias. Sem a lista, vale em todas. */
-    categorias?: string[];
-    /** Máximo de tags do grupo por evento. */
-    maximo: number;
-    /**
-     * Só entra citada no texto, no nome, na descrição ou na leitura do banner. Ocasião, data e o que o
-     * evento oferece não se adivinham: "bloco" não é Réveillon, e Open bar só existe se alguém disse.
-     */
-    soCitada: boolean;
-}
-
-export const GRUPOS_DE_TAG: GrupoDaTag[] = [
-    { id: "genero", nome: "Gênero musical", descricao: "Só em Shows, Festivais, Festas e Baladas e Universitário.", categorias: ["shows", "festivais", "festas-e-baladas", "universitario"], maximo: 3, soCitada: false },
-    { id: "ocasiao", nome: "Ocasião", descricao: "O momento ou o motivo do evento, quando dito no texto ou no banner.", maximo: 2, soCitada: true },
-    { id: "sazonal", nome: "Sazonais", descricao: "Datas e temporadas, quando ditas no texto ou no banner e com o evento perto da data.", maximo: 2, soCitada: true },
-    { id: "comodidade", nome: "Comodidades", descricao: "Benefícios e serviços, quando ditos no texto ou no banner.", maximo: 4, soCitada: true },
-];
-
-export interface Tag {
-    id: string;
-    nome: string;
-    grupo: GrupoDeTag;
-    /** Como as pessoas escrevem. O nome entra junto. */
+    /** Grupo do catálogo, para a página de categorias organizar as candidatas. */
+    grupo: "Música" | "Festas" | "Palco" | "Família" | "Gastronomia" | "Datas" | "Outros";
+    /** Como as pessoas escrevem sobre esse tipo de evento. O nome entra junto. */
     termos: string[];
-    /** Só vale nestas categorias (além da regra do grupo). */
-    categorias?: string[];
-    /** Achada esta, entra também a tag mais ampla (techno também é eletrônica). */
-    inclui?: string[];
-    /**
-     * Sazonais: só vale com o evento dentro de uma destas janelas, `MM-DD` (todo ano, pode virar o ano)
-     * ou `AAAA-MM-DD` (só naquele ano).
-     */
-    janelas?: [string, string][];
 }
 
-export const TAGS: Tag[] = [
-    /* ---------------- Gênero musical ---------------- */
-    { id: "pagode", nome: "Pagode", grupo: "genero", termos: ["roda de pagode", "grupo de pagode", "pagode anos 90", "pagodão", "cavaquinho e pandeiro"] },
-    { id: "samba", nome: "Samba", grupo: "genero", termos: ["roda de samba", "samba de raiz", "samba e feijoada", "velha guarda", "escola de samba"] },
-    { id: "choro", nome: "Choro", grupo: "genero", termos: ["roda de choro", "chorinho", "regional de choro", "seresta"] },
-    { id: "sertanejo", nome: "Sertanejo", grupo: "genero", termos: ["show sertanejo", "dupla sertaneja", "sertanejo universitário", "feminejo", "modão"] },
-    { id: "forro", nome: "Forró", grupo: "genero", termos: ["forró pé de serra", "sanfona", "xote e baião", "arrasta pé", "forró universitário"] },
-    { id: "piseiro", nome: "Piseiro e brega", grupo: "genero", termos: ["piseiro", "pisadinha", "brega funk", "tecnobrega", "brega"] },
-    { id: "axe", nome: "Axé", grupo: "genero", termos: ["axé music", "trio elétrico", "pagodão baiano", "arrocha", "swingueira"] },
-    { id: "funk", nome: "Funk", grupo: "genero", termos: ["baile funk", "baile de favela", "funk carioca", "MCs", "pancadão", "fluxo"] },
-    { id: "mpb", nome: "MPB", grupo: "genero", termos: ["música popular brasileira", "voz e violão", "bossa nova", "canções brasileiras"] },
-    { id: "rock", nome: "Rock", grupo: "genero", termos: ["show de rock", "banda de rock", "rock nacional", "classic rock"] },
-    { id: "indie", nome: "Indie e alternativo", grupo: "genero", termos: ["banda indie", "rock alternativo", "bandas autorais", "cena independente"] },
-    { id: "metal", nome: "Metal", grupo: "genero", termos: ["heavy metal", "death metal", "thrash metal", "punk", "hardcore"] },
-    { id: "pop", nome: "Pop", grupo: "genero", termos: ["música pop", "cantora pop", "pop internacional", "hits do momento"] },
-    { id: "kpop", nome: "K-pop", grupo: "genero", termos: ["k-pop", "kpop", "música coreana", "grupo coreano", "idol"] },
-    { id: "rap", nome: "Rap e trap", grupo: "genero", termos: ["rap", "hip hop", "trap", "drill", "batalha de rima"] },
-    { id: "black", nome: "Black e R&B", grupo: "genero", termos: ["baile black", "charme", "R&B", "soul", "black music"] },
-    { id: "reggae", nome: "Reggae", grupo: "genero", termos: ["reggae", "dub", "roots reggae", "surf music"] },
-    { id: "latina", nome: "Latina e reggaeton", grupo: "genero", termos: ["reggaeton", "música latina", "salsa", "bachata", "perreo"] },
-    { id: "eletronica", nome: "Eletrônica", grupo: "genero", termos: ["música eletrônica", "DJ set", "line-up de DJs", "EDM", "DJ convidado"] },
-    { id: "techno", nome: "Techno", grupo: "genero", termos: ["festa techno", "techno industrial", "galpão techno", "tech house"], inclui: ["eletronica"] },
-    { id: "house", nome: "House", grupo: "genero", termos: ["deep house", "house music", "afro house", "disco house"], inclui: ["eletronica"] },
-    { id: "psytrance", nome: "Psytrance", grupo: "genero", termos: ["rave psicodélica", "psytrance", "trance", "festival psicodélico"], inclui: ["eletronica"] },
-    { id: "gospel", nome: "Gospel", grupo: "genero", termos: ["louvor", "adoração", "banda de louvor", "música cristã"] },
-    { id: "jazz", nome: "Jazz e blues", grupo: "genero", termos: ["jazz", "blues", "jazz instrumental", "big band"] },
-    { id: "classica", nome: "Clássica", grupo: "genero", termos: ["orquestra", "concerto", "música erudita", "recital", "ópera", "candlelight"] },
-    { id: "flashback", nome: "Flashback", grupo: "genero", termos: ["anos 80", "anos 90", "anos 2000", "festa ploc", "hits antigos"] },
+export const CATALOGO: CategoriaCandidata[] = [
+    /* ---------------- Música ---------------- */
+    { id: "pagode", nome: "Pagode", grupo: "Música", termos: ["roda de pagode", "grupo de pagode", "pagode anos 90", "pagodão", "pagode com cavaquinho e pandeiro"] },
+    { id: "samba", nome: "Samba", grupo: "Música", termos: ["roda de samba", "samba de raiz", "samba e feijoada", "velha guarda do samba", "escola de samba"] },
+    { id: "sertanejo", nome: "Sertanejo", grupo: "Música", termos: ["show sertanejo", "dupla sertaneja", "sertanejo universitário", "feminejo", "modão", "música sertaneja"] },
+    { id: "funk", nome: "Funk", grupo: "Música", termos: ["baile funk", "baile de favela", "MCs de funk", "funk carioca", "fluxo", "pancadão"] },
+    { id: "forro", nome: "Forró", grupo: "Música", termos: ["forró pé de serra", "trio de forró com sanfona", "xote e baião", "forró universitário", "arrasta pé"] },
+    { id: "axe", nome: "Axé", grupo: "Música", termos: ["axé music", "trio elétrico", "pagodão baiano", "arrocha", "swingueira"] },
+    { id: "mpb", nome: "MPB", grupo: "Música", termos: ["música popular brasileira", "show de mpb", "voz e violão", "bossa nova", "canções brasileiras"] },
+    { id: "choro", nome: "Choro", grupo: "Música", termos: ["roda de choro", "regional de choro", "chorinho", "seresta"] },
+    { id: "rock", nome: "Rock", grupo: "Música", termos: ["show de rock", "banda de rock", "rock nacional", "rock clássico", "classic rock"] },
+    { id: "indie", nome: "Indie e alternativo", grupo: "Música", termos: ["banda indie", "rock alternativo", "bandas autorais", "cena independente", "lançamento de disco"] },
+    { id: "punk", nome: "Punk e hardcore", grupo: "Música", termos: ["punk rock", "hardcore", "show de punk", "emo", "pós punk"] },
+    { id: "metal", nome: "Metal", grupo: "Música", termos: ["heavy metal", "show de metal", "death metal", "thrash metal", "metal fest"] },
+    { id: "pop", nome: "Pop", grupo: "Música", termos: ["show pop", "música pop", "cantora pop", "pop internacional", "k-pop"] },
+    { id: "rap", nome: "Rap e trap", grupo: "Música", termos: ["show de rap", "hip hop", "trap", "batalha de rima", "rapper"] },
+    { id: "reggae", nome: "Reggae", grupo: "Música", termos: ["show de reggae", "dub", "roots reggae", "reggae jamaicano"] },
+    { id: "jazz", nome: "Jazz e blues", grupo: "Música", termos: ["show de jazz", "jazz instrumental", "blues", "quarteto de jazz", "big band"] },
+    { id: "classica", nome: "Música clássica", grupo: "Música", termos: ["concerto", "orquestra sinfônica", "música erudita", "recital de piano", "ópera"] },
+    { id: "gospel", nome: "Gospel", grupo: "Música", termos: ["show gospel", "louvor", "adoração", "banda de louvor", "música cristã", "culto"] },
+    { id: "black", nome: "Black e R&B", grupo: "Música", termos: ["baile black", "charme", "R&B", "soul", "funk soul", "black music"] },
+    { id: "piseiro", nome: "Piseiro e brega", grupo: "Música", termos: ["piseiro", "pisadinha", "brega funk", "tecnobrega", "brega"] },
+    { id: "eletronica", nome: "Música eletrônica", grupo: "Música", termos: ["festa de música eletrônica", "DJ set", "line-up de DJs", "eletrônica"] },
+    { id: "techno", nome: "Techno", grupo: "Música", termos: ["festa techno", "techno industrial", "after de techno", "galpão techno", "tech house"] },
+    { id: "house", nome: "House", grupo: "Música", termos: ["deep house", "house music", "sunset house", "afro house"] },
+    { id: "psytrance", nome: "Psytrance e rave", grupo: "Música", termos: ["rave", "psytrance", "trance", "festival psicodélico", "rave ao ar livre"] },
+    { id: "tributo", nome: "Tributo e cover", grupo: "Música", termos: ["banda cover", "show tributo", "tributo a", "cover de", "covers clássicos"] },
+    { id: "festival-musica", nome: "Festival de música", grupo: "Música", termos: ["festival com várias bandas", "festival de música", "line-up de artistas", "vários palcos"] },
+    { id: "infantil-musica", nome: "Show infantil", grupo: "Família", termos: ["show infantil", "música para crianças", "show para bebês", "cantigas infantis"] },
 
-    /* ---------------- Ocasião ---------------- */
-    { id: "turne", nome: "Turnê", grupo: "ocasiao", termos: ["turnê", "tour", "nova turnê", "passa pela cidade"] },
-    { id: "estreia", nome: "Estreia e lançamento", grupo: "ocasiao", termos: ["estreia", "pré-estreia", "lançamento do álbum", "lançamento de disco", "primeira vez na cidade"] },
-    { id: "despedida", nome: "Despedida", grupo: "ocasiao", termos: ["último show", "turnê de despedida", "show de despedida", "despedida dos palcos"] },
-    { id: "tributo", nome: "Tributo", grupo: "ocasiao", termos: ["tributo a", "banda cover", "homenagem a", "cover"] },
-    { id: "aniversario", nome: "Aniversário", grupo: "ocasiao", termos: ["aniversário da casa", "aniversário da festa", "edição de aniversário", "comemoração de anos"] },
-    { id: "formatura", nome: "Formatura", grupo: "ocasiao", termos: ["formatura", "baile de formatura", "colação de grau", "formandos"] },
-    { id: "calourada", nome: "Calourada", grupo: "ocasiao", termos: ["calourada", "recepção dos calouros", "intermed", "interfaculdades", "atlética", "chopada"] },
-    { id: "beneficente", nome: "Beneficente", grupo: "ocasiao", termos: ["evento beneficente", "show solidário", "arrecadação", "entrada solidária"] },
-    { id: "sunset", nome: "Sunset", grupo: "ocasiao", termos: ["pôr do sol", "fim de tarde", "rooftop", "day party"] },
-    { id: "after", nome: "After", grupo: "ocasiao", termos: ["after", "afterparty", "after hours", "festa de manhã"] },
-    { id: "classico", nome: "Clássico", grupo: "ocasiao", termos: ["clássico", "dérbi", "rivais", "jogo decisivo entre rivais"], categorias: ["futebol", "esportes"] },
-    { id: "final", nome: "Final", grupo: "ocasiao", termos: ["grande final", "final do campeonato", "semifinal", "finalíssima"], categorias: ["futebol", "esportes"] },
+    /* ---------------- Festas ---------------- */
+    { id: "open-bar", nome: "Open bar", grupo: "Festas", termos: ["festa open bar", "open de cerveja", "open bar de drinks", "bebida liberada", "open bar premium"] },
+    { id: "universitaria", nome: "Festa universitária", grupo: "Festas", termos: ["calourada", "festa universitária", "intermed", "interfaculdades", "festa de atlética", "chopada"] },
+    { id: "balada", nome: "Balada", grupo: "Festas", termos: ["balada", "night", "festa em clube", "boate", "noite na pista"] },
+    { id: "tematica", nome: "Festa temática", grupo: "Festas", termos: ["festa temática", "festa à fantasia", "festa anos 2000", "festa anos 80", "festa ploc", "flashback"] },
+    { id: "lgbt", nome: "Festa LGBTQIA+", grupo: "Festas", termos: ["festa lgbt", "festa gay", "drag queens", "festa queer", "parada"] },
+    { id: "sunset", nome: "Sunset e rooftop", grupo: "Festas", termos: ["sunset", "pôr do sol", "rooftop", "festa no terraço", "fim de tarde"] },
+    { id: "praia", nome: "Festa na praia", grupo: "Festas", termos: ["festa na praia", "beach club", "festa na areia", "pool party", "festa na piscina"] },
+    { id: "barco", nome: "Festa no barco", grupo: "Festas", termos: ["festa no barco", "boat party", "passeio de barco com festa", "lancha"] },
+    { id: "after", nome: "After", grupo: "Festas", termos: ["after", "afterparty", "festa de manhã", "after hours"] },
+    { id: "baile", nome: "Baile", grupo: "Festas", termos: ["baile de gala", "baile de máscaras", "baile de debutante", "baile dançante", "salão de dança"] },
+    { id: "rodeio", nome: "Rodeio e festa do peão", grupo: "Festas", termos: ["rodeio", "festa do peão", "montaria em touro", "campeonato de laço", "arena country"] },
+    { id: "cervejeira", nome: "Festa da cerveja", grupo: "Gastronomia", termos: ["oktoberfest", "festa da cerveja", "chope", "cerveja artesanal", "festival cervejeiro"] },
 
-    /* ---------------- Sazonais ---------------- */
-    { id: "carnaval", nome: "Carnaval", grupo: "sazonal", termos: ["carnaval", "bloco de carnaval", "bloco de rua", "bloco", "folia", "foliões", "abadá", "pré-carnaval", "ensaio de bloco", "marchinhas", "baile do momo"], janelas: [["01-06", "03-15"]] },
-    { id: "reveillon", nome: "Réveillon", grupo: "sazonal", termos: ["réveillon", "virada do ano", "passagem de ano", "ano novo", "queima de fogos"], janelas: [["12-26", "01-02"]] },
-    { id: "festa-junina", nome: "Festa junina", grupo: "sazonal", termos: ["festa junina", "arraiá", "festa julina", "festa caipira", "arraial", "quadrilha", "são joão"], janelas: [["06-01", "07-31"]] },
-    { id: "halloween", nome: "Halloween", grupo: "sazonal", termos: ["halloween", "dia das bruxas", "festa de terror", "festa à fantasia de terror"], janelas: [["10-20", "11-05"]] },
-    { id: "natal", nome: "Natal", grupo: "sazonal", termos: ["natal", "papai noel", "festa de natal", "cantata de natal"], janelas: [["12-01", "12-26"]] },
-    { id: "pascoa", nome: "Páscoa", grupo: "sazonal", termos: ["páscoa", "caça aos ovos", "coelho da páscoa"], janelas: [["03-15", "04-30"]] },
-    { id: "dia-dos-namorados", nome: "Dia dos Namorados", grupo: "sazonal", termos: ["dia dos namorados", "noite romântica para casais"], janelas: [["06-05", "06-14"]] },
-    { id: "dia-das-maes", nome: "Dia das Mães", grupo: "sazonal", termos: ["dia das mães", "homenagem às mães"], janelas: [["05-01", "05-15"]] },
-    { id: "dia-dos-pais", nome: "Dia dos Pais", grupo: "sazonal", termos: ["dia dos pais", "homenagem aos pais"], janelas: [["08-01", "08-15"]] },
-    { id: "dia-das-criancas", nome: "Dia das Crianças", grupo: "sazonal", termos: ["dia das crianças", "12 de outubro"], janelas: [["10-01", "10-15"]] },
-    { id: "oktoberfest", nome: "Oktoberfest", grupo: "sazonal", termos: ["oktoberfest", "festa da cerveja", "festival cervejeiro", "festa alemã"], janelas: [["09-15", "10-31"]] },
-    { id: "ferias", nome: "Férias", grupo: "sazonal", termos: ["férias escolares", "férias de julho", "temporada de férias"], janelas: [["12-15", "02-15"], ["07-01", "07-31"]] },
-    { id: "verao", nome: "Verão", grupo: "sazonal", termos: ["verão", "temporada de verão", "festa na praia", "beach club", "pool party"], janelas: [["12-21", "03-20"]] },
-    { id: "copa-do-mundo", nome: "Copa do Mundo", grupo: "sazonal", termos: ["copa do mundo", "jogo do brasil", "seleção brasileira", "jogo da seleção", "jogos da copa"], janelas: [["2026-06-11", "2026-07-19"], ["2030-06-08", "2030-07-21"]] },
+    /* ---------------- Datas ---------------- */
+    { id: "reveillon", nome: "Réveillon", grupo: "Datas", termos: ["réveillon", "virada do ano", "ano novo", "queima de fogos", "festa de fim de ano"] },
+    { id: "carnaval", nome: "Carnaval", grupo: "Datas", termos: ["carnaval", "bloco de rua", "pré carnaval", "ensaio de bloco", "marchinhas", "bateria de escola de samba"] },
+    { id: "junina", nome: "Festa junina", grupo: "Datas", termos: ["festa junina", "arraiá", "festa julina", "quadrilha", "festa caipira", "são joão"] },
+    { id: "natal", nome: "Natal", grupo: "Datas", termos: ["natal", "papai noel", "festa de natal", "cantata de natal"] },
+    { id: "halloween", nome: "Halloween", grupo: "Datas", termos: ["halloween", "festa de terror", "dia das bruxas", "festa à fantasia de halloween"] },
+    { id: "dia-das-maes", nome: "Datas comemorativas", grupo: "Datas", termos: ["dia das mães", "dia dos namorados", "dia dos pais", "aniversário da cidade"] },
 
-    /* ---------------- Comodidades ---------------- */
-    { id: "open-bar", nome: "Open bar", grupo: "comodidade", termos: ["open bar", "open de cerveja", "bebida liberada", "bebida à vontade", "open de drinks", "full open bar"] },
-    { id: "open-food", nome: "Open food", grupo: "comodidade", termos: ["open food", "comida liberada", "buffet incluso", "open de comida"] },
-    { id: "camarote", nome: "Camarote", grupo: "comodidade", termos: ["camarote", "frisa", "camarote open bar"] },
-    { id: "area-vip", nome: "Área VIP", grupo: "comodidade", termos: ["área vip", "vip", "lounge", "pista premium"] },
-    { id: "meet-and-greet", nome: "Meet & greet", grupo: "comodidade", termos: ["meet and greet", "meet & greet", "encontro com o artista", "foto com o artista"] },
-    { id: "mesa", nome: "Mesa e bistrô", grupo: "comodidade", termos: ["mesa reservada", "bistrô", "mesa para grupo", "lugar sentado"] },
-    { id: "estacionamento", nome: "Estacionamento", grupo: "comodidade", termos: ["estacionamento", "estacionamento no local", "valet"] },
-    { id: "transfer", nome: "Transfer", grupo: "comodidade", termos: ["transfer", "excursão", "ônibus saindo de", "van até o evento"] },
-    { id: "hospedagem", nome: "Hospedagem", grupo: "comodidade", termos: ["hospedagem", "pacote com hotel", "camping", "pacote com hospedagem"] },
-    { id: "alimentacao", nome: "Praça de alimentação", grupo: "comodidade", termos: ["food trucks", "praça de alimentação", "comidinhas", "gastronomia no local"] },
-    { id: "espaco-kids", nome: "Espaço kids", grupo: "comodidade", termos: ["espaço kids", "recreação infantil", "monitores para crianças", "brinquedos"] },
-    { id: "acessivel", nome: "Acessível", grupo: "comodidade", termos: ["acessível", "acessibilidade", "libras", "audiodescrição", "cadeirantes"] },
-    { id: "pet-friendly", nome: "Pet friendly", grupo: "comodidade", termos: ["pet friendly", "aceita pets", "pode levar cachorro", "cachorro"] },
+    /* ---------------- Palco ---------------- */
+    { id: "stand-up", nome: "Stand-up", grupo: "Palco", termos: ["stand up comedy", "show de comédia", "show de humor", "comediante", "solo de comédia"] },
+    { id: "improviso", nome: "Comédia de improviso", grupo: "Palco", termos: ["improviso", "teatro de improviso", "cenas improvisadas", "impro"] },
+    { id: "teatro", nome: "Teatro", grupo: "Palco", termos: ["peça de teatro", "espetáculo teatral", "drama", "comédia teatral", "monólogo"] },
+    { id: "musical", nome: "Musical", grupo: "Palco", termos: ["teatro musical", "musical da broadway", "espetáculo musical", "musical brasileiro"] },
+    { id: "danca", nome: "Dança", grupo: "Palco", termos: ["espetáculo de dança", "balé", "dança contemporânea", "companhia de dança", "sapateado"] },
+    { id: "circo", nome: "Circo", grupo: "Palco", termos: ["circo", "espetáculo circense", "palhaços", "acrobatas", "malabaristas"] },
+    { id: "magica", nome: "Mágica e ilusionismo", grupo: "Palco", termos: ["show de mágica", "mágico", "ilusionista", "hipnose"] },
+    { id: "poesia", nome: "Sarau e poesia", grupo: "Palco", termos: ["sarau", "slam de poesia", "leitura de poesia", "batalha de poesia"] },
+    { id: "palestra", nome: "Palestra e talk", grupo: "Outros", termos: ["palestra", "talk show", "bate papo com", "podcast ao vivo", "conferência"] },
+
+    /* ---------------- Família ---------------- */
+    { id: "teatro-infantil", nome: "Teatro infantil", grupo: "Família", termos: ["teatro para crianças", "peça infantil", "teatro de bonecos", "contação de histórias", "musical infantil"] },
+    { id: "festa-infantil", nome: "Festa infantil", grupo: "Família", termos: ["festa infantil", "personagens infantis", "brinquedos infláveis", "oficinas para crianças", "recreação infantil"] },
+    { id: "familia", nome: "Programa em família", grupo: "Família", termos: ["para toda a família", "passeio em família", "parque", "evento família"] },
+
+    /* ---------------- Gastronomia ---------------- */
+    { id: "food-festival", nome: "Festival gastronômico", grupo: "Gastronomia", termos: ["festival gastronômico", "food trucks", "comida de rua", "festival de hambúrguer", "feira gastronômica"] },
+    { id: "vinho", nome: "Vinhos e degustação", grupo: "Gastronomia", termos: ["degustação de vinhos", "vinhos e queijos", "harmonização", "enoturismo", "wine"] },
+    { id: "doces", nome: "Doces e chocolates", grupo: "Gastronomia", termos: ["festival do chocolate", "doces artesanais", "feira de doces", "confeitaria"] },
+    { id: "feijoada", nome: "Feijoada e almoço", grupo: "Gastronomia", termos: ["feijoada", "almoço com show", "churrasco", "festa do churrasco", "brunch"] },
+
+    /* ---------------- Outros ---------------- */
+    { id: "feira", nome: "Feira e exposição", grupo: "Outros", termos: ["feira", "exposição", "feira de artesanato", "bazar", "expo"] },
+    { id: "religioso", nome: "Encontro religioso", grupo: "Outros", termos: ["retiro", "conferência cristã", "encontro de jovens da igreja", "missa", "congresso religioso"] },
+    { id: "geek", nome: "Geek e games", grupo: "Outros", termos: ["evento geek", "cosplay", "games", "anime", "campeonato de e-sports"] },
+    { id: "beneficente", nome: "Beneficente", grupo: "Outros", termos: ["evento beneficente", "show solidário", "arrecadação", "entrada solidária", "leilão beneficente"] },
+    { id: "formatura", nome: "Formatura", grupo: "Outros", termos: ["formatura", "baile de formatura", "colação de grau", "festa de formandos"] },
+    { id: "cinema", nome: "Cinema", grupo: "Outros", termos: ["sessão de cinema", "cinema ao ar livre", "pré estreia", "mostra de filmes"] },
+    { id: "bem-estar", nome: "Bem-estar", grupo: "Outros", termos: ["yoga", "meditação", "retiro de bem estar", "sound healing", "ioga ao ar livre"] },
 ];

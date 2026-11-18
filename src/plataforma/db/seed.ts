@@ -1,5 +1,4 @@
 import { EVENTOS as EVENTOS_SITE } from "@/produtos/novo-site/home/data/events";
-import { CATEGORIAS } from "../categorias-catalogo";
 import type { Evento, EventoStatus, Grupo, HistoricoVendas, Organizacao, Sessao, Usuario } from "../modelo";
 import { idDaOrganizacao, siglaDe, slugificar } from "../regras";
 
@@ -12,7 +11,7 @@ import { idDaOrganizacao, siglaDe, slugificar } from "../regras";
 /*  existem, então nada criado por alguém é sobrescrito.               */
 /* ------------------------------------------------------------------ */
 
-export const SEED_VERSAO = "2026-11-18.1";
+export const SEED_VERSAO = "2026-11-13.1";
 
 const CRIADO = "2026-11-07T12:00:00.000Z";
 
@@ -266,6 +265,4 @@ export const SEED = {
     ingressos: [],
     usuarios,
     historico,
-    // As 10 categorias do mapa do Grupo (categorias-catalogo.ts). Ids novos: não colidem com a lista anterior.
-    categorias: CATEGORIAS.map((c) => ({ ...c })),
 };

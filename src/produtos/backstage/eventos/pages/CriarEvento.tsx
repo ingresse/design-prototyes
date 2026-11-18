@@ -2,23 +2,19 @@ import { useEffect, useMemo, useRef, useState, type FC, type ReactNode, type Ref
 import { Navigate, useNavigate, useSearchParams } from "react-router";
 import { toast } from "sonner";
 import { AnimatePresence, motion } from "motion/react";
-import { Input as AriaInput, TextField as AriaTextField } from "react-aria-components";
 import { ArrowLeft, Plus, RefreshCw01, Tag01, Trash01, XClose } from "@untitledui/icons";
 import { FileUploadDropZone } from "@/components/application/file-upload/file-upload-base";
 import { Dialog, Modal, ModalOverlay } from "@/components/application/modals/modal";
 import { ButtonGroup, ButtonGroupItem } from "@/components/base/button-group/button-group";
 import { Button } from "@/components/base/buttons/button";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
-import { HintText } from "@/components/base/input/hint-text";
 import { Input } from "@/components/base/input/input";
-import { Label } from "@/components/base/input/label";
 import { ComboBox } from "@/components/base/select/combobox";
 import { Select } from "@/components/base/select/select";
-import { Tag, TagGroup, TagList } from "@/components/base/tags/tags";
 import { Toggle } from "@/components/base/toggle/toggle";
 import { Surgir, useTransicao } from "@/components/foundations/transicao";
-import { useColecao, type ConfiguracoesAvancadas, type Modalidade, type TipoEvento } from "@/plataforma";
-import { categoriaDoEvento, categoriasDoTipo, doMapa, registrarCriacao, TAG_POR_ID, tagsValidas } from "@/plataforma/categorias";
+import type { ConfiguracoesAvancadas, Modalidade, TipoEvento } from "@/plataforma";
+import { registrarCriacao } from "@/plataforma/categorias";
 import { cx } from "@/utils/cx";
 import { BackstageLayout, prepararGuiaDoEventoNovo } from "../../components/Backstage";
 import { DescricaoRica, paragrafosDoHtml } from "../../components/descricao-rica";
@@ -28,7 +24,7 @@ import { CronogramaDeSessoes, temCronograma, type SessaoExtra } from "../compone
 import { PeriodoDoEvento } from "../components/periodo-do-evento";
 import { IDADES_COM_CLASSIFICACAO } from "../components/classificacao-indicativa";
 import { criarEvento } from "../data/eventos";
-import { useTagsDoEvento, type EstadoDasTags } from "../data/tags-do-evento";
+import { useCategoriaDoEvento, type EstadoDaCategoria } from "../data/categoria-do-evento";
 import { CampoBanner, CampoBannerCompacto, exportarRecorte, useBannerNaColuna, type ImagemDoBanner, type Recorte } from "../components/campo-banner";
 import { buscarLocais, useOpcoesEvento, type LocalEncontrado, type Opcao } from "../data/opcoes-evento";
 import { tipoDeEvento } from "../data/tipos-evento";
@@ -71,12 +67,10 @@ interface Formulario {
     visitanteId: string;
     programaMembrosId: string;
     modalidade: Modalidade | "";
-    /** Show ou festa: categoria escolhida no dropdown (EVT-97). */
-    categoriaId: string;
-    /** Show ou festa: o que a pessoa escreveu sobre o evento, no campo aberto. As tags saem daqui (EVT-97). */
+    /** Show ou festa: o que o campo Tipo de evento mostra. Achada a categoria, vira o nome dela (EVT-97). */
+    categoriaTexto: string;
+    /** O que a pessoa escreveu no Tipo de evento. É o que vai para a busca e para o banco, mesmo depois da troca. */
     categoriaEscrito: string;
-    /** Tags tiradas pelo X no campo: somem até a próxima busca e, sem busca nova, não são gravadas. */
-    tagsRemovidas: string[];
     nome: string;
     /** O nome foi digitado: para de seguir a sugestão "Mandante x Visitante". */
     nomeEditado: boolean;
@@ -110,9 +104,8 @@ const INICIAL: Omit<Formulario, "tipo"> = {
     visitanteId: "",
     programaMembrosId: "",
     modalidade: "",
-    categoriaId: "",
+    categoriaTexto: "",
     categoriaEscrito: "",
-    tagsRemovidas: [],
     nome: "",
     nomeEditado: false,
     local: null,
@@ -171,7 +164,7 @@ function validar(f: Formulario): Erros {
         else if (f.visitanteId === f.mandanteId) e.visitante = "Escolha outro time: o visitante não pode ser o mandante.";
     }
     if (f.tipo === "esportivo" && !f.modalidade) e.modalidade = "Escolha a modalidade.";
-    if (f.tipo === "show" && !f.categoriaId) e.categoria = "Escolha a categoria.";
+    if (f.tipo === "show" && !f.categoriaTexto.trim()) e.categoria = "Conte que tipo de evento é.";
     if (!f.nome.trim()) e.nome = "Dê um nome ao evento.";
     if (!f.local) e.local = "Busque e escolha o local do evento.";
     if (!paragrafosDoHtml(f.descricao).length) e.descricao = "Conte o que vai acontecer no evento.";
@@ -218,31 +211,21 @@ function FormularioDeEvento({ tipo, titulo }: { tipo: TipoEvento; titulo: string
     const voc = vocabularioDe(t, f.tipo);
     const itemDoCronograma = f.tipo === "esportivo" ? "largada" : "sessão";
     const erros = useMemo(() => (tentou ? validar(f) : {}), [f, tentou]);
-    // Show ou festa: categoria no dropdown, com as do mapa do Grupo que o banco tem (EVT-97).
-    const todasAsCategorias = useColecao("categorias");
-    const opcoesDeCategoria = useMemo(() => categoriasDoTipo(doMapa(todasAsCategorias), "show").map((c) => ({ id: c.id, label: c.nome })), [todasAsCategorias]);
-    // As tags são lidas ao sair do campo aberto, do nome ou da descrição, e quando o banner muda (EVT-97).
+    // Show ou festa: a categoria é lida ao sair do campo aberto, do nome ou da descrição, e quando o banner muda (EVT-97).
     const descricaoEmTexto = useMemo(() => paragrafosDoHtml(f.descricao).join("\n\n"), [f.descricao]);
-    const tags = useTagsDoEvento({ ativo: f.tipo === "show", texto: f.categoriaEscrito, nome: f.nome, descricao: descricaoEmTexto, banner: f.banner, recorte: f.recorteBanner });
-    const lerTags = () => void tags.ler();
-    const procurandoTags = tags.estado.status === "lendo";
-    // Último estado fora da busca: a dica não muda enquanto busca, só o campo mostra "Buscando…".
-    const ultimoEstado = useRef<EstadoDasTags>({ status: "vazio" });
-    if (!procurandoTags) ultimoEstado.current = tags.estado;
-    const dicaEstavel = ultimoEstado.current;
-    // Depois da busca, o campo mostra as tags que valem para a categoria no lugar do que foi escrito; o escrito
-    // continua guardado e é o que vai para as próximas buscas. Editar o campo volta a ser texto da pessoa.
-    const [tagsNoCampo, setTagsNoCampo] = useState(false);
+    const categoria = useCategoriaDoEvento({ ativo: f.tipo === "show", texto: f.categoriaEscrito, nome: f.nome, descricao: descricaoEmTexto, banner: f.banner, recorte: f.recorteBanner });
+    const lerCategoria = () => void categoria.ler();
+    // Categoria achada: o campo passa a mostrar o nome dela. Sem categoria, volta ao que a pessoa escreveu.
     useEffect(() => {
-        if (tags.estado.status !== "pronto") return;
-        setTagsNoCampo(true);
-        // Busca nova devolve as tags tiradas no X: a remoção vale só até a próxima busca.
-        setF((a) => (a.tagsRemovidas.length ? { ...a, tagsRemovidas: [] } : a));
-    }, [tags.estado]);
-    // Valem a categoria, a data (sazonais) e o que a pessoa tirou no X.
-    const inicioDoEventoNoForm = emSessoes(f) ? [...f.sessoesExtras].map((x) => x.valor).sort()[0] ?? f.inicio : f.inicio;
-    const contextoDasTags = { categoriaId: f.categoriaId || undefined, inicio: inicioDoEventoNoForm || undefined, fim: f.fim || undefined, removidas: f.tagsRemovidas };
-    const tagsNoForm = dicaEstavel.status === "pronto" ? tagsValidas(dicaEstavel.resultado.tags, contextoDasTags).map((t) => ({ id: t.id, nome: TAG_POR_ID.get(t.id)!.nome })) : [];
+        if (categoria.estado.status !== "pronto") return;
+        const nome = categoria.estado.resultado.categoria?.nome;
+        setF((a) => ({ ...a, categoriaTexto: nome ?? a.categoriaEscrito }));
+    }, [categoria.estado]);
+    const procurandoCategoria = categoria.estado.status === "lendo";
+    // Último estado fora da busca: a dica não muda enquanto busca, só o campo mostra "Buscando…".
+    const ultimoEstado = useRef<EstadoDaCategoria>({ status: "vazio" });
+    if (!procurandoCategoria) ultimoEstado.current = categoria.estado;
+    const dicaEstavel = ultimoEstado.current;
     const caixaDoTipo = useRef<HTMLDivElement>(null);
     const [criando, setCriando] = useState(false);
     const ruins = useMemo(() => (tentou ? sessoesInvalidas(f) : new Set<number>()), [f, tentou]);
@@ -298,15 +281,12 @@ function FormularioDeEvento({ tipo, titulo }: { tipo: TipoEvento; titulo: string
             return;
         }
         setCriando(true);
-        // As tags fecham antes de gravar: espera o banner e a leitura em curso (EVT-97).
-        const leitura = f.tipo === "show" ? await tags.garantir() : null;
-        // Futebol e esportivo nascem com a categoria deles; show ou festa vale a do dropdown.
-        const categoriaId = f.tipo === "show" ? f.categoriaId : categoriaDoEvento({ tipo: f.tipo });
+        // A categoria fecha antes de gravar: espera o banner e a leitura em curso (EVT-97).
+        const classificacao = f.tipo === "show" ? await categoria.garantir() : null;
         // Em sessões, o evento começa na primeira e termina no fim da última; direto, uma sessão só, no início (EVT-89, EVT-98).
         const ordenadas = emSessoes(f) ? [...f.sessoesExtras].sort((a, b) => a.valor.localeCompare(b.valor)) : [];
         const inicioDoEvento = ordenadas[0]?.valor ?? f.inicio;
         const fimDoEvento = ordenadas.length ? ordenadas.map(fimDaSessao).sort().at(-1)! : f.fim;
-        const tagsDoEvento = f.tipo === "show" ? tagsValidas(leitura?.tags ?? [], { categoriaId, inicio: inicioDoEvento, fim: fimDoEvento, removidas: f.tagsRemovidas }).map((t) => t.id) : undefined;
         const novo = criarEvento({
             nome: f.nome.trim(),
             data: new Date(inicioDoEvento).toISOString(),
@@ -323,9 +303,8 @@ function FormularioDeEvento({ tipo, titulo }: { tipo: TipoEvento; titulo: string
             extras: {
                 tipo: f.tipo,
                 modalidade: f.tipo === "esportivo" ? (f.modalidade as Modalidade) : undefined,
-                categoria: categoriaId,
-                tags: tagsDoEvento,
-                categoriaTexto: f.tipo === "show" ? f.categoriaEscrito.trim() || undefined : undefined,
+                categoria: classificacao?.categoria?.id,
+                categoriaTexto: f.tipo === "show" ? f.categoriaEscrito.trim() : undefined,
                 fim: fimDoEvento,
                 moeda: f.moeda,
                 // Limites não se definem na criação: nasce ilimitado e se ajusta em Itens › Configurações de ingressos (EVT-57).
@@ -340,11 +319,11 @@ function FormularioDeEvento({ tipo, titulo }: { tipo: TipoEvento; titulo: string
                 ...(f.descricao ? { vitrine: { descricao: paragrafosDoHtml(f.descricao), descricaoHtml: f.descricao } } : {}),
             },
         });
-        // A criação fica guardada (texto, banner, vetor) para recalibrar as tags com eventos reais.
+        // A criação vai para o banco de categorias: forma a lista nos 2 primeiros meses e mostra o que falta.
         if (f.tipo === "show")
             void registrarCriacao(
-                { eventoId: novo.id, produtora: organizacao?.nome ?? "", nome: f.nome.trim(), texto: f.categoriaEscrito, descricao: descricaoEmTexto, bannerDescricao: tags.bannerDescricao ?? undefined, categoriaId, tags: tagsDoEvento ?? [] },
-                leitura?.vetor ?? null,
+                { eventoId: novo.id, produtora: organizacao?.nome ?? "", nome: f.nome.trim(), texto: f.categoriaEscrito, descricao: descricaoEmTexto, bannerDescricao: categoria.bannerDescricao ?? undefined },
+                classificacao ?? { categoria: null, maisParecida: null, similaridade: 0, novaNaLista: false, vetor: null },
             );
         // Sem toast: quem anuncia o evento criado é o holofote do guia de configuração, que só toca aqui (EVT-10, GDC-14).
         prepararGuiaDoEventoNovo(novo.id);
@@ -393,7 +372,7 @@ function FormularioDeEvento({ tipo, titulo }: { tipo: TipoEvento; titulo: string
                     <div className="flex min-w-0 flex-col gap-8">
                         {/* Nome num campo do DS. */}
                         <div className="flex gap-4" data-erro={erros.nome ? "" : undefined}>
-                            <div className="min-w-0 flex-1" onBlur={lerTags}>
+                            <div className="min-w-0 flex-1" onBlur={lerCategoria}>
                                 <Input
                                     id="nome-do-evento"
                                     label="Nome do evento"
@@ -486,43 +465,30 @@ function FormularioDeEvento({ tipo, titulo }: { tipo: TipoEvento; titulo: string
                             </div>
                         )}
 
-                        {/* Show ou festa: logo depois do nome, a categoria (dropdown) e, com as próprias palavras, como é o
-                            evento. As tags saem desse texto, do nome, da descrição e do banner (EVT-97). */}
+                        {/* Show ou festa: logo depois do nome, a pessoa conta com as próprias palavras que tipo de evento é.
+                            A categoria sai desse texto, do nome, da descrição e do banner (EVT-97). */}
                         {f.tipo === "show" && (
-                            <>
-                                <div className="flex gap-4">
-                                    <div id="campo-categoria" className="min-w-0 flex-1 sm:max-w-xs">
-                                        <CampoSelect
-                                            label="Categoria"
-                                            isRequired
-                                            opcoes={opcoesDeCategoria}
-                                            valor={f.categoriaId}
-                                            onChange={(v) => set("categoriaId", v)}
-                                            placeholder="Selecione"
-                                            erro={erros.categoria}
-                                        />
-                                    </div>
-                                </div>
-                                {/* Sai da caixa (não só de um badge para outro): busca de novo. */}
-                                <div className="relative" onBlur={(e) => !e.currentTarget.contains(e.relatedTarget as Node | null) && lerTags()}>
-                                    <CampoComTags
-                                        texto={f.categoriaEscrito}
-                                        onTexto={(v) => {
-                                            setTagsNoCampo(false);
-                                            set("categoriaEscrito", v);
-                                        }}
-                                        tags={tagsNoForm}
-                                        mostrarTags={tagsNoCampo}
-                                        onEditar={() => setTagsNoCampo(false)}
-                                        onRemover={(ids) => setF((a) => ({ ...a, tagsRemovidas: [...new Set([...a.tagsRemovidas, ...ids])] }))}
-                                        buscando={procurandoTags}
-                                        caixaRef={caixaDoTipo}
+                            <div className="flex gap-4" data-erro={erros.categoria ? "" : undefined}>
+                                <div id="campo-categoria" className="relative min-w-0 flex-1" onBlur={lerCategoria}>
+                                    <Input
+                                        label="Tipo de evento"
+                                        icon={Tag01}
+                                        isRequired
+                                        // Enquanto busca, o campo trava e mostra "Buscando…" na ponta direita, como o Local.
+                                        groupRef={caixaDoTipo}
+                                        isDisabled={procurandoCategoria}
+                                        inputClassName={procurandoCategoria ? "pr-28" : undefined}
+                                        value={f.categoriaTexto}
+                                        // Editar o campo, inclusive o nome da categoria já trocado, vale como texto novo da pessoa.
+                                        onChange={(v) => setF((a) => ({ ...a, categoriaTexto: v, categoriaEscrito: v }))}
+                                        placeholder="Ex.: pagode na laje com open bar"
+                                        isInvalid={!!erros.categoria}
                                         // Durante a busca a dica fica como estava: o estado aparece só dentro do campo.
-                                        hint={<DicaDasTags estado={dicaEstavel} tags={tagsNoForm.length} removidas={f.tagsRemovidas.length} escrito={f.categoriaEscrito} />}
+                                        hint={erros.categoria ?? <DicaDaCategoria estado={dicaEstavel} escrito={f.categoriaEscrito} />}
                                     />
-                                    <BuscandoNoCampo alvo={caixaDoTipo} buscando={procurandoTags} />
+                                    <BuscandoNoCampo alvo={caixaDoTipo} buscando={procurandoCategoria} />
                                 </div>
-                            </>
+                            </div>
                         )}
 
                         {/* Quando e onde, como na página: ícone e informação. */}
@@ -596,7 +562,7 @@ function FormularioDeEvento({ tipo, titulo }: { tipo: TipoEvento; titulo: string
                             className="flex gap-4"
                             data-erro={erros.descricao ? "" : undefined}
                             // A barra de formatação e o texto ficam no mesmo bloco: só conta sair do bloco inteiro.
-                            onBlur={(e) => !e.currentTarget.contains(e.relatedTarget as Node | null) && lerTags()}
+                            onBlur={(e) => !e.currentTarget.contains(e.relatedTarget as Node | null) && lerCategoria()}
                         >
                             <DescricaoRica
                                 label="Sobre o evento"
@@ -759,7 +725,7 @@ const formatarDataHora = (v: string, locale: string) => {
 };
 
 /**
- * "Buscando…" na ponta direita da caixa do Como é o evento enquanto as tags são buscadas (EVT-97), com
+ * "Buscando…" na ponta direita da caixa do Tipo de evento enquanto a categoria é buscada (EVT-97), com
  * o mesmo spinner e texto do Local (EVT-65). O Input do DS não tem espaço de status como o ComboBox,
  * então o indicador fica por cima, alinhado à caixa e fora dela (a caixa esmaece travada, ele não).
  * Sempre presente para o leitor de tela anunciar quando a busca começa.
@@ -799,82 +765,15 @@ function BuscandoNoCampo({ alvo, buscando }: { alvo: RefObject<HTMLDivElement | 
     );
 }
 
-/**
- * Como é o evento (EVT-97): texto aberto que, depois da busca, mostra as tags como badges com X no lugar do
- * que foi escrito. Clicar na caixa, ou chegar nela pelo teclado, volta ao texto para editar. Mesma caixa,
- * tamanho e estados do Input do DS; os badges são os Tags do DS, que já trazem o X e o teclado.
- */
-function CampoComTags({
-    texto,
-    onTexto,
-    tags,
-    mostrarTags,
-    onEditar,
-    onRemover,
-    buscando,
-    caixaRef,
-    hint,
-}: {
-    texto: string;
-    onTexto: (v: string) => void;
-    tags: { id: string; nome: string }[];
-    mostrarTags: boolean;
-    onEditar: () => void;
-    onRemover: (ids: string[]) => void;
-    buscando: boolean;
-    caixaRef: RefObject<HTMLDivElement | null>;
-    hint: ReactNode;
-}) {
-    const campo = useRef<HTMLInputElement>(null);
-    const comTags = mostrarTags && tags.length > 0;
-    return (
-        <AriaTextField value={comTags ? "" : texto} onChange={onTexto} isDisabled={buscando} className="flex flex-col gap-1.5">
-            <Label>Como é o evento</Label>
-            <div
-                ref={caixaRef}
-                // Clique no vazio da caixa (fora dos badges) vai para o texto.
-                onClick={(e) => e.target === e.currentTarget && campo.current?.focus()}
-                className={cx(
-                    "flex min-h-10 w-full flex-wrap items-center gap-2 rounded-lg bg-primary py-1.5 pr-3 pl-3 shadow-xs ring-1 ring-primary transition duration-100 ease-linear ring-inset focus-within:ring-2 focus-within:ring-brand",
-                    buscando && "cursor-not-allowed opacity-50",
-                )}
-            >
-                <Tag01 className="pointer-events-none size-5 shrink-0 text-fg-quaternary" aria-hidden="true" />
-                {comTags && (
-                    <TagGroup label="Tags do evento" size="md" onRemove={(keys) => onRemover([...keys].map(String))} className="contents">
-                        <TagList className="flex flex-wrap gap-1.5 focus:outline-hidden" items={tags}>
-                            {(t) => (
-                                <Tag id={t.id} textValue={t.nome} isDisabled={buscando}>
-                                    {t.nome}
-                                </Tag>
-                            )}
-                        </TagList>
-                    </TagGroup>
-                )}
-                <AriaInput
-                    ref={campo}
-                    onFocus={() => comTags && onEditar()}
-                    placeholder={comTags ? undefined : "Ex.: pagode na laje com open bar"}
-                    className={cx(
-                        "min-w-[20%] flex-1 appearance-none bg-transparent py-0.5 text-md text-primary outline-hidden placeholder:text-placeholder disabled:cursor-not-allowed",
-                        buscando && "pr-28",
-                    )}
-                />
-            </div>
-            <HintText>{hint}</HintText>
-        </AriaTextField>
-    );
-}
-
-/** Texto de apoio do Como é o evento: o que fazer antes e, com as tags no campo, de onde elas vieram (EVT-97). */
-function DicaDasTags({ estado, tags, removidas, escrito }: { estado: EstadoDasTags; tags: number; removidas: number; escrito: string }) {
-    if (estado.status === "erro") return <>Não deu para ler agora. As tags são lidas de novo quando o evento for criado.</>;
+/** Texto de apoio do Tipo de evento: o que fazer antes, a leitura em curso e a categoria encontrada (EVT-97). */
+function DicaDaCategoria({ estado, escrito }: { estado: EstadoDaCategoria; escrito: string }) {
+    if (estado.status === "erro") return <>Não deu para ler agora. A categoria é definida quando o evento for criado.</>;
     if (estado.status === "pronto") {
-        if (!tags) return removidas ? <>Sem tags: as que apareceram foram tiradas.</> : <>Nenhuma tag encontrada. Conte o gênero, a ocasião ou o que está incluso.</>;
-        // O campo já mostra as tags: a dica lembra de onde elas vieram.
-        return escrito.trim() ? <>Tags encontradas a partir de “{escrito.trim()}”. Clique no campo para editar o texto.</> : <>Tags encontradas no nome, na descrição e no banner.</>;
+        if (!estado.resultado.categoria) return <>Nenhuma categoria parecida. O evento fica sem categoria por enquanto.</>;
+        // O campo já mostra a categoria: a dica lembra de onde ela veio.
+        return <>Categoria encontrada a partir de “{escrito.trim()}”.</>;
     }
-    return <>Opcional. Com as suas palavras: as tags saem daqui, do nome, da descrição e do banner.</>;
+    return <>Com as suas palavras. A categoria sai daqui, do nome, da descrição e do banner.</>;
 }
 
 /** Seção do formulário: título e, se precisar, subtítulo (UI-VIS-014). */

@@ -21,7 +21,7 @@ export interface NovoEvento {
     /** Fim de cada sessão (ISO local), pela chave do início dela (ISO local). */
     fimDasSessoes?: Record<string, string>;
     descricao?: string;
-    extras?: Pick<Evento, "tipo" | "modalidade" | "categoria" | "tags" | "categoriaTexto" | "fim" | "moeda" | "limites" | "idadeMinima" | "mapa" | "partida" | "avancado" | "vitrine">;
+    extras?: Pick<Evento, "tipo" | "modalidade" | "categoria" | "categoriaTexto" | "fim" | "moeda" | "limites" | "idadeMinima" | "mapa" | "partida" | "avancado" | "vitrine">;
 }
 
 const slugLivre = (base: string, id: string) => {
