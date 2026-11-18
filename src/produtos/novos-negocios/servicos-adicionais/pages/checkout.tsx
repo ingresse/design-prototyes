@@ -40,7 +40,8 @@ export function CheckoutServico() {
     const total = totalPedido(pedido);
     // Volta para a oferta mantendo a marcação de quem veio do Checklist do rolê
     const voltar = () => navigate(`/novos-negocios/servicos-adicionais/${servico.id}${params.get("de") === "checklist" ? "?de=checklist" : ""}`);
-    const pagar = (forma: "pix" | "cartao") => navigate(`/novos-negocios/servicos-adicionais/${servico.id}/confirmacao?valor=${pedido.valor}&forma=${forma}`);
+    const pagar = (forma: "pix" | "cartao") =>
+        navigate(`/novos-negocios/servicos-adicionais/${servico.id}/confirmacao?valor=${pedido.valor}&forma=${forma}${params.get("de") === "checklist" ? "&de=checklist" : ""}`);
 
     return (
         <div className="min-h-screen bg-secondary text-primary">

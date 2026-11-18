@@ -44,8 +44,8 @@ export function ServicosAdicionais() {
                                 ))}
                             </span>
                         }
-                        titulo="Checklist do rolê · Vários serviços"
-                        descricao="Uber, Meep, fotos e seguro de celular numa página só."
+                        titulo={`Prepare seu rolê · ${EVENTO.nomeCurto}`}
+                        descricao="Os serviços de um evento numa página só, a partir do ingresso."
                     />
                 </div>
             </div>

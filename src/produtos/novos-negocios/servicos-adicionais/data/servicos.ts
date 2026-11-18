@@ -3,7 +3,7 @@ import festivalAurora from "../assets/festival-aurora.svg";
 import showPalco from "../assets/show-palco.svg";
 import meepSimbolo from "../assets/meep-simbolo.png";
 import uberLogo from "../assets/uber-logo.svg";
-import { IconlyCalendario, IconlyCamera, IconlyCarteira, IconlyComida, IconlyCartao, IconlyDesconto, IconlyEnviar, IconlyEscudo, IconlyImagem, IconlyRaio } from "../components/icones-iconly";
+import { IconlyCadeado, IconlyRemedio, IconlyCalendario, IconlyCamera, IconlyCarteira, IconlyComida, IconlyCartao, IconlyDesconto, IconlyEnviar, IconlyEscudo, IconlyImagem, IconlyRaio } from "../components/icones-iconly";
 
 /**
  * Serviços adicionais — configuração das ofertas.
@@ -17,7 +17,7 @@ import { IconlyCalendario, IconlyCamera, IconlyCarteira, IconlyComida, IconlyCar
  * confirmadas com os parceiros.
  */
 
-export type ServicoId = "uber" | "uber-evento" | "meep" | "fotos" | "seguro";
+export type ServicoId = "uber" | "uber-evento" | "meep" | "fotos" | "seguro" | "ressaca" | "guarda-volumes";
 
 export interface Beneficio {
     icone: FC<{ className?: string }>;
@@ -95,10 +95,14 @@ export const EVENTO = {
     nome: "Festival Aurora 2026",
     /** Nome sem o ano, para títulos curtos (a data já aparece no card do evento). */
     nomeCurto: "Festival Aurora",
-    dataLabel: "Sáb, 12 dez · 16h",
+    /** Nome curto já com a preposição certa, para títulos ("Tem mais pra viver no Aurora"); evita erro de gênero ("no Anitta"). */
+    noEvento: "no Aurora",
+    dataLabel: "Sáb, 28 nov · 16h",
     local: "Parque Villa-Lobos, São Paulo",
-    dataCompleta: "Sábado, 12 de dezembro de 2026 · 16h",
-    contagem: "Faltam 3 dias",
+    dataCompleta: "Sábado, 28 de novembro de 2026 · 16h",
+    contagem: "Faltam 10 dias",
+    /** Tipo do evento: define a palavra de {categoria} nos textos do Prepare seu rolê. */
+    categoria: "festival" as "festival" | "show" | "futebol",
     /** Arte larga: fundo desfocado do header. */
     cover: showPalco,
     /** Pôster 3:4 do card do evento. */
@@ -236,7 +240,7 @@ export const SERVICOS: Record<ServicoId, Servico> = {
         pergunta: "Escolha o pacote",
         item: "Fotos do rolê",
         valores: [29, 49, 79],
-        pacotes: { 29: "5 fotos", 49: "15 fotos", 79: "Todas as suas" },
+        pacotes: { 29: "5 fotos", 49: "15 fotos", 79: "Todas as fotos" },
         desconto: 0,
         outroValor: false,
         minimo: 29,
@@ -286,20 +290,177 @@ export const SERVICOS: Record<ServicoId, Servico> = {
             passos: ["Guarde o e-mail com a apólice: ele traz o número do seguro.", "Se algo acontecer, abra o pedido em até 48 horas pelo link do e-mail."],
         },
     },
+    // Ilustrativo: marca fictícia, para ver o hub com mais serviços. Remédio isento de prescrição tem
+    // regras de publicidade (Anvisa) e a venda pode exigir farmácia parceira: validar antes de sair do protótipo.
+    ressaca: {
+        id: "ressaca",
+        parceiro: "Amanhã",
+        iconeSelo: IconlyRemedio,
+        corSelo: "bg-utility-emerald-600",
+        categoria: "Cuidado pós-evento",
+        titulo: "Deixe o remédio do dia seguinte separado",
+        descricao: "Compre pelo app e retire no posto Amanhã, perto da saída, quando for embora.",
+        beneficios: [
+            { icone: IconlyRemedio, texto: "Retirada no posto perto da saída" },
+            { icone: IconlyCartao, texto: "Pagamento já feito pelo app" },
+            { icone: IconlyCalendario, texto: "Pacotes de 1, 2 ou 4 doses" },
+        ],
+        pergunta: "Quantas doses você quer levar?",
+        item: "Remédio Amanhã",
+        valores: [15, 25, 45],
+        pacotes: { 15: "1 dose", 25: "Kit 2 doses", 45: "Kit 4 doses" },
+        desconto: 0,
+        outroValor: false,
+        minimo: 15,
+        maximo: 45,
+        cta: "Comprar remédio",
+        condicoes: [
+            "Retirada só no dia do evento, no posto Amanhã perto da saída, com o código.",
+            "Leia a bula e use conforme orientação. Se os sintomas persistirem, procure um médico.",
+        ],
+        destino: { rotulo: "E-mail que recebe o código de retirada", valor: USUARIO.email },
+        confirmacao: {
+            titulo: "Pronto, seu kit tá separado",
+            descricao: `O código de retirada foi enviado pra ${USUARIO.email}.`,
+            passos: ["Na saída do evento, vá ao posto Amanhã.", "Mostre o código e retire seu kit."],
+        },
+    },
+    // Ilustrativo: marca fictícia; regras de uso do armário (reabrir, horário) não definidas.
+    "guarda-volumes": {
+        id: "guarda-volumes",
+        parceiro: "Tranca",
+        iconeSelo: IconlyCadeado,
+        corSelo: "bg-utility-amber-600",
+        categoria: "Guarda-volumes",
+        titulo: "Guarde suas coisas e curta de mãos livres",
+        descricao: "Reserve um armário antes e retire a chave ou o código no local, no dia do evento.",
+        beneficios: [
+            { icone: IconlyCadeado, texto: "Armário garantido antes de chegar" },
+            { icone: IconlyCalendario, texto: "Vale pelo dia inteiro do evento" },
+            { icone: IconlyRaio, texto: "Tamanhos P, M e G pro que você levar" },
+        ],
+        pergunta: "Qual tamanho de armário você quer?",
+        item: "Guarda-volumes",
+        valores: [30, 45, 60],
+        pacotes: { 30: "Armário P", 45: "Armário M", 60: "Armário G" },
+        desconto: 0,
+        outroValor: false,
+        minimo: 30,
+        maximo: 60,
+        cta: "Reservar armário",
+        condicoes: [
+            "Retire a chave ou o código no guarda-volumes mostrando sua reserva.",
+            "Retire seus itens até o fim do evento.",
+            "Itens proibidos no evento também não podem ser guardados.",
+        ],
+        destino: { rotulo: "E-mail que recebe a reserva", valor: USUARIO.email },
+        confirmacao: {
+            titulo: "Armário reservado!",
+            descricao: `A reserva foi enviada pra ${USUARIO.email}.`,
+            passos: ["Ao chegar, vá ao guarda-volumes Tranca.", "Mostre a reserva e retire a chave ou o código."],
+        },
+    },
 };
 
 /** Ofertas com página própria (cada uma aberta pelo link de uma comunicação). */
 export const INDIVIDUAIS: ServicoId[] = ["uber", "uber-evento", "meep"];
 
-/** Momentos do Checklist do rolê: a vitrine organiza os serviços pela hora em que a pessoa precisa deles. */
-export const MOMENTOS: { id: string; titulo: string; servicos: ServicoId[] }[] = [
-    { id: "antes", titulo: "Antes de sair", servicos: ["seguro"] },
-    { id: "caminho", titulo: "Ida e volta", servicos: ["uber"] },
-    { id: "evento", titulo: "No evento", servicos: ["meep", "fotos"] },
-];
+/**
+ * Prepare seu rolê (rota /checklist): os serviços de UM evento, a partir do ingresso. Agrupados
+ * pelo momento do dia, sem numeração (não é tarefa). O título de cada card puxa pelo benefício, em
+ * tom de conversa; o apoio e o selo identificam o serviço. Depois de contratado, vira `status`.
+ * `{valor}`, `{pacote}`, `{desconto}`, `{evento}`, `{noEvento}` ("no Aurora"), `{tipo}` (festival, show ou jogo) e `{categoria}` (festival, show ou estádio) são
+ * trocados na tela. Os títulos das seções são neutros, iguais para festival, show e futebol.
+ */
+export interface ServicoRole {
+    id: ServicoId;
+    titulo: string;
+    apoio: string;
+    /** Nome acessível do card. */
+    rotulo: string;
+    /**
+     * Benefício comercial em destaque (selo verde ao lado do título), só quando existe de verdade
+     * (ex.: o desconto da Uber, "{desconto} off", lido da oferta). Os outros cards não têm selo.
+     */
+    destaque?: string;
+    /** Depois de contratar; `rotulo` é o nome acessível do card nesse estado. */
+    status: { titulo: string; apoio: string; acao: string; rotulo: string };
+}
 
-/** Serviços do Checklist do rolê, na ordem dos momentos. Cada um abre a própria página de contratação. */
-export const CHECKLIST: ServicoId[] = MOMENTOS.flatMap((m) => m.servicos);
+export const ROLE = {
+    titulo: "Tem mais pra viver {noEvento}",
+    /** Emoji de festa depois do título (decorativo, escondido do leitor de tela). */
+    emoji: "🎉",
+    apoio: "A parte mais difícil já foi: garantir o ingresso. Agora vem a parte boa.",
+    voltar: "Ver outros serviços",
+    momentos: [
+        {
+            id: "antes",
+            titulo: "Antes do grande dia",
+            servicos: [
+                {
+                    id: "seguro",
+                    titulo: "Mais tranquilidade pra curtir",
+                    apoio: "Seguro de celular contra roubo e furto",
+                    rotulo: "Ver oferta de seguro de celular contra roubo e furto",
+                    status: { titulo: "Celular no seguro, pode curtir", apoio: "{pacote} · de 28/11 a 5/12", acao: "Ver detalhes", rotulo: "Seguro de celular contratado. Ver detalhes" },
+                },
+            ],
+        },
+        {
+            id: "caminho",
+            titulo: "Na ida e na volta",
+            servicos: [
+                {
+                    id: "uber-evento",
+                    titulo: "Economize no caminho pro {categoria}",
+                    apoio: "Compre crédito\u00a0Uber com desconto",
+                    rotulo: "Ver oferta de crédito Uber com {desconto} de desconto",
+                    destaque: "{desconto} off",
+                    status: { titulo: "Crédito comprado! É só resgatar", apoio: "{valor} · o código tá na confirmação", acao: "Ver código", rotulo: "Crédito Uber de {valor} comprado. Ver código" },
+                },
+                {
+                    id: "ressaca",
+                    titulo: "Pensando no dia seguinte?",
+                    apoio: "Remédio Amanhã, retirado na saída",
+                    rotulo: "Ver oferta do remédio Amanhã, com retirada na saída do evento",
+                    status: { titulo: "Kit separado pro dia seguinte", apoio: "{pacote} · retire no posto da saída", acao: "Ver código", rotulo: "Remédio Amanhã comprado. Ver código de retirada" },
+                },
+            ],
+        },
+        {
+            id: "evento",
+            titulo: "Hora de aproveitar",
+            servicos: [
+                {
+                    id: "meep",
+                    titulo: "Chegue com saldo pra comer e beber",
+                    apoio: "Consumo antecipado Meep",
+                    rotulo: "Ver oferta de consumo antecipado Meep",
+                    status: { titulo: "Saldo pronto pro {categoria}!", apoio: "{valor} pra comer e beber", acao: "Ver saldo", rotulo: "Saldo Meep de {valor} carregado. Ver saldo" },
+                },
+                {
+                    id: "guarda-volumes",
+                    titulo: "Mochila guardada, mãos livres",
+                    apoio: "Guarda-volumes com reserva antecipada",
+                    rotulo: "Ver oferta de guarda-volumes com reserva antecipada",
+                    status: { titulo: "Armário reservado, pode ir leve", apoio: "{pacote} · reserva no seu e-mail", acao: "Ver reserva", rotulo: "Armário reservado. Ver reserva" },
+                },
+                {
+                    id: "fotos",
+                    titulo: "Viva o evento. As fotos vêm depois.",
+                    apoio: "Fotos profissionais, achadas por selfie",
+                    rotulo: "Ver oferta de fotos profissionais do {categoria}",
+                    // O protótipo não sabe se a selfie já foi enviada: mostra o passo que falta (está na confirmação)
+                    status: { titulo: "Falta só a sua selfie", apoio: "Ela é usada pra encontrar suas fotos", acao: "Enviar selfie", rotulo: "Pacote de fotos comprado. Enviar selfie" },
+                },
+            ],
+        },
+    ] satisfies { id: string; titulo: string; servicos: ServicoRole[] }[],
+};
+
+/** Serviços do Prepare seu rolê, na ordem dos momentos. Cada um abre a própria página de contratação. */
+export const CHECKLIST: ServicoId[] = ROLE.momentos.flatMap((m) => m.servicos.map((s) => s.id));
 
 export const brl = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 

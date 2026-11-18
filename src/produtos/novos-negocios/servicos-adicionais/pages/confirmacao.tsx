@@ -7,7 +7,8 @@ import { cx } from "@/utils/cx";
 import { useForceLightTheme } from "../../utils/use-force-light-theme";
 import { FundoPagina } from "../components/fundo-pagina";
 import { Topo } from "../components/topo";
-import { brl, type Servico } from "../data/servicos";
+import { ROLE, brl, type Servico, type ServicoId } from "../data/servicos";
+import { marcarContratado } from "../utils/contratados";
 import { lerPedido, nomeItem, totalPedido, type ItemPedido } from "../utils/pedido";
 
 /**
@@ -23,10 +24,16 @@ export function ConfirmacaoServico() {
     const [params] = useSearchParams();
     const pedido = lerPedido(id, params);
     const forma = params.get("forma") === "cartao" ? "Cartão de crédito" : "Pix";
+    // Quem veio do Prepare seu rolê volta para lá, e o serviço vira status na página
+    const doChecklist = params.get("de") === "checklist";
 
     useEffect(() => {
         window.scrollTo(0, 0);
     }, []);
+
+    useEffect(() => {
+        if (doChecklist && pedido) marcarContratado(pedido.servico.id as ServicoId, { valor: pedido.valor, forma: params.get("forma") ?? "pix" });
+    }, [doChecklist, pedido?.servico.id, pedido?.valor, params]);
 
     if (!pedido) return <Navigate to="/novos-negocios/servicos-adicionais" replace />;
 
@@ -57,8 +64,14 @@ export function ConfirmacaoServico() {
                     <ComoUsar item={pedido} forma={forma} />
                 </section>
 
+                {/* Veio do Prepare seu rolê: volta para os outros serviços do evento */}
+                {doChecklist && (
+                    <Button size="lg" color={servico.resgate ? "secondary" : "primary"} className="w-full" onClick={() => navigate("/novos-negocios/servicos-adicionais/checklist")}>
+                        {ROLE.voltar}
+                    </Button>
+                )}
                 {/* Serviços sem resgate (Meep, fotos, seguro) seguem com o "Concluir" */}
-                {!servico.resgate && (
+                {!servico.resgate && !doChecklist && (
                     <Button size="lg" color="primary" className="w-full" onClick={() => navigate("/novos-negocios/servicos-adicionais")}>
                         Concluir
                     </Button>

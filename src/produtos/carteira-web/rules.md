@@ -26,7 +26,7 @@ inscrições, transferência e troca.
 
 ## Em aberto
 
-- Seção de serviços no evento (CWB-12): falta definir se some no dia do evento e se mostra o status depois da compra (hoje não mostra). O pôster do Festival Aurora ainda diz 12 dez (a oferta e o Figma também usam 12 dez), mas o evento na Carteira é 28 nov.
+- Seção de serviços no evento (CWB-12): falta definir se some no dia do evento e se mostra o status depois da compra (hoje não mostra).
 
 - Frequência real de exibição do modal e do banner depende do negócio; "uma vez" é premissa do protótipo.
 - O 5% é ilustrativo e depende de confirmação comercial.

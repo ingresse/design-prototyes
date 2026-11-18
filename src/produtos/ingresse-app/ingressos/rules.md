@@ -32,4 +32,3 @@ página ainda não foram documentadas.
 ## Em aberto
 
 - Falta definir se a seção some no dia do evento e se mostra o status depois da compra (hoje não mostra).
-- O pôster do Festival Aurora ainda diz 12 dez (a oferta e o Figma também usam 12 dez), mas o evento na Carteira é 28 nov.
