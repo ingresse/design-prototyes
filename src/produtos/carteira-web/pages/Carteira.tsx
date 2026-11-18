@@ -30,6 +30,7 @@ import { useMarcaIngresse } from "../components/use-marca-ingresse";
 import { SAO_SILVESTRE } from "../data/sao-silvestre";
 import { isTransferido } from "../data/transfer-store";
 import festivalAurora from "../assets/festival-aurora.svg";
+import gopTun from "../assets/gop-tun.svg";
 
 /** Oferta da Uber: o modal aparece uma vez (?oferta=uber força); o banner some quando a pessoa toca no X. */
 const OFERTA_UBER_VISTA = "cw-oferta-uber";
@@ -90,7 +91,8 @@ const PROXIMOS: EventoCard[] = [
         dia: "11",
         mes: "Abril",
         qtd: 2,
-        gradient: "linear-gradient(160deg,#ef4444 0%,#111827 55%,#0b0b0f 100%)",
+        // Capa ilustrativa (arte original do protótipo, não é a capa oficial)
+        gradient: gopTun,
         datas: "11 de Abr 2026",
         mesAno: "Abril 2026",
     },

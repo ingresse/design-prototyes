@@ -3,7 +3,7 @@ import { motion } from "motion/react";
 import { CheckCircle, ChevronRight } from "@untitledui/icons";
 import { Badge } from "@/components/base/badges/badges";
 import { cx } from "@/utils/cx";
-import { EVENTO, ROLE, SERVICOS, brl, type ServicoRole } from "../data/servicos";
+import { EVENTO, ROLE, SERVICOS, brl, type Evento, type ServicoId, type ServicoRole } from "../data/servicos";
 import { lerContratados, type Contratado } from "../utils/contratados";
 import { SeloServico } from "./selo-servico";
 
@@ -23,13 +23,13 @@ const TIPO_EVENTO = { festival: "festival", show: "show", futebol: "jogo" } as c
 const percentual = (id: ServicoRole["id"]) => `${Math.round(SERVICOS[id].desconto * 100)}%`;
 
 /** Troca {evento}, {noEvento}, {tipo}, {categoria}, {valor}, {pacote} e {desconto} nos textos do Prepare seu rolê. */
-export const preencher = (texto: string, contratado?: { id: ServicoRole["id"]; valor?: number }) => {
+export const preencher = (texto: string, contratado?: { id: ServicoRole["id"]; valor?: number }, evento: Evento = EVENTO) => {
     const pacote = contratado?.valor != null ? SERVICOS[contratado.id].pacotes?.[contratado.valor] : undefined;
     return texto
-        .replace("{evento}", EVENTO.nome)
-        .replace("{noEvento}", EVENTO.noEvento)
-        .replace("{categoria}", PALAVRA_CATEGORIA[EVENTO.categoria])
-        .replace("{tipo}", TIPO_EVENTO[EVENTO.categoria])
+        .replace("{evento}", evento.nome)
+        .replace("{noEvento}", evento.noEvento)
+        .replace("{categoria}", PALAVRA_CATEGORIA[evento.categoria])
+        .replace("{tipo}", TIPO_EVENTO[evento.categoria])
         .replace(/\{desconto\}/g, contratado ? percentual(contratado.id) : "")
         .replace("{valor}", contratado?.valor != null ? brl(contratado.valor) : "")
         .replace("{pacote}", pacote ?? "");
@@ -40,13 +40,24 @@ export const preencher = (texto: string, contratado?: { id: ServicoRole["id"]; v
  * do tempo, para não parecer tarefa. Cada serviço é uma linha inteira clicável que abre a oferta:
  * o título puxa pelo benefício, em tom de conversa, e o selo e o apoio identificam o serviço. O que
  * já foi contratado nesta sessão vira status (selo com check, sem repetir a venda) e abre de novo
- * a confirmação.
+ * a confirmação. Só aparecem os serviços disponíveis no evento (`servicos`); um momento sem
+ * serviço some.
  */
-export function ChecklistServicos() {
+export function ChecklistServicos({ evento, servicos }: { evento: Evento; servicos: ServicoId[] }) {
     const contratados = lerContratados();
+    // Cada card usa o serviço principal ou um equivalente que o evento tenha (ex.: Uber geral)
+    const momentos = ROLE.momentos
+        .map((m) => ({
+            ...m,
+            itens: m.servicos.flatMap((s: ServicoRole) => {
+                const id = [s.id, ...(s.equivalentes ?? [])].find((i) => servicos.includes(i));
+                return id ? [{ item: s, id }] : [];
+            }),
+        }))
+        .filter((m) => m.itens.length > 0);
     return (
         <div className="flex flex-col gap-8">
-            {ROLE.momentos.map((momento, i) => (
+            {momentos.map((momento, i) => (
                 // Entrada discreta, um momento depois do outro (parada com "reduzir movimento", ver pages/checklist.tsx)
                 <motion.section
                     key={momento.id}
@@ -64,9 +75,9 @@ export function ChecklistServicos() {
                         {momento.titulo}
                     </h2>
                     <ul className="flex flex-col gap-3">
-                        {momento.servicos.map((s) => (
-                            <li key={s.id}>
-                                <CartaoServico item={s} contratado={contratados[s.id]} />
+                        {momento.itens.map(({ item, id }) => (
+                            <li key={id}>
+                                <CartaoServico item={item} id={id} evento={evento} contratado={contratados[id]} />
                             </li>
                         ))}
                     </ul>
@@ -76,25 +87,25 @@ export function ChecklistServicos() {
     );
 }
 
-function CartaoServico({ item, contratado }: { item: ServicoRole; contratado?: Contratado }) {
+function CartaoServico({ item, id, evento, contratado }: { item: ServicoRole; id: ServicoId; evento: Evento; contratado?: Contratado }) {
     const navigate = useNavigate();
-    const servico = SERVICOS[item.id];
-    const dados = contratado && { id: item.id, valor: contratado.valor };
-    const titulo = dados ? preencher(item.status.titulo, dados) : preencher(item.titulo, { id: item.id });
-    const apoio = dados ? preencher(item.status.apoio, dados) : preencher(item.apoio, { id: item.id });
+    const servico = SERVICOS[id];
+    const dados = contratado && { id, valor: contratado.valor };
+    const titulo = dados ? preencher(item.status.titulo, dados, evento) : preencher(item.titulo, { id }, evento);
+    const apoio = dados ? preencher(item.status.apoio, dados, evento) : preencher(item.apoio, { id }, evento);
     // Só serviços com benefício comercial real (hoje, o desconto da Uber) ganham o selo
-    const destaque = !contratado && item.destaque && SERVICOS[item.id].desconto > 0 ? preencher(item.destaque, { id: item.id }) : null;
+    const destaque = !contratado && item.destaque && SERVICOS[id].desconto > 0 ? preencher(item.destaque, { id }, evento) : null;
 
     const abrir = () =>
         navigate(
-            contratado ? `${BASE}/${item.id}/confirmacao?valor=${contratado.valor}&forma=${contratado.forma}&de=checklist` : `${BASE}/${item.id}?de=checklist`,
+            contratado ? `${BASE}/${id}/confirmacao?valor=${contratado.valor}&forma=${contratado.forma}&de=checklist` : `${BASE}/${id}?de=checklist`,
         );
 
     return (
         <button
             type="button"
             onClick={abrir}
-            aria-label={dados ? preencher(item.status.rotulo, dados) : preencher(item.rotulo, { id: item.id })}
+            aria-label={dados ? preencher(item.status.rotulo, dados, evento) : preencher(item.rotulo, { id }, evento)}
             className={cx(
                 "group flex w-full items-center gap-3 rounded-2xl p-4 text-left ring-1 outline-focus-ring transition duration-150 ease-out focus-visible:outline-2 focus-visible:outline-offset-2 active:scale-[0.98] sm:gap-4",
                 // Hover: o card sobe um pouco, ganha sombra e a borda escurece; o selo cresce de leve e a seta anda

@@ -25,3 +25,23 @@ export function marcarContratado(id: ServicoId, contratado: Contratado) {
     }
 }
 
+
+/**
+ * Evento do hub: vem de ?evento= (o atalho da Carteira manda o evento) e fica guardado nesta sessão,
+ * para o "Ver outros serviços" da confirmação voltar ao mesmo evento. Sem nenhum, o Festival Aurora.
+ */
+const CHAVE_HUB = "servicos-adicionais:hub-evento";
+
+export function escolherHub(pedido: string | null, validos: string[], padrao: string): string {
+    try {
+        if (pedido && validos.includes(pedido)) {
+            sessionStorage.setItem(CHAVE_HUB, pedido);
+            return pedido;
+        }
+        const salvo = sessionStorage.getItem(CHAVE_HUB);
+        if (salvo && validos.includes(salvo)) return salvo;
+    } catch {
+        if (pedido && validos.includes(pedido)) return pedido;
+    }
+    return padrao;
+}

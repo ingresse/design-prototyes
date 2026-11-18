@@ -3,7 +3,7 @@ import { useNavigate } from "react-router";
 import { ArrowLeft, ChevronRight } from "@untitledui/icons";
 import { Button } from "@/components/base/buttons/button";
 import { SeloServico } from "../components/selo-servico";
-import { CHECKLIST, EVENTO, INDIVIDUAIS, SERVICOS } from "../data/servicos";
+import { EVENTO, HUBS, HUB_PADRAO, INDIVIDUAIS, SERVICOS } from "../data/servicos";
 
 /**
  * Entrada do protótipo de Serviços adicionais (nome interno).
@@ -34,17 +34,18 @@ export function ServicosAdicionais() {
                             />
                         );
                     })}
-                    {/* Página com vários serviços */}
+                    {/* Página com vários serviços: o hub do evento padrão (Gop Tun), com a capa dele */}
                     <CartaoEntrada
-                        onPress={() => navigate("/novos-negocios/servicos-adicionais/checklist")}
+                        onPress={() => navigate(`/novos-negocios/servicos-adicionais/checklist?evento=${HUB_PADRAO}`)}
+                        imagem={HUBS[HUB_PADRAO].evento.poster}
                         selos={
                             <span className="flex items-center">
-                                {CHECKLIST.map((id, n) => (
+                                {HUBS[HUB_PADRAO].servicos.map((id, n) => (
                                     <SeloServico key={id} servico={SERVICOS[id]} tamanho="md" className={n > 0 ? "-ml-3 ring-2 ring-white" : undefined} />
                                 ))}
                             </span>
                         }
-                        titulo={`Prepare seu rolê · ${EVENTO.nomeCurto}`}
+                        titulo={`Prepare seu rolê · ${HUBS[HUB_PADRAO].evento.nomeCurto}`}
                         descricao="Os serviços de um evento numa página só, a partir do ingresso."
                     />
                 </div>
@@ -53,7 +54,7 @@ export function ServicosAdicionais() {
     );
 }
 
-function CartaoEntrada({ onPress, selos, titulo, descricao }: { onPress: () => void; selos: ReactNode; titulo: string; descricao: string }) {
+function CartaoEntrada({ onPress, selos, titulo, descricao, imagem = EVENTO.cover }: { onPress: () => void; selos: ReactNode; titulo: string; descricao: string; imagem?: string }) {
     return (
         <button
             type="button"
@@ -61,7 +62,7 @@ function CartaoEntrada({ onPress, selos, titulo, descricao }: { onPress: () => v
             className="group flex flex-col overflow-hidden rounded-2xl text-left ring-1 ring-border-secondary outline-focus-ring transition duration-150 ease-linear hover:-translate-y-1 hover:ring-brand focus-visible:outline-2 focus-visible:outline-offset-2"
         >
             <div className="relative flex h-36 items-end overflow-hidden p-4">
-                <img src={EVENTO.cover} alt="" aria-hidden="true" className="absolute inset-0 size-full object-cover" />
+                <img src={imagem} alt="" aria-hidden="true" className="absolute inset-0 size-full object-cover object-[center_55%]" />
                 <span className="relative">{selos}</span>
             </div>
             <div className="flex items-center justify-between gap-2 border-t border-secondary bg-secondary/60 px-4 py-4">

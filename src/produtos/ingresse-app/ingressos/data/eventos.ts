@@ -4,6 +4,7 @@
 
 import arenaCamisa from "../assets/arena-camisa.png";
 import festivalAurora from "../../assets/festival-aurora.svg";
+import gopTun from "../../assets/gop-tun.svg";
 
 export interface ItemIngresso {
     id: string;
@@ -119,7 +120,8 @@ export interface EventoDetalhe {
 }
 
 /** Serviços adicionais que podem estar ligados a um evento. */
-export type ServicoEvento = "meep";
+/** Serviços ligados ao evento na página dele: o atalho da Meep ou o do hub de serviços do evento. */
+export type ServicoEvento = "meep" | "hub";
 
 const PORTADOR = "Priscilão Alcantara Raro";
 const CPF = "948.943.130-44";
@@ -330,8 +332,10 @@ export const EVENTOS: Record<string, EventoDetalhe> = {
         title: "Gop Tun Festival 2026",
         date: "11 de Abr 2026",
         local: "Audio • São Paulo/SP",
-        gradient: "linear-gradient(160deg,#ef4444 0%,#111827 55%,#0b0b0f 100%)",
+        // Capa ilustrativa (arte original do protótipo, não é a capa oficial)
+        gradient: gopTun,
         sessao: "11 de Abr 2026",
+        servicos: ["hub"],
         ingressos: [
             // 1º ingresso: primeira transferência gratuita (as próximas terão taxa)
             { id: "inteira", title: "Main Stage (11.04)", tipo: "Inteira", data: "11 de Abr 2026", portador: TITULAR_GOP, cpf: CPF_GOP, primeiraTransferenciaGratis: true },

@@ -15,6 +15,7 @@ import { PerfisOnboarding } from "../../perfil/components/perfis-onboarding";
 import { useDependentes } from "../../perfil/data/dependentes";
 import { juntarGrupos, useCarteiraAppDoBanco } from "../../ingressos/data/plataforma";
 import festivalAurora from "../../assets/festival-aurora.svg";
+import gopTun from "../../assets/gop-tun.svg";
 
 const ONBOARDING_KEY = "ing-onboarding-troca";
 const ONBOARDING_PERFIS_KEY = "ing-onboarding-perfis";
@@ -44,7 +45,8 @@ const VEM_AI: GrupoMes[] = [
                 date: "11 de Abr 2026",
                 local: "Audio • São Paulo/SP",
                 qtd: 2,
-                gradient: "linear-gradient(160deg,#ef4444 0%,#111827 55%,#0b0b0f 100%)",
+                // Capa ilustrativa (arte original do protótipo, não é a capa oficial)
+                gradient: gopTun,
             },
         ],
     },

@@ -1,11 +1,13 @@
 import { useEffect } from "react";
+import { useSearchParams } from "react-router";
 import { MotionConfig, motion } from "motion/react";
 import { useForceLightTheme } from "../../utils/use-force-light-theme";
 import { ChecklistServicos, preencher } from "../components/checklist-servicos";
 import { CardEvento, TopoEvento } from "../components/contexto-evento";
 import { FundoPagina } from "../components/fundo-pagina";
 import { Topo, TopoComImagem } from "../components/topo";
-import { ROLE } from "../data/servicos";
+import { HUBS, HUB_PADRAO, ROLE } from "../data/servicos";
+import { escolherHub } from "../utils/contratados";
 
 /**
  * Prepare seu rolê — /novos-negocios/servicos-adicionais/checklist
@@ -16,6 +18,10 @@ import { ROLE } from "../data/servicos";
  */
 export function Checklist() {
     useForceLightTheme();
+    const [params] = useSearchParams();
+    // Hub do evento pedido pelo atalho da Carteira (?evento=gop-tun), ou o último aberto nesta sessão
+    const { evento, servicos } = HUBS[escolherHub(params.get("evento"), Object.keys(HUBS), HUB_PADRAO)];
+    const titulo = preencher(ROLE.titulo, undefined, evento);
 
     useEffect(() => {
         window.scrollTo(0, 0);
@@ -25,7 +31,7 @@ export function Checklist() {
         <MotionConfig reducedMotion="user">
             <FundoPagina className="lg:bg-primary lg:pb-16">
                 <TopoComImagem>
-                    <TopoEvento contagem />
+                    <TopoEvento contagem evento={evento} />
                 </TopoComImagem>
                 <div className="hidden lg:block">
                     <Topo comEvento={false} />
@@ -41,16 +47,20 @@ export function Checklist() {
                             className="mb-8 flex flex-col items-start gap-3"
                         >
                             <h1 className="text-display-xs font-bold text-primary sm:text-display-sm">
-                                {preencher(ROLE.titulo)} <span aria-hidden="true">{ROLE.emoji}</span>
+                                {/* O emoji fica preso à última palavra: nunca quebra sozinho numa linha */}
+                                {titulo.slice(0, titulo.lastIndexOf(" ") + 1)}
+                                <span className="whitespace-nowrap">
+                                    {titulo.slice(titulo.lastIndexOf(" ") + 1)} <span aria-hidden="true">{ROLE.emoji}</span>
+                                </span>
                             </h1>
-                            <p className="text-md text-tertiary sm:text-lg">{preencher(ROLE.apoio)}</p>
+                            <p className="text-md text-tertiary sm:text-lg">{preencher(ROLE.apoio, undefined, evento)}</p>
                         </motion.header>
-                        <ChecklistServicos />
+                        <ChecklistServicos evento={evento} servicos={servicos} />
                     </div>
 
                     {/* Desktop: o card do evento à esquerda, como nas ofertas de evento */}
                     <div className="hidden w-full max-w-[400px] justify-self-center lg:order-first lg:block">
-                        <CardEvento contagem />
+                        <CardEvento contagem evento={evento} />
                     </div>
                 </main>
             </FundoPagina>

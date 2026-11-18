@@ -80,7 +80,8 @@ export function Ingressos() {
     // Padding de baixo = altura da tab bar (79px): a seção fixa de serviços fica colada nela
     return (
         <AppShell activeTab="ingressos" scrollClassName="bg-secondary pb-[79px]">
-            <div className="min-h-full bg-secondary">
+            {/* Coluna na altura da tela: com poucos ingressos, a seção fixa de serviços desce até a tab bar */}
+            <div className="flex min-h-full flex-col bg-secondary">
                 <StatusBar tone="dark" />
 
                 {/* Top bar */}
@@ -178,7 +179,7 @@ export function Ingressos() {
                 )}
 
                 {/* Serviços ligados ao evento (ex.: consumo antecipado Meep), depois dos ingressos */}
-                <ServicosEvento key={evento.id} servicos={evento.servicos} fundo={evento.gradient} />
+                <ServicosEvento key={evento.id} servicos={evento.servicos} fundo={evento.gradient} eventoId={evento.id} />
             </div>
 
             <AnimatePresence>

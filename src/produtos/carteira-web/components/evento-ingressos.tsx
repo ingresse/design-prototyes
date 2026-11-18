@@ -151,7 +151,7 @@ export function EventoIngressos({
                 </div>
                 <div className="flex flex-col gap-6 px-5 pt-6 pb-6">{conteudo}</div>
                 {/* Serviços ligados ao evento (ex.: consumo antecipado Meep): fixos no rodapé, a lista rola por baixo */}
-                <ServicosEvento key={evento.id} servicos={evento.servicos} fundo={evento.gradient} finalizado={evento.finalizado} fixo />
+                <ServicosEvento key={evento.id} eventoId={evento.id} servicos={evento.servicos} fundo={evento.gradient} finalizado={evento.finalizado} fixo />
             </div>
     );
 }

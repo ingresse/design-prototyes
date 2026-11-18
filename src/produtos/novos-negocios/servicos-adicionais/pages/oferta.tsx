@@ -46,25 +46,20 @@ export function Oferta() {
             <div className="hidden lg:block">
                 <Topo comEvento={false} />
             </div>
+            {/* Desktop: quem veio do hub vê o "Voltar" logo abaixo do header, alinhado à margem da página */}
+            {doChecklist && (
+                <div className="mx-auto hidden w-full max-w-[1264px] px-6 pt-6 lg:block">
+                    <Button size="sm" color="link-gray" iconLeading={ArrowLeft} onClick={() => navigate("/novos-negocios/servicos-adicionais/checklist")}>
+                        Voltar
+                    </Button>
+                </div>
+            )}
             {/* Desktop: mosaico de fotos à esquerda e conteúdo da oferta (sem moldura de card) à direita, centralizados na vertical */}
             {/* Mobile: -208px = RECUO_CARD_MOBILE do topo (o card começa 24px sobre a foto) */}
-            <main className="relative z-10 mx-auto -mt-[208px] grid w-full max-w-[1264px] grid-cols-1 items-start px-0 lg:mt-0 lg:grid-cols-2 lg:items-center lg:gap-16 lg:px-6 lg:pt-16">
+            <main className={`relative z-10 mx-auto -mt-[208px] grid w-full max-w-[1264px] grid-cols-1 items-start px-0 lg:mt-0 lg:grid-cols-2 lg:items-center lg:gap-16 lg:px-6 ${doChecklist ? "lg:pt-8" : "lg:pt-16"}`}>
                 {/* key: trocar de serviço reinicia a seleção */}
                 <OfertaServico key={servico.id} servico={servico} />
-                <div className={`relative hidden w-full justify-self-center lg:order-first lg:block ${servico.evento ? "max-w-[400px]" : "max-w-[480px]"}`}>
-                    {/* Desktop: voltar no canto superior esquerdo, acima do mosaico (ou do card do evento). Fica fora do fluxo
-                        (no respiro do topo da página) para não mudar a altura nem criar rolagem */}
-                    {doChecklist && (
-                        <Button
-                            size="sm"
-                            color="link-gray"
-                            iconLeading={ArrowLeft}
-                            className="absolute bottom-full left-0 mb-4"
-                            onClick={() => navigate("/novos-negocios/servicos-adicionais/checklist")}
-                        >
-                            Voltar
-                        </Button>
-                    )}
+                <div className={`hidden w-full justify-self-center lg:order-first lg:block ${servico.evento ? "max-w-[400px]" : "max-w-[480px]"}`}>
                     {/* Serviço de um evento (Meep): o card do evento no lugar do mosaico */}
                     {servico.evento ? <CardEvento /> : <MosaicoOferta brilho={brilho} />}
                 </div>

@@ -1,5 +1,6 @@
 import type { FC } from "react";
 import festivalAurora from "../assets/festival-aurora.svg";
+import gopTun from "../assets/gop-tun.svg";
 import showPalco from "../assets/show-palco.svg";
 import meepSimbolo from "../assets/meep-simbolo.png";
 import uberLogo from "../assets/uber-logo.svg";
@@ -91,6 +92,28 @@ export interface Servico {
     resgate?: { cta: string; link: string; passosTitulo: string; passosTituloDesktop: string; passos: string[] };
 }
 
+/** Evento mostrado no hub e nas ofertas de evento. Sem pôster, o card usa o degradê `fundo`. */
+export interface Evento {
+    nome: string;
+    /** Nome sem o ano, para títulos curtos (a data já aparece no card do evento). */
+    nomeCurto: string;
+    /** Nome curto já com a preposição certa, para títulos ("Tem mais pra viver no Aurora"); evita erro de gênero ("no Anitta"). */
+    noEvento: string;
+    dataLabel: string;
+    local: string;
+    dataCompleta: string;
+    /** Contagem até o evento; sem ela (evento sem data futura no mock), o selo não aparece. */
+    contagem?: string;
+    /** Tipo do evento: define a palavra de {categoria} nos textos do Prepare seu rolê. */
+    categoria: "festival" | "show" | "futebol";
+    /** Arte larga: fundo desfocado do header. */
+    cover?: string;
+    /** Pôster 3:4 do card do evento. */
+    poster?: string;
+    /** Degradê do evento (CSS), quando não há pôster. */
+    fundo?: string;
+}
+
 export const EVENTO = {
     nome: "Festival Aurora 2026",
     /** Nome sem o ano, para títulos curtos (a data já aparece no card do evento). */
@@ -101,13 +124,38 @@ export const EVENTO = {
     local: "Parque Villa-Lobos, São Paulo",
     dataCompleta: "Sábado, 28 de novembro de 2026 · 16h",
     contagem: "Faltam 10 dias",
-    /** Tipo do evento: define a palavra de {categoria} nos textos do Prepare seu rolê. */
-    categoria: "festival" as "festival" | "show" | "futebol",
+    categoria: "festival" as Evento["categoria"],
     /** Arte larga: fundo desfocado do header. */
     cover: showPalco,
     /** Pôster 3:4 do card do evento. */
     poster: festivalAurora,
 };
+
+/** Gop Tun Festival 2026 (mesmo evento das Carteiras), com capa ilustrativa (arte original, não a oficial). */
+export const GOP_TUN: Evento = {
+    nome: "Gop Tun Festival 2026",
+    nomeCurto: "Gop Tun",
+    noEvento: "no Gop Tun",
+    dataLabel: "Sáb, 11 abr · 16h",
+    local: "Audio, São Paulo",
+    dataCompleta: "Sábado, 11 de abril de 2026 · 16h",
+    // Fictício, como o resto do protótipo: a contagem não acompanha a data do mock
+    contagem: "Faltam 10 dias",
+    categoria: "festival",
+    poster: gopTun,
+};
+
+/**
+ * Hub por evento (?evento= na rota /checklist): o evento e os serviços disponíveis nele. Cada
+ * evento tem os seus; o hub só mostra os que estão aqui. No Gop Tun a Uber é a oferta geral (a do
+ * evento e a da Meep são páginas do Aurora).
+ */
+export const HUBS: Record<string, { evento: Evento; servicos: ServicoId[] }> = {
+    "festival-aurora": { evento: EVENTO, servicos: ["seguro", "uber-evento", "ressaca", "meep", "guarda-volumes", "fotos"] },
+    "gop-tun": { evento: GOP_TUN, servicos: ["seguro", "uber", "ressaca", "guarda-volumes", "fotos"] },
+};
+/** Evento do hub quando o endereço não diz qual: o Gop Tun (o Aurora segue em ?evento=festival-aurora). */
+export const HUB_PADRAO = "gop-tun";
 
 export const USUARIO = { nome: "Mariana Costa", email: "mariana.costa@email.com", cpf: "***.482.317-**" };
 
@@ -378,6 +426,8 @@ export interface ServicoRole {
     apoio: string;
     /** Nome acessível do card. */
     rotulo: string;
+    /** Outros serviços que ocupam este card quando o evento não tem o principal (ex.: Uber geral no lugar da do evento). */
+    equivalentes?: ServicoId[];
     /**
      * Benefício comercial em destaque (selo verde ao lado do título), só quando existe de verdade
      * (ex.: o desconto da Uber, "{desconto} off", lido da oferta). Os outros cards não têm selo.
@@ -413,6 +463,8 @@ export const ROLE = {
             servicos: [
                 {
                     id: "uber-evento",
+                    // Em evento sem a oferta da Uber do evento, o card abre a oferta geral
+                    equivalentes: ["uber"],
                     titulo: "Economize no caminho pro {categoria}",
                     apoio: "Compre crédito\u00a0Uber com desconto",
                     rotulo: "Ver oferta de crédito Uber com {desconto} de desconto",

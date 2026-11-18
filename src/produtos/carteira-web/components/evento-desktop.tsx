@@ -41,7 +41,7 @@ export function EventoDesktop({ evento, onBack }: { evento: EventoDetalhe; onBac
 
                 {/* Desktop: a pessoa não usa o ingresso pelo computador, então os serviços do evento
                     (ex.: consumo antecipado Meep) vêm antes da lista de ingressos, num card com o banner do evento */}
-                <ServicosEvento servicos={evento.servicos} fundo={evento.gradient} finalizado={evento.finalizado} desktop />
+                <ServicosEvento eventoId={evento.id} servicos={evento.servicos} fundo={evento.gradient} finalizado={evento.finalizado} desktop />
 
                 {evento.combos ? (
                     <Sessao titulo={evento.sessao} total={evento.combos.length}>
