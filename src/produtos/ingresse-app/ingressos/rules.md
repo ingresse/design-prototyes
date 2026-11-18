@@ -31,6 +31,7 @@ página ainda não foram documentadas.
 - **ING-03** O evento de simulação é o Festival Aurora 2026 (sáb, 28 nov · 16h, Parque Villa-Lobos), em "Vem aí" › Novembro 2026, com 4 ingressos da Camila Ferreira Rocha (2 Pista e 2 Pista Premium, para simular uma lista longa) e a Meep ligada. _(data/eventos.ts `festival-aurora`, carteira/pages/Carteira.tsx `VEM_AI`)_
 
 - **ING-06** Atalho para o hub de serviços do evento (mesmo comportamento da seção da Meep: fixa acima da tab bar com X, depois no fim da lista). Hoje no Gop Tun Festival 2026: seção "Prepare seu rolê", card com o selo da Ingresse (símbolo branco sobre o vermelho da marca, sem logo de parceiro), "Tem mais pra viver no Gop Tun" / "Uber, fotos, seguro e mais", abrindo `/novos-negocios/servicos-adicionais/checklist?evento=gop-tun` na vista mobile. Copy do agente de Writing com ux-copy. _(components/servicos-evento.tsx `HUB`, data/eventos.ts `servicos: ["hub"]`)_
+- **ING-08** Um serviço ou vários: se o evento tem um serviço só (ex.: Festival Aurora, só a Meep), o atalho leva direto à oferta dele; com mais de um (ex.: Gop Tun, seis serviços, incluindo a Meep), o atalho leva ao hub do evento. A decisão vem da lista `servicos` do evento. _(data/eventos.ts `servicos`, components/servicos-evento.tsx)_
 
 ## Em aberto
 

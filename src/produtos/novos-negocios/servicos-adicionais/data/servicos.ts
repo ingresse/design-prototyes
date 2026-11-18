@@ -99,6 +99,10 @@ export interface Evento {
     nomeCurto: string;
     /** Nome curto já com a preposição certa, para títulos ("Tem mais pra viver no Aurora"); evita erro de gênero ("no Anitta"). */
     noEvento: string;
+    /** "pro Festival Aurora", "pro Gop Tun": textos de ida ("O melhor jeito de ir pro…"). */
+    proEvento: string;
+    /** "do Festival Aurora", "do Gop Tun": textos de volta ("ir e voltar do…"). */
+    doEvento: string;
     dataLabel: string;
     local: string;
     dataCompleta: string;
@@ -120,6 +124,8 @@ export const EVENTO = {
     nomeCurto: "Festival Aurora",
     /** Nome curto já com a preposição certa, para títulos ("Tem mais pra viver no Aurora"); evita erro de gênero ("no Anitta"). */
     noEvento: "no Aurora",
+    proEvento: "pro Festival Aurora",
+    doEvento: "do Festival Aurora",
     dataLabel: "Sáb, 28 nov · 16h",
     local: "Parque Villa-Lobos, São Paulo",
     dataCompleta: "Sábado, 28 de novembro de 2026 · 16h",
@@ -136,6 +142,8 @@ export const GOP_TUN: Evento = {
     nome: "Gop Tun Festival 2026",
     nomeCurto: "Gop Tun",
     noEvento: "no Gop Tun",
+    proEvento: "pro Gop Tun",
+    doEvento: "do Gop Tun",
     dataLabel: "Sáb, 11 abr · 16h",
     local: "Audio, São Paulo",
     dataCompleta: "Sábado, 11 de abril de 2026 · 16h",
@@ -147,12 +155,12 @@ export const GOP_TUN: Evento = {
 
 /**
  * Hub por evento (?evento= na rota /checklist): o evento e os serviços disponíveis nele. Cada
- * evento tem os seus; o hub só mostra os que estão aqui. No Gop Tun a Uber é a oferta geral (a do
- * evento e a da Meep são páginas do Aurora).
+ * evento tem os seus; o hub só mostra os que estão aqui. Aberto pelo hub, todo serviço é do evento
+ * (a página da oferta mostra o evento e os textos trocam {evento}, {proEvento} etc.).
  */
 export const HUBS: Record<string, { evento: Evento; servicos: ServicoId[] }> = {
     "festival-aurora": { evento: EVENTO, servicos: ["seguro", "uber-evento", "ressaca", "meep", "guarda-volumes", "fotos"] },
-    "gop-tun": { evento: GOP_TUN, servicos: ["seguro", "uber", "ressaca", "guarda-volumes", "fotos"] },
+    "gop-tun": { evento: GOP_TUN, servicos: ["seguro", "uber-evento", "ressaca", "meep", "guarda-volumes", "fotos"] },
 };
 /** Evento do hub quando o endereço não diz qual: o Gop Tun (o Aurora segue em ?evento=festival-aurora). */
 export const HUB_PADRAO = "gop-tun";
@@ -220,14 +228,14 @@ export const SERVICOS: Record<ServicoId, Servico> = {
         id: "uber-evento",
         categoria: "Transporte para o evento",
         evento: true,
-        titulo: `O melhor jeito de ir pro ${EVENTO.nomeCurto}`,
+        titulo: "O melhor jeito de ir {proEvento}",
         legenda: "Pague menos e vá e volte sem se preocupar.",
-        descricao: `Crédito\u00a0Uber com desconto para ir e voltar do ${EVENTO.nome}.`,
+        descricao: "Crédito\u00a0Uber com desconto para ir e voltar {doEvento}.",
         compartilhar: {
             rotulo: "Compartilhar com a galera",
             titulo: "Coisa boa a gente divide",
-            legenda: `Manda pra quem vai com você pro ${EVENTO.nome}. Todo mundo pode comprar crédito\u00a0Uber com 5% off.`,
-            mensagem: `Achei crédito\u00a0Uber com 5% de desconto na Ingresse pra ir pro ${EVENTO.nome}. Dá uma olhada:`,
+            legenda: "Manda pra quem vai com você {proEvento}. Todo mundo pode comprar crédito\u00a0Uber com 5% off.",
+            mensagem: "Achei crédito\u00a0Uber com 5% de desconto na Ingresse pra ir {proEvento}. Dá uma olhada:",
         },
     },
     meep: {
@@ -256,19 +264,19 @@ export const SERVICOS: Record<ServicoId, Servico> = {
         compartilhar: {
             rotulo: "Compartilhar com a galera",
             titulo: "Avisa quem vai com você",
-            legenda: `Assim todo mundo antecipa a recarga pro ${EVENTO.nome}.`,
-            mensagem: `Dá pra antecipar a recarga pro ${EVENTO.nome} por aqui:`,
+            legenda: "Assim todo mundo antecipa a recarga {proEvento}.",
+            mensagem: "Dá pra antecipar a recarga {proEvento} por aqui:",
         },
         aviso: "O que sobrar do saldo pode ser devolvido depois do evento.",
         condicoes: [
-            `Use o saldo para consumir no ${EVENTO.nome}.`,
+            "Use o saldo para consumir {noEvento}.",
             "Você usa o saldo com um cartão ou uma pulseira, conforme o formato do evento.",
             "Pedidos de devolução do saldo seguem as regras e prazos da Meep.",
         ],
         destino: { rotulo: "CPF do cadastro Meep", valor: USUARIO.cpf },
         confirmacao: {
             titulo: "Tudo certo com seu saldo",
-            descricao: `Agora é só usar seu saldo no ${EVENTO.nome}.`,
+            descricao: "Agora é só usar seu saldo {noEvento}.",
             passos: ["Use o saldo com um cartão ou uma pulseira, conforme o formato do evento.", "Acompanhe o saldo pelo app da Meep."],
         },
     },
@@ -278,8 +286,9 @@ export const SERVICOS: Record<ServicoId, Servico> = {
         iconeSelo: IconlyCamera,
         corSelo: "bg-utility-purple-600",
         categoria: "Fotografia",
-        titulo: "Suas fotos do rolê, feitas por fotógrafos profissionais",
-        descricao: "Garanta as fotos que os fotógrafos fizerem de você durante o evento.",
+        titulo: "Curta. As fotos {doEvento} vêm depois",
+        legenda: "Fotógrafos profissionais circulam pelo evento e você encontra as suas com uma selfie.",
+        descricao: "Fique com as fotos que os fotógrafos fizerem de você {noEvento}.",
         beneficios: [
             { icone: IconlyCamera, texto: "Fotógrafos profissionais circulando no evento" },
             { icone: IconlyImagem, texto: "Fotos em alta, sem marca d'água" },
@@ -295,13 +304,14 @@ export const SERVICOS: Record<ServicoId, Servico> = {
         maximo: 79,
         cta: "Garantir minhas fotos",
         condicoes: [
-            "As fotos são encontradas por reconhecimento facial a partir da selfie enviada depois da compra.",
+            "Depois da compra, envie uma selfie pra encontrarmos suas fotos.",
+            "As fotos chegam por e-mail em até 48h depois {doEvento}.",
             "Se nenhuma foto sua for encontrada, o valor é devolvido.",
         ],
         destino: { rotulo: "E-mail que recebe as fotos", valor: USUARIO.email },
         confirmacao: {
-            titulo: "Fotos garantidas",
-            descricao: "Depois do evento, enviamos suas fotos por e-mail.",
+            titulo: "Seu pacote de fotos tá garantido",
+            descricao: "Envie sua selfie e receba as fotos {doEvento} por e-mail em até 48h depois do evento.",
             passos: ["Envie uma selfie pelo link que mandamos por e-mail para encontrarmos suas fotos.", "Em até 48 horas depois do evento, as fotos chegam no seu e-mail."],
         },
     },
@@ -311,8 +321,9 @@ export const SERVICOS: Record<ServicoId, Servico> = {
         iconeSelo: IconlyEscudo,
         corSelo: "bg-utility-blue-600",
         categoria: "Proteção",
-        titulo: "Curta o rolê sem medo de perder o celular",
-        descricao: "Proteja seu celular contra roubo e quebra durante o evento.",
+        titulo: "Celular no seguro, cabeça {noEvento}",
+        legenda: "Seguro contra roubo e furto, do dia do evento até 7 dias depois.",
+        descricao: "Contrate um seguro de celular pensado pro dia {doEvento}.",
         beneficios: [
             { icone: IconlyEscudo, texto: "Cobertura contra roubo e furto" },
             { icone: IconlyCalendario, texto: "Proteção do dia do evento até 7 dias depois" },
@@ -328,13 +339,14 @@ export const SERVICOS: Record<ServicoId, Servico> = {
         maximo: 39,
         cta: "Proteger meu celular",
         condicoes: [
+            "A cobertura vale do dia {doEvento} até 7 dias depois.",
             "O plano Completo também cobre quebra acidental da tela.",
-            "Em caso de sinistro, abra o pedido em até 48 horas pelo e-mail que enviamos.",
+            "Se precisar acionar o seguro, abra o pedido em até 48 horas pelo e-mail que enviamos.",
         ],
         destino: { rotulo: "E-mail da apólice", valor: USUARIO.email },
         confirmacao: {
-            titulo: "Celular protegido",
-            descricao: "Enviamos a apólice para o seu e-mail.",
+            titulo: "Celular no seguro {proEvento}",
+            descricao: "A apólice foi enviada pro seu e-mail.",
             passos: ["Guarde o e-mail com a apólice: ele traz o número do seguro.", "Se algo acontecer, abra o pedido em até 48 horas pelo link do e-mail."],
         },
     },
@@ -346,8 +358,8 @@ export const SERVICOS: Record<ServicoId, Servico> = {
         iconeSelo: IconlyRemedio,
         corSelo: "bg-utility-emerald-600",
         categoria: "Cuidado pós-evento",
-        titulo: "Deixe o remédio do dia seguinte separado",
-        descricao: "Compre pelo app e retire no posto Amanhã, perto da saída, quando for embora.",
+        titulo: "Pensando no dia depois {doEvento}?",
+        descricao: "Compre pelo app e retire no posto Amanhã, perto da saída {doEvento}, quando for embora.",
         beneficios: [
             { icone: IconlyRemedio, texto: "Retirada no posto perto da saída" },
             { icone: IconlyCartao, texto: "Pagamento já feito pelo app" },
@@ -363,13 +375,13 @@ export const SERVICOS: Record<ServicoId, Servico> = {
         maximo: 45,
         cta: "Comprar remédio",
         condicoes: [
-            "Retirada só no dia do evento, no posto Amanhã perto da saída, com o código.",
+            "Retirada só no dia {doEvento}, no posto Amanhã perto da saída, com o código.",
             "Leia a bula e use conforme orientação. Se os sintomas persistirem, procure um médico.",
         ],
         destino: { rotulo: "E-mail que recebe o código de retirada", valor: USUARIO.email },
         confirmacao: {
-            titulo: "Pronto, seu kit tá separado",
-            descricao: `O código de retirada foi enviado pra ${USUARIO.email}.`,
+            titulo: "Seu kit pro dia seguinte tá separado",
+            descricao: `Na saída {doEvento}, mostre o código no posto Amanhã. Enviamos o código pra ${USUARIO.email}.`,
             passos: ["Na saída do evento, vá ao posto Amanhã.", "Mostre o código e retire seu kit."],
         },
     },
@@ -380,8 +392,8 @@ export const SERVICOS: Record<ServicoId, Servico> = {
         iconeSelo: IconlyCadeado,
         corSelo: "bg-utility-amber-600",
         categoria: "Guarda-volumes",
-        titulo: "Guarde suas coisas e curta de mãos livres",
-        descricao: "Reserve um armário antes e retire a chave ou o código no local, no dia do evento.",
+        titulo: "Mãos livres {noEvento}",
+        descricao: "Reserve um armário antes e retire a chave ou o código no guarda-volumes Tranca, no dia {doEvento}.",
         beneficios: [
             { icone: IconlyCadeado, texto: "Armário garantido antes de chegar" },
             { icone: IconlyCalendario, texto: "Vale pelo dia inteiro do evento" },
@@ -398,13 +410,13 @@ export const SERVICOS: Record<ServicoId, Servico> = {
         cta: "Reservar armário",
         condicoes: [
             "Retire a chave ou o código no guarda-volumes mostrando sua reserva.",
-            "Retire seus itens até o fim do evento.",
-            "Itens proibidos no evento também não podem ser guardados.",
+            "Retire seus itens até o fim {doEvento}.",
+            "Itens proibidos {noEvento} também não podem ser guardados.",
         ],
         destino: { rotulo: "E-mail que recebe a reserva", valor: USUARIO.email },
         confirmacao: {
-            titulo: "Armário reservado!",
-            descricao: `A reserva foi enviada pra ${USUARIO.email}.`,
+            titulo: "Armário reservado {proEvento}!",
+            descricao: `Enviamos a reserva pra ${USUARIO.email}. Ao chegar {noEvento}, mostre a reserva na Tranca.`,
             passos: ["Ao chegar, vá ao guarda-volumes Tranca.", "Mostre a reserva e retire a chave ou o código."],
         },
     },
@@ -518,3 +530,19 @@ export const brl = (v: number) => v.toLocaleString("pt-BR", { style: "currency",
 
 /** Valor a pagar depois do desconto, arredondado em centavos. */
 export const valorFinal = (servico: Servico, valor: number) => Math.round(valor * (1 - servico.desconto) * 100) / 100;
+
+/** Troca os campos do evento ({evento}, {nomeCurto}, {noEvento}, {proEvento}, {doEvento}) num texto. */
+export const textoDoEvento = (texto: string, evento: Evento) =>
+    texto
+        .replace(/\{evento\}/g, evento.nome)
+        .replace(/\{nomeCurto\}/g, evento.nomeCurto)
+        .replace(/\{noEvento\}/g, evento.noEvento)
+        .replace(/\{proEvento\}/g, evento.proEvento)
+        .replace(/\{doEvento\}/g, evento.doEvento);
+
+/** O serviço com os textos já do evento (todas as strings, inclusive condições, confirmação e compartilhar). */
+export function servicoNoEvento(servico: Servico, evento: Evento): Servico {
+    const troca = (v: unknown): unknown =>
+        typeof v === "string" ? textoDoEvento(v, evento) : Array.isArray(v) ? v.map(troca) : v && typeof v === "object" && !("$$typeof" in v) && typeof v !== "function" ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, typeof x === "function" ? x : troca(x)])) : v;
+    return troca(servico) as Servico;
+}

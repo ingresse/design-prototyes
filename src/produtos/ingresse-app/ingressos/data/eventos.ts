@@ -120,8 +120,11 @@ export interface EventoDetalhe {
 }
 
 /** Serviços adicionais que podem estar ligados a um evento. */
-/** Serviços ligados ao evento na página dele: o atalho da Meep ou o do hub de serviços do evento. */
-export type ServicoEvento = "meep" | "hub";
+/**
+ * Serviços disponíveis no evento. Um só (ex.: só a Meep): a página do evento leva direto à oferta.
+ * Mais de um: leva ao hub de serviços do evento.
+ */
+export type ServicoEvento = "meep" | "uber" | "seguro" | "ressaca" | "guarda-volumes" | "fotos";
 
 const PORTADOR = "Priscilão Alcantara Raro";
 const CPF = "948.943.130-44";
@@ -335,7 +338,7 @@ export const EVENTOS: Record<string, EventoDetalhe> = {
         // Capa ilustrativa (arte original do protótipo, não é a capa oficial)
         gradient: gopTun,
         sessao: "11 de Abr 2026",
-        servicos: ["hub"],
+        servicos: ["seguro", "uber", "ressaca", "meep", "guarda-volumes", "fotos"],
         ingressos: [
             // 1º ingresso: primeira transferência gratuita (as próximas terão taxa)
             { id: "inteira", title: "Main Stage (11.04)", tipo: "Inteira", data: "11 de Abr 2026", portador: TITULAR_GOP, cpf: CPF_GOP, primeiraTransferenciaGratis: true },

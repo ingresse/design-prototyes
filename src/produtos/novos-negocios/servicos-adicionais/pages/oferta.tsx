@@ -8,7 +8,7 @@ import { MosaicoOferta, useBrilho } from "../components/mosaico-oferta";
 import { OfertaServico } from "../components/oferta-servico";
 import { FundoPagina } from "../components/fundo-pagina";
 import { Topo, TopoComImagem } from "../components/topo";
-import { SERVICOS, type ServicoId } from "../data/servicos";
+import { eventoDaOferta, servicoDaOferta } from "../utils/pedido";
 
 /**
  * Página de oferta individual — destino do link enviado por push, WhatsApp ou e-mail.
@@ -17,9 +17,11 @@ import { SERVICOS, type ServicoId } from "../data/servicos";
 export function Oferta() {
     useForceLightTheme();
     const { servico: id } = useParams();
-    const servico = SERVICOS[id as ServicoId];
     const navigate = useNavigate();
     const [params] = useSearchParams();
+    // Textos e card do evento: o do hub, o do endereço ou o das comunicações (utils/pedido.ts)
+    const servico = servicoDaOferta(id, params);
+    const evento = eventoDaOferta(params);
     const doChecklist = params.get("de") === "checklist";
     // Um brilho só para todas as cópias do mosaico (desktop, topo do mobile e faixa do header)
     const brilho = useBrilho();
@@ -36,7 +38,7 @@ export function Oferta() {
                 evento); o card da oferta desliza por cima */}
             {servico.evento ? (
                 <TopoComImagem>
-                    <TopoEvento />
+                    <TopoEvento evento={evento} />
                 </TopoComImagem>
             ) : (
                 <TopoComImagem>
@@ -61,7 +63,7 @@ export function Oferta() {
                 <OfertaServico key={servico.id} servico={servico} />
                 <div className={`hidden w-full justify-self-center lg:order-first lg:block ${servico.evento ? "max-w-[400px]" : "max-w-[480px]"}`}>
                     {/* Serviço de um evento (Meep): o card do evento no lugar do mosaico */}
-                    {servico.evento ? <CardEvento /> : <MosaicoOferta brilho={brilho} />}
+                    {servico.evento ? <CardEvento evento={evento} /> : <MosaicoOferta brilho={brilho} />}
                 </div>
             </main>
         </FundoPagina>

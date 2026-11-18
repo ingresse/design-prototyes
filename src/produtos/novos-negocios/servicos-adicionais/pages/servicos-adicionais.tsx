@@ -3,7 +3,7 @@ import { useNavigate } from "react-router";
 import { ArrowLeft, ChevronRight } from "@untitledui/icons";
 import { Button } from "@/components/base/buttons/button";
 import { SeloServico } from "../components/selo-servico";
-import { EVENTO, HUBS, HUB_PADRAO, INDIVIDUAIS, SERVICOS } from "../data/servicos";
+import { EVENTO, HUBS, HUB_PADRAO, INDIVIDUAIS, SERVICOS, servicoNoEvento } from "../data/servicos";
 
 /**
  * Entrada do protótipo de Serviços adicionais (nome interno).
@@ -23,7 +23,8 @@ export function ServicosAdicionais() {
 
                 <div className="mt-8 grid grid-cols-1 gap-5 sm:grid-cols-2">
                     {INDIVIDUAIS.map((id) => {
-                        const s = SERVICOS[id];
+                        // Ofertas das comunicações: textos do Festival Aurora
+                        const s = servicoNoEvento(SERVICOS[id], EVENTO);
                         return (
                             <CartaoEntrada
                                 key={id}

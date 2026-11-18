@@ -21,7 +21,8 @@ const HUB: Record<string, { titulo: string; apoio: string; rotulo: string }> = {
  * Destino de cada serviço: a oferta da Meep ou o hub de serviços do evento, em Serviços adicionais.
  * O app é celular: abre já na vista mobile do protótipo.
  */
-const SERVICOS: Record<ServicoEvento, (eventoId: string) => Destino | null> = {
+/** Atalho de cada caso: a oferta direta (evento com um serviço só) ou o hub (mais de um). */
+const SERVICOS: Partial<Record<ServicoEvento | "hub", (eventoId: string) => Destino | null>> = {
     meep: () => ({
         titulo: "Consumo antecipado Meep",
         apoio: "Chegue com saldo pra comer e beber",
@@ -77,8 +78,8 @@ export function ServicosEvento({ servicos, fundo, eventoId }: { servicos?: Servi
                 )}
             </div>
             <div className="flex flex-col gap-3">
-                {servicos.map((id) => {
-                    const s = SERVICOS[id](eventoId);
+                {(servicos.length > 1 ? (["hub"] as const) : servicos).map((id) => {
+                    const s = SERVICOS[id]?.(eventoId);
                     if (!s) return null;
                     return (
                         <button
