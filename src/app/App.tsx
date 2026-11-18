@@ -204,6 +204,8 @@ import { PayInMenu } from '../produtos/payin/menu/pages/PayInMenu';
 import { Checkout as PayInCheckout } from '../produtos/payin/checkout/pages/Checkout';
 import { AnaliseFeedback as PayInAnaliseFeedback } from '../produtos/payin/checkout/pages/AnaliseFeedback';
 import { AnaliseResultados as PayInAnaliseResultados } from '../produtos/payin/checkout/pages/AnaliseResultados';
+import { Selecao as TesteAbProtecaoSelecao } from '../produtos/payin/teste-ab-protecao-de-compra/pages/selecao';
+import { Checkout as TesteAbProtecaoCheckout } from '../produtos/payin/teste-ab-protecao-de-compra/pages/checkout';
 import { Pagamento as CheckoutPagamento } from '../produtos/checkout/melhorias-de-compra/pages/pagamento';
 import { Cartao as CheckoutCartao } from '../produtos/checkout/melhorias-de-compra/pages/cartao';
 import { NaoAutorizado as CheckoutNaoAutorizado } from '../produtos/checkout/melhorias-de-compra/pages/nao-autorizado';
@@ -497,6 +499,8 @@ export default function App() {
         <Route path="/payin/suspensao-de-conta" element={<Reanalise />} />
         <Route path="/payin/suspensao-de-conta/suspender-usuario" element={<SuspenderUsuario />} />
         <Route path="/payin/suspensao-de-conta/historico/:contaId" element={<HistoricoSuspensao />} />
+        <Route path="/payin/teste-ab-protecao-de-compra" element={<TesteAbProtecaoSelecao />} />
+        <Route path="/payin/teste-ab-protecao-de-compra/checkout" element={<TesteAbProtecaoCheckout />} />
         <Route path="/payout/contrato-quick-win-finance" element={<CashoutEventos />} />
         <Route path="/payout/contrato-quick-win-finance/produtoras" element={<CashoutProdutoras />} />
         {/* Finanças do produtor: protótipos de pesquisa, jornada Eventos como pastas. */}

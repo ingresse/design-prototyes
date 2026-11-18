@@ -18,6 +18,13 @@ const PAGES: PayInItem[] = [
         to: "/payin/suspensao-de-conta",
         gradient: "linear-gradient(135deg,#7f1d1d 0%,#dc2626 100%)",
     },
+    {
+        id: "teste-ab-protecao-de-compra",
+        name: "Teste AB - Proteção de compra",
+        description: "Variante B: modal de proteção sobre o checkout",
+        to: "/payin/teste-ab-protecao-de-compra",
+        gradient: "linear-gradient(135deg,#c81f14 0%,#ff7a70 100%)",
+    },
 ];
 
 export function PayInMenu() {
