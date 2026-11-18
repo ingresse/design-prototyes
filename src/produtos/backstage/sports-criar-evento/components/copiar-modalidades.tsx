@@ -5,7 +5,7 @@ import { RadioButton, RadioGroup } from "@/components/base/radio-buttons/radio-b
 import { ComboBox } from "@/components/base/select/combobox";
 import { Select } from "@/components/base/select/select";
 import { EVENTOS_ANTERIORES, modalidadesDoEvento, perguntasDoEvento, rotuloDoEvento } from "../data/eventos-anteriores";
-import { duplicarModalidade, marcarLotesParaRevisar, nomeDeCopia } from "../data/modelos";
+import { duplicarCategoria, duplicarModalidade, marcarLotesParaRevisar, nomeDeCopia } from "../data/modelos";
 import { nomeDaOrganizacao, podeVer, usePerfil } from "../data/perfil";
 import { herdarPerguntas, trazerPerguntas } from "../data/perguntas";
 import type { Modalidade, Pergunta } from "../data/tipos";
@@ -14,6 +14,7 @@ import { ErroDaLista } from "./campos";
 import { useFormulario } from "./contexto";
 import { ArvoreDeModalidades, useSelecaoDeModalidades } from "./arvore-de-modalidades";
 import { entrarNaRevisao } from "./copia-guiada";
+import { comModalidade } from "./operacoes";
 
 /* ------------------------------------------------------------------ */
 /*  Copiar de outro evento: passo 1 do fluxo de cópia (v0.8, SCE-192)  */
@@ -43,8 +44,14 @@ const origemDe = (id: string | null) => {
     return cache.get(e.id)!;
 };
 
-export function EscolherDeOutroEvento({ onCancelar }: { onCancelar: () => void }) {
-    const { atualizar } = useFormulario();
+/**
+ * v0.16 (SCE-216): com `destinoId`, copia só categorias (de qualquer modalidade do evento de origem) para
+ * dentro da modalidade de destino; sem ele, copia modalidades inteiras (SCE-192).
+ */
+export function EscolherDeOutroEvento({ onCancelar, destinoId }: { onCancelar: () => void; destinoId?: string }) {
+    const { rascunho: r, atualizar } = useFormulario();
+    const destino = destinoId ? r.modalidades.find((m) => m.id === destinoId) : undefined;
+    const nomeDoDestino = destino ? destino.nome.trim() || "sem nome" : "";
     const { t } = useVocabulario();
     const perfil = usePerfil();
     const [texto, setTexto] = useState("");
@@ -72,9 +79,34 @@ export function EscolherDeOutroEvento({ onCancelar }: { onCancelar: () => void }
             document.getElementById("copiar-mod-evento")?.querySelector("input")?.focus();
             return;
         }
+        const deOutroEvento = origemDe(evento.id).perguntas;
+        if (destinoId) {
+            const categorias = fontes.flatMap((m) => m.categorias.filter((c) => selecao.catMarcadas.has(c.id)));
+            if (categorias.length === 0) return setErro(t.copiarNivel2NadaMarcado);
+            atualizar((a) => {
+                const nomes = (a.modalidades.find((m) => m.id === destinoId)?.categorias ?? []).map((c) => c.nome);
+                const dePara: Record<string, string> = {};
+                const novas = categorias.map((c) => {
+                    // Nome repetido na modalidade de destino ganha "(cópia)", como em duplicar.
+                    const repetido = nomes.some((n) => n.trim().toLowerCase() === c.nome.trim().toLowerCase());
+                    const nome = repetido ? nomeDeCopia(c.nome, nomes) : c.nome;
+                    nomes.push(nome);
+                    const nova = duplicarCategoria(c, nome);
+                    dePara[c.id] = nova.id;
+                    return { ...nova, lotes: nova.lotes.map((l) => ({ ...l, revisar: true })) };
+                });
+                const idsNovos = novas.map((c) => c.id);
+                const herdadas = herdarPerguntas(a.perguntas, idsNovos);
+                const depois = {
+                    ...comModalidade(destinoId, (x) => ({ ...x, categorias: [...x.categorias, ...novas] }))(a),
+                    perguntas: levar === "formulario" ? trazerPerguntas(herdadas, deOutroEvento, dePara) : herdadas,
+                };
+                return entrarNaRevisao(depois, { modalidades: [destinoId], categorias: idsNovos }, { modalidades: a.modalidades, perguntas: a.perguntas });
+            });
+            return;
+        }
         const escolhidas = fontes.filter((m) => selecao.modMarcadas.has(m.id));
         if (escolhidas.length === 0) return setErro(t.copiarNivel1NadaMarcado);
-        const deOutroEvento = origemDe(evento.id).perguntas;
         atualizar((a) => {
             const nomes = a.modalidades.map((m) => m.nome);
             const dePara: Record<string, string> = {};
@@ -101,7 +133,7 @@ export function EscolherDeOutroEvento({ onCancelar }: { onCancelar: () => void }
     return (
         <>
             <p className="max-w-[65ch] text-sm text-tertiary">
-                {t.copiarNivel1EscolherDescricao} {perfil === "admin" ? "Como administrador, você vê os eventos de todas as organizações." : "Só os eventos da sua organização."}
+                {destino ? t.copiarNivel2EscolherDescricao(nomeDoDestino) : t.copiarNivel1EscolherDescricao} {perfil === "admin" ? "Como administrador, você vê os eventos de todas as organizações." : "Só os eventos da sua organização."}
             </p>
             <div id="copiar-mod-evento" className="max-w-xl">
                 <ComboBox
@@ -144,7 +176,7 @@ export function EscolherDeOutroEvento({ onCancelar }: { onCancelar: () => void }
 
             {evento && (
                 <>
-                    <ArvoreDeModalidades fontes={fontes} selecao={selecao} rotulo={t.copiarNivel1Escolha} />
+                    <ArvoreDeModalidades fontes={fontes} selecao={selecao} rotulo={destino ? t.copiarNivel2Escolha : t.copiarNivel1Escolha} somenteCategorias={!!destino} />
                     <div className="grid gap-6 @3xl:grid-cols-2">
                         <div className="flex flex-col gap-3">
                             <span id="copiar-mod-levar" className="text-sm font-medium text-secondary">

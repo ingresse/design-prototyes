@@ -98,9 +98,25 @@ export const secoes = (t: Vocabulario): { id: SecaoId; titulo: string }[] => [
 export const labelDe = <T extends string>(opcoes: Opcao<T>[], id: string) => opcoes.find((o) => o.id === id)?.label ?? "";
 
 /** Ajudas do ícone (?) que não citam os níveis (as que citam ficam em data/vocabulario.ts). */
+/** v0.19 (SCE-238): regras da inscrição do evento. */
+export const SIM_NAO: Opcao<"sim" | "nao">[] = [
+    { id: "nao", label: "Não" },
+    { id: "sim", label: "Sim" },
+];
+
+/** v0.18 (SCE-234): quem pode ser o atleta da inscrição (atribuição). */
+export const ATRIBUICOES: Opcao<"qualquer" | "comprador">[] = [
+    { id: "qualquer", label: "Quem compra ou outra pessoa" },
+    { id: "comprador", label: "Somente quem compra" },
+];
+
 export const AJUDA = {
+    pcd: "PCD é uma lista de documentos aprovados. O atleta pede a participação pelo formulário de participação do evento, com laudo; depois da aprovação, o documento entra na lista e ele pode se inscrever nesta categoria.",
+    sexo: "Quem pode se inscrever pelo sexo do cadastro do atleta. Com idade definida, o atleta precisa atender às duas regras.",
+    atleta:
+        "Outra pessoa pode ter conta ou não: na compra, quem não tem conta é cadastrado como dependente de quem compra. Com \"Somente quem compra\", cada pedido tem 1 inscrição, para o próprio comprador.",
     idadeCalculadaEm:
-        "Data usada para calcular a idade do atleta. Federações costumam usar o final do ano do evento: quem faz 18 até 31/12 já conta como 18.",
+        "Data usada para calcular a idade do atleta. Federações costumam usar o final do ano do evento (31/12): quem faz 18 até 31/12 já conta como 18.",
     descontoLegal: "Desconto previsto em lei (idoso 50%, PCD 40%). A taxa de serviço é cobrada proporcionalmente. Não soma com cupom: vale o maior.",
     transferencia: "Define se o atleta pode passar a inscrição para outra pessoa: sempre, só durante a compra ou nunca.",
 };
@@ -133,6 +149,20 @@ export const MSG = {
     semOpcao: "Adicione ao menos uma opção",
     opcoesEsgotadas: "Todas as opções estão com quantidade 0. Aumente a quantidade ou deixe a pergunta opcional",
     revisarData: "Revise esta data",
+    /** v0.16 (SCE-215): data que não vem na cópia do evento. */
+    insiraData: "Insira a data",
+    /** v0.19 (SCE-239): limite da categoria acima do limite do evento. */
+    limiteAcimaDoEvento: (n: number) => `Use um número de 1 a ${n}, o limite do evento`,
+    limiteDoEvento: "Informe quantas inscrições cada comprador pode fazer no evento",
+    /** v0.20 (SCE-242): inscrição única por atleta + sem compra para outro atleta = limite 1. */
+    limiteUnico:
+        "O limite precisa ser 1: cada atleta só pode ter uma inscrição no evento e não é permitido comprar para outro atleta, então cada comprador só consegue inscrever a si mesmo, uma vez",
+    trocaInicioVazio: "Informe quando a troca de titularidade começa",
+    trocaFimVazio: "Informe até quando a troca de titularidade é permitida",
+    trocaFimAntes: "O fim precisa ser depois do início",
+    trocaDepoisDaLargada: "A troca precisa terminar até a largada do evento",
+    /** v0.18 (SCE-236): categoria só para PCD num evento com o formulário de participação desativado. */
+    formularioPcdInativo: "Ative o formulário de participação do evento: sem ele, ninguém consegue pedir para participar como PCD",
 };
 
 export const LIMITE_NOME = 70;

@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { irParaCampo } from "../data/campos";
 import { atualizarRascunho, useRascunho } from "../data/rascunho";
 import type { Pendencia, Rascunho, SecaoId } from "../data/tipos";
@@ -78,6 +78,18 @@ export function ProvedorDoFormulario({
     const [editandoNivel1, setEditandoNivel1] = useState<string | null>(inicial?.editandoNivel1 ?? null);
     const abrirPergunta = useCallback((id: string) => setPerguntasAbertas((s) => (s.has(id) ? s : new Set(s).add(id))), []);
     const erros = useMemo(() => errosPorCampo(pendencias), [pendencias]);
+
+    // v0.17 (SCE-228): categoria nova que não foi salva (saiu da tela por outro caminho ou recarregou) não fica no evento.
+    useEffect(() => {
+        const abandonadas = rascunho.modalidades.flatMap((m) => m.categorias.filter((c) => c.nova && c.id !== categoriaAberta?.categoriaId).map((c) => c.id));
+        if (!abandonadas.length) return;
+        const fora = new Set(abandonadas);
+        atualizarRascunho((r) => ({
+            ...r,
+            modalidades: r.modalidades.map((m) => ({ ...m, categorias: m.categorias.filter((c) => !fora.has(c.id)) })),
+            perguntas: r.perguntas.map((q) => ({ ...q, vinculos: Object.fromEntries(Object.entries(q.vinculos).filter(([k]) => !fora.has(k))) })),
+        }));
+    }, [rascunho.modalidades, categoriaAberta?.categoriaId]);
 
     const erro = useCallback(
         (campo: string, secao: SecaoId) => (tocados.has(campo) || secoesTentadas.has(secao) ? erros[campo] : undefined),

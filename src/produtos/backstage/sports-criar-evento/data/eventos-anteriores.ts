@@ -237,14 +237,6 @@ export function perguntasDoEvento(_e: EventoAnterior, modalidades: Modalidade[])
     return [camiseta, daBiblioteca("emergencia", r), equipe, cortaVento];
 }
 
-/** ISO local + horas, em ISO local. */
-const somarHoras = (iso: string, horas: number) => {
-    const d = new Date(iso);
-    d.setHours(d.getHours() + horas);
-    const p = (n: number) => String(n).padStart(2, "0");
-    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
-};
-
 /** Mesmo dia e hora, no primeiro ano em que a data fica no futuro. */
 const proximaData = (iso: string) => {
     const agora = agoraIsoLocal();
@@ -278,6 +270,8 @@ export function modalidadesDoEvento(e: EventoAnterior): Modalidade[] {
                     idadeMin: c.idadeMin ?? null,
                     idadeMax: c.idadeMax ?? null,
                     desconto: c.desconto ?? "nenhum",
+                    // v0.18: a categoria PCD de origem vira a regra "Somente PCD" (o desconto legal saiu do MVP).
+                    pcd: c.desconto === "pcd",
                     semLimite: !c.vagas,
                     vagas: c.vagas ?? null,
                     lotes: [novoLote(1, { valor: precos[0], vagas: v1 }), novoLote(2, { valor: precos[1], vagas: v2 })],
@@ -308,9 +302,9 @@ export function copiarEvento(id: string): Rascunho {
         // O ano sai do nome: "Corrida Noturna Floripa 2025" vira "Corrida Noturna Floripa 2026".
         nome: e.nome.replace(/\b(20\d\d)\b/, proximaData(e.largada).slice(0, 4)),
         esporte: e.esporte,
-        largada: proximaData(e.largada),
-        // v0.9: o término vem 4 horas depois da largada (os eventos de exemplo não guardam o fim) e pede revisão.
-        termino: somarHoras(proximaData(e.largada), 4),
+        // v0.16 (SCE-215): largada e término não vêm na cópia; os campos ficam em branco com "Insira a data".
+        largada: "",
+        termino: "",
         local: LOCAL_POR_ID(e.localId),
         descricao: e.descricao,
         // v0.11: mantém o termo do evento de origem se ainda está ativo na organização; senão, o padrão.

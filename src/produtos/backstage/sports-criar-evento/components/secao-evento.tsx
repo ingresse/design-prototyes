@@ -1,14 +1,19 @@
 import { Mail01 } from "@untitledui/icons";
+import { Button } from "@/components/base/buttons/button";
+import { Toggle } from "@/components/base/toggle/toggle";
+import { Surgir } from "@/components/foundations/transicao";
 import { Label } from "@/components/base/input/label";
 import { Select } from "@/components/base/select/select";
 import { IDADES_COM_CLASSIFICACAO } from "../../eventos/components/classificacao-indicativa";
 import { CAMPO } from "../data/campos";
 import { ESPORTES, LIMITE_NOME } from "../data/opcoes";
+import { regrasDe } from "../data/modelos";
+import type { RegrasDaInscricao } from "../data/tipos";
 import { useVocabulario } from "../data/vocabulario";
 import { CampoLocal } from "./campo-local";
 import { CampoImagemComRecorte, type RegrasDaImagem } from "./campos-de-arquivo";
 import { CampoTermoDeUso } from "./campo-termo-de-uso";
-import { CampoDataHora, CampoSelect, CampoTexto, Secao } from "./campos";
+import { CampoDataHora, CampoNumero, CampoSelect, CampoTexto, Secao } from "./campos";
 import { CampoDescricao } from "./campo-descricao";
 import { useFormulario } from "./contexto";
 
@@ -61,7 +66,12 @@ export function SecaoEvento() {
                         valor={r.largada}
                         revisar={revisar(CAMPO.largada)}
                         onChange={(largada) => {
-                            atualizar((a) => ({ ...a, largada }));
+                            // v0.25 (critique UI-FRM-008): término sugerido 4 h depois da largada; acompanha até a pessoa editar.
+                            atualizar((a) => ({
+                                ...a,
+                                largada,
+                                ...(largada && (!a.termino || a.terminoSugerido) ? { termino: somarHoras(largada, 4), terminoSugerido: true } : {}),
+                            }));
                             revisado(CAMPO.largada);
                         }}
                         onBlur={() => tocar(CAMPO.largada)}
@@ -72,10 +82,12 @@ export function SecaoEvento() {
                         label="Data e horário de término"
                         isRequired
                         valor={r.termino}
+                        // v0.16 (SCE-215): o calendário abre no mês da largada; os dias antes dela ficam desabilitados.
+                        minimo={r.largada || undefined}
                         revisar={revisar(CAMPO.termino)}
-                        dica="Quando a prova termina, depois da largada."
+                        dica={r.terminoSugerido ? "Sugerido 4 h depois da largada. Ajuste se precisar." : "Quando a prova termina, depois da largada."}
                         onChange={(termino) => {
-                            atualizar((a) => ({ ...a, termino }));
+                            atualizar((a) => ({ ...a, termino, terminoSugerido: false }));
                             revisado(CAMPO.termino);
                         }}
                         onBlur={() => tocar(CAMPO.termino)}
@@ -110,13 +122,16 @@ export function SecaoEvento() {
                 </div>
             </Secao>
 
+            {/* v0.19 (SCE-238): políticas do evento num lugar só, já com os padrões mais comuns do esporte. */}
+            <RegrasDaInscricaoCartao />
+
             <Secao className="@container" titulo="Imagens" descricao="As duas são opcionais. Depois de escolher, você ajusta o recorte.">
                 {/* v0.10 (SCE-205): cartões compactos de uma linha, lado a lado, como o Banner e o Mapa do AWA. */}
                 <div className="grid items-start gap-x-8 gap-y-6 @3xl:grid-cols-2">
                     <CampoImagemComRecorte
                         id={CAMPO.imagem}
                         label="Banner do evento"
-                        titulo="Clique para adicionar um banner"
+                        titulo="Adicionar banner"
                         regras={REGRAS_DO_BANNER}
                         arquivo={r.imagem}
                         dica="A capa do evento na página de inscrição."
@@ -133,7 +148,7 @@ export function SecaoEvento() {
                     <CampoImagemComRecorte
                         id={CAMPO.percurso}
                         label="Imagem do percurso da prova"
-                        titulo="Clique para adicionar a imagem do percurso"
+                        titulo="Adicionar imagem do percurso"
                         regras={REGRAS_DO_PERCURSO}
                         arquivo={r.percurso}
                         dica="O mapa do percurso, com largada, chegada e pontos de apoio."
@@ -151,5 +166,133 @@ export function SecaoEvento() {
                 </div>
             </Secao>
         </div>
+    );
+}
+
+/** ISO local + horas, em ISO local. */
+const somarHoras = (iso: string, horas: number) => {
+    const d = new Date(iso);
+    d.setHours(d.getHours() + horas);
+    const p2 = (n: number) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}T${p2(d.getHours())}:${p2(d.getMinutes())}`;
+};
+
+/** Véspera da largada (mesmo horário), em ISO local; sugestão do fim da troca de titularidade. */
+const vesperaDe = (iso: string) => {
+    const d = new Date(iso);
+    d.setDate(d.getDate() - 1);
+    const p2 = (n: number) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}T${p2(d.getHours())}:${p2(d.getMinutes())}`;
+};
+
+/**
+ * v0.19 a v0.25 (SCE-238, SCE-241, SCE-242, SCE-249): regras da inscrição do evento. Valem para todas as categorias;
+ * a categoria pode ter um limite de compra menor (SCE-239). Padrões: uma inscrição por atleta, permite comprar para
+ * outro atleta, limite de 3 por comprador, sem troca de titularidade. Liga e desliga em Toggle (critique UI-DS-003).
+ */
+function RegrasDaInscricaoCartao() {
+    const { rascunho: r, atualizar, erro, tocar, pendencias, irParaPendencia } = useFormulario();
+    const regras = regrasDe(r);
+    const e = (campo: string) => erro(campo, "evento");
+    // Inscrição única por atleta + sem compra para outro atleta: o comprador só inscreve a si mesmo, uma vez.
+    const limiteUnico = !regras.variasPorCpf && regras.atribuicao === "comprador";
+    // Categorias com limite próprio acima do limite do evento (critique: avisar no ponto da mudança).
+    const categoriasAcima = pendencias.filter((p) => /^campo-cat-.+-maximo$/.test(p.campo));
+    const set = (mudanca: Partial<RegrasDaInscricao>) =>
+        atualizar((a) => {
+            const antes = regrasDe(a);
+            const novas = { ...antes, ...mudanca };
+            // Ao entrar na combinação que exige 1, o limite já vira 1 (a pessoa ainda pode editar e vê o motivo no erro).
+            const virouUnico = !novas.variasPorCpf && novas.atribuicao === "comprador" && !(!antes.variasPorCpf && antes.atribuicao === "comprador");
+            if (virouUnico) novas.limitePorComprador = 1;
+            // Fim da troca sugerido na véspera da largada; acompanha o início até a pessoa editar o fim.
+            if ("trocaInicio" in mudanca && novas.trocaInicio && (!antes.trocaFim || antes.trocaFimSugerido) && a.largada) {
+                const vespera = vesperaDe(a.largada);
+                if (vespera > novas.trocaInicio) {
+                    novas.trocaFim = vespera;
+                    novas.trocaFimSugerido = true;
+                }
+            }
+            if ("trocaFim" in mudanca) novas.trocaFimSugerido = false;
+            return { ...a, regras: novas };
+        });
+    return (
+        <Secao className="@container" titulo="Regras da inscrição" descricao="Valem para o evento inteiro e já vêm com o mais comum.">
+            <div className="grid items-start gap-x-8 gap-y-6 @3xl:grid-cols-2">
+                <Toggle
+                    size="sm"
+                    label="Permitir mais de uma inscrição por atleta"
+                    hint="Desligado: cada atleta (CPF) se inscreve uma vez no evento."
+                    isSelected={regras.variasPorCpf}
+                    onChange={(variasPorCpf) => set({ variasPorCpf })}
+                />
+                <Toggle
+                    size="sm"
+                    label="Permitir comprar para outro atleta"
+                    hint="Desligado: o comprador só inscreve a si mesmo."
+                    isSelected={regras.atribuicao === "qualquer"}
+                    onChange={(sim) => set({ atribuicao: sim ? "qualquer" : "comprador" })}
+                />
+                <div className="flex flex-col gap-2">
+                    <CampoNumero
+                        id={CAMPO.limitePorComprador}
+                        label="Limite de compra"
+                        tooltip="Uma categoria pode ter um limite menor, por exemplo PCD ou cortesia."
+                        isRequired
+                        semSetas
+                        className="max-w-xs"
+                        valor={regras.limitePorComprador}
+                        onChange={(limitePorComprador) => set({ limitePorComprador })}
+                        onBlur={() => tocar(CAMPO.limitePorComprador)}
+                        erro={e(CAMPO.limitePorComprador)}
+                        dica={limiteUnico ? "Precisa ser 1: o atleta se inscreve uma vez e só para si mesmo." : "Inscrições por pessoa neste evento, somando todos os pedidos."}
+                    />
+                    <Surgir visivel={categoriasAcima.length > 0}>
+                        <p className="flex flex-wrap items-center gap-x-2 text-sm text-warning-primary">
+                            {categoriasAcima.length === 1 ? "1 categoria tem limite maior que este." : `${categoriasAcima.length} categorias têm limite maior que este.`}
+                            <Button color="link-color" size="sm" onClick={() => categoriasAcima[0] && irParaPendencia(categoriasAcima[0])}>
+                                Ajustar
+                            </Button>
+                        </p>
+                    </Surgir>
+                </div>
+                <div className="flex flex-col gap-4">
+                    <Toggle
+                        size="sm"
+                        label="Permitir troca de titularidade depois da compra"
+                        hint="O atleta passa a inscrição para outra pessoa pela carteira, no período abaixo."
+                        isSelected={regras.trocaDeTitularidade}
+                        onChange={(trocaDeTitularidade) => set({ trocaDeTitularidade })}
+                    />
+                    {/* SCE-241: período sempre visível; desabilitado quando a troca não é permitida. */}
+                    <div className="grid items-start gap-4 @lg:grid-cols-2">
+                        <CampoDataHora
+                            id={CAMPO.trocaInicio}
+                            label="Troca permitida a partir de"
+                            isRequired={regras.trocaDeTitularidade}
+                            desabilitado={!regras.trocaDeTitularidade}
+                            valor={regras.trocaInicio}
+                            maximo={r.largada || undefined}
+                            onChange={(trocaInicio) => set({ trocaInicio })}
+                            onBlur={() => tocar(CAMPO.trocaInicio)}
+                            erro={regras.trocaDeTitularidade ? e(CAMPO.trocaInicio) : undefined}
+                        />
+                        <CampoDataHora
+                            id={CAMPO.trocaFim}
+                            label="Troca permitida até"
+                            isRequired={regras.trocaDeTitularidade}
+                            desabilitado={!regras.trocaDeTitularidade}
+                            valor={regras.trocaFim}
+                            minimo={regras.trocaInicio || undefined}
+                            maximo={r.largada || undefined}
+                            dica={regras.trocaDeTitularidade ? (regras.trocaFimSugerido ? "Sugerido na véspera da largada. Ajuste se precisar." : "Até a largada, no máximo.") : undefined}
+                            onChange={(trocaFim) => set({ trocaFim })}
+                            onBlur={() => tocar(CAMPO.trocaFim)}
+                            erro={regras.trocaDeTitularidade ? e(CAMPO.trocaFim) : undefined}
+                        />
+                    </div>
+                </div>
+            </div>
+        </Secao>
     );
 }

@@ -99,11 +99,11 @@ export const Vazio = ({ icone, titulo, descricao, acao }: { icone: FC<{ classNam
     </EmptyState>
 );
 
-/** Aviso "Revise esta data" no lugar da dica (cópia de evento, RN-07). */
-const AvisoRevisar = () => (
+/** Aviso em amarelo no lugar da dica (cópia de evento, RN-07): "Insira a data" (vazia) ou "Revise esta data". */
+const AvisoRevisar = ({ texto = MSG.revisarData }: { texto?: string }) => (
     <span className="inline-flex items-center gap-1.5 font-medium text-warning-primary">
         <AlertTriangle className="size-4 shrink-0 text-fg-warning-primary" aria-hidden="true" />
-        {MSG.revisarData}
+        {texto}
     </span>
 );
 
@@ -197,10 +197,12 @@ interface CampoNumeroProps {
     isInvalid?: boolean;
     ocultarLabel?: boolean;
     className?: string;
+    /** v0.17 (SCE-230): sem as setas de aumentar e diminuir (valores digitados, como preço e quantidade em tabela). */
+    semSetas?: boolean;
 }
 
 /** Número (e valor em R$ com máscara): NumberField do React Aria com Label, InputNumberBase e HintText do DS. */
-export const CampoNumero = ({ id, label, valor, onChange, onBlur, erro, dica, tooltip, placeholder, isRequired, isDisabled, formato, isInvalid, ocultarLabel, className }: CampoNumeroProps) => (
+export const CampoNumero = ({ id, label, valor, onChange, onBlur, erro, dica, tooltip, placeholder, isRequired, isDisabled, formato, isInvalid, ocultarLabel, className, semSetas }: CampoNumeroProps) => (
     <div id={id} data-erro={erro ? "" : undefined} className={cx("min-w-0 scroll-mt-6", className)}>
         <AriaNumberField
             value={valor ?? Number.NaN}
@@ -219,7 +221,7 @@ export const CampoNumero = ({ id, label, valor, onChange, onBlur, erro, dica, to
                     {label}
                 </Label>
             </AriaButtonContext.Provider>
-            <InputNumberBase placeholder={placeholder} isInvalid={!!erro || isInvalid} isDisabled={isDisabled} />
+            <InputNumberBase placeholder={placeholder} isInvalid={!!erro || isInvalid} isDisabled={isDisabled} wrapperClassName={semSetas ? "[&>div:last-child]:hidden" : undefined} />
             <Rodape hint={erro ?? dica} isInvalid={!!erro} />
         </AriaNumberField>
     </div>
@@ -340,10 +342,19 @@ export const CampoDataHora = ({
     isRequired,
     className,
     ocultarLabel,
+    minimo,
+    maximo,
+    desabilitado,
 }: {
     id: string;
     label: string;
     valor: string;
+    /** v0.16 (SCE-215): data a partir da qual o calendário habilita os dias; o calendário abre no mês dela. */
+    minimo?: string;
+    /** v0.20: data máxima habilitada no calendário (ex.: até a largada). */
+    maximo?: string;
+    /** v0.20: visível, mas desabilitado (ex.: troca de titularidade desligada). */
+    desabilitado?: boolean;
     onChange: (v: string) => void;
     onBlur?: () => void;
     erro?: string;
@@ -362,11 +373,15 @@ export const CampoDataHora = ({
             granularity="minute"
             hourCycle={24}
             value={paraData(valor)}
+            minValue={paraData(minimo ?? "") ?? undefined}
+            maxValue={paraData(maximo ?? "") ?? undefined}
+            isDisabled={desabilitado}
+            placeholderValue={paraData(minimo ?? "") ?? undefined}
             onChange={(v) => onChange(v ? v.toString().slice(0, 16) : "")}
             onBlur={onBlur}
             isRequired={isRequired}
             isInvalid={!!erro}
-            hint={erro ?? (revisar ? <AvisoRevisar /> : dica)}
+            hint={erro ?? (revisar ? <AvisoRevisar texto={valor ? MSG.revisarData : MSG.insiraData} /> : dica)}
         />
     </div>
 );
@@ -378,12 +393,15 @@ export const Escolha = <T extends string>({
     valor,
     opcoes,
     onChange,
+    size = "sm",
 }: {
     label: string;
     tooltip?: string;
     valor: T;
     opcoes: Opcao<T>[];
     onChange: (v: T) => void;
+    /** "md" alinha a altura com os campos de texto ao lado (v0.18). */
+    size?: "sm" | "md";
 }) => {
     const rotuloId = useId();
     return (
@@ -392,7 +410,7 @@ export const Escolha = <T extends string>({
                 {label}
             </Label>
             <ButtonGroup
-                size="sm"
+                size={size}
                 aria-labelledby={rotuloId}
                 selectedKeys={new Set([valor])}
                 onSelectionChange={(keys) => {

@@ -1,5 +1,5 @@
 import { termoPadrao } from "./termos";
-import type { Categoria, Lote, Modalidade, Rascunho } from "./tipos";
+import type { Categoria, Lote, Modalidade, Rascunho, RegrasDaInscricao } from "./tipos";
 
 /* Fábricas: cada item nasce com o padrão que reduz digitação (RN-01, RN-03). */
 
@@ -19,6 +19,7 @@ export const novoLote = (n = 1, parcial: Partial<Lote> = {}): Lote => ({
 export const novaCategoria = (parcial: Partial<Categoria> = {}): Categoria => ({
     id: novoId("cat"),
     nome: "",
+    descricao: "",
     sexo: "todos",
     idadeMin: null,
     idadeMax: null,
@@ -27,7 +28,9 @@ export const novaCategoria = (parcial: Partial<Categoria> = {}): Categoria => ({
     semLimite: true,
     vagas: null,
     transferencia: "sempre",
+    atleta: "qualquer",
     maxPorPedido: 1,
+    limiteComprador: null,
     lotes: [novoLote(1)],
     ...parcial,
 });
@@ -41,6 +44,7 @@ export const novaModalidade = (parcial: Partial<Modalidade> = {}): Modalidade =>
     nome: "",
     tipo: "",
     vagas: null,
+    descricao: "",
     categorias: [],
     ...parcial,
 });
@@ -76,6 +80,13 @@ export const nomeDeCopia = (nome: string, existentes: string[]) => {
     return candidato;
 };
 
+/** v0.19 (SCE-238): padrões das regras da inscrição, os mais comuns no esporte. */
+export const REGRAS_PADRAO: RegrasDaInscricao = { variasPorCpf: false, atribuicao: "qualquer", limitePorComprador: 3, trocaDeTitularidade: false, trocaInicio: "", trocaFim: "" };
+export const regrasDe = (r: Pick<Rascunho, "regras">): RegrasDaInscricao => ({ ...REGRAS_PADRAO, ...r.regras });
+
+/** v0.21 (SCE-243): as vagas da categoria são a soma das quantidades dos lotes. */
+export const vagasDaCategoria = (c: Pick<Categoria, "lotes">) => c.lotes.reduce((s, l) => s + (l.vagas ?? 0), 0);
+
 export const rascunhoVazio = (): Rascunho => ({
     origem: "zero",
     nome: "",
@@ -88,6 +99,7 @@ export const rascunhoVazio = (): Rascunho => ({
     percurso: null,
     // v0.11: o termo padrão da organização entra sozinho no evento novo (SCE-207).
     termoId: termoPadrao()?.id ?? null,
+    regras: { ...REGRAS_PADRAO },
     descricao: "",
     modalidades: [],
     // Do zero o formulário começa vazio (v0.3): perguntas só na etapa Formulário de inscrição.

@@ -170,7 +170,7 @@ export function AvisoDeCopia() {
     const largada = rascunho.datasARevisar.includes("campo-largada") || rascunho.datasARevisar.includes("campo-termino");
     const partes = [
         lotes > 0 && `${lotes === 1 ? "1 lote copiado está marcado" : `${lotes} lotes copiados estão marcados`} para revisar.`,
-        largada && 'A largada e o término vieram para o próximo ano e estão marcados com "Revise esta data".',
+        largada && 'A largada e o término não vêm na cópia: preencha os dois campos marcados com "Insira a data".',
     ].filter(Boolean);
     return (
         <div className="flex items-start gap-3 rounded-xl bg-primary p-4 ring-1 ring-secondary ring-inset" role="note">

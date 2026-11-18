@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { useNavigate } from "react-router";
 import { toast } from "sonner";
-import { CheckCircle, Copy06, Edit01 } from "@untitledui/icons";
+import { AlertTriangle, CheckCircle, Copy06, Edit01 } from "@untitledui/icons";
 import { Button } from "@/components/base/buttons/button";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { TITULO_PAGINA } from "../../components/titulo-pagina";
@@ -9,6 +9,7 @@ import { formatarDataHora, formatarReais } from "../data/campos";
 import { textoDoLocal } from "../data/locais";
 import { ESPORTES, labelDe, TIPOS_DE_MODALIDADE, TIPOS_DE_RESPOSTA, TITULO_FORMULARIO } from "../data/opcoes";
 import { idsDasCategorias } from "../data/perguntas";
+import { regrasDe } from "../data/modelos";
 import { useVocabulario } from "../data/vocabulario";
 import { textoPuro } from "./campo-descricao";
 import { termoPorId } from "../data/termos";
@@ -43,6 +44,8 @@ export function Revisao({ onEditar }: { onEditar: (s: SecaoId) => void }) {
         </div>
     );
     const local = r.local ? textoDoLocal(r.local) : null;
+    const regras = regrasDe(r);
+    const comLimite = r.modalidades.flatMap((m) => m.categorias.filter((c) => c.limiteComprador != null).map((c) => `${m.nome.trim() || "Sem nome"} › ${c.nome.trim() || "Sem nome"}: ${c.limiteComprador}`));
 
     return (
         // v0.4 (SCE-158): largura toda. No desktop, o resumo das seções à esquerda e, fixos à direita, o que falta e os avisos.
@@ -56,7 +59,17 @@ export function Revisao({ onEditar }: { onEditar: (s: SecaoId) => void }) {
                     <ListaDePendencias />
                 </Secao>
                 {avisos.length > 0 && (
-                    <Secao titulo="Avisos" descricao="Não impedem publicar, mas vale conferir.">
+                    /* v0.17 (SCE-226): cartão de avisos em destaque, com fundo e contorno de aviso e a contagem no título. */
+                    <Secao
+                        className="bg-warning-primary ring-2 ring-fg-warning-secondary"
+                        titulo={
+                            <span className="flex items-center gap-2">
+                                <AlertTriangle className="size-5 shrink-0 text-fg-warning-primary" aria-hidden="true" />
+                                {avisos.length === 1 ? "1 aviso" : `${avisos.length} avisos`}
+                            </span>
+                        }
+                        descricao="Não impedem publicar, mas vale conferir antes. Toque em cada um para ir até o lugar."
+                    >
                         <ListaDeAvisos />
                     </Secao>
                 )}
@@ -75,6 +88,16 @@ export function Revisao({ onEditar }: { onEditar: (s: SecaoId) => void }) {
                     {r.imagem && <Linha rotulo="Banner">{r.imagem.nome}</Linha>}
                     {r.percurso && <Linha rotulo="Percurso">{r.percurso.nome}</Linha>}
                     <Linha rotulo="Termo de uso">{termoPorId(r.termoId)?.nome ?? <NaoInformado />}</Linha>
+                    {/* v0.19 (SCE-240): regras da inscrição e as categorias com limite próprio. */}
+                    <Linha rotulo="Regras da inscrição">
+                        <span className="flex flex-col gap-0.5">
+                            <span>{regras.variasPorCpf ? "Mais de uma inscrição por atleta" : "Uma inscrição por atleta"}</span>
+                            <span>{regras.atribuicao === "qualquer" ? "Pode comprar para outro atleta" : "Só para quem compra"}</span>
+                            <span>{regras.limitePorComprador ? `Limite de compra: ${regras.limitePorComprador} por comprador` : "Limite de compra: não informado"}</span>
+                            <span>{regras.trocaDeTitularidade ? `Troca de titularidade de ${regras.trocaInicio ? formatarDataHora(regras.trocaInicio) : "início não informado"} a ${regras.trocaFim ? formatarDataHora(regras.trocaFim) : "fim não informado"}` : "Sem troca de titularidade"}</span>
+                            {comLimite.length > 0 && <span className="text-tertiary">Limite próprio: {comLimite.join("; ")}</span>}
+                        </span>
+                    </Linha>
                     {r.descricao && <Linha rotulo="Descrição">{textoPuro(r.descricao).slice(0, 280)}{textoPuro(r.descricao).length > 280 ? "…" : ""}</Linha>}
                 </dl>
             </Secao>
@@ -113,7 +136,13 @@ export function Revisao({ onEditar }: { onEditar: (s: SecaoId) => void }) {
             <Secao titulo={TITULO_FORMULARIO} acao={editar("inscricao", TITULO_FORMULARIO)}>
                 <dl className="-my-3 divide-y divide-secondary">
                     {r.perguntas.length === 0 ? (
-                        <Linha rotulo="Perguntas">Sem perguntas</Linha>
+                        <Linha rotulo="Perguntas">
+                            {/* v0.17 (SCE-227): formulário vazio em destaque, como aviso (não impede publicar). */}
+                            <span className="flex items-start gap-2 font-medium text-warning-primary">
+                                <AlertTriangle className="mt-0.5 size-4 shrink-0 text-fg-warning-primary" aria-hidden="true" />
+                                Sem perguntas. O atleta se inscreve sem responder nada. Isso não impede publicar.
+                            </span>
+                        </Linha>
                     ) : (
                         r.perguntas.map((p, i) => {
                             const n = Object.keys(p.vinculos).filter((c) => existentes.has(c)).length;

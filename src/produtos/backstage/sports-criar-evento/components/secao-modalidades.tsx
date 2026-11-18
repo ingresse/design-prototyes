@@ -6,17 +6,21 @@ import { Dialog, Modal, ModalOverlay } from "@/components/application/modals/mod
 import { BadgeWithIcon } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
+import { RadioButton, RadioGroup } from "@/components/base/radio-buttons/radio-buttons";
 import { Tooltip, TooltipTrigger } from "@/components/base/tooltip/tooltip";
-import { useTransicao } from "@/components/foundations/transicao";
+import { Surgir, useTransicao } from "@/components/foundations/transicao";
 import { cx } from "@/utils/cx";
 import { CAMPO, formatarDataHora, formatarReais, irParaCampo } from "../data/campos";
-import { duplicarCategoria, novaCategoria, novaModalidade, nomeDeCopia } from "../data/modelos";
-import { labelDe, MSG, SEXOS, TIPOS_DE_MODALIDADE } from "../data/opcoes";
+import { duplicarCategoria, novaCategoria, novaModalidade, nomeDeCopia, vagasDaCategoria } from "../data/modelos";
+import { labelDe, MSG, SEXOS, TIPOS_DE_MODALIDADE, TIPOS_DE_RESPOSTA } from "../data/opcoes";
 import { copiarVinculos, herdarPerguntas } from "../data/perguntas";
 import type { Categoria, Modalidade, Pendencia, Rascunho } from "../data/tipos";
 import { pendenciasDaCategoria, regraSugerida } from "../data/validacao";
 import { useVocabulario, type Vocabulario } from "../data/vocabulario";
-import { CampoSelect, CampoTexto, CampoVagas, ErroDaLista, Vazio } from "./campos";
+import { CampoSelect, CampoTexto, CampoTextoLongo, CampoVagas, ErroDaLista, Vazio } from "./campos";
+
+/** v0.23 (SCE-247): limite da descrição da modalidade, o mesmo da descrição do ingresso no AWA. */
+const LIMITE_DESCRICAO_MODALIDADE = 1000;
 import { useFormulario } from "./contexto";
 import { entrarNaRevisao, FluxoDeCopia } from "./copia-guiada";
 import { comModalidade, inserirDepois, mover } from "./operacoes";
@@ -59,23 +63,26 @@ export function SecaoModalidades() {
 /** Id da modalidade de uma pendência (campo da modalidade ou de categoria/lote dela). */
 const modalidadeDaPendencia = (p: Pendencia) => p.categoria?.modalidadeId ?? /^campo-mod-(.+)-(nome|tipo|vagas|categorias)$/.exec(p.campo)?.[1];
 
-/** Onde está o erro, em linguagem simples: "Modalidade › Categoria › Lote › campo". */
+/**
+ * Onde está o erro, em palavras (v0.25, critique UI-TXT-010): o campo ("Preço do 1º lote") e, numa linha de apoio,
+ * onde ele fica ("Na categoria Geral, modalidade 10 km").
+ */
 function localDaPendencia(r: Rascunho, p: Pendencia, t: Vocabulario) {
     const m = r.modalidades.find((x) => x.id === modalidadeDaPendencia(p));
     const c = m?.categorias.find((x) => x.id === p.categoria?.categoriaId);
-    const partes: string[] = [];
-    if (m) partes.push(m.nome.trim() || t.nivel1SemNome);
-    if (c) partes.push(c.nome.trim() || t.nivel2SemNome);
     const lote = /^campo-lote-(.+)-(nome|valor|vagas|limite)$/.exec(p.campo);
-    const cat = /^campo-cat-(.+)-(nome|idade|vagas|maximo|lotes)$/.exec(p.campo);
+    const cat = /^campo-cat-(.+)-(nome|idade|vagas|maximo|lotes|pcd)$/.exec(p.campo);
     const mod = /^campo-mod-(.+)-(nome|tipo|vagas|categorias)$/.exec(p.campo);
+    let campo: string = t.tituloDaSecao;
     if (lote) {
         const l = c?.lotes.find((x) => x.id === lote[1]);
-        partes.push(l?.nome.trim() || "Lote sem nome", { nome: "Nome do lote", valor: "Preço", vagas: "Quantidade", limite: "Data limite" }[lote[2]]!);
-    } else if (cat) partes.push({ nome: "Nome", idade: "Faixa etária", vagas: "Vagas", maximo: "Máximo por pedido", lotes: "Lotes" }[cat[2]]!);
-    else if (mod) partes.push({ nome: "Nome", tipo: t.tipoDoNivel1, vagas: "Vagas", categorias: t.listaNivel2 }[mod[2]]!);
-    else partes.push(t.tituloDaSecao);
-    return partes.join(" › ");
+        campo = `${{ nome: "Nome", valor: "Preço", vagas: "Quantidade", limite: "Data limite" }[lote[2]]} do ${l?.nome.trim() || "lote sem nome"}`;
+    } else if (cat) campo = { nome: "Nome", idade: "Idade", vagas: "Vagas", maximo: "Limite de compra", lotes: "Lotes", pcd: "PCD" }[cat[2]]!;
+    else if (mod) campo = { nome: "Nome", tipo: t.tipoDoNivel1, vagas: "Vagas", categorias: t.listaNivel2 }[mod[2]]!;
+    const nomeMod = m ? m.nome.trim() || t.nivel1SemNome : null;
+    const nomeCat = c ? c.nome.trim() || t.nivel2SemNome : null;
+    const onde = nomeCat ? `Na ${t.nivel2.um} ${nomeCat}, ${t.nivel1.um} ${nomeMod}` : nomeMod ? `Na ${t.nivel1.um} ${nomeMod}` : null;
+    return { campo, onde };
 }
 
 /** v0.15 (SCE-213): lista do que impede de continuar, no topo da etapa, com o lugar de cada erro e o atalho até ele. */
@@ -96,7 +103,17 @@ function ResumoDeErros({ erros }: { erros: Pendencia[] }) {
                             onClick={() => irParaPendencia(p)}
                             className="cursor-pointer rounded text-left text-sm text-secondary underline-offset-2 outline-focus-ring hover:underline focus-visible:outline-2"
                         >
-                            <span className="font-semibold text-primary">{localDaPendencia(r, p, t)}:</span> {p.texto}
+                            {(() => {
+                                const { campo, onde } = localDaPendencia(r, p, t);
+                                return (
+                                    <span className="flex flex-col">
+                                        <span>
+                                            <span className="font-semibold text-primary">{campo}:</span> {p.texto}
+                                        </span>
+                                        {onde && <span className="text-tertiary">{onde}</span>}
+                                    </span>
+                                );
+                            })()}
                         </button>
                     </li>
                 ))}
@@ -109,16 +126,17 @@ function Lista() {
     const { rascunho: r, atualizar, erro, pendencias, secoesTentadas } = useFormulario();
     const { t } = useVocabulario();
     const ordem = useOrdem();
-    const [abertas, setAbertas] = useState<Set<string>>(() => new Set(r.modalidades[0] ? [r.modalidades[0].id] : []));
+    // v0.16 (SCE-219): toda modalidade abre mostrando as categorias; a pessoa ainda pode recolher. Guarda só as recolhidas.
+    const [recolhidas, setRecolhidas] = useState<Set<string>>(new Set());
     // Erros que impedem continuar, depois da primeira tentativa (SCE-213).
     const erros = secoesTentadas.has("modalidades") ? pendencias.filter((p) => p.secao === "modalidades") : [];
     const comErro = erros.map(modalidadeDaPendencia).filter((x): x is string => !!x).join("|");
     // Abre os cartões das modalidades com erro, para os selos ficarem à vista.
     useEffect(() => {
-        if (comErro) setAbertas((s) => new Set([...s, ...comErro.split("|")]));
+        if (comErro) setRecolhidas((s) => new Set([...s].filter((id) => !comErro.split("|").includes(id))));
     }, [comErro]);
     const [criando, setCriando] = useState(false);
-    const alternar = (id: string) => setAbertas((s) => (s.has(id) ? (s.delete(id), new Set(s)) : new Set(s).add(id)));
+    const alternar = (id: string) => setRecolhidas((s) => (s.has(id) ? (s.delete(id), new Set(s)) : new Set(s).add(id)));
     const vazio = r.modalidades.length === 0;
 
     const acoes = (
@@ -160,7 +178,7 @@ function Lista() {
                             modalidade={m}
                             indice={i}
                             total={r.modalidades.length}
-                            aberta={abertas.has(m.id)}
+                            aberta={!recolhidas.has(m.id)}
                             onAlternar={() => alternar(m.id)}
                             ordem={ordem}
                         />
@@ -168,7 +186,7 @@ function Lista() {
                 </Reorder.Group>
             )}
 
-            <NovaModalidadeModal aberto={criando} onFechar={() => setCriando(false)} onCriada={(id) => setAbertas((s) => new Set(s).add(id))} />
+            <NovaModalidadeModal aberto={criando} onFechar={() => setCriando(false)} onCriada={(id) => setRecolhidas((s) => (s.delete(id), new Set(s)))} />
         </section>
     );
 }
@@ -177,11 +195,10 @@ function Lista() {
 export function resumoDaCategoria(c: Categoria) {
     const partes: string[] = [];
     if (c.sexo !== "todos") partes.push(labelDe(SEXOS, c.sexo));
+    if (c.pcd) partes.push("PCD");
     if (c.idadeMin != null && c.idadeMax != null) partes.push(`${c.idadeMin} a ${c.idadeMax} anos`);
     else if (c.idadeMin != null) partes.push(`${c.idadeMin} anos ou mais`);
     else if (c.idadeMax != null) partes.push(`até ${c.idadeMax} anos`);
-    if (c.desconto === "idoso") partes.push("desconto de idoso");
-    if (c.desconto === "pcd") partes.push("desconto PCD");
     const texto = partes.length ? partes.join(", ") : "Todos os atletas";
     return texto.charAt(0).toUpperCase() + texto.slice(1);
 }
@@ -233,10 +250,14 @@ function CartaoModalidade({
         atualizar((a) => ({ ...a, modalidades: a.modalidades.filter((x) => x.id !== m.id) }));
         toast(t.nivel1Removida(titulo), { action: { label: "Desfazer", onClick: () => atualizar((a) => ({ ...a, modalidades: antes })) } });
     };
+    // v0.16 (SCE-216): copia categorias de outro evento para dentro desta modalidade (fluxo de cópia em dois passos).
+    const copiarCategorias = () => atualizar((a) => ({ ...a, fluxoDeCopia: { tipo: "categorias-de-outro-evento", etapa: "escolher", destinoId: m.id } }));
     const novaCat = () => {
-        const c = novaCategoria({ nome: "" });
-        atualizar((a) => ({ ...comModalidade(m.id, (x) => ({ ...x, categorias: [...x.categorias, c] }))(a), perguntas: herdarPerguntas(a.perguntas, [c.id]) }));
+        // v0.17 (SCE-228): nasce marcada como nova; só fica no evento depois de "Salvar categoria".
+        const c = { ...novaCategoria({ nome: "" }), nova: true };
+        // Abre antes de gravar: a limpeza de categorias novas abandonadas (SCE-228) já a encontra aberta.
         abrirCategoria({ modalidadeId: m.id, categoriaId: c.id });
+        atualizar((a) => ({ ...comModalidade(m.id, (x) => ({ ...x, categorias: [...x.categorias, c] }))(a), perguntas: herdarPerguntas(a.perguntas, [c.id]) }));
     };
 
     return (
@@ -273,7 +294,7 @@ function CartaoModalidade({
                         <Flag01 className="size-5 shrink-0 text-fg-secondary" aria-hidden="true" />
                         <span className="flex min-w-0 flex-col gap-0.5">
                             <span className="flex flex-wrap items-center gap-2">
-                                <span className="text-md font-semibold text-primary">{titulo}</span>
+                                <span className="text-lg font-semibold text-primary">{titulo}</span>
                                 {errosDaModalidade > 0 && (
                                     <BadgeWithIcon type="pill-color" color="error" size="sm" iconLeading={AlertCircle}>
                                         {errosDaModalidade === 1 ? "1 erro" : `${errosDaModalidade} erros`}
@@ -285,6 +306,9 @@ function CartaoModalidade({
                                     </BadgeWithIcon>
                                 )}
                             </span>
+                            <Surgir visivel={!!m.descricao?.trim()}>
+                                <span className="line-clamp-1 max-w-[80ch] text-sm text-tertiary">{m.descricao?.trim()}</span>
+                            </Surgir>
                             <span className="flex flex-wrap gap-x-5 gap-y-0.5 text-sm text-tertiary">
                                 <span>
                                     Tipo: <span className="text-secondary">{labelDe(TIPOS_DE_MODALIDADE, m.tipo) || "a definir"}</span>
@@ -323,9 +347,14 @@ function CartaoModalidade({
                         titulo={t.vazioNivel2}
                         descricao={t.vazioNivel2Descricao}
                         acao={
-                            <Button color="secondary" size="md" iconLeading={Plus} onClick={novaCat}>
-                                {t.criarPrimeiraNivel2}
-                            </Button>
+                            <div className="flex flex-wrap justify-center gap-3">
+                                <Button color="secondary" size="md" iconLeading={Copy06} onClick={copiarCategorias}>
+                                    {t.copiarNivel2DeOutroEvento}
+                                </Button>
+                                <Button color="secondary" size="md" iconLeading={Plus} onClick={novaCat}>
+                                    {t.criarPrimeiraNivel2}
+                                </Button>
+                            </div>
                         }
                     />
                     <div className="flex justify-center">
@@ -383,17 +412,24 @@ function CartaoModalidade({
 
             {/* Rodapé do cartão (visível sempre que já há categoria), como "+ Novo ingresso" */}
             {!vazia && (
-                <button
-                    type="button"
-                    onClick={novaCat}
-                    className={cx(
-                        "flex items-center gap-2 rounded-b-xl px-4 py-3.5 text-left text-sm font-semibold text-brand-secondary outline-focus-ring transition duration-100 ease-linear hover:bg-tertiary hover:text-brand-secondary_hover focus-visible:outline-2 focus-visible:-outline-offset-2",
-                        !aberta && "border-t border-secondary",
-                    )}
-                >
-                    <Plus className="size-4" aria-hidden="true" />
-                    {t.novaNivel2}
-                </button>
+                <div className={cx("flex flex-wrap items-center rounded-b-xl", !aberta && "border-t border-secondary")}>
+                    <button
+                        type="button"
+                        onClick={novaCat}
+                        className="flex items-center gap-2 rounded-bl-xl px-4 py-3.5 text-left text-sm font-semibold text-brand-secondary outline-focus-ring transition duration-100 ease-linear hover:bg-tertiary hover:text-brand-secondary_hover focus-visible:outline-2 focus-visible:-outline-offset-2"
+                    >
+                        <Plus className="size-4" aria-hidden="true" />
+                        {t.novaNivel2}
+                    </button>
+                    <button
+                        type="button"
+                        onClick={copiarCategorias}
+                        className="flex items-center gap-2 px-4 py-3.5 text-left text-sm font-semibold text-tertiary outline-focus-ring transition duration-100 ease-linear hover:bg-tertiary hover:text-secondary focus-visible:outline-2 focus-visible:-outline-offset-2"
+                    >
+                        <Copy06 className="size-4" aria-hidden="true" />
+                        {t.copiarNivel2DeOutroEvento}
+                    </button>
+                </div>
             )}
 
         </Reorder.Item>
@@ -418,7 +454,8 @@ function LinhaCategoria({
     onAlternarLotes: () => void;
     ordem: ReturnType<typeof useOrdem>;
 }) {
-    const { atualizar, pendencias, avisos, abrirCategoria, secoesTentadas } = useFormulario();
+    const { rascunho: r, atualizar, pendencias, avisos, abrirCategoria, secoesTentadas } = useFormulario();
+    const [escolhendoDestino, setEscolhendoDestino] = useState(false);
     const tentou = secoesTentadas.has("modalidades");
     const { t } = useVocabulario();
     const transicao = useTransicao();
@@ -438,22 +475,27 @@ function LinhaCategoria({
         toast(t.nivel2Removida(nome), { action: { label: "Desfazer", onClick: () => setCategorias(() => antes) } });
     };
     // v0.8 (SCE-194): duplicar categoria vai direto para a revisão (passo 2), com os lotes a revisar.
-    const duplicar = () => {
-        const base = duplicarCategoria(c, nomeDeCopia(c.nome, m.categorias.map((x) => x.nome)));
+    // v0.16 (SCE-218): com mais de uma modalidade no evento, pergunta antes em qual modalidade a cópia entra.
+    const duplicarEm = (destinoId: string) => {
+        const destino = r.modalidades.find((x) => x.id === destinoId) ?? m;
+        const mesma = destino.id === m.id;
+        const repetido = destino.categorias.some((x) => x.nome.trim().toLowerCase() === c.nome.trim().toLowerCase());
+        const base = duplicarCategoria(c, mesma || repetido ? nomeDeCopia(c.nome, destino.categorias.map((x) => x.nome)) : c.nome);
         const copia = { ...base, lotes: base.lotes.map((l) => ({ ...l, revisar: true })) };
         // A cópia leva os vínculos das perguntas (SCE-105).
         atualizar((a) =>
             entrarNaRevisao(
                 {
-                    ...comModalidade(m.id, (x) => ({ ...x, categorias: inserirDepois(x.categorias, c.id, copia) }))(a),
+                    ...comModalidade(destino.id, (x) => ({ ...x, categorias: mesma ? inserirDepois(x.categorias, c.id, copia) : [...x.categorias, copia] }))(a),
                     perguntas: copiarVinculos(a.perguntas, { [c.id]: copia.id }),
                     fluxoDeCopia: { tipo: "duplicar-categoria", etapa: "revisar" },
                 },
-                { modalidades: [m.id], categorias: [copia.id] },
+                { modalidades: [destino.id], categorias: [copia.id] },
                 { modalidades: a.modalidades, perguntas: a.perguntas },
             ),
         );
     };
+    const duplicar = () => (r.modalidades.length > 1 ? setEscolhendoDestino(true) : duplicarEm(m.id));
 
     return (
         <Reorder.Item
@@ -515,7 +557,7 @@ function LinhaCategoria({
                 <div className={cx("flex shrink-0 flex-col pl-8 @3xl:pl-0", COL.emissoes)}>
                     <span className="text-sm text-secondary">
                         <span className="@3xl:hidden">Emissões: </span>
-                        {emissoes(c.semLimite, c.vagas)}
+                        {emissoes(false, vagasDaCategoria(c))}
                     </span>
                 </div>
                 <div className={cx("flex shrink-0 pl-8 @3xl:pl-0", COL.vinculos)}>
@@ -562,6 +604,16 @@ function LinhaCategoria({
                     </motion.div>
                 )}
             </AnimatePresence>
+            <DestinoDaDuplicacao
+                aberto={escolhendoDestino}
+                nomeDaCategoria={nome}
+                atualId={m.id}
+                onFechar={() => setEscolhendoDestino(false)}
+                onConfirmar={(id) => {
+                    setEscolhendoDestino(false);
+                    duplicarEm(id);
+                }}
+            />
         </Reorder.Item>
     );
 }
@@ -577,6 +629,7 @@ const plural = (n: number, um: string, muitos: string) => `${n.toLocaleString("p
 
 function Vinculos({ categoria: c }: { categoria: Categoria }) {
     const { rascunho: r } = useFormulario();
+    const [listaAberta, setListaAberta] = useState(false);
     const perguntas = r.perguntas.filter((p) => p.vinculos[c.id]).length;
     const itens: { icone: FC<{ className?: string }>; n: number; texto: string }[] = [
         { icone: ClipboardCheck, n: perguntas, texto: plural(perguntas, "pergunta do formulário", "perguntas do formulário") },
@@ -588,9 +641,11 @@ function Vinculos({ categoria: c }: { categoria: Categoria }) {
         <ul className="flex flex-wrap items-center gap-1" aria-label={`Vínculos: ${itens.map((x) => x.texto).join(", ")}`}>
             {itens.map(({ icone: Icone, n, texto }) => (
                 <li key={texto}>
-                    <Tooltip title={texto}>
+                    <Tooltip title={texto} description={Icone === ClipboardCheck ? "Clique para ver a lista" : undefined}>
                         <TooltipTrigger
-                            aria-label={texto}
+                            aria-label={Icone === ClipboardCheck ? `${texto}: ver a lista` : texto}
+                            // v0.17 (SCE-223): o indicador do formulário abre a lista das perguntas vinculadas.
+                            onPress={Icone === ClipboardCheck ? () => setListaAberta(true) : undefined}
                             className="flex items-center gap-1 rounded-md bg-primary px-1.5 py-0.5 text-xs font-medium text-secondary ring-1 ring-secondary outline-focus-ring transition duration-100 ease-linear ring-inset hover:bg-primary_hover focus-visible:outline-2"
                         >
                             <Icone className="size-3.5 text-fg-quaternary" aria-hidden="true" />
@@ -599,7 +654,66 @@ function Vinculos({ categoria: c }: { categoria: Categoria }) {
                     </Tooltip>
                 </li>
             ))}
+            <PerguntasDaCategoria categoria={c} aberto={listaAberta} onFechar={() => setListaAberta(false)} />
         </ul>
+    );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Perguntas vinculadas à categoria (v0.17, SCE-223)                  */
+/*  Clicar no indicador do formulário (coluna Vínculos) abre a lista,  */
+/*  na ordem do formulário, com o tipo de resposta e se é obrigatória. */
+/*  "Editar" leva ao Formulário de inscrição com a pergunta aberta.    */
+/* ------------------------------------------------------------------ */
+
+function PerguntasDaCategoria({ categoria: c, aberto, onFechar }: { categoria: Categoria; aberto: boolean; onFechar: () => void }) {
+    const { rascunho: r, irParaPendencia } = useFormulario();
+    const { t } = useVocabulario();
+    const vinculadas = r.perguntas.filter((p) => p.vinculos[c.id]);
+    const nome = c.nome.trim() || t.nivel2SemNome;
+    const editar = (perguntaId: string) => {
+        onFechar();
+        irParaPendencia({ secao: "inscricao", campo: CAMPO.perguntaTexto(perguntaId), texto: "", pergunta: perguntaId });
+    };
+    return (
+        <ModalOverlay isOpen={aberto} onOpenChange={(v) => !v && onFechar()} isDismissable>
+            <Modal className="sm:max-w-xl">
+                <Dialog aria-label={`Perguntas de ${nome}`}>
+                    <div className="flex max-h-[85vh] w-full flex-col overflow-hidden rounded-2xl bg-primary shadow-xl ring-1 ring-secondary">
+                        <div className="flex shrink-0 flex-col gap-1 px-6 pt-6 pb-4">
+                            <h2 className="text-lg font-semibold text-primary">Perguntas de {nome}</h2>
+                            <p className="text-sm text-tertiary">
+                                {vinculadas.length === 1 ? "1 pergunta do formulário aparece" : `${vinculadas.length} perguntas do formulário aparecem`} na inscrição desta {t.nivel2.um}, nesta ordem.
+                            </p>
+                        </div>
+                        <ol className="min-h-0 flex-1 divide-y divide-secondary overflow-y-auto border-y border-secondary">
+                            {vinculadas.map((p, i) => (
+                                <li key={p.id} className="flex items-center gap-3 px-6 py-3">
+                                    <span className="w-5 shrink-0 text-sm text-tertiary tabular-nums">{i + 1}.</span>
+                                    <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                                        <span className="flex flex-wrap items-center gap-2">
+                                            <span className="text-sm font-semibold text-primary">{p.titulo.trim() || "Pergunta sem título"}</span>
+                                            <BadgeWithIcon type="pill-color" color={p.vinculos[c.id] === "obrigatoria" ? "brand" : "gray"} size="sm" iconLeading={ClipboardCheck}>
+                                                {p.vinculos[c.id] === "obrigatoria" ? "Obrigatória" : "Opcional"}
+                                            </BadgeWithIcon>
+                                        </span>
+                                        <span className="text-sm text-tertiary">{labelDe(TIPOS_DE_RESPOSTA, p.tipo)}</span>
+                                    </span>
+                                    <Button size="sm" color="secondary" iconLeading={Edit01} onClick={() => editar(p.id)}>
+                                        Editar
+                                    </Button>
+                                </li>
+                            ))}
+                        </ol>
+                        <div className="flex shrink-0 justify-end px-6 py-4">
+                            <Button size="md" color="secondary" onClick={onFechar}>
+                                Fechar
+                            </Button>
+                        </div>
+                    </div>
+                </Dialog>
+            </Modal>
+        </ModalOverlay>
     );
 }
 
@@ -618,6 +732,7 @@ function EdicaoDaModalidade({ modalidade: m, titulo, onFechar }: { modalidade: M
     const [nome, setNome] = useState(m.nome);
     const [tipo, setTipo] = useState(m.tipo);
     const [vagas, setVagas] = useState<number | null>(m.vagas);
+    const [descricao, setDescricao] = useState(m.descricao ?? "");
     const [confirmando, setConfirmando] = useState(false);
     const repetida = r.modalidades.some((x) => x.id !== m.id && x.nome.trim().toLowerCase() === nome.trim().toLowerCase());
     const erros = {
@@ -629,6 +744,7 @@ function EdicaoDaModalidade({ modalidade: m, titulo, onFechar }: { modalidade: M
         nome.trim() !== m.nome.trim() && { rotulo: "Nome", antes: m.nome.trim() || "Sem nome", depois: nome.trim() },
         tipo !== m.tipo && { rotulo: t.tipoDoNivel1, antes: labelDe(TIPOS_DE_MODALIDADE, m.tipo) || "Não informado", depois: labelDe(TIPOS_DE_MODALIDADE, tipo) },
         vagas !== m.vagas && { rotulo: "Vagas", antes: vagasTexto(m.vagas), depois: vagasTexto(vagas) },
+        descricao.trim() !== (m.descricao ?? "").trim() && { rotulo: "Descrição", antes: (m.descricao ?? "").trim() || "Sem descrição", depois: descricao.trim() || "Sem descrição" },
     ].filter((x): x is { rotulo: string; antes: string; depois: string } => !!x);
 
     const salvar = () => {
@@ -640,7 +756,7 @@ function EdicaoDaModalidade({ modalidade: m, titulo, onFechar }: { modalidade: M
         setConfirmando(true);
     };
     const confirmar = () => {
-        atualizar(comModalidade(m.id, (x) => ({ ...x, nome: nome.trim(), tipo, vagas })));
+        atualizar(comModalidade(m.id, (x) => ({ ...x, nome: nome.trim(), tipo, vagas, descricao: descricao.trim() })));
         toast.success(t.alteracoesSalvas(nome.trim()));
         setConfirmando(false);
         onFechar();
@@ -663,6 +779,17 @@ function EdicaoDaModalidade({ modalidade: m, titulo, onFechar }: { modalidade: M
                     onChange={(_s, v) => setVagas(v)}
                     erro={erros.vagas}
                 />
+                <div className="@2xl:col-span-3">
+                    <CampoTextoLongo
+                        id={`campo-mod-${m.id}-descricao`}
+                        label="Descrição (opcional)"
+                        placeholder="Ex.: percurso plano pela orla, largada às 7h, kit com camiseta e medalha."
+                        limite={LIMITE_DESCRICAO_MODALIDADE}
+                        valor={descricao}
+                        onChange={setDescricao}
+                        dica="O atleta vê na escolha da inscrição."
+                    />
+                </div>
             </div>
             <div className="flex justify-end gap-3">
                 <Button size="sm" color="secondary" onClick={onFechar}>
@@ -719,6 +846,7 @@ function NovaModalidadeModal({ aberto, onFechar, onCriada }: { aberto: boolean; 
     const [nome, setNome] = useState("");
     const [tipo, setTipo] = useState("");
     const [vagas, setVagas] = useState<number | null>(null);
+    const [descricao, setDescricao] = useState("");
     const [tentou, setTentou] = useState(false);
     const repetida = r.modalidades.some((x) => x.nome.trim().toLowerCase() === nome.trim().toLowerCase());
     const erros = {
@@ -730,6 +858,7 @@ function NovaModalidadeModal({ aberto, onFechar, onCriada }: { aberto: boolean; 
         setNome("");
         setTipo("");
         setVagas(null);
+        setDescricao("");
         setTentou(false);
         onFechar();
     };
@@ -740,7 +869,7 @@ function NovaModalidadeModal({ aberto, onFechar, onCriada }: { aberto: boolean; 
             return;
         }
         // v0.4: nasce sem categorias (a "Geral" automática da RN-10 saiu); o cartão mostra o estado vazio.
-        const m = novaModalidade({ nome: nome.trim(), tipo, vagas });
+        const m = novaModalidade({ nome: nome.trim(), tipo, vagas, descricao: descricao.trim() });
         atualizar((a) => ({ ...a, modalidades: [...a.modalidades, m] }));
         onCriada(m.id);
         toast.success(t.nivel1Criada(nome.trim()));
@@ -768,6 +897,15 @@ function NovaModalidadeModal({ aberto, onFechar, onCriada }: { aberto: boolean; 
                                 onChange={(_s, v) => setVagas(v)}
                                 erro={tentou ? erros.vagas : undefined}
                             />
+                            <CampoTextoLongo
+                                id="nova-mod-descricao"
+                                label="Descrição (opcional)"
+                                placeholder="Ex.: percurso plano pela orla, largada às 7h, kit com camiseta e medalha."
+                                limite={LIMITE_DESCRICAO_MODALIDADE}
+                                valor={descricao}
+                                onChange={setDescricao}
+                                dica="O atleta vê na escolha da inscrição."
+                            />
                         </div>
                         <div className="flex justify-end gap-3">
                             <Button size="md" color="secondary" onClick={fechar}>
@@ -775,6 +913,78 @@ function NovaModalidadeModal({ aberto, onFechar, onCriada }: { aberto: boolean; 
                             </Button>
                             <Button size="md" color="primary" onClick={criar}>
                                 {t.criarNivel1}
+                            </Button>
+                        </div>
+                    </div>
+                </Dialog>
+            </Modal>
+        </ModalOverlay>
+    );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Duplicar categoria em outra modalidade (v0.16, SCE-218)            */
+/*  Com mais de uma modalidade no evento, "Duplicar" pergunta onde a   */
+/*  cópia entra; a modalidade atual vem escolhida. Na mesma, a cópia   */
+/*  ganha "(cópia)"; em outra, mantém o nome se ele não se repete lá.  */
+/* ------------------------------------------------------------------ */
+
+function DestinoDaDuplicacao({
+    aberto,
+    nomeDaCategoria,
+    atualId,
+    onFechar,
+    onConfirmar,
+}: {
+    aberto: boolean;
+    nomeDaCategoria: string;
+    atualId: string;
+    onFechar: () => void;
+    onConfirmar: (modalidadeId: string) => void;
+}) {
+    const { rascunho: r } = useFormulario();
+    const { t } = useVocabulario();
+    const [destino, setDestino] = useState(atualId);
+    useEffect(() => {
+        if (aberto) setDestino(atualId);
+    }, [aberto, atualId]);
+    return (
+        <ModalOverlay isOpen={aberto} onOpenChange={(v) => !v && onFechar()} isDismissable>
+            <Modal className="sm:max-w-md">
+                <Dialog aria-label={t.duplicarNivel2EmQual}>
+                    <div className="flex w-full flex-col gap-5 rounded-2xl bg-primary p-6 shadow-xl ring-1 ring-secondary">
+                        <div className="flex flex-col gap-1">
+                            <h2 className="text-lg font-semibold text-primary">{t.duplicarNivel2EmQual}</h2>
+                            <p className="text-sm text-tertiary">{t.duplicarNivel2EmQualDescricao(nomeDaCategoria)}</p>
+                        </div>
+                        {/* v0.25 (critique UI-LST-002): com muitas modalidades, lista com busca no lugar dos botões de opção. */}
+                        {r.modalidades.length > 8 ? (
+                            <CampoSelect
+                                id="duplicar-destino"
+                                label={t.nivel1.Um}
+                                opcoes={r.modalidades.map((x, i) => ({ id: x.id, label: `${x.nome.trim() || t.nivel1N(i + 1)}${x.id === atualId ? ` (${t.nivel1.um} atual)` : ""}` }))}
+                                valor={destino}
+                                onChange={setDestino}
+                            />
+                        ) : (
+                            <RadioGroup aria-label={t.duplicarNivel2EmQual} value={destino} onChange={setDestino}>
+                                {r.modalidades.map((x, i) => (
+                                    <RadioButton
+                                        key={x.id}
+                                        value={x.id}
+                                        label={x.nome.trim() || t.nivel1N(i + 1)}
+                                        // v0.25 (critique UI-TXT-010): em frase, sem símbolos separando.
+                                        hint={`${[labelDe(TIPOS_DE_MODALIDADE, x.tipo) || null, `${x.categorias.length} ${x.categorias.length === 1 ? t.nivel2.um : t.nivel2.muitos}`].filter(Boolean).join(", ")}${x.id === atualId ? `. ${t.duplicarNivel2Atual} atual` : ""}`}
+                                    />
+                                ))}
+                            </RadioGroup>
+                        )}
+                        <div className="grid grid-cols-2 gap-3">
+                            <Button size="md" color="secondary" onClick={onFechar}>
+                                Cancelar
+                            </Button>
+                            <Button size="md" color="primary" onClick={() => onConfirmar(destino)}>
+                                Duplicar
                             </Button>
                         </div>
                     </div>

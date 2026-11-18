@@ -2,7 +2,6 @@ import { useState } from "react";
 import { AnimatePresence, motion, Reorder, useDragControls } from "motion/react";
 import { toast } from "sonner";
 import { AlertCircle, AlertTriangle, BookOpen01, ChevronDown, Copy01, Link01, Plus, SearchLg, Trash01, XClose } from "@untitledui/icons";
-import { ContentDivider } from "@/components/application/content-divider/content-divider";
 import { Dialog, Modal, ModalOverlay } from "@/components/application/modals/modal";
 import { Badge, BadgeWithIcon } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
@@ -85,57 +84,56 @@ function Conteudo() {
                 </div>
             </div>
 
-            {/* Estoque vindo de outro evento: aviso no topo, com atalho para as perguntas (SCE-172). */}
-            {aRevisar.length > 0 && (
-                <div role="status" className="flex flex-col gap-3 rounded-xl bg-warning-primary p-4 ring-1 ring-warning-subtle @2xl:flex-row @2xl:items-center">
-                    <span className="flex min-w-0 flex-1 items-start gap-3">
-                        <AlertTriangle className="mt-0.5 size-5 shrink-0 text-fg-warning-primary" aria-hidden="true" />
-                        <span className="max-w-[65ch] text-sm text-warning-primary">{t.alertaRevisarQuantidade(aRevisar.length)}</span>
-                    </span>
-                    <Button size="sm" color="secondary" onClick={revisar} className="self-start @2xl:self-auto">
-                        {aRevisar.length === 1 ? "Abrir para revisar" : `Abrir as ${aRevisar.length} para revisar`}
+            {/*
+              v0.16 (SCE-222): barra fixa no topo, como uma linha congelada: as ações de adicionar pergunta e o aviso
+              do estoque vindo de outro evento continuam à vista ao rolar a lista. No celular, fica abaixo da barra do menu.
+            */}
+            <div className="sticky top-14 z-20 -mx-1 flex flex-col gap-3 border-b border-secondary bg-primary_alt px-1 py-3 lg:top-0">
+                <div className="flex flex-wrap items-center gap-2">
+                    <Button size="md" color="primary" iconLeading={Plus} onClick={nova}>
+                        Nova pergunta
                     </Button>
+                    <Button size="md" color="secondary" iconLeading={BookOpen01} onClick={() => setBiblioteca(true)}>
+                        Perguntas prontas
+                    </Button>
+                    {r.perguntas.length > 0 && temCategorias && (
+                        <Button size="md" color="secondary" iconLeading={Link01} onClick={() => setDuplicando(true)}>
+                            {t.duplicarDeOutraNivel2}
+                        </Button>
+                    )}
                 </div>
-            )}
-
-            <div className="flex flex-col gap-5">
-                {r.perguntas.length === 0 ? (
-                    <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-secondary px-6 py-10 text-center">
-                        <p className="text-sm font-medium text-secondary">Nenhuma pergunta adicionada</p>
-                        <p className="text-sm text-tertiary">Use uma pergunta pronta, duplique de outra categoria ou crie a sua.</p>
+                {/* Estoque vindo de outro evento: aviso com atalho para as perguntas (SCE-172). */}
+                {aRevisar.length > 0 && (
+                    <div role="status" className="flex flex-col gap-3 rounded-xl bg-warning-primary px-4 py-3 ring-1 ring-fg-warning-secondary @2xl:flex-row @2xl:items-center">
+                        <span className="flex min-w-0 flex-1 items-start gap-3">
+                            <AlertTriangle className="mt-0.5 size-5 shrink-0 text-fg-warning-primary" aria-hidden="true" />
+                            <span className="max-w-[80ch] text-sm text-warning-primary">{t.alertaRevisarQuantidade(aRevisar.length)}</span>
+                        </span>
+                        <Button size="sm" color="secondary" onClick={revisar} className="self-start @2xl:self-auto">
+                            {aRevisar.length === 1 ? "Abrir para revisar" : `Abrir as ${aRevisar.length} para revisar`}
+                        </Button>
                     </div>
-                ) : (
-                    <Reorder.Group
-                        as="ol"
-                        axis="y"
-                        values={r.perguntas}
-                        onReorder={(perguntas) => atualizar((a) => ({ ...a, perguntas }))}
-                        className="flex flex-col overflow-visible rounded-xl bg-primary ring-1 ring-border-secondary"
-                    >
-                        {r.perguntas.map((p, i) => (
-                            <LinhaPergunta key={p.id} pergunta={p} indice={i} total={r.perguntas.length} ordem={ordem} />
-                        ))}
-                    </Reorder.Group>
                 )}
-
-                {/* Adicionar pergunta, no divisor, como no formulário do AWA */}
-                <ContentDivider type="single-line" className="my-1">
-                    <div className="flex flex-wrap justify-center gap-2 px-2">
-                        <Button size="md" color="secondary" iconLeading={Plus} onClick={nova}>
-                            Nova pergunta
-                        </Button>
-                        <Button size="md" color="secondary" iconLeading={BookOpen01} onClick={() => setBiblioteca(true)}>
-                            Perguntas prontas
-                        </Button>
-                        {r.perguntas.length > 0 && temCategorias && (
-                            <Button size="md" color="secondary" iconLeading={Link01} onClick={() => setDuplicando(true)}>
-                                {t.duplicarDeOutraNivel2}
-                            </Button>
-                        )}
-                    </div>
-                </ContentDivider>
             </div>
 
+            {r.perguntas.length === 0 ? (
+                <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-secondary px-6 py-10 text-center">
+                    <p className="text-sm font-medium text-secondary">Nenhuma pergunta adicionada</p>
+                    <p className="text-sm text-tertiary">Use uma pergunta pronta, duplique de outra categoria ou crie a sua, nos botões acima.</p>
+                </div>
+            ) : (
+                <Reorder.Group
+                    as="ol"
+                    axis="y"
+                    values={r.perguntas}
+                    onReorder={(perguntas) => atualizar((a) => ({ ...a, perguntas }))}
+                    className="flex flex-col overflow-visible rounded-xl bg-primary ring-1 ring-border-secondary"
+                >
+                    {r.perguntas.map((p, i) => (
+                        <LinhaPergunta key={p.id} pergunta={p} indice={i} total={r.perguntas.length} ordem={ordem} />
+                    ))}
+                </Reorder.Group>
+            )}
 
             <PerguntasProntas aberto={biblioteca} onFechar={() => setBiblioteca(false)} />
             <DuplicarDeOutraCategoria aberto={duplicando} onFechar={() => setDuplicando(false)} />
@@ -197,7 +195,7 @@ function LinhaPergunta({ pergunta: p, indice, total, ordem }: { pergunta: Pergun
             onDragStart={() => ordem.iniciar(textoDaOrdem)}
             onDragEnd={ordem.terminar}
             whileDrag={{ backgroundColor: "var(--color-bg-primary)", boxShadow: "0 8px 24px rgba(16,24,40,0.12)", zIndex: 20 }}
-            className="relative scroll-mt-6 border-b border-secondary last:border-b-0"
+            className="relative scroll-mt-48 border-b border-secondary last:border-b-0"
         >
             {/* v0.15 (SCE-215): a linha toda abre e fecha; alça, duplicar e excluir continuam com a ação deles. */}
             <div
@@ -327,7 +325,7 @@ function EdicaoDaPergunta({ pergunta: p }: { pergunta: Pergunta }) {
                 />
 
                 {temOpcoes(p.tipo) && (
-                    <div id={CAMPO.perguntaOpcoes(p.id)} className="flex scroll-mt-6 flex-col gap-2">
+                    <div id={CAMPO.perguntaOpcoes(p.id)} className="flex scroll-mt-48 flex-col gap-2">
                         {/* v0.12 (SCE-208): o aviso só sai quando toda opção tem número ou "Sem limite". */}
                         {aDefinir.length > 0 && (
                             <div role="status" className="mb-1 flex flex-col gap-3 rounded-lg bg-warning-primary px-3 py-2.5">
@@ -438,7 +436,7 @@ function CategoriasVinculadas({ pergunta: p, onMudar }: { pergunta: Pergunta; on
         });
 
     return (
-        <div id={CAMPO.perguntaVinculo(p.id)} className="flex min-w-0 scroll-mt-6 flex-col gap-3">
+        <div id={CAMPO.perguntaVinculo(p.id)} className="flex min-w-0 scroll-mt-48 flex-col gap-3">
             <div className="flex flex-col gap-0.5">
                 <span className="text-sm font-semibold text-primary">{t.nivel2Vinculadas}</span>
                 <span className="max-w-[65ch] text-sm text-tertiary">{t.nivel2VinculadasDica}</span>

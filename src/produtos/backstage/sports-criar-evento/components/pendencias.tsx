@@ -1,4 +1,4 @@
-import { AlertCircle, CheckCircle } from "@untitledui/icons";
+import { AlertCircle, AlertTriangle, CheckCircle } from "@untitledui/icons";
 import { BadgeWithIcon } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
 import { secoes } from "../data/opcoes";
@@ -56,12 +56,18 @@ export function ListaDeAvisos({ limite, nivel = "h3" }: { limite?: number; nivel
             {porSecao.map((s) => (
                 <div key={s.id} className="flex flex-col gap-1.5">
                     <Titulo className="text-sm font-semibold text-primary">{s.titulo}</Titulo>
-                    <ul className="flex flex-col gap-1">
+                    {/* v0.17 (SCE-226): cada aviso em amarelo, com ícone, clicável até o campo. */}
+                    <ul className="flex flex-col gap-1.5">
                         {s.itens.map((p, i) => (
                             <li key={`${p.campo}-${i}`}>
-                                <Button color="link-gray" size="sm" onClick={() => irParaPendencia(p)} className="h-auto text-left whitespace-normal">
-                                    {p.contexto ? `${p.contexto}: ${minuscula(p.texto)}` : p.texto}
-                                </Button>
+                                <button
+                                    type="button"
+                                    onClick={() => irParaPendencia(p)}
+                                    className="flex cursor-pointer items-start gap-2 rounded text-left text-sm font-medium text-warning-primary underline-offset-2 outline-focus-ring hover:underline focus-visible:outline-2"
+                                >
+                                    <AlertTriangle className="mt-0.5 size-4 shrink-0 text-fg-warning-primary" aria-hidden="true" />
+                                    <span>{p.contexto ? `${p.contexto}: ${minuscula(p.texto)}` : p.texto}</span>
+                                </button>
                             </li>
                         ))}
                     </ul>
@@ -90,6 +96,14 @@ export function StatusDaSecao({ secao }: { secao: SecaoId }) {
         return (
             <BadgeWithIcon type="pill-color" color="warning" size="sm" iconLeading={AlertCircle}>
                 {ajustes === 1 ? "1 lote a revisar" : `${ajustes} lotes a revisar`}
+            </BadgeWithIcon>
+        );
+    // v0.17 (SCE-227): sem pendência, mas com aviso na seção (ex.: formulário sem perguntas): selo de aviso, não "Ok".
+    const outros = avisos.filter((p) => !p.ajuste && p.secao === secao).length;
+    if (n === 0 && outros > 0)
+        return (
+            <BadgeWithIcon type="pill-color" color="warning" size="sm" iconLeading={AlertTriangle}>
+                {outros === 1 ? "1 aviso" : `${outros} avisos`}
             </BadgeWithIcon>
         );
     return n === 0 ? (

@@ -1,4 +1,5 @@
 import { agoraIsoLocal, CAMPO } from "./campos";
+import { regrasDe, vagasDaCategoria } from "./modelos";
 import { MSG } from "./opcoes";
 import { idsDasCategorias, precisaDefinirEstoque, temOpcoes } from "./perguntas";
 import type { Categoria, Pendencia, Pergunta, Rascunho, SecaoId } from "./tipos";
@@ -31,6 +32,20 @@ export function validar(r: Rascunho, t: Vocabulario): Pendencia[] {
     else if (r.largada && r.termino <= r.largada) add("evento", CAMPO.termino, MSG.terminoAntes);
     const idadeDoEvento = Number(r.idadeMinima) || 0;
     if (!r.local) add("evento", CAMPO.local, MSG.localVazio);
+    // v0.19 (SCE-238): regras da inscrição do evento.
+    const regras = regrasDe(r);
+    // v0.20 (SCE-242): inscrição única por atleta e sem compra para outro atleta: o limite só pode ser 1.
+    const limiteUnico = !regras.variasPorCpf && regras.atribuicao === "comprador";
+    if (!(regras.limitePorComprador && regras.limitePorComprador >= 1)) add("evento", CAMPO.limitePorComprador, MSG.limiteDoEvento);
+    else if (limiteUnico && regras.limitePorComprador > 1) add("evento", CAMPO.limitePorComprador, MSG.limiteUnico);
+    // v0.20 (SCE-241): período da troca de titularidade, dentro do evento (futuro e até a largada).
+    if (regras.trocaDeTitularidade) {
+        if (!regras.trocaInicio) add("evento", CAMPO.trocaInicio, MSG.trocaInicioVazio);
+        else if (regras.trocaInicio <= agora) add("evento", CAMPO.trocaInicio, MSG.dataPassada);
+        if (!regras.trocaFim) add("evento", CAMPO.trocaFim, MSG.trocaFimVazio);
+        else if (regras.trocaInicio && regras.trocaFim <= regras.trocaInicio) add("evento", CAMPO.trocaFim, MSG.trocaFimAntes);
+        else if (r.largada && regras.trocaFim > r.largada) add("evento", CAMPO.trocaFim, MSG.trocaDepoisDaLargada);
+    }
     // Imagem é opcional: não entra nas pendências de publicar (SCE-14).
 
     /* 2. Modalidades e categorias (RN-01) */
@@ -56,9 +71,15 @@ export function validar(r: Rascunho, t: Vocabulario): Pendencia[] {
             // v0.9 (SCE-201): a faixa da categoria respeita a idade mínima do evento (sem faixa, vale a do evento).
             else if (idadeDoEvento > 0 && ((c.idadeMin != null && c.idadeMin < idadeDoEvento) || (c.idadeMax != null && c.idadeMax < idadeDoEvento)))
                 add("modalidades", CAMPO.catIdade(c.id), MSG.idadeAbaixoDoEvento(idadeDoEvento), cat);
-            if (!c.semLimite && !(c.vagas && c.vagas > 0)) add("modalidades", CAMPO.catVagas(c.id), MSG.maiorQueZero, { ...cat, contexto: `${ctx}, vagas` });
-            if (!(c.maxPorPedido && c.maxPorPedido >= 1)) add("modalidades", CAMPO.catMaximo(c.id), MSG.umOuMais, { ...cat, contexto: `${ctx}, máximo por pedido` });
+            // v0.21 (SCE-243): sem campo de vagas na categoria; as vagas são a soma dos lotes (cada lote já exige quantidade).
+            // v0.19 (SCE-239): limite próprio da categoria é opcional; o do evento é o teto.
+            if (c.limiteComprador != null) {
+                if (!(c.limiteComprador >= 1)) add("modalidades", CAMPO.catMaximo(c.id), MSG.umOuMais, { ...cat, contexto: `${ctx}, limite por comprador` });
+                else if (regras.limitePorComprador && c.limiteComprador > regras.limitePorComprador)
+                    add("modalidades", CAMPO.catMaximo(c.id), MSG.limiteAcimaDoEvento(regras.limitePorComprador), { ...cat, contexto: `${ctx}, limite por comprador` });
+            }
             if (c.lotes.length === 0) add("modalidades", CAMPO.catLotes(c.id), t.msgSemLote, cat);
+            if (c.pcd && !r.formularioParticipacao) add("modalidades", `campo-cat-${c.id}-pcd`, MSG.formularioPcdInativo, cat);
             for (const l of c.lotes) {
                 const lote = { ...cat, contexto: `${ctx}, ${nomeOu(l.nome, "lote sem nome")}` };
                 if (vazio(l.nome)) add("modalidades", CAMPO.loteNome(l.id), MSG.nomeDoLote, lote);
@@ -121,7 +142,8 @@ export function regraSugerida(c: Categoria): { tipo: "idade" | "sexo" | "pcd"; i
         if (/feminin|mulher/.test(nome)) return { tipo: "sexo", sexo: "feminino" };
         if (/masculin|homem|homens/.test(nome)) return { tipo: "sexo", sexo: "masculino" };
     }
-    if (/\bpcd\b|deficien/.test(nome) && c.desconto !== "pcd") return { tipo: "pcd" };
+    // v0.18 (SCE-236): PCD é regra de quem pode se inscrever (lista aprovada pelo formulário de participação).
+    if (/\bpcd\b|deficien/.test(nome) && !c.pcd) return { tipo: "pcd" };
     return null;
 }
 
@@ -134,7 +156,7 @@ const capacidade = (r: Rascunho, q: Pergunta) => {
     for (const m of r.modalidades) {
         const ligadas = m.categorias.filter((c) => q.vinculos[c.id]);
         if (!ligadas.length) continue;
-        const somaCategorias = ligadas.reduce((s, c) => s + (c.semLimite ? Infinity : (c.vagas ?? 0)), 0);
+        const somaCategorias = ligadas.reduce((s, c) => s + vagasDaCategoria(c), 0);
         const daModalidade = m.vagas ?? 0;
         total += Math.min(somaCategorias, daModalidade);
     }
@@ -154,6 +176,8 @@ export function avisos(r: Rascunho, t: Vocabulario): Pendencia[] {
             if (r.perguntas.length > 0 && !r.perguntas.some((q) => q.vinculos[c.id])) lista.push({ secao: "inscricao", campo: CAMPO.catPerguntas(c.id), texto: t.avisoNivel2SemPergunta, ...cat });
         }
     const existentes = new Set(idsDasCategorias(r.modalidades));
+    // v0.17 (SCE-227): formulário sem nenhuma pergunta é aviso (não impede publicar).
+    if (r.perguntas.length === 0) lista.push({ secao: "inscricao", campo: "secao-inscricao", texto: t.avisoFormularioVazio });
     for (const q of r.perguntas) {
         const ctx = { contexto: `Pergunta ${nomeOu(q.titulo, "sem título")}`, pergunta: q.id };
         // v0.5 (SCE-172): estoque de opção que veio de outro evento pede revisão (não impede publicar).

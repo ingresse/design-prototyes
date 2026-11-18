@@ -122,7 +122,7 @@ const montar = (n1: Substantivo, n2: Substantivo, ex: Explicacoes) => {
         guiadaEscolherTitulo: "Escolher o que trazer",
         guiadaEscolherDescricao: `Marque ${a1.as} ${n1.muitos} e ${a2.as} ${n2.muitos} do evento copiado que entram neste evento. O que ficar desmarcado não é criado, e as perguntas do formulário deixam de aparecer ${a2.nas} ${n2.muitos} que saírem.`,
         guiadaRevisarTitulo: `Revisar ${n1.muitos}, ${n2.muitos} e lotes`,
-        guiadaRevisarDescricao: "Os valores vêm da cópia. Confira cada lote e marque como revisado (mexer num campo também marca). A data limite é opcional: em branco, o lote vira quando esgota. Você pode deixar algo para depois.",
+        guiadaRevisarDescricao: "Os valores vêm da cópia. Confira cada lote e clique em Confirmar (mexer num campo também confirma). A data limite é opcional: em branco, o lote vira quando esgota. Você pode deixar algo para depois.",
         guiadaRevisarNivel2: `Revisar ${a2.a} ${n2.um} e os lotes`,
         guiadaConfirmarTitulo: "Confirmar alterações?",
         guiadaConfirmarDescricao: `Confira o que mudou em relação à cópia. Depois, você segue para a lista de ${n1.muitos}.`,
@@ -145,6 +145,12 @@ const montar = (n1: Substantivo, n2: Substantivo, ex: Explicacoes) => {
         colunaNivel2: maiuscula(n2.um),
         voltarParaNivel1: (nome: string) => `Voltar para ${nome}`,
         concluirNivel2: `Concluir ${n2.um}`,
+        // v0.17 (SCE-228): criação de categoria com salvar explícito e confirmação ao sair sem salvar.
+        salvarNivel2: `Salvar ${n2.um}`,
+        nivel2Salva: (nome: string) => `${maiuscula(n2.um)} ${nome} ${a2.criada}`,
+        sairSemSalvarTitulo: "Sair sem salvar?",
+        sairSemSalvarTexto: `${maiuscula(a2.a)} ${n2.um} não foi ${a2.criada} e nada do que você preencheu foi salvo.`,
+        preenchaObrigatorios: (n: number) => (n === 1 ? "Preencha 1 campo obrigatório para salvar" : `Preencha ${n} campos obrigatórios para salvar`),
         informacoesDoNivel2: `Informações ${a2.da} ${n2.um}`,
         menuInscricoes: "Inscrições",
 
@@ -177,7 +183,20 @@ const montar = (n1: Substantivo, n2: Substantivo, ex: Explicacoes) => {
         copiarNivel1NadaMarcado: `Marque ao menos ${a1.uma} ${n1.um} para copiar`,
         copiarNivel1SemNivel2: `${maiuscula(n1.muitos)} sem ${n2.muitos} marcad${a2.as} entram vazi${a1.as}; você cria ${a2.as} ${n2.muitos} depois.`,
         copiarNivel1Contagem: (marcadas: number, total: number) => `${marcadas} de ${total} ${total === 1 ? n2.um : n2.muitos}`,
-        copiarNivel1Traz: `${maiuscula(a2.as)} ${n2.muitos} com regras (sexo, faixa etária, desconto), vagas e lotes (nome, preço e quantidade).`,
+        copiarNivel1Traz: `${maiuscula(a2.as)} ${n2.muitos} com regras (sexo e idade), vagas e lotes (nome, preço e quantidade).`,
+        // v0.16 (SCE-216, SCE-218): copiar só categorias de outro evento para dentro de uma modalidade; duplicar categoria em outra modalidade.
+        guiadaNadaTrazido: `${maiuscula(a1.nenhuma)} ${n1.um} copiad${a1.a}. Crie ${a1.as} ${n1.muitos} do evento ou copie de outro evento.`,
+        copiarNivel2DeOutroEvento: `Copiar de outro evento`,
+        copiarNivel2Titulo: (destino: string) => `Copiar ${n2.muitos} de outro evento para ${destino}`,
+        copiarNivel2EscolherDescricao: (destino: string) =>
+            `Escolha o evento e marque ${a2.as} ${n2.muitos} que você quer trazer. ${maiuscula(a2.ela)}s entram ${a1.na} ${n1.um} ${destino}; no próximo passo, você revisa nomes e lotes.`,
+        copiarNivel2Escolha: `${maiuscula(n2.muitos)} para copiar`,
+        copiarNivel2NadaMarcado: `Marque ao menos ${a2.uma} ${n2.um} para copiar`,
+        duplicarNivel2EmQual: `Duplicar em qual ${n1.um}?`,
+        duplicarNivel2EmQualDescricao: (nome: string) => `A cópia de ${nome} entra ${a1.na} ${n1.um} escolhid${a1.a}, com regras, vagas e lotes. Os lotes vêm marcados para revisar.`,
+        duplicarNivel2Atual: `${maiuscula(n1.um)}`,
+        pendenciasDoNivel2: (n: number) => (n === 1 ? `${maiuscula(a2.esta)} ${n2.um} tem 1 pendência` : `${maiuscula(a2.esta)} ${n2.um} tem ${n} pendências`),
+        pendenciasDoNivel2Descricao: `Os campos abaixo estão marcados. A pendência sai assim que você preenche ou revisa o campo.`,
         copiarNivel1NaoTraz: `Inscritos, cupons e datas de venda: a data limite dos lotes fica em branco (opcional). Nome repetido ganha "(cópia)". Os lotes copiados vêm marcados para revisar.`,
         marcarNivel1: (nome: string) => `Copiar ${n1.um} ${nome}`,
         oQueACopiaTraz: `Copiamos ${n1.muitos}, ${n2.muitos}, lotes e perguntas do formulário. Datas de venda, inscritos e cupons não são copiados.`,
@@ -227,6 +246,8 @@ const montar = (n1: Substantivo, n2: Substantivo, ex: Explicacoes) => {
 
         /* Avisos que não impedem publicar */
         avisoNivel2SemPergunta: "Nenhuma pergunta no formulário",
+        // v0.17 (SCE-227): formulário vazio. Não impede publicar.
+        avisoFormularioVazio: "O formulário está sem perguntas: o atleta se inscreve sem responder nada (ex.: tamanho da camiseta, contato de emergência)",
         avisoPerguntaSemVinculo: `Não aparece em ${a2.nenhuma} ${n2.um}. Escolha onde ela aparece ou remova a pergunta`,
         avisoQuantidade: (soma: number, capacidade: number) =>
             `As quantidades somam ${soma.toLocaleString("pt-BR")}, mas ${a2.as} ${n2.muitos} desta pergunta aceitam até ${capacidade.toLocaleString("pt-BR")} inscrições. Atletas podem ficar sem opção`,
@@ -235,7 +256,7 @@ const montar = (n1: Substantivo, n2: Substantivo, ex: Explicacoes) => {
         /* RN-12: nome que sugere uma regra não configurada */
         alertaIdade: `O nome sugere uma faixa etária, mas ${a2.esta} ${n2.um} aceita qualquer idade.`,
         alertaSexo: (sexo: string) => `O nome sugere ${sexo}, mas ${a2.esta} ${n2.um} aceita atletas de qualquer sexo.`,
-        alertaPcd: `O nome sugere PCD, mas ${a2.esta} ${n2.um} não tem o desconto PCD.`,
+        alertaPcd: `O nome sugere PCD, mas ${a2.esta} ${n2.um} aceita qualquer atleta.`,
     };
 };
 

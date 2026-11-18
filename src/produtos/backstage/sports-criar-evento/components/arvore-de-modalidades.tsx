@@ -3,6 +3,7 @@ import { Button } from "@/components/base/buttons/button";
 import { Badge } from "@/components/base/badges/badges";
 import { Checkbox } from "@/components/base/checkbox/checkbox";
 import { formatarReais } from "../data/campos";
+import { vagasDaCategoria } from "../data/modelos";
 import { labelDe, TIPOS_DE_MODALIDADE } from "../data/opcoes";
 import type { Categoria, Modalidade } from "../data/tipos";
 import { useVocabulario } from "../data/vocabulario";
@@ -110,12 +111,26 @@ export function useSelecaoDeModalidades(onMudar?: () => void, inicial: Modalidad
         });
         if (sim) setModMarcadas((s) => new Set(s).add(m.id));
     };
+    /**
+     * v0.17 (SCE-225): clique na caixa da modalidade em três estados. Desmarcada → só a modalidade (sem categorias);
+     * só ela ou com parte das categorias → modalidade e todas as categorias; tudo marcado → desmarca tudo.
+     */
+    const cicloDaModalidade = (m: Modalidade) => {
+        const marcada = modMarcadas.has(m.id);
+        const todas = m.categorias.every((c) => catMarcadas.has(c.id));
+        if (!marcada) {
+            onMudar?.();
+            setModMarcadas((s) => new Set(s).add(m.id));
+            return;
+        }
+        alternarModalidade(m, !todas);
+    };
     /** As modalidades marcadas, só com as categorias marcadas. */
     const escolhidas = (fontes: Modalidade[]) =>
         fontes.filter((m) => modMarcadas.has(m.id)).map((m) => ({ ...m, categorias: m.categorias.filter((c) => catMarcadas.has(c.id)) }));
     const todasMarcadas = (fontes: Modalidade[]) => fontes.length > 0 && fontes.every((m) => modMarcadas.has(m.id) && m.categorias.every((c) => catMarcadas.has(c.id)));
 
-    return { modMarcadas, catMarcadas, marcarTudo, alternarModalidade, alternarCategoria, escolhidas, todasMarcadas };
+    return { modMarcadas, catMarcadas, marcarTudo, alternarModalidade, cicloDaModalidade, alternarCategoria, escolhidas, todasMarcadas };
 }
 
 export type SelecaoDeModalidades = ReturnType<typeof useSelecaoDeModalidades>;
@@ -124,21 +139,25 @@ export function ArvoreDeModalidades({
     fontes,
     selecao: s,
     rotulo,
+    somenteCategorias,
 }: {
     fontes: Modalidade[];
     selecao: SelecaoDeModalidades;
     rotulo: string;
+    /** v0.17 (SCE-224): copiar só categorias. A modalidade de origem aparece só como informação, sem caixa de marcar. */
+    somenteCategorias?: boolean;
 }) {
     const { t } = useVocabulario();
-    const todas = s.todasMarcadas(fontes);
+    // v0.16 (SCE-217): com algo marcado, o atalho desmarca tudo; com nada marcado, marca tudo.
+    const algumaMarcada = fontes.some((m) => s.modMarcadas.has(m.id) || m.categorias.some((c) => s.catMarcadas.has(c.id)));
     return (
         <div className="@container flex flex-col gap-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
                 <span id="arvore-rotulo" className="text-sm font-medium text-secondary">
                     {rotulo}
                 </span>
-                <Button color="link-color" size="sm" onClick={() => s.marcarTudo(fontes, !todas)}>
-                    {todas ? "Desmarcar tudo" : "Marcar tudo"}
+                <Button color="link-color" size="sm" onClick={() => s.marcarTudo(fontes, !algumaMarcada)}>
+                    {algumaMarcada ? "Desmarcar tudo" : "Marcar tudo"}
                 </Button>
             </div>
             {/* Lista hierárquica, uma linha por item (v0.13): modalidade e, recuadas com a linha da árvore, as categorias. */}
@@ -149,6 +168,18 @@ export function ArvoreDeModalidades({
                     const n = m.categorias.length;
                     return (
                         <li key={m.id} className="flex flex-col py-1.5">
+                            {somenteCategorias ? (
+                                <div className="flex min-h-9 items-center gap-3 py-1">
+                                    <span className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-0.5 text-sm">
+                                        <Badge type="pill-color" size="sm" color="gray" className="shrink-0">
+                                            {t.nivel1.Um}
+                                        </Badge>
+                                        <span className="font-semibold text-primary">{m.nome}</span>
+                                        <span className="text-tertiary">{labelDe(TIPOS_DE_MODALIDADE, m.tipo)}</span>
+                                    </span>
+                                    <span className="shrink-0 text-sm text-tertiary tabular-nums">{k === 0 ? "Nenhuma marcada" : k === 1 ? "1 marcada" : `${k} marcadas`}</span>
+                                </div>
+                            ) : (
                             <ItemDaArvore
                                 nivel={1}
                                 nome={m.nome}
@@ -157,16 +188,17 @@ export function ArvoreDeModalidades({
                                 ariaLabel={t.marcarNivel1(m.nome)}
                                 isSelected={marcada && k === n}
                                 isIndeterminate={marcada && k < n}
-                                onChange={(sim) => s.alternarModalidade(m, sim)}
+                                onChange={() => s.cicloDaModalidade(m)}
                             />
-                            {marcada && k === 0 && <p className="pl-7 text-sm text-warning-primary">{t.copiarNivel1SemNivel2}</p>}
-                            <ul className="ml-2 flex flex-col border-l border-secondary pl-5">
+                            )}
+                            {!somenteCategorias && marcada && k === 0 && <p className="pl-7 text-sm text-warning-primary">{t.copiarNivel1SemNivel2}</p>}
+                            <ul className={somenteCategorias ? "flex flex-col pl-2" : "ml-2 flex flex-col border-l border-secondary pl-5"}>
                                 {m.categorias.map((c) => (
                                     <li key={c.id}>
                                         <ItemDaArvore
                                             nivel={2}
                                             nome={c.nome}
-                                            detalhe={`${resumoDaCategoria(c)}, ${lotesDaCategoria(c).replace(/^\S/, (x) => x.toLowerCase())}${c.semLimite ? "" : `, ${(c.vagas ?? 0).toLocaleString("pt-BR")} vagas`}`}
+                                            detalhe={`${resumoDaCategoria(c)}, ${lotesDaCategoria(c).replace(/^\S/, (x) => x.toLowerCase())}${vagasDaCategoria(c) ? `, ${vagasDaCategoria(c).toLocaleString("pt-BR")} vagas` : ""}`}
                                             isSelected={s.catMarcadas.has(c.id)}
                                             onChange={(sim) => s.alternarCategoria(m, c, sim)}
                                         />

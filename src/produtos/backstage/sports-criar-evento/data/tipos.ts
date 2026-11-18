@@ -35,17 +35,46 @@ export type Sexo = "todos" | "feminino" | "masculino";
 export type IdadeCalculadaEm = "fim-do-ano" | "dia-do-evento" | "dia-da-compra";
 export type DescontoLegal = "nenhum" | "idoso" | "pcd";
 
+/** v0.19 (SCE-238): políticas do evento (valem para todas as categorias). */
+export interface RegrasDaInscricao {
+    /** Permite mais de uma inscrição para o mesmo atleta (CPF) no evento. Não = inscrição nominal. */
+    variasPorCpf: boolean;
+    /** Quem pode ser o atleta: quem compra ou outra pessoa, ou somente quem compra. */
+    atribuicao: "qualquer" | "comprador";
+    /** Inscrições por comprador no evento (soma de todos os pedidos). */
+    limitePorComprador: number | null;
+    /** Troca de titularidade pela carteira, depois da compra, dentro de um período (v0.20, SCE-241). */
+    trocaDeTitularidade: boolean;
+    /** ISO local; em branco até ser informado (não vem na cópia). */
+    trocaInicio: string;
+    trocaFim: string;
+    /** v0.25: o fim foi sugerido (véspera da largada) e acompanha o início até a pessoa editar. */
+    trocaFimSugerido?: boolean;
+}
+
 export interface Categoria {
     id: string;
+    /** v0.17 (SCE-228): categoria em criação, ainda não salva ("Salvar categoria" tira a marca; sair sem salvar descarta). */
+    nova?: boolean;
     nome: string;
+    /** v0.24 (SCE-248): descrição opcional para o atleta (até 1.000 caracteres), como na modalidade e no ingresso do AWA. */
+    descricao?: string;
     sexo: Sexo;
     idadeMin: number | null;
     idadeMax: number | null;
     idadeEm: IdadeCalculadaEm;
+    /** v0.18 (SCE-235): desconto legal saiu do MVP (iniciativa futura); o campo fica fora da tela. */
     desconto: DescontoLegal;
     semLimite: boolean;
     vagas: number | null;
+    /** v0.18 (SCE-235): fora da tela; a transferência passa a ser configuração do evento (troca de titularidade). */
     transferencia: Transferencia;
+    /** v0.18 (SCE-234): quem pode ser o atleta. Ausente em rascunhos antigos: "qualquer". */
+    atleta?: "qualquer" | "comprador";
+    /** v0.19 (SCE-239): limite por comprador só desta categoria; vazio = vale o limite do evento. */
+    limiteComprador?: number | null;
+    /** v0.18 (SCE-236): somente PCD aprovados no formulário de participação do evento (segmentação por lista de documentos). */
+    pcd?: boolean;
     maxPorPedido: number | null;
     lotes: Lote[];
     /**
@@ -62,6 +91,8 @@ export interface Modalidade {
     tipo: string;
     /** v0.15 (SCE-212): sempre um número maior que zero; o backstage não tem estoque ilimitado de modalidade. `null` = ainda não informado. */
     vagas: number | null;
+    /** v0.23 (SCE-247): descrição opcional para o atleta (até 1.000 caracteres), como a descrição do ingresso no AWA. */
+    descricao?: string;
     categorias: Categoria[];
 }
 
@@ -119,6 +150,12 @@ export interface Rascunho {
     percurso: Arquivo | null;
     /** v0.11 (SCE-207): termo de uso do evento, um dos termos ativos da organização (data/termos.ts). */
     termoId: string | null;
+    /** v0.25: o término foi sugerido (largada + 4 h) e acompanha a largada até a pessoa editar. */
+    terminoSugerido?: boolean;
+    /** v0.19 (SCE-238): regras gerais da inscrição, do evento inteiro. Ausente em rascunhos antigos: REGRAS_PADRAO. */
+    regras?: RegrasDaInscricao;
+    /** v0.18 (SCE-236): formulário de participação do evento (pedidos PCD) ativo. */
+    formularioParticipacao?: boolean;
     descricao: string;
     modalidades: Modalidade[];
     /** Na ordem do formulário. */
@@ -156,10 +193,12 @@ export interface Pendencia {
  * inteiro (início), "Copiar de outro evento", duplicar modalidade e duplicar categoria (só o passo 2).
  */
 export interface FluxoDeCopia {
-    tipo: "evento" | "outro-evento" | "duplicar-modalidade" | "duplicar-categoria";
+    tipo: "evento" | "outro-evento" | "duplicar-modalidade" | "duplicar-categoria" | "categorias-de-outro-evento";
     etapa: "escolher" | "revisar";
     /** Duplicar modalidade: a modalidade de origem. */
     origemId?: string;
+    /** v0.16 (SCE-216): copiar categorias de outro evento: a modalidade que recebe as cópias. */
+    destinoId?: string;
     /** O que a revisão mostra: modalidades e, se só algumas, as categorias. */
     escopo?: { modalidades: string[]; categorias?: string[] };
     /** Como o escopo ficou ao entrar na revisão, para o antes → depois. */

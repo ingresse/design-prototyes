@@ -6,6 +6,7 @@ import { Badge, BadgeWithIcon } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
 import { RadioButton, RadioGroup } from "@/components/base/radio-buttons/radio-buttons";
+import { Tooltip, TooltipTrigger } from "@/components/base/tooltip/tooltip";
 import { cx } from "@/utils/cx";
 import { CAMPO, FORMATO_REAIS, formatarDataHora, formatarReais, horaAgora } from "../data/campos";
 import { duplicarModalidade, marcarLotesParaRevisar, nomeDeCopia, novoLote } from "../data/modelos";
@@ -54,6 +55,7 @@ export function FluxoDeCopia() {
     const f = r.fluxoDeCopia!;
     const origem = r.modalidades.find((m) => m.id === f.origemId);
     const categoriaDuplicada = f.tipo === "duplicar-categoria" ? escopar(r.modalidades, f.escopo)[0]?.categorias[0] : undefined;
+    const destino = r.modalidades.find((m) => m.id === f.destinoId);
     const cancelar = () => atualizar((a) => ({ ...a, fluxoDeCopia: undefined }));
 
     const titulo =
@@ -61,6 +63,8 @@ export function FluxoDeCopia() {
             ? t.tituloDaSecao
             : f.tipo === "outro-evento"
               ? t.copiarNivel1Titulo
+              : f.tipo === "categorias-de-outro-evento"
+                ? t.copiarNivel2Titulo(destino?.nome.trim() || t.nivel1SemNome)
               : f.tipo === "duplicar-modalidade"
                 ? t.duplicarNivel1Titulo(origem?.nome.trim() || t.nivel1SemNome)
                 : t.duplicarNivel2Titulo(categoriaDuplicada?.nome.trim() || t.nivel2SemNome);
@@ -95,6 +99,8 @@ export function FluxoDeCopia() {
                 <EscolherDoEvento />
             ) : f.tipo === "outro-evento" ? (
                 <EscolherDeOutroEvento onCancelar={cancelar} />
+            ) : f.tipo === "categorias-de-outro-evento" ? (
+                <EscolherDeOutroEvento onCancelar={cancelar} destinoId={f.destinoId} />
             ) : origem ? (
                 <EscolherDaModalidade modalidade={origem} onCancelar={cancelar} />
             ) : null}
@@ -112,7 +118,12 @@ function EscolherDoEvento() {
 
     const confirmar = () => {
         const escolhidas = selecao.escolhidas(r.modalidades);
-        if (escolhidas.length === 0) return setErro(t.copiarNivel1NadaMarcado);
+        // v0.16 (SCE-217): sem nada marcado, segue sem modalidades: a etapa abre vazia, para criar do zero.
+        if (escolhidas.length === 0) {
+            atualizar((a) => ({ ...a, modalidades: [], perguntas: a.perguntas.map((p) => ({ ...p, vinculos: {} })), fluxoDeCopia: undefined }));
+            toast(t.guiadaNadaTrazido);
+            return;
+        }
         const ficam = new Set(escolhidas.flatMap((m) => m.categorias.map((c) => c.id)));
         atualizar((a) =>
             entrarNaRevisao(
@@ -233,7 +244,7 @@ const RotuloEstreito = ({ children }: { children: ReactNode }) => (
     </span>
 );
 
-const COLUNAS_DO_LOTE = "@4xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.9fr)_minmax(0,1fr)_15rem_10.5rem]";
+const COLUNAS_DO_LOTE = "@4xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.9fr)_minmax(0,1fr)_15rem_14.5rem]";
 
 function RevisarCopia() {
     const { rascunho: r, atualizar } = useFormulario();
@@ -282,7 +293,7 @@ function RevisarCopia() {
                     )}
                     {aRevisar > 0 && (
                         <Button size="sm" color="secondary" iconLeading={Check} onClick={() => marcarRevisados(idsDoEscopo)}>
-                            Marcar todos como revisados
+                            Confirmar todos os lotes
                         </Button>
                     )}
                 </div>
@@ -290,7 +301,7 @@ function RevisarCopia() {
 
             <div className="flex flex-col gap-5">
                 {visiveis.map((m) => (
-                    <BlocoDaModalidade key={m.id} modalidade={m} onMarcar={marcarRevisados} nomeFixo={f.tipo === "duplicar-categoria"} />
+                    <BlocoDaModalidade key={m.id} modalidade={m} onMarcar={marcarRevisados} nomeFixo={f.tipo === "duplicar-categoria" || f.tipo === "categorias-de-outro-evento"} />
                 ))}
             </div>
 
@@ -349,60 +360,58 @@ function BlocoDaModalidade({ modalidade: m, onMarcar, nomeFixo }: { modalidade: 
     const pendentes = lotesARevisar([m]);
     return (
         <div className="flex flex-col overflow-hidden rounded-2xl bg-primary ring-1 ring-border-secondary">
-            <div className="flex flex-col gap-2 border-b border-secondary bg-secondary/60 px-5 py-4">
-                <span className="text-xs font-semibold tracking-wide text-tertiary uppercase">{t.nivel1.Um}</span>
-                <div className="flex flex-wrap items-start gap-3">
-                    <Flag01 className="mt-2.5 size-5 shrink-0 text-fg-secondary" aria-hidden="true" />
-                    {/* Duplicar categoria: a modalidade é a de sempre, só para contexto (não se edita aqui). */}
-                    {nomeFixo ? (
-                        <span className="mt-2 text-md font-semibold text-primary">{m.nome.trim() || t.nivel1SemNome}</span>
-                    ) : (
-                    <CampoTexto
-                        id={CAMPO.modNome(m.id)}
-                        label={t.nomeDoNivel1}
-                        ocultarLabel
-                        className="w-full max-w-md [&_input]:text-md [&_input]:font-semibold"
-                        valor={m.nome}
-                        onChange={(nome) => atualizar(comModalidade(m.id, (x) => ({ ...x, nome })))}
-                        dica={vazio(m.nome) ? <Falta /> : undefined}
-                    />
-                    )}
+            {/* v0.17 (SCE-229): linha da modalidade com os componentes lado a lado. Em cima, rótulo, tipo e selo de revisão;
+                embaixo, nome e vagas na mesma linha, com rótulos visíveis (empilham só em tela estreita). */}
+            <div className="flex flex-col gap-3 border-b border-secondary bg-secondary/60 px-5 py-4">
+                <div className="flex flex-wrap items-center gap-2">
+                    <Flag01 className="size-5 shrink-0 text-fg-secondary" aria-hidden="true" />
+                    <span className="text-sm font-medium text-tertiary">{t.nivel1.Um}</span>
                     {m.tipo && (
-                        <Badge type="modern" color="gray" size="md" className="mt-2">
+                        <Badge type="modern" color="gray" size="sm">
                             {labelDe(TIPOS_DE_MODALIDADE, m.tipo)}
                         </Badge>
                     )}
                     {pendentes > 0 && (
-                        <BadgeWithIcon type="pill-color" color="warning" size="sm" iconLeading={AlertTriangle} className="mt-2.5">
+                        <BadgeWithIcon type="pill-color" color="warning" size="sm" iconLeading={AlertTriangle}>
                             {`${t.ajustar}: ${pendentes === 1 ? "1 lote" : `${pendentes} lotes`}`}
                         </BadgeWithIcon>
                     )}
-                    {/* v0.14/v0.15 (SCE-211, SCE-212): vagas da modalidade na revisão, sempre com número (sem "Sem limite"). */}
-                    <div className="w-full @2xl:ml-auto @2xl:w-48">
-                        {nomeFixo ? (
-                            <p className="flex flex-col gap-0.5 text-sm">
-                                <span className="font-medium text-secondary">Vagas</span>
-                                <span className="text-tertiary">{vagasDaModalidade(m.vagas)}</span>
-                            </p>
-                        ) : (
-                            <CampoVagas
-                                id={CAMPO.modVagas(m.id)}
-                                label="Vagas"
-                                tooltip={t.ajudaVagasNivel1}
-                                semLimitePermitido={false}
-                                semLimite={false}
-                                vagas={m.vagas}
-                                onChange={(_s, vagas) => atualizar(comModalidade(m.id, (x) => ({ ...x, vagas })))}
-                                // Sem número (a origem não tinha): "Falta preencher", como os outros campos; zero: erro.
-                                dica={m.vagas == null ? <Falta /> : undefined}
-                                erro={m.vagas != null && !(m.vagas > 0) ? MSG.maiorQueZero : undefined}
-                            />
-                        )}
-                    </div>
                 </div>
+                {nomeFixo ? (
+                    <div className="flex flex-wrap items-baseline gap-x-8 gap-y-1">
+                        <span className="text-md font-semibold text-primary">{m.nome.trim() || t.nivel1SemNome}</span>
+                        <span className="text-sm text-tertiary">
+                            Vagas: <span className="text-secondary">{vagasDaModalidade(m.vagas)}</span>
+                        </span>
+                    </div>
+                ) : (
+                    <div className="grid items-start gap-4 @2xl:grid-cols-[minmax(0,1fr)_12rem]">
+                        <CampoTexto
+                            id={CAMPO.modNome(m.id)}
+                            label={t.nomeDoNivel1}
+                            className="[&_input]:text-md [&_input]:font-semibold"
+                            valor={m.nome}
+                            onChange={(nome) => atualizar(comModalidade(m.id, (x) => ({ ...x, nome })))}
+                            dica={vazio(m.nome) ? <Falta /> : undefined}
+                        />
+                        {/* v0.14/v0.15 (SCE-211, SCE-212): vagas da modalidade na revisão, sempre com número (sem "Sem limite"). */}
+                        <CampoVagas
+                            id={CAMPO.modVagas(m.id)}
+                            label="Vagas"
+                            tooltip={t.ajudaVagasNivel1}
+                            semLimitePermitido={false}
+                            semLimite={false}
+                            vagas={m.vagas}
+                            onChange={(_s, vagas) => atualizar(comModalidade(m.id, (x) => ({ ...x, vagas })))}
+                            // Sem número (a origem não tinha): "Falta preencher", como os outros campos; zero: erro.
+                            dica={m.vagas == null ? <Falta /> : undefined}
+                            erro={m.vagas != null && !(m.vagas > 0) ? MSG.maiorQueZero : undefined}
+                        />
+                    </div>
+                )}
             </div>
             {m.categorias.length === 0 && <p className="px-5 py-4 text-sm text-tertiary">{t.vazioNivel2}. Você cria depois, na lista.</p>}
-            <div className="flex flex-col gap-4 p-4 @3xl:p-5">
+            <div className="flex flex-col gap-5 p-4 @3xl:p-5">
                 {m.categorias.map((c) => (
                     <BlocoDaCategoria key={c.id} modalidade={m} categoriaId={c.id} onMarcar={onMarcar} />
                 ))}
@@ -418,10 +427,11 @@ function BlocoDaCategoria({ modalidade: m, categoriaId, onMarcar }: { modalidade
     const c = m.categorias.find((x) => x.id === categoriaId)!;
     const pendentes = c.lotes.filter((l) => l.revisar);
     return (
-        <div className="flex flex-col gap-3 rounded-xl border-l-4 border-brand bg-secondary/30 py-3 pr-3 pl-4 ring-1 ring-secondary">
+        // v0.25 (critique UI-VIS-019): a categoria é um subgrupo da modalidade (linha e espaço), não outra caixa.
+        <div className="flex flex-col gap-3 border-t border-secondary pt-5 first:border-t-0 first:pt-0">
             <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-                    <span className="text-xs font-semibold tracking-wide text-tertiary uppercase">{t.nivel2.Um}</span>
+                    <span className="text-sm font-medium text-tertiary">{t.nivel2.Um}</span>
                     <CampoTexto
                         id={CAMPO.catNome(c.id)}
                         label={t.nomeDoNivel2}
@@ -433,8 +443,9 @@ function BlocoDaCategoria({ modalidade: m, categoriaId, onMarcar }: { modalidade
                     />
                 </div>
                 {pendentes.length > 1 && (
-                    <Button size="sm" color="link-color" iconLeading={Check} onClick={() => onMarcar(new Set(pendentes.map((l) => l.id)))} className="mt-6">
-                        {`Marcar os ${pendentes.length} lotes como revisados`}
+                    <Button size="sm" color="secondary" iconLeading={Check} onClick={() => onMarcar(new Set(pendentes.map((l) => l.id)))} className="mt-6">
+                        {/* v0.17 (SCE-231): sem a quantidade; mesmo verbo do botão de cada lote ("Revisado"). */}
+                        Confirmar todos
                     </Button>
                 )}
             </div>
@@ -485,7 +496,7 @@ function LinhaDoLote({ modalidade: m, categoriaId, lote: l }: { modalidade: Moda
             </div>
             <div role="cell" className="flex flex-col gap-1.5">
                 <RotuloEstreito>Quantidade</RotuloEstreito>
-                <CampoNumero id={CAMPO.loteVagas(l.id)} label="Quantidade" ocultarLabel placeholder="Ex.: 200" valor={l.vagas} onChange={(vagas) => set({ vagas })} dica={!l.vagas ? <Falta /> : undefined} />
+                <CampoNumero id={CAMPO.loteVagas(l.id)} label="Quantidade" ocultarLabel semSetas placeholder="Ex.: 200" valor={l.vagas} onChange={(vagas) => set({ vagas })} dica={!l.vagas ? <Falta /> : undefined} />
             </div>
             <div role="cell" className="flex flex-col gap-1.5">
                 <RotuloEstreito>Valor</RotuloEstreito>
@@ -493,6 +504,7 @@ function LinhaDoLote({ modalidade: m, categoriaId, lote: l }: { modalidade: Moda
                     id={CAMPO.loteValor(l.id)}
                     label="Valor"
                     ocultarLabel
+                    semSetas
                     placeholder="R$ 0,00"
                     formato={FORMATO_REAIS}
                     valor={l.valor}
@@ -504,13 +516,19 @@ function LinhaDoLote({ modalidade: m, categoriaId, lote: l }: { modalidade: Moda
                 <RotuloEstreito>Data limite (opcional)</RotuloEstreito>
                 <CampoDataHora id={CAMPO.loteLimite(l.id)} label="Data limite" ocultarLabel valor={l.dataLimite} onChange={(dataLimite) => set({ dataLimite })} />
             </div>
-            <div role="cell" className="flex items-center gap-1 @4xl:min-h-10">
+            <div role="cell" className="flex items-center gap-2 @4xl:min-h-10">
                 {l.revisar ? (
+                    /* v0.17 (SCE-230): ícone de revisar em amarelo e o botão curto "Revisado" ao lado. */
                     <>
-                        <BadgeWithIcon type="pill-color" color="warning" size="sm" iconLeading={AlertTriangle}>
-                            Revisar
-                        </BadgeWithIcon>
-                        <ButtonUtility size="sm" color="tertiary" icon={Check} tooltip="Marcar como revisado" aria-label={`Marcar ${nome} como revisado`} onClick={() => set({})} />
+                        <Tooltip title="Lote a revisar" description="Confira quantidade, valor e data limite.">
+                            <TooltipTrigger aria-label="Lote a revisar" className="flex size-8 shrink-0 items-center justify-center rounded-full bg-warning-primary text-fg-warning-primary">
+                                <AlertTriangle className="size-4" aria-hidden="true" />
+                            </TooltipTrigger>
+                        </Tooltip>
+                        {/* v0.25 (critique UI-TXT-004): ação "Confirmar"; o status resultante é o selo "Revisado". */}
+                        <Button size="sm" color="primary" iconLeading={Check} aria-label={`Confirmar ${nome}`} onClick={() => set({})}>
+                            Confirmar
+                        </Button>
                     </>
                 ) : (
                     <BadgeWithIcon type="pill-color" color="success" size="sm" iconLeading={CheckCircle}>
