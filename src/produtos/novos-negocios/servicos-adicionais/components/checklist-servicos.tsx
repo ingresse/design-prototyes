@@ -113,12 +113,20 @@ function CartaoServico({ item, contratado }: { item: ServicoRole; contratado?: C
                 )}
             </span>
             <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                    <span className="text-md font-semibold text-primary">{titulo}</span>
-                    {destaque && (
-                        <Badge color="success" type="pill-color" size="sm">
-                            {destaque}
-                        </Badge>
+                {/* O selo segue o texto e fica preso à última palavra: se o título quebrar, os dois descem juntos */}
+                <span className="text-md font-semibold text-primary">
+                    {destaque ? (
+                        <>
+                            {titulo.slice(0, titulo.lastIndexOf(" ") + 1)}
+                            <span className="whitespace-nowrap">
+                                {titulo.slice(titulo.lastIndexOf(" ") + 1)}
+                                <Badge color="success" type="pill-color" size="sm" className="ml-2 inline-flex align-[2px]">
+                                    {destaque}
+                                </Badge>
+                            </span>
+                        </>
+                    ) : (
+                        titulo
                     )}
                 </span>
                 <span className="text-sm text-tertiary">{apoio}</span>
