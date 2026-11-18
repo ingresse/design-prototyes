@@ -1,4 +1,4 @@
-import { useRef, useState, type PointerEvent } from "react";
+import { useRef, useState, type PointerEvent, type ReactNode } from "react";
 import { Dialog as AriaDialog, Heading as AriaHeading, Modal as AriaModal, ModalOverlay as AriaModalOverlay } from "react-aria-components";
 import { Check, Copy01, Share07, XClose } from "@untitledui/icons";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
@@ -14,16 +14,63 @@ import { SeloServico } from "./selo-servico";
  * Tooltip no botão só no desktop: no mobile não há hover.
  */
 export function CompartilharOferta({ servico }: { servico: Servico }) {
-    const [aberto, setAberto] = useState(false);
     if (!servico.compartilhar) return null;
-    const { rotulo } = servico.compartilhar;
+    // O link é o da oferta, sem marcações de origem (ex.: ?de=checklist)
+    const url = window.location.href.split("?")[0];
+    return (
+        <Compartilhar
+            textos={servico.compartilhar}
+            url={url}
+            previa={
+                <>
+                    <SeloServico servico={servico} tamanho="sm" />
+                    <PreviaTexto titulo={servico.titulo} url={url} />
+                </>
+            }
+        />
+    );
+}
+
+export type TextosCompartilhar = { rotulo: string; titulo: string; legenda: string; mensagem: string };
+
+/** Título e endereço da prévia do link (ao lado do selo ou da miniatura). */
+export function PreviaTexto({ titulo, url }: { titulo: string; url: string }) {
+    return (
+        <div className="flex min-w-0 flex-1 flex-col">
+            <span className="truncate text-sm font-semibold text-primary">{titulo}</span>
+            <span className="truncate text-xs text-tertiary">{url.replace(/^https?:\/\//, "")}</span>
+        </div>
+    );
+}
+
+/**
+ * Compartilhar (genérico): o botão só com ícone e o modal/bottom sheet. Usado nas ofertas
+ * (`CompartilharOferta`) e no hub do evento, cada um com os seus textos, link e prévia.
+ */
+export function Compartilhar({ textos, url, previa, className }: { textos: TextosCompartilhar; url: string; previa: ReactNode; className?: string }) {
+    const [aberto, setAberto] = useState(false);
+    const { rotulo } = textos;
 
     return (
         <>
             {/* Desktop: com tooltip no hover */}
-            <ButtonUtility size="sm" color="secondary" icon={Share07} tooltip={rotulo} onClick={() => setAberto(true)} className="hidden lg:inline-flex" />
+            <ButtonUtility
+                size="sm"
+                color="secondary"
+                icon={Share07}
+                tooltip={rotulo}
+                onClick={() => setAberto(true)}
+                className={cx("hidden lg:inline-flex", className)}
+            />
             {/* Mobile: sem tooltip; o rótulo fica para leitores de tela */}
-            <ButtonUtility size="sm" color="secondary" icon={Share07} aria-label={rotulo} onClick={() => setAberto(true)} className="lg:hidden" />
+            <ButtonUtility
+                size="sm"
+                color="secondary"
+                icon={Share07}
+                aria-label={rotulo}
+                onClick={() => setAberto(true)}
+                className={cx("lg:hidden", className)}
+            />
 
             <AriaModalOverlay
                 isOpen={aberto}
@@ -42,25 +89,23 @@ export function CompartilharOferta({ servico }: { servico: Servico }) {
                     className={({ isEntering, isExiting }) =>
                         cx(
                             "w-full outline-hidden lg:max-w-[440px]",
-                            isEntering && "duration-300 ease-out animate-in slide-in-from-bottom lg:duration-200 lg:zoom-in-95 lg:slide-in-from-bottom-0 motion-reduce:animate-none",
-                            isExiting && "duration-200 ease-in animate-out slide-out-to-bottom lg:zoom-out-95 lg:slide-out-to-bottom-0 motion-reduce:animate-none",
+                            isEntering &&
+                                "duration-300 ease-out animate-in slide-in-from-bottom lg:duration-200 lg:zoom-in-95 lg:slide-in-from-bottom-0 motion-reduce:animate-none",
+                            isExiting &&
+                                "duration-200 ease-in animate-out slide-out-to-bottom lg:zoom-out-95 lg:slide-out-to-bottom-0 motion-reduce:animate-none",
                         )
                     }
                 >
-                    <AriaDialog className="outline-hidden">
-                        {({ close }) => <Conteudo servico={servico} fechar={close} />}
-                    </AriaDialog>
+                    <AriaDialog className="outline-hidden">{({ close }) => <Conteudo textos={textos} url={url} previa={previa} fechar={close} />}</AriaDialog>
                 </AriaModal>
             </AriaModalOverlay>
         </>
     );
 }
 
-function Conteudo({ servico, fechar }: { servico: Servico; fechar: () => void }) {
-    const { titulo, legenda, mensagem } = servico.compartilhar!;
+function Conteudo({ textos, url, previa, fechar }: { textos: TextosCompartilhar; url: string; previa: ReactNode; fechar: () => void }) {
+    const { titulo, legenda, mensagem } = textos;
     const [copiado, setCopiado] = useState(false);
-    // O link é o da oferta, sem marcações de origem (ex.: ?de=checklist)
-    const url = window.location.href.split("?")[0];
 
     const whatsapp = () => window.open(`https://wa.me/?text=${encodeURIComponent(`${mensagem} ${url}`)}`, "_blank", "noopener");
     const copiar = () => {
@@ -91,7 +136,10 @@ function Conteudo({ servico, fechar }: { servico: Servico; fechar: () => void })
     };
 
     return (
-        <div ref={folha} className="flex flex-col gap-5 rounded-t-2xl bg-primary px-4 pb-[max(24px,env(safe-area-inset-bottom))] shadow-xl lg:rounded-2xl lg:p-6">
+        <div
+            ref={folha}
+            className="flex flex-col gap-5 rounded-t-2xl bg-primary px-4 pb-[max(24px,env(safe-area-inset-bottom))] shadow-xl lg:rounded-2xl lg:p-6"
+        >
             {/* Mobile: alça do bottom sheet — arrastar para baixo fecha. A área de toque é maior que a barrinha */}
             <div
                 aria-hidden="true"
@@ -123,22 +171,18 @@ function Conteudo({ servico, fechar }: { servico: Servico; fechar: () => void })
             </div>
 
             {/* Prévia do que vai no link */}
-            <div className="flex items-center gap-3 rounded-xl bg-secondary p-3">
-                <SeloServico servico={servico} tamanho="sm" />
-                <div className="flex min-w-0 flex-1 flex-col">
-                    <span className="truncate text-sm font-semibold text-primary">{servico.titulo}</span>
-                    <span className="truncate text-xs text-tertiary">{url.replace(/^https?:\/\//, "")}</span>
-                </div>
-            </div>
+            <div className="flex items-center gap-3 rounded-xl bg-secondary p-3">{previa}</div>
 
             <div className="flex flex-col gap-2">
+                <MetodoPagamento icone={<LogoWhatsapp />} rotulo="Enviar no WhatsApp" onPress={whatsapp} />
                 <MetodoPagamento
-                    icone={<LogoWhatsapp />}
-                    rotulo="Enviar no WhatsApp"
-                    onPress={whatsapp}
-                />
-                <MetodoPagamento
-                    icone={copiado ? <Check className="size-4 text-fg-success-primary" aria-hidden="true" /> : <Copy01 className="size-4 text-fg-secondary" aria-hidden="true" />}
+                    icone={
+                        copiado ? (
+                            <Check className="size-4 text-fg-success-primary" aria-hidden="true" />
+                        ) : (
+                            <Copy01 className="size-4 text-fg-secondary" aria-hidden="true" />
+                        )
+                    }
                     rotulo={copiado ? "Link copiado!" : "Copiar link"}
                     onPress={copiar}
                 />

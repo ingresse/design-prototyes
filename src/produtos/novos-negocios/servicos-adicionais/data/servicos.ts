@@ -455,6 +455,13 @@ export const ROLE = {
     emoji: "🎉",
     apoio: "A parte mais difícil já foi: garantir o ingresso. Agora vem a parte boa.",
     voltar: "Ver outros serviços",
+    /** Compartilhar o hub com quem vai junto (mesmo padrão das ofertas, SAD-08). */
+    compartilhar: {
+        rotulo: "Compartilhar com a galera",
+        titulo: "Passa a dica pra galera",
+        legenda: "Manda pra quem vai com você. Cada um escolhe e contrata o que quiser {noEvento}.",
+        mensagem: "Olha o que dá pra deixar resolvido {proEvento}. Cada um contrata o que quiser, vê aí 👇",
+    },
     momentos: [
         {
             id: "antes",

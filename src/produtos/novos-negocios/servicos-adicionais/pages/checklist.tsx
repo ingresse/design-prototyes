@@ -3,10 +3,11 @@ import { useSearchParams } from "react-router";
 import { MotionConfig, motion } from "motion/react";
 import { useForceLightTheme } from "../../utils/use-force-light-theme";
 import { ChecklistServicos, preencher } from "../components/checklist-servicos";
+import { Compartilhar, PreviaTexto } from "../components/compartilhar-oferta";
 import { CardEvento, TopoEvento } from "../components/contexto-evento";
 import { FundoPagina } from "../components/fundo-pagina";
 import { Topo, TopoComImagem } from "../components/topo";
-import { HUBS, HUB_PADRAO, ROLE } from "../data/servicos";
+import { HUBS, HUB_PADRAO, ROLE, textoDoEvento, type Evento } from "../data/servicos";
 import { escolherHub } from "../utils/contratados";
 
 /**
@@ -20,8 +21,17 @@ export function Checklist() {
     useForceLightTheme();
     const [params] = useSearchParams();
     // Hub do evento pedido pelo atalho da Carteira (?evento=gop-tun), ou o último aberto nesta sessão
-    const { evento, servicos } = HUBS[escolherHub(params.get("evento"), Object.keys(HUBS), HUB_PADRAO)];
+    const hub = escolherHub(params.get("evento"), Object.keys(HUBS), HUB_PADRAO);
+    const { evento, servicos } = HUBS[hub];
     const titulo = preencher(ROLE.titulo, undefined, evento);
+    // O link compartilhado abre o hub deste evento, sem outras marcações
+    const link = `${window.location.origin}${window.location.pathname}?evento=${hub}`;
+    const compartilhar = {
+        rotulo: ROLE.compartilhar.rotulo,
+        titulo: textoDoEvento(ROLE.compartilhar.titulo, evento),
+        legenda: textoDoEvento(ROLE.compartilhar.legenda, evento),
+        mensagem: textoDoEvento(ROLE.compartilhar.mensagem, evento),
+    };
 
     useEffect(() => {
         window.scrollTo(0, 0);
@@ -46,13 +56,27 @@ export function Checklist() {
                             transition={{ duration: 0.35, ease: "easeOut" }}
                             className="mb-8 flex flex-col items-start gap-3"
                         >
-                            <h1 className="text-display-xs font-bold text-primary sm:text-display-sm">
-                                {/* O emoji fica preso à última palavra: nunca quebra sozinho numa linha */}
-                                {titulo.slice(0, titulo.lastIndexOf(" ") + 1)}
-                                <span className="whitespace-nowrap">
-                                    {titulo.slice(titulo.lastIndexOf(" ") + 1)} <span aria-hidden="true">{ROLE.emoji}</span>
-                                </span>
-                            </h1>
+                            {/* Compartilhar à direita do título, discreto como nas ofertas (SAD-08) */}
+                            <div className="flex w-full items-start justify-between gap-4">
+                                <h1 className="text-display-xs font-bold text-primary sm:text-display-sm">
+                                    {/* O emoji fica preso à última palavra: nunca quebra sozinho numa linha */}
+                                    {titulo.slice(0, titulo.lastIndexOf(" ") + 1)}
+                                    <span className="whitespace-nowrap">
+                                        {titulo.slice(titulo.lastIndexOf(" ") + 1)} <span aria-hidden="true">{ROLE.emoji}</span>
+                                    </span>
+                                </h1>
+                                <Compartilhar
+                                    textos={compartilhar}
+                                    url={link}
+                                    className="mt-1 shrink-0"
+                                    previa={
+                                        <>
+                                            <MiniaturaEvento evento={evento} />
+                                            <PreviaTexto titulo={`${titulo} ${ROLE.emoji}`} url={link} />
+                                        </>
+                                    }
+                                />
+                            </div>
                             <p className="text-md text-tertiary sm:text-lg">{preencher(ROLE.apoio, undefined, evento)}</p>
                         </motion.header>
                         <ChecklistServicos evento={evento} servicos={servicos} />
@@ -65,5 +89,14 @@ export function Checklist() {
                 </main>
             </FundoPagina>
         </MotionConfig>
+    );
+}
+
+/** Miniatura do pôster na prévia do link (ou o degradê do evento, sem pôster). */
+function MiniaturaEvento({ evento }: { evento: Evento }) {
+    return evento.poster ? (
+        <img src={evento.poster} alt="" className="h-12 w-9 shrink-0 rounded-md object-cover" />
+    ) : (
+        <span aria-hidden="true" className="h-12 w-9 shrink-0 rounded-md" style={{ background: evento.fundo }} />
     );
 }
