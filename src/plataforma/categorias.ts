@@ -1,4 +1,4 @@
-import { CATEGORIAS, GRUPOS_DE_TAG, TAGS, type CategoriaDoMapa, type GrupoDeTag, type Tag } from "./categorias-catalogo";
+import { CATEGORIAS, GRUPOS_DE_TAG, ORDEM_DA_SUGESTAO, TAGS, type CategoriaDoMapa, type GrupoDeTag, type Tag } from "./categorias-catalogo";
 import { salvar } from "./db";
 import type { Categoria, CriacaoDeEvento, Evento } from "./modelo";
 import { agora, novoId } from "./regras";
@@ -12,11 +12,14 @@ import { agora, novoId } from "./regras";
 /*  Tags: o texto aberto, o nome, a descrição e a leitura do banner    */
 /*  (feita pelo Claude, ver ia-local/plugin.ts) viram um vetor no      */
 /*  modelo do Hugging Face, comparado com cada tag do catálogo.        */
-/*  Embedding sozinho erra fácil em tags curtas (calourada saía        */
-/*  "Oktoberfest"), então entra a tag citada no que foi escrito, ou,   */
-/*  só no gênero musical, a que o embedding aponta com nota alta e     */
-/*  folga. Ocasião, sazonais e comodidades só entram citadas, e as     */
-/*  sazonais só com o evento perto da data.                            */
+/*  Embedding do evento inteiro erra fácil em tags curtas (calourada   */
+/*  saía "Oktoberfest"), então a tag entra de três jeitos:             */
+/*  - citada no que foi escrito (nome ou termo, plural vale);          */
+/*  - dita com outras palavras: um trecho de 2 a 5 palavras do texto   */
+/*    quase igual a um termo de 2+ palavras (similaridade 0,94),       */
+/*    "bebida inclusa" é Open bar;                                     */
+/*  - só no gênero musical, pelo evento inteiro com nota alta e folga. */
+/*  As sazonais só valem com o evento perto da data.                   */
 /* ------------------------------------------------------------------ */
 
 export const MODELO_EMBEDDING = "Xenova/paraphrase-multilingual-MiniLM-L12-v2";
@@ -24,6 +27,8 @@ export const MODELO_EMBEDDING = "Xenova/paraphrase-multilingual-MiniLM-L12-v2";
 export const LIMIAR_SEM_CITACAO = 0.74;
 /** ...e com esta folga sobre a segunda mais parecida do mesmo grupo. */
 export const FOLGA_SEM_CITACAO = 0.05;
+/** Trecho do texto quase igual a um termo de várias palavras: conta como dito. Abaixo disso o modelo confunde ("até o sol nascer" com "pôr do sol" dá 0,93). */
+export const LIMIAR_DO_TRECHO = 0.94;
 /** Peso de cada parte no vetor do evento. O texto escrito sobre o evento é o que mais diz. */
 const PESOS = { texto: 0.45, banner: 0.25, nome: 0.15, descricao: 0.15 };
 
@@ -92,6 +97,35 @@ export async function vetorDoEvento(d: DadosParaLer): Promise<number[] | null> {
 /* ---------------- catálogo de tags ---------------- */
 
 let vetoresDasTags: Promise<Map<string, number[]>> | null = null;
+let vetoresDosTermos: Promise<Map<string, number[]>> | null = null;
+
+/** Termos de 2+ palavras das tags que só entram ditas: é com eles que os trechos do texto são comparados. */
+export const termosLongos = (t: Tag) => (GRUPO_POR_ID.get(t.grupo)?.soCitada ? t.termos.filter((x) => x.trim().split(/\s+/).length >= 2) : []);
+
+/** Vetores dos termos longos (pré-calculados em ia-local/vetores-catalogo.mjs). Termo novo é calculado aqui. */
+function carregarTermos() {
+    vetoresDosTermos ??= import("./categorias-catalogo-vetores.json").then(async ({ default: arquivo }) => {
+        const gravados = (arquivo as { termos?: Record<string, number[]> }).termos ?? {};
+        const mapa = new Map<string, number[]>();
+        for (const termo of new Set(TAGS.flatMap(termosLongos))) mapa.set(termo, gravados[termo] ?? (await vetorDe(termo)));
+        return mapa;
+    });
+    return vetoresDosTermos;
+}
+
+const PALAVRAS_VAZIAS = new Set(["de", "da", "do", "das", "dos", "e", "a", "o", "as", "os", "com", "na", "no", "nas", "nos", "em", "para", "pra", "um", "uma", "que", "por", "ao", "à", "the"]);
+
+/** Trechos de 2 a 5 palavras do texto, sem começar ou terminar em palavra vazia ("bebida inclusa", "levar o cachorro"). */
+function trechos(texto: string) {
+    const w = texto.toLowerCase().replace(/[^\p{L}\p{N}&\s-]+/gu, " ").split(/\s+/).filter(Boolean);
+    const out = new Set<string>();
+    for (let n = 2; n <= 5; n++)
+        for (let i = 0; i + n <= w.length; i++) {
+            const s = w.slice(i, i + n);
+            if (!PALAVRAS_VAZIAS.has(s[0]) && !PALAVRAS_VAZIAS.has(s[n - 1])) out.add(s.join(" "));
+        }
+    return [...out].slice(0, 80);
+}
 
 /** Vetores pré-calculados (ia-local/vetores-catalogo.mjs). Tag nova ou mudada é calculada aqui. */
 function carregarTags() {
@@ -112,11 +146,27 @@ function carregarTags() {
     return vetoresDasTags;
 }
 
-const semAcento = (t: string) => t.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+const semAcento = (t: string) => t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 const soPalavras = (t: string) => ` ${semAcento(t).replace(/[^a-z0-9]+/g, " ").trim()} `;
 
-/** O texto cita a tag pelo nome ou por um termo dela, como palavra inteira. */
-const citada = (escrito: string, t: Tag) => [t.nome, ...t.termos].some((x) => escrito.includes(soPalavras(x)));
+/** Singular da palavra, o bastante para "casais" bater com "casal" e "blocos" com "bloco". */
+function singular(p: string) {
+    if (p.length <= 3) return p;
+    if (p.length > 4 && p.endsWith("oes")) return p.slice(0, -3) + "ao";
+    if (p.length > 4 && p.endsWith("aes")) return p.slice(0, -3) + "ao";
+    if (p.length > 4 && p.endsWith("ais")) return p.slice(0, -3) + "al";
+    if (p.length > 4 && p.endsWith("eis")) return p.slice(0, -3) + "el";
+    if (p.endsWith("ns")) return p.slice(0, -2) + "m";
+    if (p.length > 4 && /[rz]es$/.test(p)) return p.slice(0, -2);
+    if (p.endsWith("s") && !p.endsWith("ss")) return p.slice(0, -1);
+    return p;
+}
+
+/** Palavras sem acento e no singular, entre espaços, para achar termo como palavra inteira. */
+const formaDeBusca = (t: string) => ` ${soPalavras(t).trim().split(" ").map(singular).join(" ")} `;
+
+/** O texto cita a tag (ou a categoria) pelo nome ou por um termo, como palavra inteira; plural vale. */
+const cita = (escrito: string, nomes: string[]) => nomes.some((x) => escrito.includes(formaDeBusca(x)));
 
 /* ---------------- leitura das tags ---------------- */
 
@@ -124,7 +174,7 @@ export interface TagLida {
     id: string;
     /** Similaridade do evento com a tag (0 a 1). */
     nota: number;
-    /** Citada no que foi escrito (texto, nome, descrição ou banner). */
+    /** Dita no que foi escrito (texto, nome, descrição ou banner): citada ou com outras palavras quase iguais a um termo. */
     citada: boolean;
 }
 
@@ -132,19 +182,25 @@ export interface LeituraDeTags {
     /** Todas as que passaram, de todos os grupos. A categoria escolhida filtra depois (`tagsValidas`). */
     tags: TagLida[];
     vetor: number[] | null;
+    /** Categoria que o texto cita ("balada", "stand-up", "festa universitária"), para sugerir com o dropdown vazio. */
+    categoriaSugerida?: string;
 }
 
-/** Lê as tags do evento: citação no que foi escrito, ou embedding com nota alta e folga. */
+/** Lê as tags do evento: citação, trecho quase igual a um termo, ou (gênero) embedding com nota alta e folga. */
 export async function lerTags(d: DadosParaLer): Promise<LeituraDeTags> {
     const vetor = await vetorDoEvento(d);
     if (!vetor) return { tags: [], vetor: null };
-    const vetores = await carregarTags();
-    const escrito = soPalavras([d.texto, d.nome, d.descricao, d.bannerDescricao].filter(Boolean).join(" "));
+    const [vetores, termos] = await Promise.all([carregarTags(), carregarTermos()]);
+    const escrito = formaDeBusca([d.texto, d.nome, d.descricao, d.bannerDescricao].filter(Boolean).join(" "));
+    // Trechos do que a pessoa escreveu e do nome (a descrição é longa demais para isso).
+    const vetoresDosTrechos = await Promise.all(trechos([d.texto, d.nome].filter(Boolean).join(". ")).map(vetorDe));
+    const ditaComOutrasPalavras = (t: Tag) =>
+        termosLongos(t).some((termo) => vetoresDosTrechos.some((v) => cosseno(v, termos.get(termo)!) >= LIMIAR_DO_TRECHO));
 
     const achadas = new Map<string, TagLida>();
     for (const g of GRUPOS_DE_TAG) {
         const notas = TAGS.filter((t) => t.grupo === g.id)
-            .map((t) => ({ t, nota: cosseno(vetor, vetores.get(t.id)!), citada: citada(escrito, t) }))
+            .map((t) => ({ t, nota: cosseno(vetor, vetores.get(t.id)!), citada: cita(escrito, [t.nome, ...t.termos]) || ditaComOutrasPalavras(t) }))
             .sort((a, b) => b.nota - a.nota);
         for (const [i, n] of notas.entries()) {
             const folga = n.nota - (notas[i + 1]?.nota ?? 0);
@@ -158,14 +214,15 @@ export async function lerTags(d: DadosParaLer): Promise<LeituraDeTags> {
             if (!achadas.has(id)) achadas.set(id, { id, nota: arredondar(cosseno(vetor, vetores.get(id)!)), citada: false });
         }
     }
-    return { tags: [...achadas.values()], vetor };
+    const categoriaSugerida = ORDEM_DA_SUGESTAO.find((id) => cita(escrito, CATEGORIA_POR_ID.get(id)?.termos ?? []));
+    return { tags: [...achadas.values()], vetor, categoriaSugerida };
 }
 
 const arredondar = (x: number) => Math.round(x * 100) / 100;
 
 export interface ContextoDasTags {
     categoriaId?: string;
-    /** Início e fim do evento (ISO). Sem início, nenhuma sazonal vale. */
+    /** Início e fim do evento (ISO). Sem início ainda, a sazonal dita aparece; com a data, só dentro da janela. */
     inicio?: string;
     fim?: string;
     /** Tags que a pessoa tirou no campo. */
@@ -198,10 +255,10 @@ function valeNaCategoria(t: Tag, categoriaId: string | undefined) {
 
 const DIA = 24 * 60 * 60 * 1000;
 
-/** O evento toca alguma janela da tag? Olha dia a dia do início ao fim (até 60 dias). */
-function valeNaData(t: Tag, { inicio, fim }: ContextoDasTags) {
+/** O evento toca alguma janela da tag? Olha dia a dia do início ao fim (até 60 dias). Sem data ainda, vale. */
+export function valeNaData(t: Tag, { inicio, fim }: Pick<ContextoDasTags, "inicio" | "fim">) {
     if (!t.janelas) return true;
-    if (!inicio) return false;
+    if (!inicio) return true;
     const comeco = new Date(inicio.slice(0, 10) + "T12:00:00");
     const final = fim ? new Date(fim.slice(0, 10) + "T12:00:00") : comeco;
     if (Number.isNaN(comeco.getTime())) return false;

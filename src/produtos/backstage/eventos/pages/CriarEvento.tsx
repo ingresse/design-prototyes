@@ -233,16 +233,30 @@ function FormularioDeEvento({ tipo, titulo }: { tipo: TipoEvento; titulo: string
     // Depois da busca, o campo mostra as tags que valem para a categoria no lugar do que foi escrito; o escrito
     // continua guardado e é o que vai para as próximas buscas. Editar o campo volta a ser texto da pessoa.
     const [tagsNoCampo, setTagsNoCampo] = useState(false);
+    // Categoria que a busca escolheu porque o texto a cita ("balada"): só com o dropdown vazio, e a pessoa troca.
+    const [categoriaSugerida, setCategoriaSugerida] = useState<string | null>(null);
     useEffect(() => {
         if (tags.estado.status !== "pronto") return;
         setTagsNoCampo(true);
+        const sugerida = tags.estado.resultado.categoriaSugerida;
         // Busca nova devolve as tags tiradas no X: a remoção vale só até a próxima busca.
-        setF((a) => (a.tagsRemovidas.length ? { ...a, tagsRemovidas: [] } : a));
+        setF((a) => {
+            const categoriaId = !a.categoriaId && sugerida ? sugerida : a.categoriaId;
+            if (categoriaId !== a.categoriaId) setCategoriaSugerida(categoriaId);
+            return a.tagsRemovidas.length || categoriaId !== a.categoriaId ? { ...a, categoriaId, tagsRemovidas: [] } : a;
+        });
     }, [tags.estado]);
     // Valem a categoria, a data (sazonais) e o que a pessoa tirou no X.
     const inicioDoEventoNoForm = emSessoes(f) ? [...f.sessoesExtras].map((x) => x.valor).sort()[0] ?? f.inicio : f.inicio;
     const contextoDasTags = { categoriaId: f.categoriaId || undefined, inicio: inicioDoEventoNoForm || undefined, fim: f.fim || undefined, removidas: f.tagsRemovidas };
     const tagsNoForm = dicaEstavel.status === "pronto" ? tagsValidas(dicaEstavel.resultado.tags, contextoDasTags).map((t) => ({ id: t.id, nome: TAG_POR_ID.get(t.id)!.nome })) : [];
+    // Sazonal dita no texto mas fora da janela da data: some do campo e a dica diz por quê (CAT-18).
+    const foraDaData =
+        dicaEstavel.status === "pronto"
+            ? tagsValidas(dicaEstavel.resultado.tags, { ...contextoDasTags, inicio: undefined, fim: undefined })
+                  .filter((t) => TAG_POR_ID.get(t.id)!.grupo === "sazonal" && !tagsNoForm.some((n) => n.id === t.id))
+                  .map((t) => TAG_POR_ID.get(t.id)!.nome)
+            : [];
     const caixaDoTipo = useRef<HTMLDivElement>(null);
     const [criando, setCriando] = useState(false);
     const ruins = useMemo(() => (tentou ? sessoesInvalidas(f) : new Set<number>()), [f, tentou]);
@@ -497,8 +511,12 @@ function FormularioDeEvento({ tipo, titulo }: { tipo: TipoEvento; titulo: string
                                             isRequired
                                             opcoes={opcoesDeCategoria}
                                             valor={f.categoriaId}
-                                            onChange={(v) => set("categoriaId", v)}
+                                            onChange={(v) => {
+                                                setCategoriaSugerida(null);
+                                                set("categoriaId", v);
+                                            }}
                                             placeholder="Selecione"
+                                            hint={categoriaSugerida && f.categoriaId === categoriaSugerida ? "Sugerida pelo que você escreveu. Pode trocar." : undefined}
                                             erro={erros.categoria}
                                         />
                                     </div>
@@ -518,7 +536,7 @@ function FormularioDeEvento({ tipo, titulo }: { tipo: TipoEvento; titulo: string
                                         buscando={procurandoTags}
                                         caixaRef={caixaDoTipo}
                                         // Durante a busca a dica fica como estava: o estado aparece só dentro do campo.
-                                        hint={<DicaDasTags estado={dicaEstavel} tags={tagsNoForm.length} removidas={f.tagsRemovidas.length} escrito={f.categoriaEscrito} />}
+                                        hint={<DicaDasTags estado={dicaEstavel} tags={tagsNoForm.length} removidas={f.tagsRemovidas.length} escrito={f.categoriaEscrito} foraDaData={foraDaData} />}
                                     />
                                     <BuscandoNoCampo alvo={caixaDoTipo} buscando={procurandoTags} />
                                 </div>
@@ -867,15 +885,20 @@ function CampoComTags({
 }
 
 /** Texto de apoio do Como é o evento: o que fazer antes e, com as tags no campo, de onde elas vieram (EVT-97). */
-function DicaDasTags({ estado, tags, removidas, escrito }: { estado: EstadoDasTags; tags: number; removidas: number; escrito: string }) {
+function DicaDasTags({ estado, tags, removidas, escrito, foraDaData }: { estado: EstadoDasTags; tags: number; removidas: number; escrito: string; foraDaData: string[] }) {
     if (estado.status === "erro") return <>Não deu para ler agora. As tags são lidas de novo quando o evento for criado.</>;
     if (estado.status === "pronto") {
-        if (!tags) return removidas ? <>Sem tags: as que apareceram foram tiradas.</> : <>Nenhuma tag encontrada. Conte o gênero, a ocasião ou o que está incluso.</>;
+        // Sazonal dita mas fora da data: some do campo, e a dica diz qual e por quê.
+        const data = foraDaData.length ? foraDaData.length > 1 ? ` ${juntar(foraDaData)} ficaram de fora: a data do evento não é perto dessas datas.` : ` ${foraDaData[0]} ficou de fora: a data do evento não é perto dessa data.` : "";
+        if (!tags) return removidas ? <>Sem tags: as que apareceram foram tiradas.{data}</> : data ? <>{data.trim()}</> : <>Nenhuma tag encontrada. Conte o gênero, a ocasião ou o que está incluso.</>;
         // O campo já mostra as tags: a dica lembra de onde elas vieram.
-        return escrito.trim() ? <>Tags encontradas a partir de “{escrito.trim()}”. Clique no campo para editar o texto.</> : <>Tags encontradas no nome, na descrição e no banner.</>;
+        return escrito.trim() ? <>Tags encontradas a partir de “{escrito.trim()}”. Clique no campo para editar o texto.{data}</> : <>Tags encontradas no nome, na descrição e no banner.{data}</>;
     }
     return <>Opcional. Com as suas palavras: as tags saem daqui, do nome, da descrição e do banner.</>;
 }
+
+/** "Carnaval", "Carnaval e Verão", "A, B e C". */
+const juntar = (nomes: string[]) => (nomes.length > 1 ? `${nomes.slice(0, -1).join(", ")} e ${nomes.at(-1)}` : nomes[0] ?? "");
 
 /** Seção do formulário: título e, se precisar, subtítulo (UI-VIS-014). */
 const Secao = ({ titulo, descricao, children }: { titulo: string; descricao?: string; children: ReactNode }) => (

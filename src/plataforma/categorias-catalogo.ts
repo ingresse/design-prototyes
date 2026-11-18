@@ -24,21 +24,29 @@ export interface CategoriaDoMapa {
     ordem: number;
     /** Tipo de criação que usa a categoria. Futebol e esportivo têm a sua; show ou festa escolhe entre as outras. */
     tipo: TipoEvento;
+    /** Palavras que, ditas no texto, sugerem a categoria quando o dropdown ainda está vazio. */
+    termos?: string[];
 }
 
 /** As 10 categorias do mapa do Grupo. Ids sem colisão com as candidatas da versão anterior, que podem estar no banco. */
 export const CATEGORIAS: CategoriaDoMapa[] = [
-    { id: "shows", nome: "Shows", ordem: 1, tipo: "show" },
-    { id: "festivais", nome: "Festivais", ordem: 2, tipo: "show" },
-    { id: "festas-e-baladas", nome: "Festas e Baladas", ordem: 3, tipo: "show" },
-    { id: "universitario", nome: "Universitário", ordem: 4, tipo: "show" },
+    { id: "shows", nome: "Shows", ordem: 1, tipo: "show", termos: ["show", "ao vivo", "turnê", "acústico", "apresentação"] },
+    { id: "festivais", nome: "Festivais", ordem: 2, tipo: "show", termos: ["festival", "line-up", "lineup", "palcos"] },
+    { id: "festas-e-baladas", nome: "Festas e Baladas", ordem: 3, tipo: "show", termos: ["festa", "balada", "baile", "rave", "night", "noitada", "bloco", "open bar", "after", "pista"] },
+    { id: "universitario", nome: "Universitário", ordem: 4, tipo: "show", termos: ["universitária", "universitário", "atlética", "calourada", "intermed", "interfaculdades", "chopada", "faculdade"] },
     { id: "futebol", nome: "Futebol", ordem: 5, tipo: "futebol" },
     { id: "esportes", nome: "Esportes", ordem: 6, tipo: "esportivo" },
-    { id: "artes-cenicas", nome: "Teatro", ordem: 7, tipo: "show" },
-    { id: "humor", nome: "Stand-up", ordem: 8, tipo: "show" },
-    { id: "kids-e-familia", nome: "Kids e Família", ordem: 9, tipo: "show" },
-    { id: "feiras-e-exposicoes", nome: "Feiras e Exposições", ordem: 10, tipo: "show" },
+    { id: "artes-cenicas", nome: "Teatro", ordem: 7, tipo: "show", termos: ["teatro", "peça", "espetáculo", "espetáculo de dança", "balé"] },
+    { id: "humor", nome: "Stand-up", ordem: 8, tipo: "show", termos: ["stand-up", "stand up", "comédia", "humor", "comediante", "humorista"] },
+    { id: "kids-e-familia", nome: "Kids e Família", ordem: 9, tipo: "show", termos: ["infantil", "criança", "kids", "família", "crianças"] },
+    { id: "feiras-e-exposicoes", nome: "Feiras e Exposições", ordem: 10, tipo: "show", termos: ["feira", "exposição", "expo", "mostra", "convenção", "congresso"] },
 ];
+
+/**
+ * Quando o texto cita mais de uma, vale a mais específica: "festa universitária" é Universitário,
+ * "show no festival" é Festivais, "stand-up no bar" é Stand-up.
+ */
+export const ORDEM_DA_SUGESTAO = ["universitario", "kids-e-familia", "humor", "artes-cenicas", "feiras-e-exposicoes", "festivais", "festas-e-baladas", "shows"];
 
 export type GrupoDeTag = "genero" | "ocasiao" | "sazonal" | "comodidade";
 
@@ -51,8 +59,10 @@ export interface GrupoDaTag {
     /** Máximo de tags do grupo por evento. */
     maximo: number;
     /**
-     * Só entra citada no texto, no nome, na descrição ou na leitura do banner. Ocasião, data e o que o
-     * evento oferece não se adivinham: "bloco" não é Réveillon, e Open bar só existe se alguém disse.
+     * Só entra dita no texto, no nome, na descrição ou na leitura do banner: citada, ou com outras
+     * palavras quase iguais a um termo (trecho com similaridade de 0,94). Ocasião, data e o que o evento
+     * oferece não se adivinham pelo clima do texto: "bloco" não é Réveillon, e Open bar só existe se
+     * alguém disse.
      */
     soCitada: boolean;
 }
@@ -114,13 +124,15 @@ export const TAGS: Tag[] = [
     { id: "turne", nome: "Turnê", grupo: "ocasiao", termos: ["turnê", "tour", "nova turnê", "passa pela cidade"] },
     { id: "estreia", nome: "Estreia e lançamento", grupo: "ocasiao", termos: ["estreia", "pré-estreia", "lançamento do álbum", "lançamento de disco", "primeira vez na cidade"] },
     { id: "despedida", nome: "Despedida", grupo: "ocasiao", termos: ["último show", "turnê de despedida", "show de despedida", "despedida dos palcos"] },
-    { id: "tributo", nome: "Tributo", grupo: "ocasiao", termos: ["tributo a", "banda cover", "homenagem a", "cover"] },
+    { id: "tributo", nome: "Tributo", grupo: "ocasiao", termos: ["tributo a", "tributo ao", "banda cover", "homenagem a", "homenagem ao", "homenagem à", "cover"] },
     { id: "aniversario", nome: "Aniversário", grupo: "ocasiao", termos: ["aniversário da casa", "aniversário da festa", "edição de aniversário", "comemoração de anos"] },
     { id: "formatura", nome: "Formatura", grupo: "ocasiao", termos: ["formatura", "baile de formatura", "colação de grau", "formandos"] },
     { id: "calourada", nome: "Calourada", grupo: "ocasiao", termos: ["calourada", "recepção dos calouros", "intermed", "interfaculdades", "atlética", "chopada"] },
     { id: "beneficente", nome: "Beneficente", grupo: "ocasiao", termos: ["evento beneficente", "show solidário", "arrecadação", "entrada solidária"] },
-    { id: "sunset", nome: "Sunset", grupo: "ocasiao", termos: ["pôr do sol", "fim de tarde", "rooftop", "day party"] },
-    { id: "after", nome: "After", grupo: "ocasiao", termos: ["after", "afterparty", "after hours", "festa de manhã"] },
+    { id: "sunset", nome: "Sunset", grupo: "ocasiao", termos: ["pôr do sol", "fim de tarde", "rooftop", "day party", "sunset party"] },
+    { id: "after", nome: "After", grupo: "ocasiao", termos: ["after", "afterparty", "after hours", "festa de manhã", "até o sol nascer", "até amanhecer"] },
+    { id: "casais", nome: "Casais", grupo: "ocasiao", termos: ["casal", "para casais", "encontro de casais", "noite romântica", "programa a dois", "romântico", "romântica"] },
+    { id: "ar-livre", nome: "Ao ar livre", grupo: "ocasiao", termos: ["ao ar livre", "open air", "a céu aberto", "bloco de rua", "festa de rua", "na rua", "na praça", "no parque"] },
     { id: "classico", nome: "Clássico", grupo: "ocasiao", termos: ["clássico", "dérbi", "rivais", "jogo decisivo entre rivais"], categorias: ["futebol", "esportes"] },
     { id: "final", nome: "Final", grupo: "ocasiao", termos: ["grande final", "final do campeonato", "semifinal", "finalíssima"], categorias: ["futebol", "esportes"] },
 
@@ -141,7 +153,7 @@ export const TAGS: Tag[] = [
     { id: "copa-do-mundo", nome: "Copa do Mundo", grupo: "sazonal", termos: ["copa do mundo", "jogo do brasil", "seleção brasileira", "jogo da seleção", "jogos da copa"], janelas: [["2026-06-11", "2026-07-19"], ["2030-06-08", "2030-07-21"]] },
 
     /* ---------------- Comodidades ---------------- */
-    { id: "open-bar", nome: "Open bar", grupo: "comodidade", termos: ["open bar", "open de cerveja", "bebida liberada", "bebida à vontade", "open de drinks", "full open bar"] },
+    { id: "open-bar", nome: "Open bar", grupo: "comodidade", termos: ["open bar", "open de cerveja", "bebida liberada", "bebida à vontade", "open de drinks", "full open bar", "bebida inclusa", "open de chopp"] },
     { id: "open-food", nome: "Open food", grupo: "comodidade", termos: ["open food", "comida liberada", "buffet incluso", "open de comida"] },
     { id: "camarote", nome: "Camarote", grupo: "comodidade", termos: ["camarote", "frisa", "camarote open bar"] },
     { id: "area-vip", nome: "Área VIP", grupo: "comodidade", termos: ["área vip", "vip", "lounge", "pista premium"] },
@@ -153,5 +165,5 @@ export const TAGS: Tag[] = [
     { id: "alimentacao", nome: "Praça de alimentação", grupo: "comodidade", termos: ["food trucks", "praça de alimentação", "comidinhas", "gastronomia no local"] },
     { id: "espaco-kids", nome: "Espaço kids", grupo: "comodidade", termos: ["espaço kids", "recreação infantil", "monitores para crianças", "brinquedos"] },
     { id: "acessivel", nome: "Acessível", grupo: "comodidade", termos: ["acessível", "acessibilidade", "libras", "audiodescrição", "cadeirantes"] },
-    { id: "pet-friendly", nome: "Pet friendly", grupo: "comodidade", termos: ["pet friendly", "aceita pets", "pode levar cachorro", "cachorro"] },
+    { id: "pet-friendly", nome: "Pet friendly", grupo: "comodidade", termos: ["pet friendly", "aceita pets", "pode levar cachorro", "cachorro", "pode levar o pet", "animais são bem-vindos"] },
 ];
