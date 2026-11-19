@@ -8,9 +8,9 @@ import { usePedido } from "../data/pedido-store";
 
 const Divisor = () => <hr className="border-t border-secondary" />;
 
-/** Resumo do pedido no checkout. A linha "Proteção de compra" (sem título de seção) só aparece depois que o comprador aceita a proteção no modal; o "Remover" ao lado tira a proteção do pedido. */
-export function CheckoutResumo() {
-    const { selecionados, protecao, valorProtecao, taxas, taxaServico, taxaProcessamento, total, escolherProtecao } = usePedido();
+/** Resumo do pedido no checkout. A linha "Proteção de compra" (sem título de seção) só aparece depois que o comprador aceita a proteção no modal; o nome é clicável e reabre o modal para ele rever a escolha. */
+export function CheckoutResumo({ onRevisarProtecao }: { onRevisarProtecao: () => void }) {
+    const { selecionados, protecao, valorProtecao, taxas, taxaServico, taxaProcessamento, total } = usePedido();
     const [detalhes, setDetalhes] = useState(true);
 
     return (
@@ -45,20 +45,14 @@ export function CheckoutResumo() {
                 <>
                     <Divisor />
                     <p className="flex items-center justify-between text-sm text-secondary">
-                        <span className="flex items-center gap-1.5 tracking-[0.28px]">
+                        <button
+                            type="button"
+                            aria-haspopup="dialog"
+                            onClick={onRevisarProtecao}
+                            className="rounded-xs tracking-[0.28px] underline decoration-fg-quaternary underline-offset-4 outline-focus-ring transition duration-100 ease-linear hover:text-secondary_hover hover:decoration-current focus-visible:outline-2 focus-visible:outline-offset-2"
+                        >
                             Proteção de compra
-                            <span aria-hidden="true" className="text-fg-quaternary">
-                                •
-                            </span>
-                            <button
-                                type="button"
-                                aria-label="Remover proteção de compra"
-                                onClick={() => escolherProtecao("sem")}
-                                className="font-semibold tracking-normal text-tertiary transition duration-100 ease-linear hover:text-tertiary_hover"
-                            >
-                                Remover
-                            </button>
-                        </span>
+                        </button>
                         <span className="tabular-nums">{brl(valorProtecao)}</span>
                     </p>
                 </>

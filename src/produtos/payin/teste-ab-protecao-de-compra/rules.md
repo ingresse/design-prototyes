@@ -37,7 +37,8 @@ evento da plataforma unificada. Valores de proteção (8%) e taxas são de exper
 - **TAP-05** O modal não tem "X" e não fecha ao clicar fora nem com Esc: as saídas são "Continuar com proteção" e "Prefiro correr o risco". _(components/modal-protecao.tsx)_
 - **TAP-06** "Continuar com proteção" fecha o modal e inclui a linha "Proteção de compra" no resumo (sem o título "Adicionais" do Figma), somando o valor ao total. _(components/checkout-resumo.tsx)_
 - **TAP-07** "Prefiro correr o risco" fecha o modal; o resumo fica sem a linha da proteção e a oferta não se repete naquela visita. _(components/checkout-resumo.tsx)_
-- **TAP-12** A linha "Proteção de compra" tem um "Remover" ao lado: ao clicar, a linha some, o total perde o valor da proteção e o modal não reabre naquela visita. _(components/checkout-resumo.tsx)_
+- ~~**TAP-12**~~ Substituída por TAP-13 (o "Remover" saiu do resumo).
+- **TAP-13** O nome "Proteção de compra" no resumo é clicável (sublinhado) e reabre o modal de proteção. Enquanto o modal está reaberto, a linha e o total continuam como estavam; "Continuar com proteção" mantém a proteção e "Prefiro correr o risco" tira a linha e o valor do total. _(components/checkout-resumo.tsx, pages/checkout.tsx)_
 - **TAP-08** "Ver todas as coberturas" abre, dentro dos próprios cartões, os casos cobertos de cada tipo de imprevisto. _(components/modal-protecao.tsx)_
 - **TAP-09** No desktop o modal é um card central de 480px; no celular é uma folha ancorada no rodapé. _(components/modal-protecao.tsx)_
 - **TAP-10** Os meios de pagamento não abrem: o protótipo termina na escolha da proteção. _(components/checkout-metodos.tsx)_
@@ -55,7 +56,7 @@ evento da plataforma unificada. Valores de proteção (8%) e taxas são de exper
 ## Em aberto
 
 - O Figma mostra "Atribuição" nas etapas, mas o fluxo vai da seleção direto ao checkout. Falta decidir se o modal também aparece para quem já recusou a proteção na atribuição.
-- Depois de remover a proteção pelo resumo, não há como adicioná-la de volta no checkout.
+- Depois de escolher "Prefiro correr o risco" (na primeira vez ou ao rever), a linha some do resumo e não há como adicionar a proteção de volta no checkout.
 - O conteúdo de "Ver todas as coberturas" não está no Figma (só o link). Os casos vieram do modal de coberturas do experimento anterior e precisam de validação do jurídico.
 - O checkout no celular foi derivado do desktop e da estrutura do frame; o Figma só mostra essa tela desfocada atrás do modal.
 - A capa do evento no checkout é o placeholder verde do Figma.

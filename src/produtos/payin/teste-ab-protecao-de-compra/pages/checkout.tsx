@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Navigate } from "react-router";
 import { CheckoutMetodos } from "../components/checkout-metodos";
 import { CheckoutResumo } from "../components/checkout-resumo";
@@ -13,6 +14,8 @@ import { useForceLightTheme } from "../utils/use-force-light-theme";
 export function Checkout() {
     useForceLightTheme();
     const { protecao, escolherProtecao, qtdIngressos } = usePedido();
+    // Modal reaberto pelo nome "Proteção de compra" no resumo; a escolha atual vale até o comprador decidir de novo
+    const [revendoProtecao, setRevendoProtecao] = useState(false);
 
     // A jornada sempre começa na seleção: checkout sem pedido (URL direta ou página recarregada) volta para lá
     if (qtdIngressos === 0) return <Navigate to="/payin/teste-ab-protecao-de-compra" replace />;
@@ -25,13 +28,19 @@ export function Checkout() {
                 <CheckoutTitulo />
                 <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_448px] lg:items-start">
                     <div className="lg:order-2">
-                        <CheckoutResumo />
+                        <CheckoutResumo onRevisarProtecao={() => setRevendoProtecao(true)} />
                     </div>
                     <CheckoutMetodos />
                 </div>
             </main>
 
-            <ModalProtecao aberto={protecao === null} onEscolher={(com) => escolherProtecao(com ? "com" : "sem")} />
+            <ModalProtecao
+                aberto={protecao === null || revendoProtecao}
+                onEscolher={(com) => {
+                    escolherProtecao(com ? "com" : "sem");
+                    setRevendoProtecao(false);
+                }}
+            />
         </div>
     );
 }
