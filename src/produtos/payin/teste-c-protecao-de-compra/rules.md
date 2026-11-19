@@ -73,7 +73,7 @@ Tempos em ms. Curvas: ease-out `cubic-bezier(0.2, 0.8, 0.2, 1)`, standard `cubic
 - **TCP-22** "Conheça as coberturas": o chevron gira 180° e a lista aparece (opacidade 0→1, Y −4→0) enquanto o card abre; no celular o escudo some e o rodapé ganha borda e sombra. Tudo em 150ms linear. A troca de cor do card protegido (TCP-12) leva 200ms linear; os hovers, 100ms linear.
 - **TCP-23** Passar o mouse: botão primário `#FF271A`→`#C81F14`; acordeão e botão secundário ganham fundo `#FAFAFA`.
 - **TCP-24** Ao fechar, o modal e o scrim somem juntos em 200ms.
-- **TCP-25** Ao aceitar a proteção, o resumo confirma depois de o modal fechar: a linha "Proteção de compra" abre, ganha um realce verde que some, o escudo verde aparece e o total conta até o novo valor. Ao remover, a linha recolhe e o total conta de volta. _(components/checkout-resumo.tsx)_
+- **TCP-25** Ao aceitar a proteção, o resumo confirma depois de o modal fechar: a linha "Proteção de compra" abre, ganha um realce verde que some e o total conta até o novo valor (sem escudo ao lado do nome, retirado a pedido em 2026-11-19). Ao remover, a linha recolhe e o total conta de volta. _(components/checkout-resumo.tsx)_
 - **TCP-26** Com "reduzir movimento" ligado no sistema, tudo aparece direto no estado final: sem sequência de entrada, pulsos, brilho ou transições. A espera de 600ms do TCP-12 continua. _(components/modal-protecao.css, components/checkout-resumo.tsx)_
 
 ### Estados
@@ -104,6 +104,7 @@ Tempos em ms. Curvas: ease-out `cubic-bezier(0.2, 0.8, 0.2, 1)`, standard `cubic
 - A seleção de ingressos, o carregamento e o checkout foram reaproveitados do teste AB; os frames deste fluxo não foram comparados pixel a pixel.
 - Os casos cobertos listados em "Conheça as coberturas" vêm do Figma e precisam de validação do jurídico.
 - O escudo do topo do modal é desenhado em SVG dentro do componente (mesmo desenho do Figma) para o check poder ser traçado; o picote e os recortes são feitos em CSS para poderem animar e mudar de cor.
+- Os ícones dos grupos de cobertura vêm da biblioteca de ícones do design system (`@untitledui/icons`: activity-heart, bus, home-02, scales-02), não dos SVGs exportados do Figma, que saíam quebrados.
 
 ## Fontes
 

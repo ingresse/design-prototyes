@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import { type FC, useEffect, useRef, useState } from "react";
+import { ActivityHeart, Bus, Home02, Scales02 } from "@untitledui/icons";
 import {
   Dialog as AriaDialog,
   Heading as AriaHeading,
@@ -8,11 +9,7 @@ import {
 import { cx } from "@/utils/cx";
 import chevronDown from "../assets/chevron-down.svg";
 import glow from "../assets/glow.svg";
-import icCaminho from "../assets/ic-caminho.svg";
-import icCasa from "../assets/ic-casa.svg";
 import icCheck from "../assets/ic-check.svg";
-import icDocumentos from "../assets/ic-documentos.svg";
-import icSaude from "../assets/ic-saude.svg";
 import ring144 from "../assets/ring-144.svg";
 import ring192 from "../assets/ring-192.svg";
 import ring240 from "../assets/ring-240.svg";
@@ -23,14 +20,14 @@ import { usePedido } from "../data/pedido-store";
 import "./modal-protecao.css";
 
 interface Cobertura {
-  icone: string;
+  icone: FC<{ className?: string }>;
   titulo: string;
   casos: string[];
 }
 
 const COBERTURAS: Cobertura[] = [
   {
-    icone: icSaude,
+    icone: ActivityHeart,
     titulo: "Saúde",
     casos: [
       "Acidente, doença ou lesão",
@@ -39,17 +36,17 @@ const COBERTURAS: Cobertura[] = [
     ],
   },
   {
-    icone: icCaminho,
+    icone: Bus,
     titulo: "Imprevistos no caminho",
     casos: ["Falha no transporte público", "Falha de veículo privado"],
   },
   {
-    icone: icCasa,
+    icone: Home02,
     titulo: "Emergências em casa",
     casos: ["Emergência doméstica", "Chamada de serviços de emergência"],
   },
   {
-    icone: icDocumentos,
+    icone: Scales02,
     titulo: "Documentos e questões judiciais",
     casos: ["Roubo de documentos", "Intimação judicial"],
   },
@@ -246,11 +243,11 @@ function Conteudo({
                     <div>
                       {/* Desktop: duas colunas com os casos em lista */}
                       <ul className="grid grid-cols-2 gap-x-4 gap-y-5 px-4 pt-1 pb-4 max-sm:hidden">
-                        {COBERTURAS.map(({ icone, titulo, casos }) => (
+                        {COBERTURAS.map(({ icone: Icone, titulo, casos }) => (
                           <li key={titulo} className="flex flex-col gap-1.5">
                             <span className="flex items-center gap-2.5">
                               <span className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-[#e5e5e5] bg-white shadow-xs">
-                                <img src={icone} alt="" />
+                                <Icone className="size-[18px] text-[#404040]" aria-hidden="true" />
                               </span>
                               <span className="flex-1 text-sm font-semibold text-[#171717]">
                                 {titulo}
@@ -277,10 +274,10 @@ function Conteudo({
 
                       {/* Celular: uma coluna, casos em linha separados por "·" */}
                       <ul className="flex flex-col gap-3.5 px-4 pt-1 pb-4 sm:hidden">
-                        {COBERTURAS.map(({ icone, titulo, casos }) => (
+                        {COBERTURAS.map(({ icone: Icone, titulo, casos }) => (
                           <li key={titulo} className="flex items-start gap-3">
                             <span className="flex size-7 shrink-0 items-center justify-center rounded-lg border border-[#e5e5e5] bg-white shadow-xs">
-                              <img src={icone} alt="" className="size-4" />
+                              <Icone className="size-4 text-[#404040]" aria-hidden="true" />
                             </span>
                             <span className="flex-1 pt-1 text-sm text-[#525252]">
                               <span className="block font-semibold text-[#171717]">
