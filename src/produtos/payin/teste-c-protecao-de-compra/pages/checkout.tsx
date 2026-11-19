@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Navigate } from "react-router";
+import { AvisoSemProtecao } from "../components/aviso-sem-protecao";
 import { CheckoutMetodos } from "../components/checkout-metodos";
 import { CheckoutResumo } from "../components/checkout-resumo";
 import { CheckoutTitulo, CheckoutTopo } from "../components/checkout-topo";
@@ -30,7 +31,10 @@ export function Checkout() {
                     <div className="lg:order-2">
                         <CheckoutResumo onRevisarProtecao={() => setRevendoProtecao(true)} />
                     </div>
-                    <CheckoutMetodos />
+                    <div className="min-w-0">
+                        <AvisoSemProtecao />
+                        <CheckoutMetodos />
+                    </div>
                 </div>
             </main>
 

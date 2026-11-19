@@ -42,7 +42,9 @@ evento da plataforma unificada. Valores de proteção (8%) e taxas são de exper
 - **TCP-10** No celular, com as coberturas abertas, o escudo e os anéis somem e o rodapé dos botões ganha borda e sombra; o conteúdo rola por trás do rodapé fixo. _(components/modal-protecao.tsx, components/modal-protecao.css)_
 - **TCP-11** "Valor da proteção" mostra o valor calculado para o pedido (8% dos ingressos), o mesmo que entra no resumo. _(components/modal-protecao.tsx, data/pedido-store.ts)_
 - **TCP-12** "Continuar com proteção": o card fica verde (borda `#75E0A7`, fundo `#F6FEF9`, recortes acompanham) e o modal permanece 600ms antes de fechar. Durante a espera, "Prefiro correr o risco" fica desativado. Depois o resumo ganha a linha "Proteção de compra" e o valor entra no total. _(components/modal-protecao.tsx, components/checkout-resumo.tsx)_
-- **TCP-13** "Prefiro correr o risco" fecha o modal na hora; o resumo fica sem a linha da proteção e a oferta não se repete naquela visita. _(components/modal-protecao.tsx)_
+- **TCP-13** "Prefiro correr o risco" fecha o modal na hora e o resumo fica sem a linha da proteção. O modal não se repete naquela visita. _(components/modal-protecao.tsx)_
+- **TCP-16** Quem recusou vê, acima de "Escolha como pagar", o aviso "Imprevistos acontecem. Sua compra está sem proteção." / "Se um imprevisto impedir sua ida, você fica sem o reembolso da proteção.", com "Proteger por R$ X" (mesmo bloco do teste B). _(components/aviso-sem-protecao.tsx, pages/checkout.tsx)_
+- **TCP-17** "Proteger por R$ X" aceita a proteção direto, sem reabrir o modal: o aviso recolhe e a linha "Proteção de compra" entra no resumo com a confirmação do TCP-25. _(components/aviso-sem-protecao.tsx)_
 - **TCP-14** O nome "Proteção de compra" no resumo é clicável (sublinhado) e reabre o modal, que entra de novo no estado inicial. "Continuar com proteção" mantém a proteção e "Prefiro correr o risco" tira a linha e o valor do total. _(components/checkout-resumo.tsx, pages/checkout.tsx)_
 - **TCP-15** Os meios de pagamento não abrem: o protótipo termina na escolha da proteção. _(components/checkout-metodos.tsx)_
 
@@ -74,6 +76,7 @@ Tempos em ms. Curvas: ease-out `cubic-bezier(0.2, 0.8, 0.2, 1)`, standard `cubic
 - **TCP-23** Passar o mouse: botão primário `#FF271A`→`#C81F14`; acordeão e botão secundário ganham fundo `#FAFAFA`.
 - **TCP-24** Ao fechar, o modal e o scrim somem juntos em 200ms.
 - **TCP-25** Ao aceitar a proteção, o resumo confirma depois de o modal fechar: a linha "Proteção de compra" abre, ganha um realce verde que some e o total conta até o novo valor (sem escudo ao lado do nome, retirado a pedido em 2026-11-19). Ao remover, a linha recolhe e o total conta de volta. _(components/checkout-resumo.tsx)_
+- **TCP-27** O aviso de compra sem proteção (TCP-16) abre depois de o modal fechar: a altura cresce e o bloco aparece subindo 10px em 0,45s; ao aceitar por ele, recolhe em 0,35s. Os meios de pagamento descem e sobem junto, sem salto. _(components/aviso-sem-protecao.tsx)_
 - **TCP-26** Com "reduzir movimento" ligado no sistema, tudo aparece direto no estado final: sem sequência de entrada, pulsos, brilho ou transições. A espera de 600ms do TCP-12 continua. _(components/modal-protecao.css, components/checkout-resumo.tsx)_
 
 ### Estados
@@ -87,6 +90,7 @@ Tempos em ms. Curvas: ease-out `cubic-bezier(0.2, 0.8, 0.2, 1)`, standard `cubic
 
 ## Em aberto
 
+- O aviso de compra sem proteção (TCP-16) não está no fluxo do Figma do Teste C: veio do protótipo do teste B, a pedido em 2026-11-19. Levar para o Figma se aprovado.
 - A spec v.5 diz "nada fica em loop infinito" e pulsos em 3 ciclos; o protótipo deixa os pulsos em loop a pedido (TCP-21). Alinhar a spec e o quadro do Figma.
 - Os frames de Checkout do Figma (`11026:80145`, `11026:80492`, `11026:81733`) e os de celular não devolvem linha do tempo de animação pela integração do Figma (o retorno veio vazio). As animações do protótipo seguem o quadro escrito "Animação & handoff"; se houver keyframes na timeline do Figma com algo diferente do quadro, falta comparar.
 - Os pulsos são anéis cinzas (neutral-500), não vermelhos: a spec dá o α mas não a cor, e a cor foi confirmada em 2026-11-19 ("apenas as linhas cinzas").
