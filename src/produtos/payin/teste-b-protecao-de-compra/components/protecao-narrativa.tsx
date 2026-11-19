@@ -113,7 +113,7 @@ function Oferta({ onVerCoberturas, onEscolher }: { onVerCoberturas: () => void; 
     );
 }
 
-/** Depois da escolha, o bloco encolhe para uma linha que confirma a decisão e deixa o comprador mudar de ideia. */
+/** Depois da escolha, o bloco encolhe para uma linha que confirma a decisão. Quem recusou ainda pode aceitar por aqui; quem aceitou revê a escolha pelo resumo. */
 function Escolhido({ onEscolher }: { onEscolher: (escolha: EscolhaProtecao) => void }) {
     const { protecao, valorProtecao } = usePedido();
     const comProtecao = protecao === "com";
@@ -134,15 +134,9 @@ function Escolhido({ onEscolher }: { onEscolher: (escolha: EscolhaProtecao) => v
             </span>
             <p className="flex min-w-[200px] flex-1 flex-col text-sm text-tertiary">
                 <span className="font-semibold text-primary">{comProtecao ? "Compra protegida" : "Você seguiu sem proteção"}</span>
-                <span className="tabular-nums">
-                    {comProtecao ? `Proteção de compra · ${brl(valorProtecao)}` : "Se um imprevisto te impedir de ir, não há reembolso."}
-                </span>
+                {!comProtecao && <span>Se um imprevisto te impedir de ir, não há reembolso.</span>}
             </p>
-            {comProtecao ? (
-                <button type="button" onClick={() => onEscolher("sem")} className={`${botao} text-tertiary hover:text-tertiary_hover`}>
-                    Remover
-                </button>
-            ) : (
+            {!comProtecao && (
                 <button type="button" onClick={() => onEscolher("com")} className={`${botao} text-[#c81f14] tabular-nums hover:text-[#a8170e]`}>
                     Proteger por {brl(valorProtecao)}
                 </button>

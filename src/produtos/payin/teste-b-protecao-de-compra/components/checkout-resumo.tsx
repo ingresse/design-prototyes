@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import { ShieldTick } from "@untitledui/icons";
 import { AnimatePresence, animate, motion, useReducedMotion } from "motion/react";
 import { cx } from "@/utils/cx";
 import capa from "../assets/capa-evento.png";
@@ -86,7 +85,7 @@ export function CheckoutResumo({ onRevisarProtecao }: { onRevisarProtecao: () =>
                 </ul>
             </section>
 
-            {/* Ao aceitar a proteção: a linha abre no resumo, pisca em verde, o escudo "carimba" e o total conta até o novo valor */}
+            {/* Ao aceitar a proteção: a linha abre no resumo, pisca em verde e o total conta até o novo valor */}
             <AnimatePresence initial={false}>
                 {protecao === "com" && (
                     <motion.div
@@ -108,18 +107,7 @@ export function CheckoutResumo({ onRevisarProtecao }: { onRevisarProtecao: () =>
                                     transition={{ duration: 1.6, delay: ATRASO_MODAL + 0.15, times: [0, 0.15, 0.6, 1], ease: "easeOut" }}
                                 />
                             )}
-                            <span className="relative flex items-center gap-1.5">
-                                <motion.span
-                                    aria-hidden="true"
-                                    className="flex"
-                                    initial={semMovimento ? false : { scale: 0, rotate: -20 }}
-                                    animate={{ scale: 1, rotate: 0 }}
-                                    transition={{ type: "spring", stiffness: 420, damping: 14, delay: ATRASO_MODAL + 0.3 }}
-                                >
-                                    <ShieldTick className="size-4 text-utility-green-600" />
-                                </motion.span>
-                                {nomeProtecao}
-                            </span>
+                            <span className="relative">{nomeProtecao}</span>
                             <span className="relative tabular-nums">{brl(valorProtecao)}</span>
                         </p>
                     </motion.div>

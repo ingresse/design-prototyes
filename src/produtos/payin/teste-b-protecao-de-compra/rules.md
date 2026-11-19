@@ -37,7 +37,8 @@ evento da plataforma unificada. Valores de proteção (8%) e taxas são de exper
 - **TBP-06** Enquanto não há escolha, os meios de pagamento ficam travados (esmaecidos, sem clique) e o texto "Escolha uma das opções de proteção acima para liberar o pagamento." aparece sob o título. _(components/checkout-metodos.tsx)_
 - **TBP-07** "Continuar com proteção · R$ X" inclui a linha "Proteção de compra" no resumo, soma o valor ao total e libera o pagamento. _(components/protecao-narrativa.tsx, components/checkout-resumo.tsx)_
 - **TBP-08** "Prefiro correr o risco" libera o pagamento sem a linha da proteção no resumo. _(components/protecao-narrativa.tsx)_
-- **TBP-09** Depois da escolha, o bloco encolhe para uma linha de confirmação: "Compra protegida" com "Remover", ou "Você seguiu sem proteção" com "Proteger por R$ X". O comprador pode mudar de ideia quantas vezes quiser; o pagamento segue liberado. _(components/protecao-narrativa.tsx)_
+- **TBP-09** Depois da escolha, o bloco encolhe para uma linha de confirmação. Com proteção: só o escudo e "Compra protegida", sem valor e sem botão. Sem proteção: "Você seguiu sem proteção" com "Proteger por R$ X". O pagamento segue liberado. _(components/protecao-narrativa.tsx)_
+- **TBP-15** Quem aceitou a proteção só a retira pelo modal de coberturas, aberto pelo nome "Proteção de compra" no resumo ("Prefiro correr o risco"). _(components/modal-coberturas.tsx)_
 - **TBP-10** "Conheça as coberturas!" abre um modal com os quatro grupos de cobertura (Saúde, Imprevistos no caminho, Emergências em casa, Documentos e questões judiciais). O modal fecha no "X", clicando fora ou no Esc sem mudar a escolha, e repete os dois botões da oferta. _(components/modal-coberturas.tsx)_
 - **TBP-11** O nome "Proteção de compra" no resumo é clicável (sublinhado) e abre o mesmo modal de coberturas. _(components/checkout-resumo.tsx, pages/checkout.tsx)_
 - **TBP-12** O valor no botão da oferta é o calculado para o pedido (8% dos ingressos), o mesmo que entra no resumo. _(components/protecao-narrativa.tsx, data/pedido-store.ts)_
@@ -47,7 +48,7 @@ evento da plataforma unificada. Valores de proteção (8%) e taxas são de exper
 ### Animações
 - **TBP-20** Perguntas do gancho: cinco perguntas em loop de 13s. Cada uma fica 2s parada e sobe 72px em 0,5s para dar lugar à próxima; a primeira se repete no fim para o ciclo recomeçar sem salto. Tempos e curvas vêm do Figma. _(components/protecao-narrativa.tsx)_
 - **TBP-21** Brilho do botão "Continuar com proteção": uma faixa clara de 70px cruza o botão da esquerda para a direita a cada 2,6s, em loop. _(components/protecao-narrativa.tsx)_
-- **TBP-22** Ao aceitar a proteção, o resumo confirma: a linha "Proteção de compra" abre, ganha um realce verde que some, o escudo aparece e o total conta até o novo valor. Ao remover, a linha recolhe e o total conta de volta. _(components/checkout-resumo.tsx)_
+- **TBP-22** Ao aceitar a proteção, o resumo confirma: a linha "Proteção de compra" abre, ganha um realce verde que some e o total conta até o novo valor (sem escudo ao lado do nome). Ao remover, a linha recolhe e o total conta de volta. _(components/checkout-resumo.tsx)_
 - **TBP-23** Com "reduzir movimento" ligado no sistema, as perguntas ficam paradas na primeira, o brilho some e o resumo muda sem animação. Leitor de tela recebe as cinco perguntas como texto, sem o loop. _(components/protecao-narrativa.tsx, components/checkout-resumo.tsx)_
 
 ### Estados
