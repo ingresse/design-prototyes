@@ -49,7 +49,7 @@ export function CheckoutResumo({ onRevisarProtecao }: { onRevisarProtecao: () =>
                             type="button"
                             aria-haspopup="dialog"
                             onClick={onRevisarProtecao}
-                            className="rounded-xs tracking-[0.28px] underline decoration-fg-quaternary underline-offset-4 outline-focus-ring transition duration-100 ease-linear hover:text-secondary_hover hover:decoration-current focus-visible:outline-2 focus-visible:outline-offset-2"
+                            className="rounded-xs tracking-[0.28px] underline [text-underline-position:from-font] outline-focus-ring transition duration-100 ease-linear hover:text-secondary_hover focus-visible:outline-2 focus-visible:outline-offset-2"
                         >
                             Proteção de compra
                         </button>

@@ -3,7 +3,7 @@
 > **Rotas:** `/payin/teste-ab-protecao-de-compra`, `/payin/teste-ab-protecao-de-compra/checkout`
 > **No menu:** Produtos › PayIn › Teste AB - Proteção de compra
 > **Versão em uso:** variante B (modal sobre o checkout)
-> **Revisado em:** 2026-11-18
+> **Revisado em:** 2026-11-19
 
 Este arquivo é a fonte da verdade do comportamento da feature. Mudou uma regra no código, mude
 aqui no mesmo commit. Achou divergência entre código e este arquivo, registre em **Em aberto**
@@ -34,12 +34,14 @@ evento da plataforma unificada. Valores de proteção (8%) e taxas são de exper
 - **TAP-11** Ao clicar em "Continuar", um carregamento cobre a tela inteira (fundo escurecido e desfocado, cartão escuro com o círculo girando e "Preparando seu pagamento…") por 1,5s antes de abrir o checkout. Nada atrás dele recebe clique. _(pages/selecao.tsx, components/carregando-pagamento.tsx)_
 - **TAP-03** "Continuar" leva ao checkout e zera a escolha de proteção: cada entrada no checkout mostra o modal de novo. _(pages/selecao.tsx)_
 - **TAP-04** O modal de proteção abre sobre o checkout enquanto não houver escolha. _(pages/checkout.tsx)_
-- **TAP-05** O modal não tem "X" e não fecha ao clicar fora nem com Esc: as saídas são "Continuar com proteção" e "Prefiro correr o risco". _(components/modal-protecao.tsx)_
-- **TAP-06** "Continuar com proteção" fecha o modal e inclui a linha "Proteção de compra" no resumo (sem o título "Adicionais" do Figma), somando o valor ao total. _(components/checkout-resumo.tsx)_
+- **TAP-05** O modal não tem "X" e não fecha ao clicar fora nem com Esc: as saídas são "Proteger meu ingresso" e "Prefiro correr o risco". _(components/modal-protecao.tsx)_
+- **TAP-06** "Proteger meu ingresso" fecha o modal e inclui a linha "Proteção de compra" no resumo (sem o título "Adicionais" do Figma), somando o valor ao total. _(components/checkout-resumo.tsx)_
 - **TAP-07** "Prefiro correr o risco" fecha o modal; o resumo fica sem a linha da proteção e a oferta não se repete naquela visita. _(components/checkout-resumo.tsx)_
 - ~~**TAP-12**~~ Substituída por TAP-13 (o "Remover" saiu do resumo).
-- **TAP-13** O nome "Proteção de compra" no resumo é clicável (sublinhado) e reabre o modal de proteção. Enquanto o modal está reaberto, a linha e o total continuam como estavam; "Continuar com proteção" mantém a proteção e "Prefiro correr o risco" tira a linha e o valor do total. _(components/checkout-resumo.tsx, pages/checkout.tsx)_
-- **TAP-08** "Ver todas as coberturas" abre, dentro dos próprios cartões, os casos cobertos de cada tipo de imprevisto. _(components/modal-protecao.tsx)_
+- **TAP-13** O nome "Proteção de compra" no resumo é clicável (sublinhado) e reabre o modal de proteção. Enquanto o modal está reaberto, a linha e o total continuam como estavam; "Proteger meu ingresso" mantém a proteção e "Prefiro correr o risco" tira a linha e o valor do total. _(components/checkout-resumo.tsx, pages/checkout.tsx)_
+- ~~**TAP-08**~~ Substituída por TAP-14 (o modal foi redesenhado no Figma em 2026-11-19).
+- **TAP-14** O modal abre enxuto: título, descrição, "Conheça as coberturas" (recolhido), valor da proteção e os dois botões. "Conheça as coberturas" expande quatro cartões (Saúde, Imprevistos no caminho, Emergências em casa, Documentos e questões judiciais) com os casos cobertos de cada um; clicar de novo recolhe. _(components/modal-protecao.tsx)_
+- **TAP-15** "Valor da proteção" no modal mostra o valor calculado para o pedido (8% dos ingressos), o mesmo que entra no resumo. _(components/modal-protecao.tsx, data/pedido-store.ts)_
 - **TAP-09** No desktop o modal é um card central de 480px; no celular é uma folha ancorada no rodapé. _(components/modal-protecao.tsx)_
 - **TAP-10** Os meios de pagamento não abrem: o protótipo termina na escolha da proteção. _(components/checkout-metodos.tsx)_
 
@@ -57,12 +59,18 @@ evento da plataforma unificada. Valores de proteção (8%) e taxas são de exper
 
 - O Figma mostra "Atribuição" nas etapas, mas o fluxo vai da seleção direto ao checkout. Falta decidir se o modal também aparece para quem já recusou a proteção na atribuição.
 - Depois de escolher "Prefiro correr o risco" (na primeira vez ou ao rever), a linha some do resumo e não há como adicionar a proteção de volta no checkout.
-- O conteúdo de "Ver todas as coberturas" não está no Figma (só o link). Os casos vieram do modal de coberturas do experimento anterior e precisam de validação do jurídico.
+- O modal não tem mais a linha de aceite dos "Termos e condições" (saiu no redesenho do Figma). Falta confirmar com o jurídico se a adesão pode ficar sem esse aceite.
+- Os casos cobertos listados em "Conheça as coberturas" vêm do Figma e precisam de validação do jurídico.
+- No Figma, o frame desktop com as coberturas abertas tem outro título ("Imprevistos acontecem. Não perca seu ingresso."). O protótipo usa "Proteja sua compra." nos dois estados, como nos outros três frames.
+- No Figma, o cartão "Saúde" usa ícone de coração no desktop e check-circle no celular. O protótipo usa o coração nos dois.
+- No Figma, "Valor da proteção" mostra R$ 150,00, mas o resumo do mesmo pedido mostra R$ 24,00. O protótipo usa o valor calculado (TAP-15).
+- O resumo do checkout no Figma ainda mostra o título "Adicionais"; no protótipo ele foi removido a pedido (TAP-06).
+- No Figma, o carregamento no celular (`10938:72241`) é um cartão branco só com o círculo (o texto fica cortado); no desktop é o cartão escuro. O protótipo usa o cartão escuro com texto nos dois.
 - O checkout no celular foi derivado do desktop e da estrutura do frame; o Figma só mostra essa tela desfocada atrás do modal.
 - A capa do evento no checkout é o placeholder verde do Figma.
 - No Figma o texto "Preparando seu pagamento…" usa text-primary (#171717) sobre o cartão #181818 e fica invisível. No protótipo está em branco; falta corrigir o token no Figma.
 
 ## Fontes
 
-- Figma: Checkout AWA, seção "Opção B" (`10844:58833`) e carregamento (`10867:67896`)
+- Figma: Checkout AWA, seção "Opção B" (`10844:58833`), carregamento (`10867:67896`) e modal redesenhado (`10938:71988`, `10938:72102`, `10938:72199`)
 - Reunião "Proteção de compra" de 2026-11-18 (Laricia e Wander)
