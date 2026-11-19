@@ -14,14 +14,13 @@ const PERGUNTAS = [
 ];
 
 /* Tempos do Figma (frame Checkout, linha do tempo de 13s em loop):
-   cada pergunta fica 2s parada e sobe 72px em 0,5s; o brilho cruza o botão a cada 2,6s. */
+   cada pergunta fica 2s parada e sobe 72px em 0,5s. O brilho do botão, que existe no Figma, foi retirado a pedido. */
 const CICLO_S = 13;
 const PASSO_PX = 72;
 const TRILHO_Y = [0, 0, -72, -72, -144, -144, -216, -216, -288, -288, -360, -360];
 const TRILHO_TEMPOS = [0, 0.1538, 0.1923, 0.3462, 0.3846, 0.5385, 0.5769, 0.7308, 0.7692, 0.9231, 0.9615, 1];
 const CURVA = [0.5, 0, 0.5, 1] as const;
 const TRILHO_CURVAS = ["linear", "easeInOut", CURVA, "easeInOut", CURVA, "easeInOut", CURVA, "easeInOut", CURVA, "easeInOut", "linear"] as const;
-const BRILHO_S = 2.6;
 /** Curva da troca de estado do bloco (desacelera no fim). */
 const SAIDA_SUAVE = [0.22, 1, 0.36, 1] as const;
 
@@ -55,10 +54,9 @@ function Gancho() {
     );
 }
 
-/** Oferta: título, texto com o link das coberturas e as duas saídas. O brilho passa sobre o botão principal. */
+/** Oferta: título, texto com o link das coberturas e as duas saídas. */
 function Oferta({ onVerCoberturas, onEscolher }: { onVerCoberturas: () => void; onEscolher: (escolha: EscolhaProtecao) => void }) {
     const { valorProtecao } = usePedido();
-    const semMovimento = useReducedMotion();
 
     return (
         <div className="flex min-w-0 flex-1 flex-col gap-3 p-4">
@@ -89,20 +87,9 @@ function Oferta({ onVerCoberturas, onEscolher }: { onVerCoberturas: () => void; 
                 <button
                     type="button"
                     onClick={() => onEscolher("com")}
-                    className="relative w-full overflow-hidden rounded-lg bg-[#ff271a] px-3 py-2 text-sm font-semibold text-white shadow-xs-skeuomorphic outline-focus-ring transition duration-100 ease-linear hover:bg-[#e01d12] focus-visible:outline-2 focus-visible:outline-offset-2"
+                    className="w-full rounded-lg bg-[#ff271a] px-3 py-2 text-sm font-semibold text-white shadow-xs-skeuomorphic outline-focus-ring transition duration-100 ease-linear hover:bg-[#e01d12] focus-visible:outline-2 focus-visible:outline-offset-2"
                 >
-                    <span className="relative tabular-nums">Continuar com proteção · {brl(valorProtecao)}</span>
-                    {!semMovimento && (
-                        <motion.span
-                            aria-hidden="true"
-                            className="pointer-events-none absolute inset-0"
-                            initial={{ x: "0%" }}
-                            animate={{ x: "122%" }}
-                            transition={{ duration: BRILHO_S, ease: CURVA, repeat: Infinity }}
-                        >
-                            <span className="absolute inset-y-0 -left-[70px] w-[70px] bg-linear-to-r from-white/0 via-white/[0.22] to-white/0" />
-                        </motion.span>
-                    )}
+                    <span className="tabular-nums">Continuar com proteção · {brl(valorProtecao)}</span>
                 </button>
                 <button
                     type="button"
@@ -152,7 +139,7 @@ function Escolhido({ onEscolher }: { onEscolher: (escolha: EscolhaProtecao) => v
 
 /**
  * Teste B: a oferta de proteção fica dentro do checkout, acima dos meios de pagamento, e trava o pagamento até a escolha.
- * À esquerda (no celular, em cima) o gancho escuro com as perguntas em loop; à direita a oferta com o brilho no botão.
+ * À esquerda (no celular, em cima) o gancho escuro com as perguntas em loop; à direita a oferta.
  */
 export function ProtecaoNarrativa({ onVerCoberturas }: { onVerCoberturas: () => void }) {
     const { protecao, escolherProtecao } = usePedido();
@@ -176,7 +163,7 @@ export function ProtecaoNarrativa({ onVerCoberturas }: { onVerCoberturas: () => 
             <motion.div initial={false} animate={{ height: altura }} transition={semMovimento ? instantaneo : { duration: 0.55, ease: SAIDA_SUAVE }}>
                 <div ref={conteudo} className="relative">
                     {/* popLayout: a oferta sai de cena por cima enquanto a confirmação entra e a altura encolhe, tudo junto.
-                        Sem initial={false} aqui: ele faria as perguntas e o brilho nascerem já no último quadro, sem animar */}
+                        Sem initial={false} aqui: ele faria as perguntas nascerem já no último quadro, sem animar */}
                     <AnimatePresence mode="popLayout">
                         {protecao === null ? (
                             <motion.div

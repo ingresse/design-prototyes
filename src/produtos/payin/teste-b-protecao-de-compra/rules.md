@@ -47,10 +47,10 @@ evento da plataforma unificada. Valores de proteção (8%) e taxas são de exper
 
 ### Animações
 - **TBP-20** Perguntas do gancho: cinco perguntas em loop de 13s. Cada uma fica 2s parada e sobe 72px em 0,5s para dar lugar à próxima; a primeira se repete no fim para o ciclo recomeçar sem salto. Tempos e curvas vêm do Figma. _(components/protecao-narrativa.tsx)_
-- **TBP-21** Brilho do botão "Continuar com proteção": uma faixa clara de 70px cruza o botão da esquerda para a direita a cada 2,6s, em loop. _(components/protecao-narrativa.tsx)_
+- ~~**TBP-21**~~ Brilho do botão "Continuar com proteção": retirado a pedido em 2026-11-19. O botão fica estático.
 - **TBP-22** Ao aceitar a proteção, o resumo confirma: a linha "Proteção de compra" abre, ganha um realce verde que some e o total conta até o novo valor (sem escudo ao lado do nome). Ao remover, a linha recolhe e o total conta de volta. _(components/checkout-resumo.tsx)_
 - **TBP-24** Troca do bloco depois da escolha: a oferta some com um leve desfoque (0,3s) enquanto a altura do bloco encolhe até o tamanho da confirmação (0,55s) e a confirmação sobe e aparece (0,45s, começando 0,2s depois). Os meios de pagamento sobem junto, sem salto. _(components/protecao-narrativa.tsx)_
-- **TBP-23** Com "reduzir movimento" ligado no sistema, as perguntas ficam paradas na primeira, o brilho some e o resumo muda sem animação. Leitor de tela recebe as cinco perguntas como texto, sem o loop. _(components/protecao-narrativa.tsx, components/checkout-resumo.tsx)_
+- **TBP-23** Com "reduzir movimento" ligado no sistema, as perguntas ficam paradas na primeira e o resumo muda sem animação. Leitor de tela recebe as cinco perguntas como texto, sem o loop. _(components/protecao-narrativa.tsx, components/checkout-resumo.tsx)_
 
 ### Estados
 - **TBP-30** A jornada sempre começa na seleção de ingressos: checkout aberto sem pedido (URL direta ou página recarregada) redireciona para a seleção. _(pages/checkout.tsx)_
@@ -64,6 +64,7 @@ evento da plataforma unificada. Valores de proteção (8%) e taxas são de exper
 
 ## Em aberto
 
+- O Figma tem um brilho cruzando o botão "Continuar com proteção" a cada 2,6s (`10987:425`); o protótipo não tem mais (TBP-21). Alinhar o Figma se a decisão se mantiver.
 - O estado depois da escolha (TBP-09) não está no Figma: foi criado no protótipo. Validar e levar para o Figma se aprovado.
 - O conteúdo de "Conheça as coberturas!" (TBP-10) não está neste fluxo do Figma: o modal reaproveita as coberturas do teste AB. Os casos cobertos precisam de validação do jurídico.
 - No Figma o botão mostra "R$ 11,90", mas o mesmo frame tem total de R$ 359,00 para R$ 300,00 em ingressos e R$ 35,00 em taxas (diferença de R$ 24,00, os 8%). O protótipo usa o valor calculado (TBP-12).
