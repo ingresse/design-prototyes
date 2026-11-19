@@ -87,8 +87,8 @@
 .tc-recorte {
     animation: tc-aparecer 200ms linear var(--tc-d-recortes) both;
     transition:
-        border-color 200ms var(--tc-standard),
-        background-color 200ms var(--tc-standard);
+        border-color 200ms linear,
+        background-color 200ms linear;
 }
 
 /* 11 · Picote (rasga da esquerda, escala X) · 700/720 · 420 · standard */
@@ -99,35 +99,43 @@
     animation: tc-rasgar 420ms var(--tc-standard) var(--tc-d-picote) both;
 }
 
-/* 12 e 13 · Pulso do escudo: só as linhas cinzas dos anéis piscam suavemente, de dentro para fora,
-   a partir de 700ms · 2400ms × 3 · ease-in-out (param em ~8,5s). Sem fundo colorido. */
-.tc-anel {
-    animation: tc-anel 2400ms ease-in-out 3;
+/* 12 e 13 · Pulsos: anel cinza (traço 2px) · escala 0.55→1.25 · opacidade 0→0.9 (aos 25%)→0
+   · atrasos 700 e 1500 · 2400ms × 3 ciclos · ease-out (param em ~8,7s) */
+.tc-pulso {
+    opacity: 0;
+    animation:
+        tc-pulso-escala 2400ms var(--tc-ease-out) 700ms 3,
+        tc-pulso-opacidade 2400ms var(--tc-ease-out) 700ms 3;
+}
+.tc-pulso-2 {
+    animation-delay: 1500ms;
 }
 
-/* 14 · Brilho no botão primário (varredura) · 1300 · 800ms × 1 · standard */
+/* 14 · Brilho no botão primário: faixa branca a 22%, 25% da largura do botão, inclinada −20°,
+   varre de X −120% a +420% da própria largura · 1300 · 800ms × 1 · standard */
 .tc-brilho {
+    width: 25%;
     opacity: 0;
-    background: linear-gradient(105deg, transparent 30%, rgba(255, 255, 255, 0.35) 50%, transparent 70%);
+    background: rgba(255, 255, 255, 0.22);
     animation: tc-brilho 800ms var(--tc-standard) 1300ms 1;
 }
 
 /* Micro-interações */
 .tc-cartao {
     transition:
-        border-color 200ms var(--tc-standard),
-        background-color 200ms var(--tc-standard);
+        border-color 200ms linear,
+        background-color 200ms linear;
 }
 
 .tc-chevron {
-    transition: transform 200ms var(--tc-standard);
+    transition: transform 150ms linear;
 }
 
 /* Acordeão: a altura abre em 200ms (Smart Animate do protótipo) e a lista aparece (opacidade 0→1, Y −4→0) */
 .tc-coberturas {
     display: grid;
     grid-template-rows: 0fr;
-    transition: grid-template-rows 200ms var(--tc-standard);
+    transition: grid-template-rows 150ms linear;
 }
 .tc-coberturas[data-aberto="true"] {
     grid-template-rows: 1fr;
@@ -139,9 +147,9 @@
     transform: translateY(-4px);
     visibility: hidden;
     transition:
-        opacity 200ms var(--tc-standard),
-        transform 200ms var(--tc-standard),
-        visibility 0s linear 200ms;
+        opacity 150ms linear,
+        transform 150ms linear,
+        visibility 0s linear 150ms;
 }
 .tc-coberturas[data-aberto="true"] > div {
     opacity: 1;
@@ -153,15 +161,15 @@
 /* Celular com coberturas abertas: ícone e anéis somem, o rodapé ganha borda e sombra */
 .tc-icone {
     transition:
-        height 200ms var(--tc-standard),
-        margin 200ms var(--tc-standard),
-        opacity 200ms var(--tc-standard);
+        height 150ms linear,
+        margin 150ms linear,
+        opacity 150ms linear;
 }
 .tc-rodape {
     box-shadow:
         0 -1px 0 transparent,
         0 -4px 12px -4px transparent;
-    transition: box-shadow 200ms var(--tc-standard);
+    transition: box-shadow 150ms linear;
 }
 @media (max-width: 639.98px) {
     .tc-modal[data-coberturas="true"] .tc-icone {
@@ -233,24 +241,33 @@
         transform: scaleX(0);
     }
 }
-@keyframes tc-anel {
-    0%,
-    100% {
-        filter: none;
+@keyframes tc-pulso-escala {
+    from {
+        transform: scale(0.55);
     }
-    35% {
-        /* Reforça o traço cinza, sem mudar a espessura e sem fundo */
-        filter: brightness(0);
+    to {
+        transform: scale(1.25);
+    }
+}
+@keyframes tc-pulso-opacidade {
+    0% {
+        opacity: 0;
+    }
+    25% {
+        opacity: 0.9;
+    }
+    100% {
+        opacity: 0;
     }
 }
 @keyframes tc-brilho {
     from {
         opacity: 1;
-        transform: translateX(-100%);
+        transform: translateX(-120%) skewX(-20deg);
     }
     to {
         opacity: 1;
-        transform: translateX(100%);
+        transform: translateX(420%) skewX(-20deg);
     }
 }
 

@@ -108,7 +108,7 @@ function Conteudo({
   return (
     <AriaModal
       data-coberturas={coberturasAbertas}
-      className="tc-modal relative flex max-h-[calc(100dvh-48px)] w-full flex-col overflow-hidden rounded-t-2xl bg-white shadow-[0_24px_48px_-12px_rgba(0,0,0,0.18),0_4px_4px_-2px_rgba(0,0,0,0.04)] outline-hidden sm:max-h-full sm:max-w-[480px] sm:rounded-2xl"
+      className="tc-modal relative flex max-h-[calc(100dvh-56px)] w-full flex-col overflow-hidden rounded-t-2xl bg-white shadow-[0_24px_48px_-12px_rgba(0,0,0,0.18),0_4px_4px_-2px_rgba(0,0,0,0.04)] outline-hidden sm:max-h-full sm:max-w-[480px] sm:rounded-2xl"
     >
       <AriaDialog className="flex min-h-0 flex-1 flex-col outline-hidden">
         {/* Alça da folha (só no celular) */}
@@ -129,27 +129,28 @@ function Conteudo({
                   <img
                     src={ring96}
                     alt=""
-                    style={{ animationDelay: "700ms" }}
-                    className="tc-anel absolute top-1/2 left-1/2 max-w-none -translate-1/2"
+                    className="absolute top-1/2 left-1/2 max-w-none -translate-1/2"
                   />
                   <img
                     src={ring144}
                     alt=""
-                    style={{ animationDelay: "880ms" }}
-                    className="tc-anel absolute top-1/2 left-1/2 max-w-none -translate-1/2"
+                    className="absolute max-sm:opacity-[0.86] top-1/2 left-1/2 max-w-none -translate-1/2"
                   />
                   <img
                     src={ring192}
                     alt=""
-                    style={{ animationDelay: "1060ms" }}
-                    className="tc-anel absolute top-1/2 left-1/2 max-w-none -translate-1/2"
+                    className="absolute max-sm:opacity-[0.67] top-1/2 left-1/2 max-w-none -translate-1/2"
                   />
                   <img
                     src={ring240}
                     alt=""
-                    style={{ animationDelay: "1240ms" }}
-                    className="tc-anel absolute top-1/2 left-1/2 max-w-none -translate-1/2 max-sm:hidden"
+                    className="absolute top-1/2 left-1/2 max-w-none -translate-1/2 max-sm:hidden"
                   />
+                </span>
+                {/* Pulsos: anel cinza de 160px (celular) / 200px (desktop), traço de 2px, que cresce e some */}
+                <span className="absolute top-1/2 left-1/2 size-40 -translate-1/2 sm:size-[200px]">
+                  <span className="tc-pulso absolute inset-0 rounded-full border-2 border-[rgba(115,115,115,0.12)]" />
+                  <span className="tc-pulso tc-pulso-2 absolute inset-0 rounded-full border-2 border-[rgba(115,115,115,0.08)]" />
                 </span>
                 <span className="tc-escudo absolute inset-0">
                   <img
@@ -325,7 +326,7 @@ function Conteudo({
             >
               <span
                 aria-hidden="true"
-                className="tc-brilho pointer-events-none absolute inset-0"
+                className="tc-brilho pointer-events-none absolute inset-y-0 left-0"
               />
               <img src={shieldTickBranco} alt="" className="relative" />
               <span className="relative px-0.5">Continuar com proteção</span>

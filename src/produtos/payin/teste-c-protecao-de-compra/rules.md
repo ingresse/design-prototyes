@@ -36,7 +36,7 @@ evento da plataforma unificada. Valores de proteção (8%) e taxas são de exper
 - **TCP-04** "Continuar" leva ao checkout e zera a escolha de proteção: cada entrada no checkout mostra o modal de novo. _(pages/selecao.tsx)_
 - **TCP-05** O modal de proteção abre sobre o checkout enquanto não houver escolha. _(pages/checkout.tsx)_
 - **TCP-06** O modal não tem "X" e não fecha ao clicar fora nem com Esc: as saídas são "Continuar com proteção" e "Prefiro correr o risco". _(components/modal-protecao.tsx)_
-- **TCP-07** No desktop o modal é um card central de 480px; no celular é uma folha ancorada no rodapé, com alça no topo. _(components/modal-protecao.tsx)_
+- **TCP-07** No desktop o modal é um card central de 480px; no celular é uma folha ancorada no rodapé, com alça no topo e 56px livres acima dela. _(components/modal-protecao.tsx)_
 - **TCP-08** O modal abre enxuto: escudo com anéis, título, apoio, card em forma de ingresso (valor da proteção, picote, "Conheça as coberturas" recolhido) e os dois botões. _(components/modal-protecao.tsx)_
 - **TCP-09** "Conheça as coberturas" expande os quatro grupos (Saúde, Imprevistos no caminho, Emergências em casa, Documentos e questões judiciais); clicar de novo recolhe. No desktop são duas colunas com os casos em lista; no celular é uma coluna com os casos em linha, separados por "·". _(components/modal-protecao.tsx)_
 - **TCP-10** No celular, com as coberturas abertas, o escudo e os anéis somem e o rodapé dos botões ganha borda e sombra; o conteúdo rola por trás do rodapé fixo. _(components/modal-protecao.tsx, components/modal-protecao.css)_
@@ -65,11 +65,12 @@ Tempos em ms. Curvas: ease-out `cubic-bezier(0.2, 0.8, 0.2, 1)`, standard `cubic
   | 9 | Ações | opacidade + Y(+8→0) | 540 / 560 | 260 | ease-out |
   | 10 | Recortes laterais | opacidade 0→1 | 680 / 700 | 200 | linear |
   | 11 | Picote | rasga da esquerda (escala X) | 700 / 720 | 420 | standard |
-  | 12–13 | Pulso do escudo | as linhas cinzas dos anéis escurecem e voltam, de dentro para fora (180ms entre anéis), sem fundo colorido | 700 | 2400 × 3 | ease-in-out |
-  | 14 | Brilho no botão primário | varredura da esquerda para a direita | 1300 | 800 × 1 | standard |
+  | 12 | Pulso 1 (anel cinza de 200px / 160px, traço 2px, α 0,12) | escala 0,55→1,25; opacidade 0→0,9 (aos 25%)→0 | 700 | 2400 × 3 | ease-out |
+  | 13 | Pulso 2 (mesmo anel, α 0,08) | igual ao pulso 1 | 1500 | 2400 × 3 | ease-out |
+  | 14 | Brilho no botão primário | faixa branca a 22%, 25% da largura do botão, inclinada −20°, varre de X −120% a +420% da própria largura | 1300 | 800 × 1 | standard |
 
-- **TCP-21** Nada fica em loop: o pulso dos anéis para em ~8,5s e o brilho do botão passa uma vez só.
-- **TCP-22** "Conheça as coberturas": o chevron gira 180° e a lista aparece (opacidade 0→1, Y −4→0) enquanto o card abre, em 200ms.
+- **TCP-21** Nada fica em loop: os pulsos do escudo param em ~8,7s e o brilho do botão passa uma vez só.
+- **TCP-22** "Conheça as coberturas": o chevron gira 180° e a lista aparece (opacidade 0→1, Y −4→0) enquanto o card abre; no celular o escudo some e o rodapé ganha borda e sombra. Tudo em 150ms linear. A troca de cor do card protegido (TCP-12) leva 200ms linear; os hovers, 100ms linear.
 - **TCP-23** Passar o mouse: botão primário `#FF271A`→`#C81F14`; acordeão e botão secundário ganham fundo `#FAFAFA`.
 - **TCP-24** Ao fechar, o modal e o scrim somem juntos em 200ms.
 - **TCP-25** Ao aceitar a proteção, o resumo confirma depois de o modal fechar: a linha "Proteção de compra" abre, ganha um realce verde que some, o escudo verde aparece e o total conta até o novo valor. Ao remover, a linha recolhe e o total conta de volta. _(components/checkout-resumo.tsx)_
@@ -87,9 +88,10 @@ Tempos em ms. Curvas: ease-out `cubic-bezier(0.2, 0.8, 0.2, 1)`, standard `cubic
 ## Em aberto
 
 - Os frames de Checkout do Figma (`11026:80145`, `11026:80492`, `11026:81733`) e os de celular não devolvem linha do tempo de animação pela integração do Figma (o retorno veio vazio). As animações do protótipo seguem o quadro escrito "Animação & handoff"; se houver keyframes na timeline do Figma com algo diferente do quadro, falta comparar.
-- O quadro de animação descreve dois pulsos em anel (200px / 160px, escala 0,55→1,25, o segundo com α 0,08). A pedido em 2026-11-19 eles saíram: no lugar, só as linhas cinzas dos anéis piscam suavemente (TCP-20, passos 12–13). Alinhar o quadro do Figma.
-- O quadro não descreve o desenho do brilho do botão: o protótipo usa uma faixa branca inclinada (α 0,35).
-- O quadro não descreve a saída do modal: o protótipo usa 200ms de opacidade (TCP-24).
+- Os pulsos são anéis cinzas (neutral-500), não vermelhos: a spec dá o α mas não a cor, e a cor foi confirmada em 2026-11-19 ("apenas as linhas cinzas").
+- A spec diz botão secundário em Elza Medium 14/20; o frame do Figma usa Semibold 16/24. O protótipo segue o frame.
+- A spec pede recortes em meia-lua de 9×16; o protótipo usa o círculo de 16px do frame, cortado pela borda do card.
+- A spec não descreve a saída do modal: o protótipo usa 200ms de opacidade (TCP-24).
 - No frame "Protegido" a borda do card usa `#86EFAC` (utility-green-300) e as linhas internas seguem brancas; o quadro de animação pede `#75E0A7` e fundo `#F6FEF9`. O protótipo segue o quadro.
 - No Figma o botão é "Continuar com proteção", sem valor; o valor aparece só no card.
 - No Figma, "Valor da proteção" mostra R$ 150,00; o protótipo usa o valor calculado (TCP-11).
@@ -104,4 +106,5 @@ Tempos em ms. Curvas: ease-out `cubic-bezier(0.2, 0.8, 0.2, 1)`, standard `cubic
 
 ## Fontes
 
+- Spec "Modal de proteção de compra — v.5" (`SPEC-protecao-modal-v5.md`, recebida em 2026-11-19): tokens, layout e tabela de animação
 - Figma: Checkout AWA, seção `10981:78889`: modal v.5 desktop (`10999:4866`, `11009:417`, `11012:418`), celular (`11013:4893`, `11014:417`, `11017:418`), quadro "Animação & handoff" (`11021:417`) e frames de Checkout (`11026:80145`, `11026:80492`, `11026:81733`)
