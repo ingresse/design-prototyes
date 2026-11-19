@@ -99,11 +99,16 @@ const PRODUCTS: ProductCardData[] = [
         illustration: "freepass",
     },
     {
-        id: "suspensao-de-conta",
-        name: "Suspensão de conta",
-        description: "Antifraude: fila de análise e suspensão de contas suspeitas",
-        to: "/payin/suspensao-de-conta",
+        id: "payin",
+        name: "PayIn",
+        description: "Checkout e antifraude: testes de proteção de compra e suspensão de conta",
+        to: "/payin",
         illustration: "payin",
+        entradas: [
+            { label: "Teste B - Proteção de compra", to: "/payin/teste-b-protecao-de-compra" },
+            { label: "Teste AB - Proteção de compra", to: "/payin/teste-ab-protecao-de-compra" },
+            { label: "Suspensão de conta", to: "/payin/suspensao-de-conta" },
+        ],
     },
     {
         id: "payout",

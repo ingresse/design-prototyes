@@ -44,7 +44,7 @@ export function PayInMenu() {
                     Produtos
                 </Button>
 
-                <h1 className="mt-5 text-3xl font-bold text-primary">Suspensão de conta</h1>
+                <h1 className="mt-5 text-3xl font-bold text-primary">PayIn</h1>
                 <p className="mt-1 text-md text-tertiary">Escolha um fluxo para visualizar.</p>
 
                 <div className="mt-8 grid grid-cols-1 gap-5 sm:grid-cols-2">
