@@ -10,7 +10,7 @@ import { usePedido } from "../data/pedido-store";
 const Divisor = () => <hr className="border-t border-secondary" />;
 
 /** Pequena espera para o bloco da oferta trocar de estado antes de o resumo animar. */
-const ATRASO_MODAL = 0.15;
+const ATRASO_MODAL = 0.3;
 const SAIDA_SUAVE = [0.22, 1, 0.36, 1] as const;
 
 /** Valor em reais que "conta" até o novo número quando muda (ex.: total ao aceitar ou recusar a proteção). */

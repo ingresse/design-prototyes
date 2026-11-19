@@ -1,3 +1,4 @@
+import { useLayoutEffect, useRef, useState } from "react";
 import { ShieldOff, ShieldTick } from "@untitledui/icons";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { brl } from "../data/evento";
@@ -21,6 +22,8 @@ const TRILHO_TEMPOS = [0, 0.1538, 0.1923, 0.3462, 0.3846, 0.5385, 0.5769, 0.7308
 const CURVA = [0.5, 0, 0.5, 1] as const;
 const TRILHO_CURVAS = ["linear", "easeInOut", CURVA, "easeInOut", CURVA, "easeInOut", CURVA, "easeInOut", CURVA, "easeInOut", "linear"] as const;
 const BRILHO_S = 2.6;
+/** Curva da troca de estado do bloco (desacelera no fim). */
+const SAIDA_SUAVE = [0.22, 1, 0.36, 1] as const;
 
 /** "E se, no dia do show…": as perguntas sobem uma a uma, em loop. */
 function Gancho() {
@@ -154,23 +157,50 @@ function Escolhido({ onEscolher }: { onEscolher: (escolha: EscolhaProtecao) => v
 export function ProtecaoNarrativa({ onVerCoberturas }: { onVerCoberturas: () => void }) {
     const { protecao, escolherProtecao } = usePedido();
     const semMovimento = useReducedMotion();
-    const transicao = semMovimento ? { duration: 0 } : { duration: 0.3, ease: [0.22, 1, 0.36, 1] as const };
+
+    // A altura do bloco acompanha o conteúdo: sem isso o cartão "pula" do tamanho da oferta para o da confirmação
+    const conteudo = useRef<HTMLDivElement>(null);
+    const [altura, setAltura] = useState<number | "auto">("auto");
+    useLayoutEffect(() => {
+        const el = conteudo.current;
+        if (!el) return;
+        const observador = new ResizeObserver(() => setAltura(el.offsetHeight));
+        observador.observe(el);
+        return () => observador.disconnect();
+    }, []);
+
+    const instantaneo = { duration: 0 };
 
     return (
         <section aria-label="Proteção de compra" className="overflow-hidden rounded-xl border border-[#e5e5e5] bg-primary">
-            {/* Sem initial={false}: ele faria as perguntas e o brilho nascerem já no último quadro, sem animar */}
-            <AnimatePresence mode="wait">
-                {protecao === null ? (
-                    <motion.div key="oferta" className="flex flex-col md:flex-row" exit={{ opacity: 0 }} transition={transicao}>
-                        <Gancho />
-                        <Oferta onVerCoberturas={onVerCoberturas} onEscolher={escolherProtecao} />
-                    </motion.div>
-                ) : (
-                    <motion.div key="escolhido" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={transicao}>
-                        <Escolhido onEscolher={escolherProtecao} />
-                    </motion.div>
-                )}
-            </AnimatePresence>
+            <motion.div initial={false} animate={{ height: altura }} transition={semMovimento ? instantaneo : { duration: 0.55, ease: SAIDA_SUAVE }}>
+                <div ref={conteudo} className="relative">
+                    {/* popLayout: a oferta sai de cena por cima enquanto a confirmação entra e a altura encolhe, tudo junto.
+                        Sem initial={false} aqui: ele faria as perguntas e o brilho nascerem já no último quadro, sem animar */}
+                    <AnimatePresence mode="popLayout">
+                        {protecao === null ? (
+                            <motion.div
+                                key="oferta"
+                                className="flex flex-col md:flex-row"
+                                exit={semMovimento ? { opacity: 0 } : { opacity: 0, scale: 0.985, filter: "blur(4px)" }}
+                                transition={semMovimento ? instantaneo : { duration: 0.3, ease: "easeOut" }}
+                            >
+                                <Gancho />
+                                <Oferta onVerCoberturas={onVerCoberturas} onEscolher={escolherProtecao} />
+                            </motion.div>
+                        ) : (
+                            <motion.div
+                                key="escolhido"
+                                initial={semMovimento ? false : { opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={semMovimento ? instantaneo : { duration: 0.45, delay: 0.2, ease: SAIDA_SUAVE }}
+                            >
+                                <Escolhido onEscolher={escolherProtecao} />
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                </div>
+            </motion.div>
         </section>
     );
 }

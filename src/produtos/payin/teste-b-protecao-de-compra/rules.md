@@ -49,6 +49,7 @@ evento da plataforma unificada. Valores de proteção (8%) e taxas são de exper
 - **TBP-20** Perguntas do gancho: cinco perguntas em loop de 13s. Cada uma fica 2s parada e sobe 72px em 0,5s para dar lugar à próxima; a primeira se repete no fim para o ciclo recomeçar sem salto. Tempos e curvas vêm do Figma. _(components/protecao-narrativa.tsx)_
 - **TBP-21** Brilho do botão "Continuar com proteção": uma faixa clara de 70px cruza o botão da esquerda para a direita a cada 2,6s, em loop. _(components/protecao-narrativa.tsx)_
 - **TBP-22** Ao aceitar a proteção, o resumo confirma: a linha "Proteção de compra" abre, ganha um realce verde que some e o total conta até o novo valor (sem escudo ao lado do nome). Ao remover, a linha recolhe e o total conta de volta. _(components/checkout-resumo.tsx)_
+- **TBP-24** Troca do bloco depois da escolha: a oferta some com um leve desfoque (0,3s) enquanto a altura do bloco encolhe até o tamanho da confirmação (0,55s) e a confirmação sobe e aparece (0,45s, começando 0,2s depois). Os meios de pagamento sobem junto, sem salto. _(components/protecao-narrativa.tsx)_
 - **TBP-23** Com "reduzir movimento" ligado no sistema, as perguntas ficam paradas na primeira, o brilho some e o resumo muda sem animação. Leitor de tela recebe as cinco perguntas como texto, sem o loop. _(components/protecao-narrativa.tsx, components/checkout-resumo.tsx)_
 
 ### Estados
