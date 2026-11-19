@@ -65,11 +65,10 @@ Tempos em ms. Curvas: ease-out `cubic-bezier(0.2, 0.8, 0.2, 1)`, standard `cubic
   | 9 | Ações | opacidade + Y(+8→0) | 540 / 560 | 260 | ease-out |
   | 10 | Recortes laterais | opacidade 0→1 | 680 / 700 | 200 | linear |
   | 11 | Picote | rasga da esquerda (escala X) | 700 / 720 | 420 | standard |
-  | 12 | Pulso 1 (anel de 200px / 160px) | escala 0,55→1,25 sumindo | 700 | 2400 × 3 | ease-out |
-  | 13 | Pulso 2 (α 0,08) | escala 0,55→1,25 sumindo | 1500 | 2400 × 3 | ease-out |
+  | 12–13 | Pulso do escudo | as linhas cinzas dos anéis escurecem e voltam, de dentro para fora (180ms entre anéis), sem fundo colorido | 700 | 2400 × 3 | ease-in-out |
   | 14 | Brilho no botão primário | varredura da esquerda para a direita | 1300 | 800 × 1 | standard |
 
-- **TCP-21** Nada fica em loop: os pulsos do escudo param em ~8,7s e o brilho do botão passa uma vez só.
+- **TCP-21** Nada fica em loop: o pulso dos anéis para em ~8,5s e o brilho do botão passa uma vez só.
 - **TCP-22** "Conheça as coberturas": o chevron gira 180° e a lista aparece (opacidade 0→1, Y −4→0) enquanto o card abre, em 200ms.
 - **TCP-23** Passar o mouse: botão primário `#FF271A`→`#C81F14`; acordeão e botão secundário ganham fundo `#FAFAFA`.
 - **TCP-24** Ao fechar, o modal e o scrim somem juntos em 200ms.
@@ -88,7 +87,7 @@ Tempos em ms. Curvas: ease-out `cubic-bezier(0.2, 0.8, 0.2, 1)`, standard `cubic
 ## Em aberto
 
 - Os frames de Checkout do Figma (`11026:80145`, `11026:80492`, `11026:81733`) e os de celular não devolvem linha do tempo de animação pela integração do Figma (o retorno veio vazio). As animações do protótipo seguem o quadro escrito "Animação & handoff"; se houver keyframes na timeline do Figma com algo diferente do quadro, falta comparar.
-- O quadro de animação não diz a cor nem a opacidade do Pulso 1 (só o α 0,08 do Pulso 2). O protótipo usa o vermelho da marca com α 0,14 no Pulso 1 e α 0,08 no Pulso 2, como círculos preenchidos que somem ao crescer.
+- O quadro de animação descreve dois pulsos em anel (200px / 160px, escala 0,55→1,25, o segundo com α 0,08). A pedido em 2026-11-19 eles saíram: no lugar, só as linhas cinzas dos anéis piscam suavemente (TCP-20, passos 12–13). Alinhar o quadro do Figma.
 - O quadro não descreve o desenho do brilho do botão: o protótipo usa uma faixa branca inclinada (α 0,35).
 - O quadro não descreve a saída do modal: o protótipo usa 200ms de opacidade (TCP-24).
 - No frame "Protegido" a borda do card usa `#86EFAC` (utility-green-300) e as linhas internas seguem brancas; o quadro de animação pede `#75E0A7` e fundo `#F6FEF9`. O protótipo segue o quadro.

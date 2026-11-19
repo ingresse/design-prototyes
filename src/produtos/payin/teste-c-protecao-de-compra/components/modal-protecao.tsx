@@ -129,28 +129,27 @@ function Conteudo({
                   <img
                     src={ring96}
                     alt=""
-                    className="absolute top-1/2 left-1/2 max-w-none -translate-1/2"
+                    style={{ animationDelay: "700ms" }}
+                    className="tc-anel absolute top-1/2 left-1/2 max-w-none -translate-1/2"
                   />
                   <img
                     src={ring144}
                     alt=""
-                    className="absolute top-1/2 left-1/2 max-w-none -translate-1/2"
+                    style={{ animationDelay: "880ms" }}
+                    className="tc-anel absolute top-1/2 left-1/2 max-w-none -translate-1/2"
                   />
                   <img
                     src={ring192}
                     alt=""
-                    className="absolute top-1/2 left-1/2 max-w-none -translate-1/2"
+                    style={{ animationDelay: "1060ms" }}
+                    className="tc-anel absolute top-1/2 left-1/2 max-w-none -translate-1/2"
                   />
                   <img
                     src={ring240}
                     alt=""
-                    className="absolute top-1/2 left-1/2 max-w-none -translate-1/2 max-sm:hidden"
+                    style={{ animationDelay: "1240ms" }}
+                    className="tc-anel absolute top-1/2 left-1/2 max-w-none -translate-1/2 max-sm:hidden"
                   />
-                </span>
-                {/* Pulsos: anel de 160px no celular e 200px no desktop */}
-                <span className="absolute top-1/2 left-1/2 size-40 -translate-1/2 sm:size-[200px]">
-                  <span className="tc-pulso absolute inset-0 rounded-full bg-[rgba(255,39,26,0.14)]" />
-                  <span className="tc-pulso tc-pulso-2 absolute inset-0 rounded-full bg-[rgba(255,39,26,0.08)]" />
                 </span>
                 <span className="tc-escudo absolute inset-0">
                   <img

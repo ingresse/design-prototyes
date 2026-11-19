@@ -99,13 +99,10 @@
     animation: tc-rasgar 420ms var(--tc-standard) var(--tc-d-picote) both;
 }
 
-/* 12 e 13 · Pulsos do escudo: escala 0.55→1.25 · 700 e 1500 · 2400ms × 3 · ease-out (param em ~8,7s) */
-.tc-pulso {
-    opacity: 0;
-    animation: tc-pulso 2400ms var(--tc-ease-out) 700ms 3;
-}
-.tc-pulso-2 {
-    animation-delay: 1500ms;
+/* 12 e 13 · Pulso do escudo: só as linhas cinzas dos anéis piscam suavemente, de dentro para fora,
+   a partir de 700ms · 2400ms × 3 · ease-in-out (param em ~8,5s). Sem fundo colorido. */
+.tc-anel {
+    animation: tc-anel 2400ms ease-in-out 3;
 }
 
 /* 14 · Brilho no botão primário (varredura) · 1300 · 800ms × 1 · standard */
@@ -236,14 +233,14 @@
         transform: scaleX(0);
     }
 }
-@keyframes tc-pulso {
-    from {
-        opacity: 1;
-        transform: scale(0.55);
+@keyframes tc-anel {
+    0%,
+    100% {
+        filter: none;
     }
-    to {
-        opacity: 0;
-        transform: scale(1.25);
+    35% {
+        /* Reforça o traço cinza, sem mudar a espessura e sem fundo */
+        filter: brightness(0);
     }
 }
 @keyframes tc-brilho {
