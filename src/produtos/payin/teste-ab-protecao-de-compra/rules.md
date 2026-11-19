@@ -42,6 +42,7 @@ evento da plataforma unificada. Valores de proteção (8%) e taxas são de exper
 - ~~**TAP-08**~~ Substituída por TAP-14 (o modal foi redesenhado no Figma em 2026-11-19).
 - **TAP-14** O modal abre enxuto: título, descrição, "Conheça as coberturas" (recolhido), valor da proteção e os dois botões. "Conheça as coberturas" expande quatro cartões (Saúde, Imprevistos no caminho, Emergências em casa, Documentos e questões judiciais) com os casos cobertos de cada um; clicar de novo recolhe. _(components/modal-protecao.tsx)_
 - **TAP-15** "Valor da proteção" no modal mostra o valor calculado para o pedido (8% dos ingressos), o mesmo que entra no resumo. _(components/modal-protecao.tsx, data/pedido-store.ts)_
+- **TAP-16** Ao aceitar a proteção, o resumo confirma a escolha com uma animação, logo depois de o modal fechar: a linha "Proteção de compra" abre, ganha um realce verde que some em seguida, o escudo verde aparece ao lado do nome e o total conta até o novo valor. Ao recusar depois de ter aceitado, a linha recolhe e o total conta de volta. Com "reduzir movimento" ligado no sistema, tudo muda sem animação. _(components/checkout-resumo.tsx)_
 - **TAP-09** No desktop o modal é um card central de 480px; no celular é uma folha ancorada no rodapé. _(components/modal-protecao.tsx)_
 - **TAP-10** Os meios de pagamento não abrem: o protótipo termina na escolha da proteção. _(components/checkout-metodos.tsx)_
 
@@ -57,8 +58,9 @@ evento da plataforma unificada. Valores de proteção (8%) e taxas são de exper
 
 ## Em aberto
 
+- Depois de escolher "Prefiro correr o risco" (na primeira vez ou ao rever), a linha some do resumo e não há como adicionar a proteção de volta no checkout. Uma oferta "Adicionar por R$ X" no resumo foi testada e descartada em 2026-11-19.
+- A animação de confirmação (TAP-16) e o escudo verde ao lado de "Proteção de compra" no resumo foram criados no protótipo, não estão no Figma. Validar e levar para o Figma se aprovados.
 - O Figma mostra "Atribuição" nas etapas, mas o fluxo vai da seleção direto ao checkout. Falta decidir se o modal também aparece para quem já recusou a proteção na atribuição.
-- Depois de escolher "Prefiro correr o risco" (na primeira vez ou ao rever), a linha some do resumo e não há como adicionar a proteção de volta no checkout.
 - O modal não tem mais a linha de aceite dos "Termos e condições" (saiu no redesenho do Figma). Falta confirmar com o jurídico se a adesão pode ficar sem esse aceite.
 - Os casos cobertos listados em "Conheça as coberturas" vêm do Figma e precisam de validação do jurídico.
 - No Figma, o frame desktop com as coberturas abertas tem outro título ("Imprevistos acontecem. Não perca seu ingresso."). O protótipo usa "Proteja sua compra." nos dois estados, como nos outros três frames.
