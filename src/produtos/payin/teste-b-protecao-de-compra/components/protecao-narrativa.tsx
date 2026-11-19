@@ -136,7 +136,7 @@ function Escolhido({ onEscolher }: { onEscolher: (escolha: EscolhaProtecao) => v
                 <span className="font-semibold text-primary">
                     {comProtecao ? "Compra protegida" : "Imprevistos acontecem. Sua compra está sem proteção."}
                 </span>
-                {!comProtecao && <span>Se um imprevisto impedir sua ida, você não poderá solicitar o reembolso.</span>}
+                {!comProtecao && <span>Se um imprevisto impedir sua ida, você fica sem o reembolso da proteção.</span>}
             </p>
             {!comProtecao && (
                 <button type="button" onClick={() => onEscolher("com")} className={`${botao} text-[#c81f14] tabular-nums hover:text-[#a8170e]`}>

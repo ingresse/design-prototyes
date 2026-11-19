@@ -37,7 +37,7 @@ evento da plataforma unificada. Valores de proteção (8%) e taxas são de exper
 - **TBP-06** Enquanto não há escolha, os meios de pagamento ficam travados (esmaecidos, sem clique) e o texto "Escolha uma das opções de proteção acima para liberar o pagamento." aparece sob o título. _(components/checkout-metodos.tsx)_
 - **TBP-07** "Continuar com proteção · R$ X" inclui a linha "Proteção de compra" no resumo, soma o valor ao total e libera o pagamento. _(components/protecao-narrativa.tsx, components/checkout-resumo.tsx)_
 - **TBP-08** "Prefiro correr o risco" libera o pagamento sem a linha da proteção no resumo. _(components/protecao-narrativa.tsx)_
-- **TBP-09** Depois da escolha, o bloco encolhe para uma linha de confirmação. Com proteção: só o escudo e "Compra protegida", sem valor e sem botão. Sem proteção: "Imprevistos acontecem. Sua compra está sem proteção." e "Se um imprevisto impedir sua ida, você não poderá solicitar o reembolso.", com "Proteger por R$ X" (a copy espelha a da oferta, pelo lado da perda). O pagamento segue liberado. _(components/protecao-narrativa.tsx)_
+- **TBP-09** Depois da escolha, o bloco encolhe para uma linha de confirmação. Com proteção: só o escudo e "Compra protegida", sem valor e sem botão. Sem proteção: "Imprevistos acontecem. Sua compra está sem proteção." e "Se um imprevisto impedir sua ida, você fica sem o reembolso da proteção.", com "Proteger por R$ X" (a copy espelha a da oferta, pelo lado da perda). O pagamento segue liberado. _(components/protecao-narrativa.tsx)_
 - **TBP-15** Quem aceitou a proteção só a retira pelo modal de coberturas, aberto pelo nome "Proteção de compra" no resumo ("Prefiro correr o risco"). _(components/modal-coberturas.tsx)_
 - **TBP-10** "Conheça as coberturas!" abre um modal com os quatro grupos de cobertura (Saúde, Imprevistos no caminho, Emergências em casa, Documentos e questões judiciais). O modal fecha no "X", clicando fora ou no Esc sem mudar a escolha, e repete os dois botões da oferta. _(components/modal-coberturas.tsx)_
 - **TBP-11** O nome "Proteção de compra" no resumo é clicável (sublinhado) e abre o mesmo modal de coberturas. _(components/checkout-resumo.tsx, pages/checkout.tsx)_
@@ -63,7 +63,6 @@ evento da plataforma unificada. Valores de proteção (8%) e taxas são de exper
 
 ## Em aberto
 
-- A frase "você não poderá solicitar o reembolso" no estado sem proteção precisa de validação do jurídico: fora da proteção ainda existem os casos de reembolso previstos em lei (arrependimento, cancelamento do evento).
 - O estado depois da escolha (TBP-09) não está no Figma: foi criado no protótipo. Validar e levar para o Figma se aprovado.
 - O conteúdo de "Conheça as coberturas!" (TBP-10) não está neste fluxo do Figma: o modal reaproveita as coberturas do teste AB. Os casos cobertos precisam de validação do jurídico.
 - No Figma o botão mostra "R$ 11,90", mas o mesmo frame tem total de R$ 359,00 para R$ 300,00 em ingressos e R$ 35,00 em taxas (diferença de R$ 24,00, os 8%). O protótipo usa o valor calculado (TBP-12).
