@@ -133,8 +133,10 @@ function Escolhido({ onEscolher }: { onEscolher: (escolha: EscolhaProtecao) => v
                 <Icone className={comProtecao ? "size-5 text-utility-green-600" : "size-5 text-fg-quaternary"} aria-hidden="true" />
             </span>
             <p className="flex min-w-[200px] flex-1 flex-col text-sm text-tertiary">
-                <span className="font-semibold text-primary">{comProtecao ? "Compra protegida" : "Você seguiu sem proteção"}</span>
-                {!comProtecao && <span>Se um imprevisto te impedir de ir, não há reembolso.</span>}
+                <span className="font-semibold text-primary">
+                    {comProtecao ? "Compra protegida" : "Imprevistos acontecem. Sua compra está sem proteção."}
+                </span>
+                {!comProtecao && <span>Se um imprevisto impedir sua ida, você não poderá solicitar o reembolso.</span>}
             </p>
             {!comProtecao && (
                 <button type="button" onClick={() => onEscolher("com")} className={`${botao} text-[#c81f14] tabular-nums hover:text-[#a8170e]`}>
