@@ -1,0 +1,267 @@
+/*
+ * Animação do modal de proteção (Teste C). Tempos, atrasos e curvas vêm do quadro
+ * "Animação & handoff" do Figma (11021:417). Cada passo: atraso desktop / celular · duração · curva.
+ * Os valores de celular são o padrão; a partir de 640px valem os de desktop.
+ */
+.tc-protecao {
+    --tc-ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+    --tc-standard: cubic-bezier(0.4, 0, 0.2, 1);
+
+    --tc-d-aneis: 240ms;
+    --tc-d-escudo: 260ms;
+    --tc-d-titulo: 320ms;
+    --tc-d-apoio: 380ms;
+    --tc-d-card: 460ms;
+    --tc-d-check: 520ms;
+    --tc-d-acoes: 560ms;
+    --tc-d-recortes: 700ms;
+    --tc-d-picote: 720ms;
+}
+
+@media (min-width: 640px) {
+    .tc-protecao {
+        --tc-d-aneis: 200ms;
+        --tc-d-escudo: 220ms;
+        --tc-d-titulo: 300ms;
+        --tc-d-apoio: 360ms;
+        --tc-d-card: 440ms;
+        --tc-d-check: 480ms;
+        --tc-d-acoes: 540ms;
+        --tc-d-recortes: 680ms;
+        --tc-d-picote: 700ms;
+    }
+}
+
+/* 1 · Scrim: opacidade 0→1 · 0 · 200ms · linear */
+.tc-scrim {
+    animation: tc-aparecer 200ms linear both;
+}
+
+.tc-protecao[data-exiting] {
+    animation: tc-sumir 200ms linear both;
+}
+
+/* 2 · Sheet (celular): Y 100%→0 · 60 · 320 · ease-out */
+.tc-modal {
+    animation: tc-sheet 320ms var(--tc-ease-out) 60ms both;
+}
+
+/* 2 · Modal (desktop): opacidade + Y(+16→0) + escala(0.98→1) · 60 · 260 · ease-out */
+@media (min-width: 640px) {
+    .tc-modal {
+        animation: tc-modal 260ms var(--tc-ease-out) 60ms both;
+    }
+}
+
+/* 3 · Anéis: opacidade + escala(0.7→1) · 200/240 · 500 · ease-out */
+.tc-aneis {
+    animation: tc-aneis 500ms var(--tc-ease-out) var(--tc-d-aneis) both;
+}
+
+/* 4 · Círculo do escudo: opacidade + escala(0.6→1) · 220/260 · 260 · ease-out */
+.tc-escudo {
+    animation: tc-escudo 260ms var(--tc-ease-out) var(--tc-d-escudo) both;
+}
+
+/* 5, 6, 7 e 9 · Título, apoio, card e ações: opacidade + Y(+8→0) · ease-out */
+.tc-titulo {
+    animation: tc-subir 260ms var(--tc-ease-out) var(--tc-d-titulo) both;
+}
+.tc-apoio {
+    animation: tc-subir 260ms var(--tc-ease-out) var(--tc-d-apoio) both;
+}
+.tc-card {
+    animation: tc-subir 300ms var(--tc-ease-out) var(--tc-d-card) both;
+}
+.tc-acoes {
+    animation: tc-subir 260ms var(--tc-ease-out) var(--tc-d-acoes) both;
+}
+
+/* 8 · Check do escudo (traço desenhado) · 480/520 · 320 · ease-out */
+.tc-check {
+    stroke-dasharray: 1;
+    animation: tc-desenhar 320ms var(--tc-ease-out) var(--tc-d-check) both;
+}
+
+/* 10 · Recortes laterais: opacidade 0→1 · 680/700 · 200 · linear */
+.tc-recorte {
+    animation: tc-aparecer 200ms linear var(--tc-d-recortes) both;
+    transition:
+        border-color 200ms var(--tc-standard),
+        background-color 200ms var(--tc-standard);
+}
+
+/* 11 · Picote (rasga da esquerda, escala X) · 700/720 · 420 · standard */
+.tc-picote {
+    /* Traço de 4px com intervalo de 4px, começando em meio traço, como no Figma */
+    background: repeating-linear-gradient(90deg, #d4d4d4 0 4px, transparent 4px 8px) -2px 0;
+    transform-origin: left center;
+    animation: tc-rasgar 420ms var(--tc-standard) var(--tc-d-picote) both;
+}
+
+/* 12 e 13 · Pulsos do escudo: escala 0.55→1.25 · 700 e 1500 · 2400ms × 3 · ease-out (param em ~8,7s) */
+.tc-pulso {
+    opacity: 0;
+    animation: tc-pulso 2400ms var(--tc-ease-out) 700ms 3;
+}
+.tc-pulso-2 {
+    animation-delay: 1500ms;
+}
+
+/* 14 · Brilho no botão primário (varredura) · 1300 · 800ms × 1 · standard */
+.tc-brilho {
+    opacity: 0;
+    background: linear-gradient(105deg, transparent 30%, rgba(255, 255, 255, 0.35) 50%, transparent 70%);
+    animation: tc-brilho 800ms var(--tc-standard) 1300ms 1;
+}
+
+/* Micro-interações */
+.tc-cartao {
+    transition:
+        border-color 200ms var(--tc-standard),
+        background-color 200ms var(--tc-standard);
+}
+
+.tc-chevron {
+    transition: transform 200ms var(--tc-standard);
+}
+
+/* Acordeão: a altura abre em 200ms (Smart Animate do protótipo) e a lista aparece (opacidade 0→1, Y −4→0) */
+.tc-coberturas {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows 200ms var(--tc-standard);
+}
+.tc-coberturas[data-aberto="true"] {
+    grid-template-rows: 1fr;
+}
+.tc-coberturas > div {
+    min-height: 0;
+    overflow: hidden;
+    opacity: 0;
+    transform: translateY(-4px);
+    visibility: hidden;
+    transition:
+        opacity 200ms var(--tc-standard),
+        transform 200ms var(--tc-standard),
+        visibility 0s linear 200ms;
+}
+.tc-coberturas[data-aberto="true"] > div {
+    opacity: 1;
+    transform: translateY(0);
+    visibility: visible;
+    transition-delay: 0s;
+}
+
+/* Celular com coberturas abertas: ícone e anéis somem, o rodapé ganha borda e sombra */
+.tc-icone {
+    transition:
+        height 200ms var(--tc-standard),
+        margin 200ms var(--tc-standard),
+        opacity 200ms var(--tc-standard);
+}
+.tc-rodape {
+    box-shadow:
+        0 -1px 0 transparent,
+        0 -4px 12px -4px transparent;
+    transition: box-shadow 200ms var(--tc-standard);
+}
+@media (max-width: 639.98px) {
+    .tc-modal[data-coberturas="true"] .tc-icone {
+        height: 0;
+        margin-bottom: -4px;
+        opacity: 0;
+    }
+    .tc-modal[data-coberturas="true"] .tc-rodape {
+        box-shadow:
+            0 -1px 0 #e5e5e5,
+            0 -4px 12px -4px rgba(0, 0, 0, 0.08);
+    }
+}
+
+@keyframes tc-aparecer {
+    from {
+        opacity: 0;
+    }
+}
+@keyframes tc-sumir {
+    to {
+        opacity: 0;
+    }
+}
+@keyframes tc-modal {
+    from {
+        opacity: 0;
+        transform: translateY(16px) scale(0.98);
+    }
+}
+@keyframes tc-sheet {
+    from {
+        transform: translateY(100%);
+    }
+}
+@keyframes tc-aneis {
+    from {
+        opacity: 0;
+        transform: scale(0.7);
+    }
+}
+@keyframes tc-escudo {
+    from {
+        opacity: 0;
+        transform: scale(0.6);
+    }
+}
+@keyframes tc-subir {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+}
+@keyframes tc-desenhar {
+    from {
+        stroke-dashoffset: 1;
+        opacity: 0;
+    }
+    1% {
+        opacity: 1;
+    }
+    to {
+        stroke-dashoffset: 0;
+        opacity: 1;
+    }
+}
+@keyframes tc-rasgar {
+    from {
+        transform: scaleX(0);
+    }
+}
+@keyframes tc-pulso {
+    from {
+        opacity: 1;
+        transform: scale(0.55);
+    }
+    to {
+        opacity: 0;
+        transform: scale(1.25);
+    }
+}
+@keyframes tc-brilho {
+    from {
+        opacity: 1;
+        transform: translateX(-100%);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(100%);
+    }
+}
+
+/* prefers-reduced-motion: tudo desligado, aparece direto no estado final */
+@media (prefers-reduced-motion: reduce) {
+    .tc-protecao,
+    .tc-protecao * {
+        animation: none !important;
+        transition: none !important;
+    }
+}

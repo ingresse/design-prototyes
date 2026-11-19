@@ -208,6 +208,8 @@ import { Selecao as TesteAbProtecaoSelecao } from '../produtos/payin/teste-ab-pr
 import { Checkout as TesteAbProtecaoCheckout } from '../produtos/payin/teste-ab-protecao-de-compra/pages/checkout';
 import { Selecao as TesteBProtecaoSelecao } from '../produtos/payin/teste-b-protecao-de-compra/pages/selecao';
 import { Checkout as TesteBProtecaoCheckout } from '../produtos/payin/teste-b-protecao-de-compra/pages/checkout';
+import { Selecao as TesteCProtecaoSelecao } from '../produtos/payin/teste-c-protecao-de-compra/pages/selecao';
+import { Checkout as TesteCProtecaoCheckout } from '../produtos/payin/teste-c-protecao-de-compra/pages/checkout';
 import { Pagamento as CheckoutPagamento } from '../produtos/checkout/melhorias-de-compra/pages/pagamento';
 import { Cartao as CheckoutCartao } from '../produtos/checkout/melhorias-de-compra/pages/cartao';
 import { NaoAutorizado as CheckoutNaoAutorizado } from '../produtos/checkout/melhorias-de-compra/pages/nao-autorizado';
@@ -505,6 +507,8 @@ export default function App() {
         <Route path="/payin/teste-ab-protecao-de-compra/checkout" element={<TesteAbProtecaoCheckout />} />
         <Route path="/payin/teste-b-protecao-de-compra" element={<TesteBProtecaoSelecao />} />
         <Route path="/payin/teste-b-protecao-de-compra/checkout" element={<TesteBProtecaoCheckout />} />
+        <Route path="/payin/teste-c-protecao-de-compra" element={<TesteCProtecaoSelecao />} />
+        <Route path="/payin/teste-c-protecao-de-compra/checkout" element={<TesteCProtecaoCheckout />} />
         <Route path="/payout/contrato-quick-win-finance" element={<CashoutEventos />} />
         <Route path="/payout/contrato-quick-win-finance/produtoras" element={<CashoutProdutoras />} />
         {/* Finanças do produtor: protótipos de pesquisa, jornada Eventos como pastas. */}

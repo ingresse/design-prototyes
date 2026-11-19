@@ -105,6 +105,7 @@ const PRODUCTS: ProductCardData[] = [
         to: "/payin",
         illustration: "payin",
         entradas: [
+            { label: "Teste C - Proteção de compra", to: "/payin/teste-c-protecao-de-compra" },
             { label: "Teste B - Proteção de compra", to: "/payin/teste-b-protecao-de-compra" },
             { label: "Teste AB - Proteção de compra", to: "/payin/teste-ab-protecao-de-compra" },
             { label: "Suspensão de conta", to: "/payin/suspensao-de-conta" },

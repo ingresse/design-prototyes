@@ -32,6 +32,13 @@ const PAGES: PayInItem[] = [
         to: "/payin/teste-b-protecao-de-compra",
         gradient: "linear-gradient(135deg,#1a1a1a 0%,#ff271a 100%)",
     },
+    {
+        id: "teste-c-protecao-de-compra",
+        name: "Teste C - Proteção de compra",
+        description: "Novo modal de proteção sobre o checkout, com entrada animada",
+        to: "/payin/teste-c-protecao-de-compra",
+        gradient: "linear-gradient(135deg,#ff271a 0%,#fff1f0 100%)",
+    },
 ];
 
 export function PayInMenu() {
