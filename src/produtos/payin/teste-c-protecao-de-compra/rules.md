@@ -65,11 +65,11 @@ Tempos em ms. Curvas: ease-out `cubic-bezier(0.2, 0.8, 0.2, 1)`, standard `cubic
   | 9 | Ações | opacidade + Y(+8→0) | 540 / 560 | 260 | ease-out |
   | 10 | Recortes laterais | opacidade 0→1 | 680 / 700 | 200 | linear |
   | 11 | Picote | rasga da esquerda (escala X) | 700 / 720 | 420 | standard |
-  | 12 | Pulso 1 (anel cinza de 200px / 160px, traço 2px, α 0,12) | escala 0,55→1,25; opacidade 0→0,9 (aos 25%)→0 | 700 | 2400 × 3 | ease-out |
-  | 13 | Pulso 2 (mesmo anel, α 0,08) | igual ao pulso 1 | 1500 | 2400 × 3 | ease-out |
+  | 12 | Pulso 1 (anel cinza de 200px / 160px, traço 2px, α 0,12) | escala 0,55→1,25; opacidade 0→0,9 (aos 25%)→0 | 700 | 2400, em loop | ease-out |
+  | 13 | Pulso 2 (mesmo anel, α 0,08) | igual ao pulso 1 | 1500 | 2400, em loop | ease-out |
   | 14 | Brilho no botão primário | faixa branca a 22%, 25% da largura do botão, inclinada −20°, varre de X −120% a +420% da própria largura | 1300 | 800 × 1 | standard |
 
-- **TCP-21** Nada fica em loop: os pulsos do escudo param em ~8,7s e o brilho do botão passa uma vez só.
+- **TCP-21** Os pulsos do escudo ficam em loop enquanto o modal está aberto (decisão de 2026-11-19; a spec pedia 3 ciclos, parando em ~8,7s). O brilho do botão passa uma vez só.
 - **TCP-22** "Conheça as coberturas": o chevron gira 180° e a lista aparece (opacidade 0→1, Y −4→0) enquanto o card abre; no celular o escudo some e o rodapé ganha borda e sombra. Tudo em 150ms linear. A troca de cor do card protegido (TCP-12) leva 200ms linear; os hovers, 100ms linear.
 - **TCP-23** Passar o mouse: botão primário `#FF271A`→`#C81F14`; acordeão e botão secundário ganham fundo `#FAFAFA`.
 - **TCP-24** Ao fechar, o modal e o scrim somem juntos em 200ms.
@@ -87,6 +87,7 @@ Tempos em ms. Curvas: ease-out `cubic-bezier(0.2, 0.8, 0.2, 1)`, standard `cubic
 
 ## Em aberto
 
+- A spec v.5 diz "nada fica em loop infinito" e pulsos em 3 ciclos; o protótipo deixa os pulsos em loop a pedido (TCP-21). Alinhar a spec e o quadro do Figma.
 - Os frames de Checkout do Figma (`11026:80145`, `11026:80492`, `11026:81733`) e os de celular não devolvem linha do tempo de animação pela integração do Figma (o retorno veio vazio). As animações do protótipo seguem o quadro escrito "Animação & handoff"; se houver keyframes na timeline do Figma com algo diferente do quadro, falta comparar.
 - Os pulsos são anéis cinzas (neutral-500), não vermelhos: a spec dá o α mas não a cor, e a cor foi confirmada em 2026-11-19 ("apenas as linhas cinzas").
 - A spec diz botão secundário em Elza Medium 14/20; o frame do Figma usa Semibold 16/24. O protótipo segue o frame.

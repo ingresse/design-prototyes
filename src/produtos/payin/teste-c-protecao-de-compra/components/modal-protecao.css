@@ -100,12 +100,12 @@
 }
 
 /* 12 e 13 · Pulsos: anel cinza (traço 2px) · escala 0.55→1.25 · opacidade 0→0.9 (aos 25%)→0
-   · atrasos 700 e 1500 · 2400ms × 3 ciclos · ease-out (param em ~8,7s) */
+   · atrasos 700 e 1500 · 2400ms em loop · ease-out (a spec pedia 3 ciclos; em loop a pedido) */
 .tc-pulso {
     opacity: 0;
     animation:
-        tc-pulso-escala 2400ms var(--tc-ease-out) 700ms 3,
-        tc-pulso-opacidade 2400ms var(--tc-ease-out) 700ms 3;
+        tc-pulso-escala 2400ms var(--tc-ease-out) 700ms infinite,
+        tc-pulso-opacidade 2400ms var(--tc-ease-out) 700ms infinite;
 }
 .tc-pulso-2 {
     animation-delay: 1500ms;
