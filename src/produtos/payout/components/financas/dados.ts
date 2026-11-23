@@ -1277,7 +1277,7 @@ export function conferirContas(): string[] {
             if (repasses("agendado") !== e.agendado) erros.push(`${onde}: repasses agendados não somam Agendado`);
             if (e.repasses.some((r) => r.situacao === "pago" && r.data > HOJE)) erros.push(`${onde}: repasse pago com data no futuro`);
         }
-        // A segunda conta da tela: Líquido − Sacado − Saque agendado − A liberar = Saldo disponível, em cada evento.
+        // As duas linhas da tela: Líquido − Sacado − Saque agendado = Saldo total; Saldo total − A liberar = Saldo disponível.
         for (const e of eventos) {
             const aLiberar = e.aLiberar + e.retidoEvento + e.retidoSeguranca + e.processamento;
             if (seuDinheiro(e) - e.recebido - e.agendado - aLiberar !== e.disponivel) erros.push(`${cenario}/${e.id}: Líquido − Sacado − Saque agendado − A liberar não dá o Saldo disponível`);

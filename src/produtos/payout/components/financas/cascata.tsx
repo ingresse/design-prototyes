@@ -12,8 +12,8 @@ import { reais, reaisComCentavos } from "./formato";
 /*
  * A equação que a tela inteira conta (ajustes v3):
  *   De onde veio:  Vendido + Créditos − Taxas e custos − Devoluções = Líquido (somas de um lado, subtrações do outro)
- *   Até o saldo:   Líquido − Sacado − Saque agendado − A liberar = Saldo disponível
- *                  (A liberar = Antecipável + Retido + Em processamento)
+ *   Até o saldo:   Líquido − Sacado − Saque agendado = Saldo total
+ *                  Saldo total − Antecipável − Retido − Em processamento = Saldo disponível
  * A mesma conta, com os mesmos nomes e a mesma ordem, na organização e em cada evento.
  * Os nomes internos (ajustes, seuDinheiro, aLiberar, recebido) vêm da v2; o que o produtor lê está
  * em ROTULO_DA_PARTE.
@@ -205,6 +205,9 @@ interface DistribuicaoProps {
 /** O que ainda vai entrar no saldo disponível: é o "Total a liberar" do Calendário. */
 const A_LIBERAR: ParteDaDistribuicao[] = ["aLiberar", "retido", "processamento"];
 
+const SALDO_TOTAL = "Saldo total";
+const DICA_DO_SALDO_TOTAL = "O que é seu e ainda não foi sacado nem agendado: o saldo disponível mais o que ainda vai liberar.";
+
 interface PassoProps {
     rotulo: string;
     dica: string;
@@ -253,15 +256,15 @@ const Passo = ({ rotulo, dica, valor, leitura, resultado, cor, legenda, partes, 
 );
 
 /**
- * A segunda conta, que leva do Líquido ao Saldo disponível (o número que o produtor pode sacar):
- *   Líquido − Sacado − Saque agendado − A liberar = Saldo disponível
- * "A liberar" soma Antecipável, Retido e Em processamento (o Total a liberar do Calendário); a
- * composição dele vem numa terceira linha, de apoio, com menos peso: Antecipável + Retido + Em
- * processamento = A liberar.
+ * Do Líquido ao Saldo disponível, em duas linhas:
+ *   Líquido − Sacado − Saque agendado = Saldo total
+ *   Saldo total − Antecipável − Retido − Em processamento = Saldo disponível   (linha de apoio)
  * A barra acima mostra as mesmas partes em proporção.
  */
 export const Distribuicao = ({ totais, detalhes, destinos }: DistribuicaoProps) => {
     const aLiberar = A_LIBERAR.reduce((s, p) => s + totais[p], 0);
+    // O que é do produtor e ainda não foi sacado nem agendado: o saldo disponível mais o que vai liberar.
+    const saldoTotal = totais.disponivel + aLiberar;
     const ver = (rotulo: string, destino?: string) =>
         destino ? (
             <Button size="sm" color="link-gray" iconTrailing={ChevronRight} href={destino}>
@@ -271,7 +274,7 @@ export const Distribuicao = ({ totais, detalhes, destinos }: DistribuicaoProps) 
     return (
         <div className="flex flex-col gap-4 px-6 pb-5">
             <div className="flex flex-col gap-1 border-t border-secondary pt-4">
-                <h3 className="text-sm font-semibold text-primary">Do líquido ao saldo disponível</h3>
+                <h3 className="text-sm font-semibold text-primary">Do líquido ao saldo total</h3>
                 {/* Barra de proporção. Cada parte mostra, ao passar o mouse ou focar pelo teclado, o que é e
                     quanto vale. A área de toque é mais alta que a barra, para a parte fina não escapar do cursor. */}
                 <div role="group" aria-label="Proporção de cada parte do líquido" className="flex w-full items-center gap-0.5">
@@ -302,33 +305,31 @@ export const Distribuicao = ({ totais, detalhes, destinos }: DistribuicaoProps) 
                     legenda={detalhes.agendado}
                     acao={totais.agendado > 0 ? ver("Ver no extrato", destinos?.agendado) : undefined}
                 />
-                <Operador sinal="−" />
-                <Passo
-                    rotulo="A liberar"
-                    dica="Ainda vai entrar no seu saldo disponível: o que é antecipável, o que está retido e o que está em processamento. É o Total a liberar do Calendário."
-                    valor={aLiberar}
-                    leitura="menos"
-                    legenda="Composição logo abaixo"
-                />
                 <Operador sinal="=" />
-                <Passo rotulo={ROTULO_DA_PARTE.disponivel} dica={DEFINICAO.disponivel} valor={totais.disponivel} leitura="igual a" resultado cor={COR_DA_PARTE.disponivel} legenda="Pronto para saque" />
+                <Passo rotulo={SALDO_TOTAL} dica={DICA_DO_SALDO_TOTAL} valor={saldoTotal} leitura="igual a" resultado legenda="Disponível e a liberar" />
             </dl>
 
-            {/* Do que é feito o "A liberar" da conta acima. Linha de apoio: menos peso que as duas contas. */}
+            {/* Terceira linha, de apoio: tira do saldo total o que ainda vai liberar e chega ao Saldo disponível.
+                Menos peso que as duas contas, menos o resultado, que é o número que o produtor pode sacar. */}
             <div className="flex flex-col gap-2 border-t border-secondary pt-4">
                 <div className="flex items-center justify-between gap-4">
-                    <h3 className="text-sm font-medium text-tertiary">A liberar</h3>
+                    <h3 className="text-sm font-medium text-tertiary">Do saldo total ao saldo disponível</h3>
                     {aLiberar > 0 && ver("Ver no calendário", destinos?.aLiberar)}
                 </div>
                 <dl className="flex items-stretch gap-2">
-                    {A_LIBERAR.map((parte, i) => (
+                    <div className="flex min-w-0 flex-1 flex-col gap-0.5 px-1">
+                        <dt className="text-xs font-medium text-tertiary">{SALDO_TOTAL}</dt>
+                        <dd className="text-md font-semibold whitespace-nowrap text-secondary tabular-nums">{reais(saldoTotal)}</dd>
+                        <dd className="text-xs text-tertiary">O resultado da conta acima</dd>
+                    </div>
+                    {A_LIBERAR.map((parte) => (
                         <Fragment key={parte}>
-                            {i > 0 && <OperadorMenor sinal="+" />}
+                            <OperadorMenor sinal="−" />
                             <div className="flex min-w-0 flex-1 flex-col gap-0.5 px-1">
                                 <dt className="flex items-center gap-1.5 text-xs font-medium text-tertiary">
                                     <span aria-hidden="true" className={cx("size-2 shrink-0 rounded-full", COR_DA_PARTE[parte])} />
                                     <span>
-                                        {i > 0 && <span className="sr-only">mais </span>}
+                                        <span className="sr-only">menos </span>
                                         {ROTULO_DA_PARTE[parte]}
                                     </span>
                                     <Dica termo={ROTULO_DA_PARTE[parte]} texto={DEFINICAO[parte]} />
@@ -340,11 +341,16 @@ export const Distribuicao = ({ totais, detalhes, destinos }: DistribuicaoProps) 
                     ))}
                     <OperadorMenor sinal="=" />
                     <div className="flex min-w-0 flex-1 flex-col gap-0.5 px-1">
-                        <dt className="text-xs font-medium text-tertiary">
-                            <span className="sr-only">igual a </span>A liberar
+                        <dt className="flex items-center gap-1.5 text-xs font-medium text-secondary">
+                            <span aria-hidden="true" className={cx("size-2 shrink-0 rounded-full", totais.disponivel < 0 ? "bg-utility-red-500" : COR_DA_PARTE.disponivel)} />
+                            <span>
+                                <span className="sr-only">igual a </span>
+                                {ROTULO_DA_PARTE.disponivel}
+                            </span>
+                            <Dica termo={ROTULO_DA_PARTE.disponivel} texto={DEFINICAO.disponivel} />
                         </dt>
-                        <dd className="text-md font-semibold whitespace-nowrap text-secondary tabular-nums">{reais(aLiberar)}</dd>
-                        <dd className="text-xs text-tertiary">O mesmo valor da conta acima</dd>
+                        <dd className={cx("text-lg font-semibold whitespace-nowrap tabular-nums", totais.disponivel < 0 ? COR_DO_NEGATIVO : "text-primary")}>{reais(totais.disponivel)}</dd>
+                        <dd className="text-xs text-tertiary">Pronto para saque</dd>
                     </div>
                 </dl>
             </div>
