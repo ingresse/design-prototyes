@@ -3,7 +3,7 @@ import { ArrowLeft, Download01 } from "@untitledui/icons";
 import { toast } from "sonner";
 import { Badge } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
-import { Cascata, Distribuicao, PARTES_COM_DETALHE, Secao } from "../../components/financas/cascata";
+import { COR_DO_NEGATIVO, Cascata, Distribuicao, PARTES_COM_DETALHE, Secao } from "../../components/financas/cascata";
 import { ROTULO_LIBERACAO, TAXA_DA_MODALIDADE, eventosDoCenario, registroDoRepasse, retido, seuDinheiro, somarDias, type Evento, type Repasse } from "../../components/financas/dados";
 import { Aviso, AvisoDeBloqueio, Carregando, ErroAoCarregar, EventoNaoEncontrado, SemEventos, TelaFinal, type AcaoFinal } from "../../components/financas/estados";
 import { dataComDia, dataCurta, dataDoEvento, reais } from "../../components/financas/formato";
@@ -27,12 +27,12 @@ const SITUACAO: Record<Repasse["situacao"], { rotulo: string; cor: "gray" | "suc
     falhou: { rotulo: "Não concluído", cor: "error" },
 };
 
-const ORIGEM = { disponivel: "Saiu do Disponível", antecipavel: "Saiu do Antecipável" };
+const ORIGEM = { disponivel: "Saiu do saldo disponível", antecipavel: "Saiu do Antecipável" };
 
 const explicacaoDoNegativo = (e: Evento) => {
     const custos = (e.custosExtras ?? []).reduce((s, c) => s + c.valor, 0);
     const saidas = [e.ajustes ? `${reais(e.ajustes)} em devoluções` : "", custos ? `${reais(custos)} em custos` : ""].filter(Boolean).join(" e ");
-    return `Foram repassados ${reais(e.recebido)} deste evento. Depois, saíram ${saidas}${e.creditos ? `, e entraram ${reais(e.creditos)} em créditos` : ""}. Com ${reais(retido(e))} ainda retidos, faltam ${reais(-e.disponivel)}.`;
+    return `Foram sacados ${reais(e.recebido)} deste evento. Depois, saíram ${saidas}${e.creditos ? `, e entraram ${reais(e.creditos)} em créditos` : ""}. Com ${reais(retido(e))} ainda retidos, faltam ${reais(-e.disponivel)}.`;
 };
 
 /** Modalidade, taxa de transferência e valor creditado (regra 6 dos ajustes v3). A conta vem antes, com o selo de conta de terceiro. */
@@ -107,7 +107,7 @@ export function FinancasEvento() {
                                 </Button>
                             )}
                             <Button size="md" color="primary" isDisabled={bloqueado || evento.disponivel <= 0} onClick={() => setAcao("repasse")}>
-                                Solicitar repasse deste evento
+                                Sacar deste evento
                             </Button>
                         </>
                     )
@@ -127,7 +127,7 @@ export function FinancasEvento() {
                             </p>
                             <p>
                                 <span className="font-medium text-secondary">O que acontece agora: </span>
-                                você não precisa pagar nada: o valor já foi descontado do Disponível dos seus outros eventos.
+                                você não precisa pagar nada: o valor já foi descontado do saldo disponível dos seus outros eventos.
                                 {proximaRetida && ` Em ${dataCurta(proximaRetida.data)}, ${reais(proximaRetida.valor)} retidos são liberados e reduzem o saldo negativo para ${reais(restoDoNegativo)}.`}
                             </p>
                         </Aviso>
@@ -184,7 +184,7 @@ export function FinancasEvento() {
                         </Secao>
 
                         <Secao
-                            titulo="Repasses"
+                            titulo="Saques"
                             lateral={
                                 evento.repasses.length > 0 && (
                                     <Button size="sm" color="link-gray" href={`/payout/financas-eventos/extrato?evento=${evento.id}&tipo=repasse&periodo=90${sufixo.replace("?", "&")}`}>
@@ -194,7 +194,7 @@ export function FinancasEvento() {
                             }
                         >
                             {evento.repasses.length === 0 ? (
-                                <Vazio>Você ainda não solicitou repasse deste evento.</Vazio>
+                                <Vazio>Você ainda não solicitou saque deste evento.</Vazio>
                             ) : (
                                 <Lista>
                                     {evento.repasses.map((r) => (
@@ -203,7 +203,7 @@ export function FinancasEvento() {
                                             quando={r.situacao === "agendado" ? dataComDia(r.data) : dataCurta(r.data)}
                                             titulo={
                                                 <span className="flex items-center gap-2">
-                                                    Repasse
+                                                    Saque
                                                     <Badge size="sm" type="pill-color" color={SITUACAO[r.situacao].cor}>
                                                         {SITUACAO[r.situacao].rotulo}
                                                     </Badge>
@@ -271,6 +271,7 @@ export function FinancasEvento() {
                                                 </>
                                             }
                                             valor={reais(-a.valor)}
+                                            corDoValor={COR_DO_NEGATIVO}
                                                                                     />
                                     ))}
                                 </Lista>

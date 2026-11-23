@@ -14,14 +14,14 @@ import { Input } from "@/components/base/input/input";
 import { Select } from "@/components/base/select/select";
 import { cx } from "@/utils/cx";
 import { capaDoEvento } from "../../components/financas/capa";
-import { Cascata, Distribuicao, NumeroGrande, PARTES_COM_DETALHE, Secao } from "../../components/financas/cascata";
+import { COR_DO_NEGATIVO, Cascata, Distribuicao, NumeroGrande, PARTES_COM_DETALHE, Secao } from "../../components/financas/cascata";
 import { CONTA_DA_ORGANIZACAO, HOJE, ROTULO_DA_ENTRADA, quitado, calendario, entradasDoCalendario, eventosDoCenario, movimentos, totalizar, type Entrada, type Evento } from "../../components/financas/dados";
 import { Aviso, AvisoDeBloqueio, Carregando, ErroAoCarregar, TelaFinal, type AcaoFinal } from "../../components/financas/estados";
 import { dataComDia, dataCurta, dataDoEvento, reais } from "../../components/financas/formato";
 import { detalhesDaDistribuicao, fraseDeCompensacao, proximaLiberacaoDoEvento } from "../../components/financas/frases";
 import { Linha, Lista, Vazio } from "../../components/financas/linha";
 import { PainelDoDetalhe } from "../../components/financas/painel-do-detalhe";
-import { CabecalhoDaPagina, FinancasShell, useCenario, useParametro } from "../../components/financas/shell";
+import { CabecalhoDaPagina, FinancasShell, useCenario, useEventosEscolhidos, useParametro } from "../../components/financas/shell";
 import { Paginacao } from "../components/paginacao";
 import { SelosDoEvento } from "../components/selos-do-evento";
 import { ORDENS, POR_PAGINA, SITUACOES, baixarRelatorio, filtrarEOrdenar, type Ordem, type Situacao } from "../utils/lista";
@@ -110,8 +110,8 @@ const PastaDoEvento = ({ evento, sufixo, lista }: { evento: Evento; sufixo: stri
                     <span className="truncate text-sm text-tertiary">{proximaLiberacaoDoEvento(evento)}</span>
                 </div>
                 <span className={cx(COLUNA_DE_SALDO, "flex flex-col")}>
-                    <span className="text-xs text-tertiary">Disponível</span>
-                    <span className={cx("text-md font-semibold whitespace-nowrap tabular-nums", evento.disponivel < 0 ? "text-error-primary" : evento.disponivel === 0 ? "text-tertiary" : "text-primary")}>{reais(evento.disponivel)}</span>
+                    <span className="text-xs text-tertiary">Saldo disponível</span>
+                    <span className={cx("text-md font-semibold whitespace-nowrap tabular-nums", evento.disponivel < 0 ? COR_DO_NEGATIVO : evento.disponivel === 0 ? "text-tertiary" : "text-primary")}>{reais(evento.disponivel)}</span>
                 </span>
                 <ChevronRight className="size-5 shrink-0 text-fg-quaternary transition duration-100 ease-linear group-hover:text-fg-secondary" aria-hidden="true" />
             </Link>
@@ -125,8 +125,12 @@ export function FinancasEventos() {
     const [detalheAberto, setDetalhe] = useParametro("detalhe");
     const [params, setParams] = useSearchParams();
 
-    const eventos = eventosDoCenario(cenario);
+    // O filtro de eventos da página aplica-se a todos os dados: cards, Resumo financeiro, Líquido por
+    // situação, próximas liberações, últimos movimentos e a lista "Saldo por evento".
+    const { escolhidos: eventos, filtrado } = useEventosEscolhidos();
+    const escopo = eventos;
     const totais = totalizar(eventos);
+    const daOrganizacao = totais;
     const bloqueado = cenario === "bloqueado";
     const acao = ACOES.find((a) => a === acaoAberta);
     const detalhe = PARTES_COM_DETALHE.find((p) => p === detalheAberto) ?? null;
@@ -134,8 +138,8 @@ export function FinancasEventos() {
     const compensa = fraseDeCompensacao(eventos);
     const negativos = eventos.filter((e) => e.disponivel < 0);
     const comCenario = (rota: string) => `${rota}${cenario === "normal" ? "" : `${rota.includes("?") ? "&" : "?"}cenario=${cenario}`}`;
-    const proximaAntecipavel = calendario(eventos, ["aLiberar"])[0];
-    const agendado = eventos.flatMap((e) => e.repasses.filter((r) => r.situacao === "agendado")).sort((a, b) => a.data.localeCompare(b.data))[0];
+    const proximaAntecipavel = calendario(escopo, ["aLiberar"])[0];
+    const agendado = escopo.flatMap((e) => e.repasses.filter((r) => r.situacao === "agendado")).sort((a, b) => a.data.localeCompare(b.data))[0];
     const proximas = proximasLiberacoes(entradasDoCalendario(eventos), NA_ROLAGEM);
     const ultimos = movimentos(eventos)
         .filter((m) => m.efeito !== 0)
@@ -166,7 +170,7 @@ export function FinancasEventos() {
     const comFiltro = situacao !== "todos" || Boolean(de || ate);
     const contagem = (n: number) => (n === 1 ? "1 evento" : `${n} eventos`);
     const totalDoResultado = resultado.reduce((soma, e) => soma + e.disponivel, 0);
-    const comDisponivel = eventos.filter((e) => e.disponivel > 0).length;
+    const comDisponivel = escopo.filter((e) => e.disponivel > 0).length;
 
     const conteudo = () => {
         if (acao) return <TelaFinal acao={acao} valor={acao === "repasse" ? totais.disponivel : acao === "antecipar" ? totais.aLiberar : undefined} aoVoltar={() => setAcao(null)} />;
@@ -176,9 +180,9 @@ export function FinancasEventos() {
             <>
                 {bloqueado && <AvisoDeBloqueio />}
                 {compensa && (
-                    <Aviso tom="erro" titulo={`Seu Disponível está negativo em ${reais(-totais.disponivel)}`}>
+                    <Aviso tom="erro" titulo={`Seu saldo disponível está negativo em ${reais(-daOrganizacao.disponivel)}`}>
                         <p>
-                            {negativos.length === 1 ? `O evento ${negativos[0].nome} teve` : `${negativos.length} eventos tiveram`} devoluções depois do último repasse, e o que estava disponível nos outros eventos já foi repassado.
+                            {negativos.length === 1 ? `O evento ${negativos[0].nome} teve` : `${negativos.length} eventos tiveram`} devoluções depois do último saque, e o saldo disponível dos outros eventos já foi sacado.
                         </p>
                         <p>Você não precisa pagar nada. {compensa}</p>
                     </Aviso>
@@ -188,7 +192,7 @@ export function FinancasEventos() {
                 <section aria-label="O que você pode fazer agora" className="grid grid-cols-3 gap-6">
                     <TableCard.Root className="px-6 py-5">
                         <CardDeAcao
-                            rotulo="Disponível para repasse"
+                            rotulo="Saldo disponível"
                             selo={
                                 bloqueado && (
                                     <Badge size="sm" type="pill-color" color="warning">
@@ -197,12 +201,12 @@ export function FinancasEventos() {
                                 )
                             }
                             valor={totais.disponivel}
-                            cor={totais.disponivel < 0 ? "text-error-primary" : "text-primary"}
+                            cor={totais.disponivel < 0 ? COR_DO_NEGATIVO : "text-primary"}
                             apoio={comDisponivel > 0 ? `Em ${contagem(comDisponivel)}` : undefined}
                         >
                             {/* A conta que recebe fica à vista antes de qualquer pedido de repasse. */}
                             <span className="flex flex-wrap items-center gap-2 text-sm text-tertiary">
-                                Conta de repasse: <span className="font-medium text-secondary">{CONTA_DA_ORGANIZACAO}</span>
+                                Conta para saque: <span className="font-medium text-secondary">{CONTA_DA_ORGANIZACAO}</span>
                                 <Badge size="sm" type="pill-color" color={bloqueado ? "warning" : "success"}>
                                     {bloqueado ? "Em confirmação" : "Confirmada"}
                                 </Badge>
@@ -219,19 +223,19 @@ export function FinancasEventos() {
                         </CardDeAcao>
                     </TableCard.Root>
                     <TableCard.Root className="px-6 py-5">
-                        <CardDeAcao rotulo="Repassado" valor={totais.recebido} cor="text-primary" apoio={agendado ? `${reais(totais.agendado)} agendados para ${dataCurta(agendado.data)}` : undefined}>
+                        <CardDeAcao rotulo="Sacado" valor={totais.recebido} cor="text-primary" apoio={agendado ? `${reais(totais.agendado)} agendados para ${dataCurta(agendado.data)}` : undefined}>
                             <Button size="sm" color="link-gray" className="self-start" href={comCenario(`${BASE}/extrato?tipo=repasse`)}>
-                                Ver repasses
+                                Ver saques
                             </Button>
                         </CardDeAcao>
                     </TableCard.Root>
                 </section>
 
-                <Secao titulo="Resumo financeiro" lateral={<span className="text-sm text-tertiary">Acumulado de todos os eventos, até hoje</span>}>
-                    <Cascata totais={totais} aoAbrir={setDetalhe} creditoPendente={eventos.some((e) => e.creditoPendente)} />
+                <Secao titulo="Resumo financeiro" lateral={<span className="text-sm text-tertiary">Acumulado de {filtrado ? contagem(escopo.length) : "todos os eventos"}, até hoje</span>}>
+                    <Cascata totais={totais} aoAbrir={setDetalhe} creditoPendente={escopo.some((e) => e.creditoPendente)} />
                     <Distribuicao
                         totais={totais}
-                        detalhes={detalhesDaDistribuicao(eventos)}
+                        detalhes={detalhesDaDistribuicao(escopo)}
                         destinos={{
                             processamento: comCenario(`${BASE}/calendario?tipo=processamento`),
                             retido: comCenario(`${BASE}/calendario?tipo=retido`),
@@ -280,7 +284,7 @@ export function FinancasEventos() {
                         }
                     >
                         {ultimos.length === 0 ? (
-                            <Vazio>Nenhum movimento ainda. Liberações, repasses e devoluções aparecem aqui.</Vazio>
+                            <Vazio>Nenhum movimento ainda. Liberações, saques e devoluções aparecem aqui.</Vazio>
                         ) : (
                             <div className={ROLAGEM}>
                             <Lista>
@@ -291,7 +295,7 @@ export function FinancasEventos() {
                                         titulo={m.titulo}
                                         detalhe={m.evento.nome}
                                         valor={`${m.valor > 0 ? "+ " : ""}${reais(m.valor)}`}
-                                        corDoValor={m.valor > 0 ? "text-success-primary" : "text-primary"}
+                                        corDoValor={m.valor > 0 ? "text-success-primary" : m.valor < 0 ? COR_DO_NEGATIVO : "text-primary"}
                                         para={comCenario(`${BASE}/extrato?periodo=90&movimento=${m.id}`)}
                                     />
                                 ))}
@@ -409,8 +413,8 @@ export function FinancasEventos() {
                             <div className="flex items-center gap-4 border-b border-secondary bg-secondary px-6 py-2">
                                 <span className="flex-1 text-sm font-semibold text-secondary">Total de {contagem(resultado.length)}</span>
                                 <span className={cx(COLUNA_DE_SALDO, "flex flex-col")}>
-                                    <span className="text-xs text-tertiary">Disponível</span>
-                                    <span className={cx("text-md font-semibold whitespace-nowrap tabular-nums", totalDoResultado < 0 ? "text-error-primary" : "text-primary")}>{reais(totalDoResultado)}</span>
+                                    <span className="text-xs text-tertiary">Saldo disponível</span>
+                                    <span className={cx("text-md font-semibold whitespace-nowrap tabular-nums", totalDoResultado < 0 ? COR_DO_NEGATIVO : "text-primary")}>{reais(totalDoResultado)}</span>
                                 </span>
                                 <span aria-hidden="true" className="size-5 shrink-0" />
                             </div>
@@ -437,13 +441,13 @@ export function FinancasEventos() {
                 acoes={
                     temDados && (
                         <Button size="md" color="primary" isDisabled={bloqueado || totais.disponivel <= 0} onClick={() => setAcao("repasse")}>
-                            Solicitar repasse
+                            Solicitar saque
                         </Button>
                     )
                 }
             />
             {conteudo()}
-            {temDados && <PainelDoDetalhe parte={detalhe} eventos={eventos} aoFechar={() => setDetalhe(null)} />}
+            {temDados && <PainelDoDetalhe parte={detalhe} eventos={escopo} aoFechar={() => setDetalhe(null)} />}
         </FinancasShell>
     );
 }

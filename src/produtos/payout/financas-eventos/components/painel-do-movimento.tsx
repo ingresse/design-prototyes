@@ -3,6 +3,7 @@ import { SlideoutMenu } from "@/components/application/slideout-menus/slideout-m
 import { Badge } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
 import { cx } from "@/utils/cx";
+import { COR_DO_NEGATIVO } from "../../components/financas/cascata";
 import { ROTULO_DO_MOVIMENTO, TAXA_DA_MODALIDADE, composicaoDoRepasse, registroDaAntecipacao, registroDoRepasse, type LinhaDoExtrato, type Prova, type Registro } from "../../components/financas/dados";
 import { dataComDia, dataCurta, reais } from "../../components/financas/formato";
 
@@ -45,7 +46,7 @@ export function PainelDoMovimento({ movimento, aoFechar }: { movimento: LinhaDoE
                     </Badge>
                 </span>
                 <h2 className="pr-8 text-md font-semibold text-primary">{m.titulo}</h2>
-                <p className={cx("text-display-xs font-semibold tabular-nums", m.efeito > 0 ? "text-success-primary" : "text-primary")}>
+                <p className={cx("text-display-xs font-semibold tabular-nums", m.efeito > 0 ? "text-success-primary" : m.valor < 0 ? COR_DO_NEGATIVO : "text-primary")}>
                     {m.valor > 0 ? "+ " : ""}
                     {reais(m.valor)}
                 </p>
@@ -65,21 +66,21 @@ export function PainelDoMovimento({ movimento, aoFechar }: { movimento: LinhaDoE
                     <dl className="flex flex-col divide-y divide-secondary">
                         {m.partes.map((p) => (
                             <Campo key={p.parte} rotulo={p.parte}>
-                                <span className={cx("tabular-nums", p.valor > 0 ? "text-success-primary" : "text-primary")}>
+                                <span className={cx("tabular-nums", p.valor > 0 ? "text-success-primary" : p.valor < 0 ? COR_DO_NEGATIVO : "text-primary")}>
                                     {p.valor > 0 ? "+ " : ""}
                                     {reais(p.valor)}
                                 </span>
                             </Campo>
                         ))}
-                        <Campo rotulo="Disponível depois deste movimento">
-                            <span className={cx("tabular-nums", m.apos < 0 && "text-error-primary")}>{reais(m.apos)}</span>
+                        <Campo rotulo="Saldo disponível depois deste movimento">
+                            <span className={cx("tabular-nums", m.apos < 0 && COR_DO_NEGATIVO)}>{reais(m.apos)}</span>
                         </Campo>
                     </dl>
                 </section>
 
                 {m.repasse && (
                     <section className="flex flex-col border-t border-secondary pt-4">
-                        <h3 className="text-sm font-semibold text-primary">Repasse</h3>
+                        <h3 className="text-sm font-semibold text-primary">Saque</h3>
                         <dl className="flex flex-col divide-y divide-secondary">
                             <Campo rotulo="Código">{registroDoRepasse(m.evento, m.repasse).codigo}</Campo>
                             <Campo rotulo="Solicitado por">{solicitadoPor(registroDoRepasse(m.evento, m.repasse))}</Campo>
@@ -94,7 +95,7 @@ export function PainelDoMovimento({ movimento, aoFechar }: { movimento: LinhaDoE
                                 </span>
                             </Campo>
                             <Campo rotulo="Modalidade">{m.repasse.modalidade}</Campo>
-                            <Campo rotulo="Valor do repasse">{reais(m.repasse.valor)}</Campo>
+                            <Campo rotulo="Valor do saque">{reais(m.repasse.valor)}</Campo>
                             <Campo rotulo="Taxa de transferência">{taxaDoRepasse ? reais(taxaDoRepasse) : "Sem taxa"}</Campo>
                             <Campo rotulo={m.situacao === "pago" ? "Valor creditado na conta" : "Valor a creditar na conta"}>{reais(m.repasse.valor - taxaDoRepasse)}</Campo>
                             {m.situacao === "agendado" && <Campo rotulo="Pagamento previsto">{dataCurta(m.repasse.data)}</Campo>}
@@ -108,13 +109,13 @@ export function PainelDoMovimento({ movimento, aoFechar }: { movimento: LinhaDoE
                         <dl className="flex flex-col divide-y divide-secondary">
                             {origem.linhas.map((l) => (
                                 <Campo key={l.id} rotulo={l.data ? `${l.titulo} · ${dataCurta(l.data)}` : l.titulo}>
-                                    <span className="tabular-nums">
+                                    <span className={cx("tabular-nums", l.valor < 0 && COR_DO_NEGATIVO)}>
                                         {l.valor > 0 ? "+ " : ""}
                                         {reais(l.valor)}
                                     </span>
                                 </Campo>
                             ))}
-                            <Campo rotulo="Valor do repasse">
+                            <Campo rotulo="Valor do saque">
                                 <span className="font-semibold tabular-nums">{reais(origem.total)}</span>
                             </Campo>
                         </dl>
@@ -129,7 +130,7 @@ export function PainelDoMovimento({ movimento, aoFechar }: { movimento: LinhaDoE
                             <Campo rotulo="Solicitado por">{solicitadoPor(registroDaAntecipacao(m.evento, m.antecipacao))}</Campo>
                             <Campo rotulo="Valor antecipado">{reais(m.antecipacao.valor)}</Campo>
                             <Campo rotulo="Taxa da antecipação">{reais(m.antecipacao.taxa)}</Campo>
-                            <Campo rotulo="Valor que entrou no Disponível">{reais(m.antecipacao.valor - m.antecipacao.taxa)}</Campo>
+                            <Campo rotulo="Valor que entrou no saldo disponível">{reais(m.antecipacao.valor - m.antecipacao.taxa)}</Campo>
                         </dl>
                     </section>
                 )}

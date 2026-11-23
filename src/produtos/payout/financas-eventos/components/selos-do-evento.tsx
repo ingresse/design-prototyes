@@ -6,7 +6,7 @@ const COR: Record<Selo, "error" | "warning" | "gray"> = {
     "Saldo negativo": "error",
     "Devolução recente": "warning",
     "Em vendas": "gray",
-    "Totalmente repassado": "gray",
+    "Totalmente sacado": "gray",
 };
 
 export const SelosDoEvento = ({ evento }: { evento: Evento }) => (

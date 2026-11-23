@@ -69,16 +69,16 @@ export function baixarRelatorio(eventos: Evento[]) {
         ["Evento", (e) => e.nome],
         ["Data do evento", (e) => e.data.split("-").reverse().join("/")],
         ["Vendido", (e) => e.vendido],
-        ["Taxas e custos", (e) => e.taxas],
         ["Créditos", (e) => e.creditos],
+        ["Taxas e custos", (e) => e.taxas],
         ["Devoluções", (e) => e.ajustes],
         ["Líquido", (e) => e.vendido - e.taxas + e.creditos - e.ajustes],
-        ["Em processamento", (e) => e.processamento],
-        ["Retido", (e) => e.retidoEvento + e.retidoSeguranca],
+        ["Saldo disponível", (e) => e.disponivel],
         ["Antecipável", (e) => e.aLiberar],
-        ["Disponível", (e) => e.disponivel],
-        ["Agendado", (e) => e.agendado],
-        ["Repassado", (e) => e.recebido],
+        ["Saque agendado", (e) => e.agendado],
+        ["Retido", (e) => e.retidoEvento + e.retidoSeguranca],
+        ["Em processamento", (e) => e.processamento],
+        ["Sacado", (e) => e.recebido],
     ];
     baixarCsv("financas-eventos.csv", [colunas.map(([nome]) => nome), ...eventos.map((e) => colunas.map(([, valor]) => valor(e)))]);
 }

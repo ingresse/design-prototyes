@@ -27,6 +27,11 @@ quanto já repassou.
 - **FEV-02** Glossário único (rótulo e definição curta) em `components/financas/cascata.tsx`. Os mesmos termos em telas, filtros, selos, CSV e leitores de tela.
 
 ### Finanças (tela principal) _(pages/eventos.tsx)_
+- **FEV-01** Vocabulário do produtor (23/11): "saque", "Sacado", "Saque agendado" e "Saldo disponível". Nenhum texto visível usa "repasse" nem "Disponível" sozinho. Onde as regras abaixo ainda dizem "repasse", "Repassado", "Agendado" ou "Disponível", vale o termo novo.
+- **FEV-02** A conta: Vendido + Créditos − Taxas e custos − Devoluções = Líquido, nesta ordem. Líquido por situação, nesta ordem: Saldo disponível, Antecipável, Saque agendado, Retido, Em processamento e, separado, Sacado.
+- **FEV-03** Valor negativo tem um padrão só: sinal de menos e `COR_DO_NEGATIVO` (`text-error-primary`). Vale para Taxas e custos e Devoluções da cascata, saldo negativo e saídas do Extrato e de Últimos movimentos. Zero fica neutro.
+- **FEV-04** Barra de filtros da página, abaixo das abas (`FilterBar` do DS em um cartão): "Filtros", o campo "Evento" (um ou mais eventos, com busca; vazio = "Todos os eventos") e o aviso "Aplica-se a todos os dados da página". Com filtro ativo aparece "Limpar filtros". O filtro acompanha a troca de aba (`?eventos=id,id`).
+- **FEV-04b** O filtro aplica-se a todos os dados das três abas: na Visão geral, cards, Resumo financeiro, Líquido por situação, Próximas liberações, Últimos movimentos e a lista "Saldo por evento" (com o seu total); no Calendário e no Extrato, a tela inteira. A página do evento não tem a barra.
 - **FEV-10** Cabeçalho: título, "Atualizado em dd/mm/aaaa, hh:mm" (informação neutra) e "Solicitar repasse".
 - **FEV-10** Visão geral, Calendário e Extrato são abas de uma tela só, "Finanças" (`Tabs` do DS sob o título). A aba mantém o cenário do protótipo. A página do evento não tem abas: volta por "← Finanças".
 - **FEV-11** Três cards de ação, os únicos números com centavos, todos em cor neutra (vermelho só para saldo negativo): Disponível para repasse (em quantos eventos e a conta de repasse, com o selo "Confirmada" ou "Em confirmação"), Antecipável (próxima liberação e "Antecipar", sem taxa) e Repassado (agendados e "Ver repasses", que abre o Extrato filtrado por Repasses).

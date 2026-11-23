@@ -11,8 +11,8 @@ import { reais, reaisComCentavos } from "./formato";
 
 /*
  * A equação que a tela inteira conta (ajustes v3):
- *   De onde veio:  Vendido − Taxas e custos + Créditos − Devoluções = Líquido
- *   Onde está:     Líquido = Em processamento + Retido + Antecipável + Disponível + Agendado + Repassado
+ *   De onde veio:  Vendido + Créditos − Taxas e custos − Devoluções = Líquido (somas de um lado, subtrações do outro)
+ *   Onde está:     Líquido = Saldo disponível + Antecipável + Saque agendado + Retido + Em processamento + Sacado
  * A mesma conta, com os mesmos nomes e a mesma ordem, na organização e em cada evento.
  * Os nomes internos (ajustes, seuDinheiro, aLiberar, recebido) vêm da v2; o que o produtor lê está
  * em ROTULO_DA_PARTE.
@@ -34,10 +34,17 @@ export const ROTULO_DA_PARTE: Record<Parte, string> = {
     processamento: "Em processamento",
     retido: "Retido",
     aLiberar: "Antecipável",
-    disponivel: "Disponível",
-    agendado: "Agendado",
-    recebido: "Repassado",
+    disponivel: "Saldo disponível",
+    agendado: "Saque agendado",
+    recebido: "Sacado",
 };
+
+/**
+ * Padrão único para valor negativo, em todo o protótipo: sinal de menos (o `reais` já escreve "− R$")
+ * e este token de cor. Vale para o que sai (taxas, devoluções, saídas do Extrato) e para saldo
+ * negativo. Valor zerado fica neutro.
+ */
+export const COR_DO_NEGATIVO = "text-error-primary";
 
 /** Glossário único: a definição curta de cada termo, igual em todo o protótipo. */
 export const DEFINICAO: Record<Parte, string> = {
@@ -45,12 +52,12 @@ export const DEFINICAO: Record<Parte, string> = {
     taxas: "Taxas e custos descontados das suas vendas.",
     creditos: "Bonificações e incentivos previstos no seu contrato.",
     ajustes: "Cancelamentos, reembolsos e contestações devolvidos aos compradores.",
-    seuDinheiro: "O que é seu: vendido, menos taxas e devoluções, mais créditos.",
+    seuDinheiro: "O que é seu: vendido, mais créditos, menos taxas e devoluções.",
     processamento: "Vendas recentes, ainda em confirmação.",
     retido: "Reservado até o evento ou por segurança, com data de liberação.",
     aLiberar: "Valor com liberação futura, que você pode antecipar.",
-    disponivel: "Pronto para repasse.",
-    agendado: "Repasse solicitado, com pagamento na data marcada.",
+    disponivel: "Pronto para saque.",
+    agendado: "Saque solicitado, com pagamento na data marcada.",
     recebido: "Já pago na sua conta bancária.",
 };
 
@@ -92,12 +99,13 @@ interface BlocoProps {
     /** Como ler o bloco em voz alta: "menos", "mais", "igual a". */
     leitura?: string;
     resultado?: boolean;
-    tom?: "erro";
+    /** O bloco é uma subtração: mostra o valor com sinal de menos e a cor do negativo (zero fica neutro). */
+    sai?: boolean;
     /** "Ver detalhe" (painel lateral) ou o link do relatório de vendas, na página do evento. */
     acao?: ReactNode;
 }
 
-const Bloco = ({ parte, valor, legenda, leitura, resultado, tom, acao }: BlocoProps) => (
+const Bloco = ({ parte, valor, legenda, leitura, resultado, sai, acao }: BlocoProps) => (
     <div className={cx("flex min-w-0 flex-1 flex-col gap-1 rounded-xl p-3 ring-1 ring-inset @6xl:p-4", resultado ? "bg-secondary ring-primary" : "bg-primary ring-secondary")}>
         <span className="flex items-center gap-1.5 text-sm font-medium text-secondary">
             <span>
@@ -106,7 +114,7 @@ const Bloco = ({ parte, valor, legenda, leitura, resultado, tom, acao }: BlocoPr
             </span>
             <Dica termo={ROTULO_DA_PARTE[parte]} texto={DEFINICAO[parte]} />
         </span>
-        <span className={cx("font-semibold whitespace-nowrap tabular-nums", resultado ? "text-xl @6xl:text-display-xs" : "text-lg @6xl:text-xl", tom === "erro" && valor !== 0 ? "text-error-primary" : "text-primary")}>{reais(valor)}</span>
+        <span className={cx("font-semibold whitespace-nowrap tabular-nums", resultado ? "text-xl @6xl:text-display-xs" : "text-lg @6xl:text-xl", (sai ? valor > 0 : valor < 0) ? COR_DO_NEGATIVO : "text-primary")}>{reais(sai ? -valor || 0 : valor)}</span>
         {legenda && <span className="text-xs text-tertiary">{legenda}</span>}
         {acao && <span className="mt-auto pt-1">{acao}</span>}
     </div>
@@ -144,12 +152,12 @@ export const Cascata = ({ totais, aoAbrir, aoVerRelatorio, creditoPendente }: Ca
                     ) : undefined
                 }
             />
-            <Operador sinal="−" />
-            <Bloco parte="taxas" valor={totais.taxas} leitura="menos" acao={totais.taxas > 0 ? verDetalhe("taxas") : undefined} />
             <Operador sinal="+" />
             <Bloco parte="creditos" valor={totais.creditos} leitura="mais" acao={totais.creditos > 0 || creditoPendente ? verDetalhe("creditos") : undefined} />
             <Operador sinal="−" />
-            <Bloco parte="ajustes" valor={totais.ajustes} leitura="menos" tom="erro" acao={totais.ajustes > 0 ? verDetalhe("ajustes") : undefined} />
+            <Bloco parte="taxas" valor={totais.taxas} leitura="menos" sai acao={totais.taxas > 0 ? verDetalhe("taxas") : undefined} />
+            <Operador sinal="−" />
+            <Bloco parte="ajustes" valor={totais.ajustes} leitura="menos" sai acao={totais.ajustes > 0 ? verDetalhe("ajustes") : undefined} />
             <Operador sinal="=" />
             <Bloco parte="seuDinheiro" valor={totais.seuDinheiro} leitura="igual a" resultado />
         </div>
@@ -168,7 +176,9 @@ export const COR_DA_PARTE: Record<ParteDaDistribuicao, string> = {
     recebido: "bg-utility-neutral-600",
 };
 
-export const ORDEM_DAS_PARTES: ParteDaDistribuicao[] = ["processamento", "retido", "aLiberar", "disponivel", "agendado", "recebido"];
+/** Começa pelo que está na mão do produtor. "Sacado" vem por último e separado: já saiu, não é mais a receber. */
+export const ORDEM_DAS_PARTES: ParteDaDistribuicao[] = ["disponivel", "aLiberar", "agendado", "retido", "processamento", "recebido"];
+const JA_SAIU: ParteDaDistribuicao = "recebido";
 
 /** Fatia do Líquido, com uma casa decimal: "7,7%". Abaixo de 0,1% diz "menos de 0,1%". */
 const porcentagem = (valor: number, total: number) => {
@@ -195,7 +205,7 @@ export const Distribuicao = ({ totais, detalhes, destinos }: DistribuicaoProps) 
                     <Tooltip key={p} title={tituloDeTooltip(ROTULO_DA_PARTE[p])} description={`${reais(totais[p])} · ${porcentagem(totais[p], totais.seuDinheiro)} do Líquido`} delay={0} closeDelay={0} arrow>
                         <TooltipTrigger
                             aria-label={`${ROTULO_DA_PARTE[p]}: ${reais(totais[p])}`}
-                            className="group flex h-6 min-w-2 cursor-default items-center rounded-full outline-focus-ring focus-visible:outline-2"
+                            className={cx("group flex h-6 min-w-2 cursor-default items-center rounded-full outline-focus-ring focus-visible:outline-2", p === JA_SAIU && "ml-2")}
                             style={{ flexGrow: totais[p], flexBasis: 0 }}
                         >
                             <span className={cx("h-2 w-full rounded-full transition duration-100 ease-linear group-hover:h-3 group-focus-visible:h-3", COR_DA_PARTE[p])} />
@@ -205,7 +215,7 @@ export const Distribuicao = ({ totais, detalhes, destinos }: DistribuicaoProps) 
             </div>
         </div>
         {/* Legenda: serve para conferir que as seis partes somam o Líquido. Degrau menor da escala de tipo. */}
-        <dl className="-mx-2 grid grid-cols-6 divide-x divide-secondary">
+        <dl className="-mx-2 grid grid-cols-6">
             {ORDEM_DAS_PARTES.map((parte) => {
                 const valor = totais[parte];
                 const conteudo = (
@@ -214,13 +224,13 @@ export const Distribuicao = ({ totais, detalhes, destinos }: DistribuicaoProps) 
                             <span aria-hidden="true" className={cx("size-2 shrink-0 rounded-full", valor < 0 ? "bg-utility-red-500" : COR_DA_PARTE[parte])} />
                             {ROTULO_DA_PARTE[parte]}
                         </dt>
-                        <dd className={cx("text-md font-semibold whitespace-nowrap tabular-nums", valor < 0 ? "text-error-primary" : "text-primary")}>{reais(valor)}</dd>
+                        <dd className={cx("text-md font-semibold whitespace-nowrap tabular-nums", valor < 0 ? COR_DO_NEGATIVO : "text-primary")}>{reais(valor)}</dd>
                         {detalhes[parte] && <dd className="text-xs text-tertiary">{detalhes[parte]}</dd>}
                     </>
                 );
                 const destino = destinos?.[parte];
                 return (
-                    <div key={parte} className="min-w-0 px-2">
+                    <div key={parte} className={cx("min-w-0 px-2", parte === JA_SAIU ? "ml-3 border-l-2 border-primary pl-5" : parte !== ORDEM_DAS_PARTES[0] && "border-l border-secondary")}>
                         {destino ? (
                             <Link
                                 to={destino}

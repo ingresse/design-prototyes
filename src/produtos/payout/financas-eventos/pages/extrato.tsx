@@ -13,7 +13,7 @@ import { Input } from "@/components/base/input/input";
 import { Select } from "@/components/base/select/select";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { cx } from "@/utils/cx";
-import { Secao } from "../../components/financas/cascata";
+import { COR_DO_NEGATIVO, Secao } from "../../components/financas/cascata";
 import { baixarCsv, dataDoCsv } from "../../components/financas/csv";
 import {
     DIAS_DO_EXTRATO,
@@ -31,7 +31,7 @@ import {
 import { Aviso, AvisoDeBloqueio, Carregando, ErroAoCarregar } from "../../components/financas/estados";
 import { dataComDia, dataCurta, reais } from "../../components/financas/formato";
 import { fraseDeCompensacao } from "../../components/financas/frases";
-import { CabecalhoDaPagina, FinancasShell, useCenario } from "../../components/financas/shell";
+import { CabecalhoDaPagina, FinancasShell, useCenario, useEventosEscolhidos } from "../../components/financas/shell";
 import { Paginacao } from "../components/paginacao";
 import { PainelDoMovimento } from "../components/painel-do-movimento";
 
@@ -54,8 +54,8 @@ const TIPOS: Array<{ id: Filtro; label: string }> = [
     { id: "liberacao", label: "Liberações" },
     { id: "antecipacao", label: "Antecipações" },
     { id: "credito", label: "Créditos" },
-    { id: "repasse", label: "Repasses" },
-    { id: "repasse-pago", label: "Repasses pagos" },
+    { id: "repasse", label: "Saques" },
+    { id: "repasse-pago", label: "Saques pagos" },
     { id: "taxa", label: "Taxas e custos" },
     { id: "devolucao", label: "Devoluções" },
     { id: "venda", label: "Vendas" },
@@ -76,7 +76,7 @@ const NO_RESUMO: Record<TipoDeMovimento, string> = {
     taxa: "Taxas e custos",
     credito: "Créditos",
     devolucao: "Devoluções",
-    repasse: "Repasses",
+    repasse: "Saques",
     antecipacao: "Antecipações",
 };
 
@@ -115,7 +115,7 @@ const ParteDoResumo = ({ rotulo, valor, cor = "text-primary", resultado, porTipo
             {rotulo}
         </dt>
         <dd className="flex flex-col gap-2">
-            <span className={cx("font-semibold whitespace-nowrap tabular-nums", resultado ? "text-xl @6xl:text-display-xs" : "text-lg @6xl:text-xl", valor < 0 ? "text-error-primary" : cor)}>{reais(valor)}</span>
+            <span className={cx("font-semibold whitespace-nowrap tabular-nums", resultado ? "text-xl @6xl:text-display-xs" : "text-lg @6xl:text-xl", valor < 0 ? COR_DO_NEGATIVO : cor)}>{reais(valor)}</span>
             {porTipo &&
                 (porTipo.length ? (
                     <ul className="flex flex-col gap-1 border-t border-secondary pt-2">
@@ -143,10 +143,10 @@ const ResumoDoPeriodo = ({ x }: { x: Extrato }) => (
                 cor="text-success-primary"
                 porTipo={x.porTipo.entradas}
                 vazio="Nada entrou no período"
-                rotuloDoTipo={(t) => (t === "repasse" ? "Repasses não concluídos" : NO_RESUMO[t])}
+                rotuloDoTipo={(t) => (t === "repasse" ? "Saques não concluídos" : NO_RESUMO[t])}
             />
-            <ParteDoResumo rotulo="Saídas" valor={x.saidas} porTipo={x.porTipo.saidas} vazio="Nada saiu no período" />
-            <ParteDoResumo rotulo={x.ate === HOJE ? "Disponível hoje" : `Disponível em ${dataCurta(x.ate)}`} valor={x.saldoFinal} resultado />
+            <ParteDoResumo rotulo="Saídas" valor={-x.saidas || 0} porTipo={x.porTipo.saidas} vazio="Nada saiu no período" />
+            <ParteDoResumo rotulo={x.ate === HOJE ? "Saldo disponível hoje" : `Saldo disponível em ${dataCurta(x.ate)}`} valor={x.saldoFinal} resultado />
         </dl>
     </Secao>
 );
@@ -154,7 +154,7 @@ const ResumoDoPeriodo = ({ x }: { x: Extrato }) => (
 /* ---------------- movimentos por dia ---------------- */
 
 /** Larguras das colunas de valor: as mesmas no cabeçalho, no dia e na linha, para os números alinharem. */
-const COLUNA = "w-36 shrink-0 text-right";
+const COLUNA = "w-40 shrink-0 text-right";
 const SETA = "size-5 shrink-0";
 
 const Movimento = ({ m, aoAbrir }: { m: LinhaDoExtrato; aoAbrir: () => void }) => {
@@ -175,17 +175,17 @@ const Movimento = ({ m, aoAbrir }: { m: LinhaDoExtrato; aoAbrir: () => void }) =
                         {m.repasse && ` · ${m.repasse.conta}`}
                     </span>
                 </span>
-                <span className={cx(COLUNA, "text-sm font-semibold whitespace-nowrap tabular-nums", semEfeito ? "text-tertiary" : entrou ? "text-success-primary" : "text-primary")}>
+                <span className={cx(COLUNA, "text-sm font-semibold whitespace-nowrap tabular-nums", semEfeito ? "text-tertiary" : entrou ? "text-success-primary" : COR_DO_NEGATIVO)}>
                     <span className="sr-only">{semEfeito ? "Valor: " : entrou ? "Entrou: " : "Saiu: "}</span>
                     {m.valor > 0 ? "+ " : ""}
                     {reais(m.valor)}
                 </span>
-                <span className={cx(COLUNA, "text-sm whitespace-nowrap tabular-nums", semEfeito ? "text-tertiary" : m.apos < 0 ? "text-error-primary" : "text-secondary")}>
+                <span className={cx(COLUNA, "text-sm whitespace-nowrap tabular-nums", semEfeito ? "text-tertiary" : m.apos < 0 ? COR_DO_NEGATIVO : "text-secondary")}>
                     {semEfeito ? (
                         m.semEfeito
                     ) : (
                         <>
-                            <span className="sr-only">Disponível após: </span>
+                            <span className="sr-only">Saldo disponível após: </span>
                             {reais(m.apos)}
                         </>
                     )}
@@ -200,7 +200,8 @@ export function FinancasExtrato() {
     const [cenario, setCenario] = useCenario();
     const [params, setParams] = useSearchParams();
 
-    const eventos = eventosDoCenario(cenario);
+    // O filtro de eventos do topo de Finanças vale para a tela inteira.
+    const { escolhidos: eventos } = useEventosEscolhidos();
     const bloqueado = cenario === "bloqueado";
     const comCenario = (rota: string) => `${rota}${cenario === "normal" ? "" : `${rota.includes("?") ? "&" : "?"}cenario=${cenario}`}`;
     const compensa = fraseDeCompensacao(eventos);
@@ -261,10 +262,10 @@ export function FinancasExtrato() {
         }
         const emOrdem = visiveis.slice().reverse();
         baixarCsv("financas-extrato.csv", [
-            ["Data", "Movimento", "Tipo", "Evento", "Valor", "Disponível após"],
-            [dataDoCsv(de), `Disponível em ${dataCurta(de)}`, "", "", "", x.saldoInicial],
+            ["Data", "Movimento", "Tipo", "Evento", "Valor", "Saldo disponível após"],
+            [dataDoCsv(de), `Saldo disponível em ${dataCurta(de)}`, "", "", "", x.saldoInicial],
             ...emOrdem.map((m) => [dataDoCsv(m.data), m.titulo, ROTULO_DO_MOVIMENTO[m.tipo], m.evento.nome, m.valor, m.efeito === 0 ? (m.semEfeito ?? "") : m.apos]),
-            [dataDoCsv(ate), `Disponível em ${dataCurta(ate)}`, "", "", "", x.saldoFinal],
+            [dataDoCsv(ate), `Saldo disponível em ${dataCurta(ate)}`, "", "", "", x.saldoFinal],
         ]);
         toast.success(`Extrato baixado com ${quantos(visiveis.length)}.`);
     };
@@ -277,7 +278,7 @@ export function FinancasExtrato() {
             <>
                 {bloqueado && <AvisoDeBloqueio />}
                 {compensa && (
-                    <Aviso tom="erro" titulo={`Seu Disponível está negativo em ${reais(-totalizar(eventos).disponivel)}`}>
+                    <Aviso tom="erro" titulo={`Seu saldo disponível está negativo em ${reais(-totalizar(eventos).disponivel)}`}>
                         <p>Você não precisa pagar nada. {compensa}</p>
                     </Aviso>
                 )}
@@ -364,7 +365,7 @@ export function FinancasExtrato() {
                                 </EmptyState.Header>
                                 <EmptyState.Content>
                                     <EmptyState.Title>{semMovimentos ? "Nenhum movimento neste período" : "Nenhum movimento com esse filtro"}</EmptyState.Title>
-                                    {semMovimentos && temDados && eventos.length === 0 && <EmptyState.Description>Liberações, repasses e devoluções aparecem aqui.</EmptyState.Description>}
+                                    {semMovimentos && temDados && eventos.length === 0 && <EmptyState.Description>Liberações, saques e devoluções aparecem aqui.</EmptyState.Description>}
                                 </EmptyState.Content>
                                 <EmptyState.Footer>
                                     {semMovimentos ? (
@@ -386,7 +387,7 @@ export function FinancasExtrato() {
                             <div aria-hidden="true" className="flex items-center gap-4 border-b border-secondary px-6 py-2 text-xs font-semibold text-quaternary">
                                 <span className="flex-1">Movimento</span>
                                 <span className={COLUNA}>Valor</span>
-                                <span className={COLUNA}>Disponível após</span>
+                                <span className={COLUNA}>Saldo disponível após</span>
                                 <span className={SETA} />
                             </div>
                             <ol aria-label="Movimentos por dia, do mais recente para o mais antigo" className="flex flex-col">
@@ -394,8 +395,8 @@ export function FinancasExtrato() {
                                     <li key={dia.data}>
                                         <div className="flex items-center gap-4 border-b border-secondary bg-secondary px-6 py-2">
                                             <h3 className="flex-1 text-sm font-semibold text-secondary">{dia.data === HOJE ? `Hoje, ${dataCurta(dia.data)}` : dataComDia(dia.data)}</h3>
-                                            <span className="text-xs text-tertiary">Disponível no fim do dia</span>
-                                            <span className={cx(COLUNA, "text-sm font-semibold whitespace-nowrap tabular-nums", (fimDoDia.get(dia.data) ?? 0) < 0 ? "text-error-primary" : "text-primary")}>{reais(fimDoDia.get(dia.data) ?? 0)}</span>
+                                            <span className="text-xs text-tertiary">Saldo disponível no fim do dia</span>
+                                            <span className={cx(COLUNA, "text-sm font-semibold whitespace-nowrap tabular-nums", (fimDoDia.get(dia.data) ?? 0) < 0 ? COR_DO_NEGATIVO : "text-primary")}>{reais(fimDoDia.get(dia.data) ?? 0)}</span>
                                             <span className={SETA} />
                                         </div>
                                         <ul className="flex flex-col divide-y divide-secondary border-b border-secondary">
@@ -411,8 +412,8 @@ export function FinancasExtrato() {
                     {semEfeito > 0 && filtro === "todos" && sentido === "tudo" && (
                         <p className="flex flex-wrap items-center gap-x-2 gap-y-1 px-6 py-3 text-sm text-tertiary">
                             {mostrarSemEfeito
-                                ? `A lista inclui ${quantos(semEfeito)} que não ${semEfeito === 1 ? "mudou" : "mudaram"} o Disponível.`
-                                : `${semEfeito === 1 ? "1 movimento não mudou" : `${semEfeito} movimentos não mudaram`} o Disponível e não ${semEfeito === 1 ? "aparece" : "aparecem"} na lista: vendas em processamento e devoluções que saíram do Antecipável.`}
+                                ? `A lista inclui ${quantos(semEfeito)} que não ${semEfeito === 1 ? "mudou" : "mudaram"} o saldo disponível.`
+                                : `${semEfeito === 1 ? "1 movimento não mudou" : `${semEfeito} movimentos não mudaram`} o saldo disponível e não ${semEfeito === 1 ? "aparece" : "aparecem"} na lista: vendas em processamento e devoluções que saíram do Antecipável.`}
                             <Button size="sm" color="link-gray" onClick={() => mudar({ semefeito: mostrarSemEfeito ? null : "1" })}>
                                 {mostrarSemEfeito ? "Ocultar" : "Mostrar na lista"}
                             </Button>
@@ -423,13 +424,13 @@ export function FinancasExtrato() {
 
                 {/* Conciliação por mês: cada linha fecha (início + entradas − saídas = fim) e o fim de um mês é o início do seguinte. */}
                 {meses.length > 0 && (
-                    <Secao titulo="Fechamento mensal" lateral={<span className="text-sm text-tertiary">O Disponível no fim de um mês é o do início do seguinte</span>}>
+                    <Secao titulo="Fechamento mensal" lateral={<span className="text-sm text-tertiary">O saldo no fim de um mês é o do início do seguinte</span>}>
                         <div aria-hidden="true" className="flex items-center gap-4 border-b border-secondary px-6 py-2 text-xs font-semibold text-quaternary">
                             <span className="flex-1">Mês</span>
-                            <span className={COLUNA}>Disponível no início</span>
+                            <span className={COLUNA}>Saldo disponível no início</span>
                             <span className={COLUNA}>Entradas</span>
                             <span className={COLUNA}>Saídas</span>
-                            <span className={COLUNA}>Disponível no fim</span>
+                            <span className={COLUNA}>Saldo disponível no fim</span>
                             <span className="w-28 shrink-0" />
                         </div>
                         <ul className="flex flex-col divide-y divide-secondary">
@@ -445,19 +446,19 @@ export function FinancasExtrato() {
                                             </Badge>
                                         )}
                                     </span>
-                                    <span className={cx(COLUNA, "text-sm whitespace-nowrap tabular-nums", m.saldoInicial < 0 ? "text-error-primary" : "text-secondary")}>
-                                        <span className="sr-only">Disponível no início: </span>
+                                    <span className={cx(COLUNA, "text-sm whitespace-nowrap tabular-nums", m.saldoInicial < 0 ? COR_DO_NEGATIVO : "text-secondary")}>
+                                        <span className="sr-only">Saldo disponível no início: </span>
                                         {reais(m.saldoInicial)}
                                     </span>
                                     <span className={cx(COLUNA, "text-sm font-medium whitespace-nowrap text-success-primary tabular-nums")}>
                                         <span className="sr-only">Entradas: </span>+ {reais(m.entradas)}
                                     </span>
-                                    <span className={cx(COLUNA, "text-sm font-medium whitespace-nowrap text-primary tabular-nums")}>
+                                    <span className={cx(COLUNA, "text-sm font-medium whitespace-nowrap tabular-nums", m.saidas > 0 ? COR_DO_NEGATIVO : "text-primary")}>
                                         <span className="sr-only">Saídas: </span>
-                                        {reais(-m.saidas)}
+                                        {reais(-m.saidas || 0)}
                                     </span>
-                                    <span className={cx(COLUNA, "text-sm font-semibold whitespace-nowrap tabular-nums", m.saldoFinal < 0 ? "text-error-primary" : "text-primary")}>
-                                        <span className="sr-only">Disponível no fim: </span>
+                                    <span className={cx(COLUNA, "text-sm font-semibold whitespace-nowrap tabular-nums", m.saldoFinal < 0 ? COR_DO_NEGATIVO : "text-primary")}>
+                                        <span className="sr-only">Saldo disponível no fim: </span>
                                         {reais(m.saldoFinal)}
                                     </span>
                                     <span className="flex w-28 shrink-0 justify-end">

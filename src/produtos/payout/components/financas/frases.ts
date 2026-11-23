@@ -41,7 +41,7 @@ export function proximaLiberacaoDoEvento(e: Evento): string {
     const proxima = e.liberacoes.slice().sort((a, b) => a.data.localeCompare(b.data))[0];
     if (proxima) return `Próxima liberação: ${reais(proxima.valor)} em ${dataCurta(proxima.data)} · ${proxima.tipo === "aLiberar" ? "Antecipável" : "Retido"}`;
     if (e.processamento > 0) return `${reais(e.processamento)} em processamento`;
-    if (e.recebido > 0) return `${reais(e.recebido)} repassados`;
+    if (e.recebido > 0) return `${reais(e.recebido)} sacados`;
     return "Sem liberações previstas";
 }
 

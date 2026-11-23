@@ -91,6 +91,13 @@ Decisões de interface
 38. **Página do evento:** "Próximas liberações" e "Repasses" ganharam atalhos para o Calendário e o Extrato já filtrados pelo evento.
 39. **O gráfico do Calendário segue o filtro de data** (pedido de 17/11). Antes, filtrar a data só apagava as barras. Agora o gráfico mostra o período escolhido, por dia (até 14 dias), por semana (até 12 semanas) ou por mês. Clicar em uma semana passou a abrir aquela semana dia a dia, e "Ver todas as semanas" volta. Evento e tipo continuam mudando só a lista: decisão minha, a confirmar.
 40. **Rolagem dentro de "Próximas liberações" e "Últimos movimentos"** (pedido de 17/11): oito linhas em vez de três, com três e meia à vista. A observar na pesquisa: duas rolagens na mesma tela atrapalham?
+41. **Ajustes do CPTO (23/11), antes do teste com produtor.** Valem sobre tudo o que está acima: onde uma decisão antiga fala em "repasse", "Repassado", "Agendado" ou "Disponível", leia "saque", "Sacado", "Saque agendado" e "Saldo disponível".
+    - **"Saque" no lugar de "repasse"** em tudo o que o produtor lê (a Ingresse repassa, o produtor saca). Variáveis, rotas e parâmetros de URL (`tipo=repasse`, `acao=repasse`) não mudaram. O código do saque passou de RP-… para SQ-….
+    - **"Saldo disponível"** é o nome único do saldo, em todas as telas, painéis e arquivos baixados.
+    - **Cascata reordenada:** Vendido + Créditos − Taxas e custos − Devoluções = Líquido.
+    - **Negativo com padrão único:** sinal de menos e o token `text-error-primary` (`COR_DO_NEGATIVO`), para o que sai e para saldo negativo; zero fica neutro. Substitui a decisão 22 e a 37 (saída em cor neutra).
+    - **Líquido por situação** começa pelo Saldo disponível; "Sacado" vem por último, separado por um divisor e um espaço na barra.
+    - **Filtro de eventos em barra própria, abaixo das abas** (layout enviado pela Laricia em 23/11, com o `FilterBar` do DS): "Filtros" · "Evento" · "Aplica-se a todos os dados da página". Para o aviso ser verdadeiro, o filtro passou a valer para toda a página, inclusive Próximas liberações, Últimos movimentos e a lista "Saldo por evento". Isso muda o pedido original do CPTO ("a lista continua como atalho"): com filtro, a lista mostra só os eventos escolhidos, e o Saldo disponível volta a ser o mesmo no card, no total da lista e no Extrato. **A confirmar com o CPTO.**
 
 ## Suposições (dados inventados)
 
@@ -136,6 +143,7 @@ Decisões de interface
 | Select com busca (`Select.ComboBox`) com seta à direita e sem lupa | A seta entra no espaço de `status` do ComboBox e a lupa é trocada por um ícone vazio (filtro de evento do Extrato). O texto do campo vazio fica na cor de placeholder, mais apagado que o do `Select` ao lado |
 | Gráfico de barras empilhadas, clicável | Barras locais (colunas com `Tooltip` do DS e as cores `utility` da legenda). O DS só tem a base do Recharts (`charts-base`), sem gráfico de barras pronto |
 | Linha que abre para mostrar detalhes dentro de uma lista | `button` com `aria-expanded` e os estados de foco e hover do DS. O `Accordion` do DS tem borda e fundo de página |
+| `MultiSelect` com textos em português | Cópia local da mesma composição (`components/financas/multi-select-pt.tsx`). O `MultiSelect` do DS traz "Search", "Reset", "Select all", "Clear search" e "No results found" fixos em inglês, sem propriedade para trocar |
 | Resumo em blocos com operadores (+ − =) | Blocos locais iguais aos de "Resumo financeiro" |
 | Selos de tipo (liberação) com cor por tipo | `Badge` do DS com as cores existentes. No Extrato o selo saiu: a linha usa ícone de direção |
 | Card de métrica clicável, com centavos menores e sem menu de ações | `TableCard.Root` + `NumeroGrande` local; o card clicável é um `button` com os estados de foco e hover do DS |
