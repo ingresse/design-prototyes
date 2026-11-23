@@ -12,6 +12,7 @@ import { CategoriaDetalhe } from "../components/categoria-detalhe";
 import { ShellAwa, type DestinoDoEvento } from "../components/shell-awa";
 import { Tour, useTour } from "../components/tour";
 import { SecaoModalidades } from "../components/secao-modalidades";
+import { SecaoVendas } from "../components/secao-vendas";
 import { horaAgora, irParaCampo } from "../data/campos";
 import { IDS_DAS_SECOES, secoes } from "../data/opcoes";
 import { useVocabulario, type Vocabulario } from "../data/vocabulario";
@@ -54,13 +55,15 @@ export function CriarEventoAssistente() {
     );
 
     const tour = useTour();
-    // Menu do evento (AWA): Informações do evento, Ingressos e Perguntas por ingresso levam aos passos daqui.
-    const DESTINOS: Record<DestinoDoEvento, IdDoPasso> = { informacoes: "evento", inscricoes: "modalidades", perguntas: "inscricao" };
+
+    // v0.46 (SCE-293): no 1º passo (Evento) ainda não há evento: fica só o menu da organização. Depois dele, o
+    // evento existe e a lateral mostra o cartão e o menu do evento, que também leva aos passos.
+    const DESTINOS: Record<DestinoDoEvento, IdDoPasso> = { informacoes: "evento", inscricoes: "modalidades", perguntas: "inscricao", aberturas: "vendas", revisao: "revisao" };
     const atualId = IDS_DOS_PASSOS[passo];
     const ativo = (Object.keys(DESTINOS) as DestinoDoEvento[]).find((d) => DESTINOS[d] === atualId) ?? null;
-
+    const menuDoEvento = passo > 0 ? { ativo, onIr: (d: DestinoDoEvento) => irPara(IDS_DOS_PASSOS.indexOf(DESTINOS[d])) } : undefined;
     return (
-        <ShellAwa evento={{ ativo, onIr: (d) => irPara(IDS_DOS_PASSOS.indexOf(DESTINOS[d])) }}>
+        <ShellAwa evento={menuDoEvento}>
             <ProvedorDoFormulario antesDeIr={antesDeIr}>
                 <Assistente passo={passo} visitados={visitados} irPara={irPara} onReverTour={tour.abrir} />
             </ProvedorDoFormulario>
@@ -153,6 +156,7 @@ function Assistente({ passo, visitados, irPara, onReverTour }: { passo: number; 
                 {atual.id === "evento" && <SecaoEvento />}
                 {atual.id === "modalidades" && <SecaoModalidades />}
                 {atual.id === "inscricao" && <SecaoFormulario />}
+                {atual.id === "vendas" && <SecaoVendas />}
                 {atual.id === "revisao" && <Revisao onEditar={(s) => mudarDePasso(PASSOS.findIndex((p) => p.id === s))} />}
             </div>
 

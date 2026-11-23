@@ -1,16 +1,16 @@
 import { useEffect, useState, type FC } from "react";
-import { CalendarCheck01, ClipboardCheck, Flag01, Tag01, Users01 } from "@untitledui/icons";
+import { Calendar, CalendarCheck01, CheckCircle, ClipboardCheck, Flag01, Rocket01, Tag01 } from "@untitledui/icons";
 import { Dialog, Modal, ModalOverlay } from "@/components/application/modals/modal";
 import { Button } from "@/components/base/buttons/button";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { cx } from "@/utils/cx";
-import { TITULO_FORMULARIO } from "../data/opcoes";
+import { TITULO_FORMULARIO, TITULO_VENDAS } from "../data/opcoes";
 import { useVocabulario } from "../data/vocabulario";
 
 /* ------------------------------------------------------------------ */
 /*  Tour guiado no primeiro acesso (RN-11, SCE-130)                    */
-/*  5 passos: Evento, nível 1, nível 2, Lote e Formulário de           */
-/*  inscrição, com exemplos. Pular, Anterior, Próximo e Concluir.      */
+/*  v0.62: 7 telas curtas no fluxo de hoje (como funciona, os 5 passos */
+/*  e os lotes). Pular, Anterior, Próximo e Concluir.      */
 /*  Lembra que a pessoa já viu (localStorage); "Rever tour" na Ajuda   */
 /*  reabre. Modal do DS: foco preso, Esc fecha, setas trocam o passo.  */
 /* ------------------------------------------------------------------ */
@@ -51,12 +51,15 @@ export function useTour() {
 export function Tour({ aberto, onFechar }: { aberto: boolean; onFechar: () => void }) {
     const { t } = useVocabulario();
     const [passo, setPasso] = useState(0);
+    // v0.62 (SCE-331): o fluxo de hoje, uma ideia por passo, em uma ou duas frases.
     const passos: { icone: FC<{ className?: string }>; titulo: string; texto: string }[] = [
-        { icone: CalendarCheck01, titulo: "Evento", texto: `${t.tourIntro} Comece pelo evento: nome, esporte, data da largada e local. Ex.: Corrida Noturna Floripa 2026.` },
-        { icone: Flag01, titulo: t.nivel1.Um, texto: t.tourNivel1 },
-        { icone: Users01, titulo: t.nivel2.Um, texto: t.tourNivel2 },
-        { icone: Tag01, titulo: "Lote", texto: t.tourLote },
+        { icone: Rocket01, titulo: "Como funciona", texto: t.tourIntro },
+        { icone: CalendarCheck01, titulo: "Evento", texto: "Nome, esporte, data da largada, local e as regras da inscrição." },
+        { icone: Flag01, titulo: t.tituloDaSecao, texto: t.tourNiveis },
+        { icone: Tag01, titulo: "Lotes", texto: t.tourLote },
         { icone: ClipboardCheck, titulo: TITULO_FORMULARIO, texto: t.tourFormulario },
+        { icone: Calendar, titulo: TITULO_VENDAS, texto: t.tourVendas },
+        { icone: CheckCircle, titulo: "Revisar e publicar", texto: "Confira tudo e publique. Produtos adicionais e outros extras você ativa quando quiser, pelo menu do evento." },
     ];
     const atual = passos[passo];
     const ultimo = passo === passos.length - 1;

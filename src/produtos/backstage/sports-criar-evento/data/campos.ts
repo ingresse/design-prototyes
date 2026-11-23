@@ -36,6 +36,13 @@ export const CAMPO = {
     perguntaOpcoes: (id: string) => `campo-pergunta-${id}-opcoes`,
     perguntaVinculo: (id: string) => `campo-pergunta-${id}-vinculo`,
     opcaoNome: (id: string) => `campo-opcao-${id}-nome`,
+    aberturas: "campo-aberturas",
+    aberturaNome: (id: string) => `campo-abertura-${id}-nome`,
+    aberturaInicio: (id: string) => `campo-abertura-${id}-inicio`,
+    aberturaFim: (id: string) => `campo-abertura-${id}-fim`,
+    cfgPublico: (a: string, c: string) => `campo-abertura-${a}-config-${c}-publico`,
+    cfgCategorias: (a: string, c: string) => `campo-abertura-${a}-config-${c}-categorias`,
+    cfgCanais: (a: string, c: string) => `campo-abertura-${a}-config-${c}-canais`,
 };
 
 /** Rola até o campo e põe o foco no controle dele (não no ícone de ajuda do rótulo), sem pular a rolagem. */
@@ -70,7 +77,24 @@ export const formatarDataHora = (iso: string) => {
     return Number.isNaN(d.getTime()) ? "" : new Intl.DateTimeFormat("pt-BR", { dateStyle: "long", timeStyle: "short" }).format(d);
 };
 
-export const formatarReais = (v: number | null) =>
-    v == null ? "" : new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v);
+/* v0.69 (SCE-340): os valores seguem a moeda do evento (Informações da prova › Moeda); o rascunho avisa a troca. */
+let moedaDoEvento = "BRL";
+export const definirMoeda = (moeda?: string) => {
+    moedaDoEvento = moeda || "BRL";
+};
 
-export const FORMATO_REAIS: Intl.NumberFormatOptions = { style: "currency", currency: "BRL" };
+/** Valor na moeda do evento (o nome ficou do tempo em que só havia real). */
+export const formatarReais = (v: number | null) =>
+    v == null ? "" : new Intl.NumberFormat("pt-BR", { style: "currency", currency: moedaDoEvento }).format(v);
+
+/** Formato dos campos de valor; `currency` é lido na hora, então acompanha a moeda do evento. */
+export const FORMATO_REAIS: Intl.NumberFormatOptions = {
+    style: "currency",
+    get currency() {
+        return moedaDoEvento;
+    },
+};
+
+/** Símbolo da moeda do evento ("R$", "US$", "€"…), para rótulos como "Desconto (R$)". */
+export const simboloDaMoeda = () =>
+    new Intl.NumberFormat("pt-BR", { style: "currency", currency: moedaDoEvento }).formatToParts(0).find((p) => p.type === "currency")?.value ?? moedaDoEvento;

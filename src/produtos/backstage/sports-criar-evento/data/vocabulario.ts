@@ -55,8 +55,8 @@ const montar = (n1: Substantivo, n2: Substantivo, ex: Explicacoes) => {
     const a2 = concordancia(n2.genero);
     const conta = (n: number, s: Substantivo) => (n === 1 ? `1 ${s.um}` : `${n} ${s.muitos}`);
     return {
-        nivel1: { um: n1.um, muitos: n1.muitos, Um: maiuscula(n1.um), Muitos: maiuscula(n1.muitos) },
-        nivel2: { um: n2.um, muitos: n2.muitos, Um: maiuscula(n2.um), Muitos: maiuscula(n2.muitos) },
+        nivel1: { um: n1.um, muitos: n1.muitos, Um: maiuscula(n1.um), Muitos: maiuscula(n1.muitos), genero: n1.genero },
+        nivel2: { um: n2.um, muitos: n2.muitos, Um: maiuscula(n2.um), Muitos: maiuscula(n2.muitos), genero: n2.genero },
         ...ex,
 
         /* Seção e passo */
@@ -173,7 +173,7 @@ const montar = (n1: Substantivo, n2: Substantivo, ex: Explicacoes) => {
         listaDeNivel2: (n: number, nomes: string) => `${n === 1 ? maiuscula(n2.um) : maiuscula(n2.muitos)}: ${nomes}`,
         sucesso: (evento: string, qtd1: number, qtd2: number) => `${evento} já aparece no site e aceita inscrições em ${conta(qtd1, n1)} e ${conta(qtd2, n2)}.`,
         /* Copiar ${n1.muitos} de outro evento (v0.4, SCE-159) */
-        copiarNivel1DeOutroEvento: `Copiar de outro evento`,
+        copiarNivel1DeOutroEvento: `Copiar ${n1.muitos} de outro evento`,
         copiarNivel1Titulo: `Copiar ${n1.muitos} de outro evento`,
         copiarNivel1Descricao: `Escolha o evento e marque ${a1.as} ${n1.muitos} e ${a2.as} ${n2.muitos} que você quer trazer.`,
         copiarNivel1Escolha: `${maiuscula(n1.muitos)} e ${n2.muitos} para copiar`,
@@ -186,7 +186,7 @@ const montar = (n1: Substantivo, n2: Substantivo, ex: Explicacoes) => {
         copiarNivel1Traz: `${maiuscula(a2.as)} ${n2.muitos} com regras (sexo e idade), vagas e lotes (nome, preço e quantidade).`,
         // v0.16 (SCE-216, SCE-218): copiar só categorias de outro evento para dentro de uma modalidade; duplicar categoria em outra modalidade.
         guiadaNadaTrazido: `${maiuscula(a1.nenhuma)} ${n1.um} copiad${a1.a}. Crie ${a1.as} ${n1.muitos} do evento ou copie de outro evento.`,
-        copiarNivel2DeOutroEvento: `Copiar de outro evento`,
+        copiarNivel2DeOutroEvento: `Copiar ${n2.muitos} de outro evento`,
         copiarNivel2Titulo: (destino: string) => `Copiar ${n2.muitos} de outro evento para ${destino}`,
         copiarNivel2EscolherDescricao: (destino: string) =>
             `Escolha o evento e marque ${a2.as} ${n2.muitos} que você quer trazer. ${maiuscula(a2.ela)}s entram ${a1.na} ${n1.um} ${destino}; no próximo passo, você revisa nomes e lotes.`,
@@ -241,9 +241,21 @@ const montar = (n1: Substantivo, n2: Substantivo, ex: Explicacoes) => {
 
         /* Tour (RN-11) */
         // v0.27 (SCE-258, teste com a Maria Bruna): frase completa, dizendo o que se faz.
-        tourIntro: `Em poucos passos você cria o evento, ${a1.as} ${n1.muitos} com ${a2.as} ${n2.muitos} e os lotes, e o formulário de inscrição.`,
-        tourLote: `Lote é o preço e as vagas de cada fase da venda, dentro de cada ${n2.um}. Ex.: 1º lote de R$ 89,90 com 200 vagas. Ele vira sozinho quando esgota ou na data limite.`,
-        tourFormulario: `As perguntas que o atleta responde ao se inscrever, como tamanho da camiseta e contato de emergência. Você escolhe em quais ${n2.muitos} cada pergunta aparece.`,
+        // v0.62 (SCE-331): tour do fluxo de hoje, frases curtas.
+        tourIntro: "Você cria o evento em 5 passos. Tudo salva sozinho: dá para sair e continuar depois.",
+        tourNiveis: `${maiuscula(n1.um)} é a prova, como 5 km ou 10 km. ${maiuscula(n2.um)} divide os atletas dentro d${a1.ela}, como Geral, 60+ ou PCD.`,
+        tourLote: `Cada ${n2.um} tem lotes com preço e vagas. O próximo lote começa sozinho quando o anterior esgota ou na data limite.`,
+        tourFormulario: `As perguntas que o atleta responde, como contato de emergência ou equipe. Você escolhe em quais ${n2.muitos} cada uma aparece.`,
+        tourVendas: `Diga quando, para quem e por onde ${a2.as} ${n2.muitos} vendem. A primeira abertura já vem pronta.`,
+
+        /* v0.51 (SCE-306 a SCE-310): aberturas de vendas */
+        vendaCampoCategorias: `${maiuscula(n1.muitos)} e ${n2.muitos}`,
+        vendaSelecionadas: (n: number) => (n === 1 ? `1 ${n2.um} selecionad${a2.a}` : `${n} ${n2.muitos} selecionad${a2.as}`),
+        vendaTodasAsCategorias: (n: number) => `${maiuscula(a2.todas)} ${a2.as} ${n2.muitos} (${n})`,
+        vendaSemNivel2: `Crie ${a2.as} ${n2.muitos} antes de programar as vendas.`,
+        // v0.57: mensagens que citam o nível vêm daqui (SCE-82).
+        vendaNenhumaCategoria: `Escolha ao menos ${a2.uma} ${n2.um}`,
+        vendaRepetida: `Há ${n2.muitos} repetid${a2.as} em outra configuração, para o mesmo público e canal. Tire de uma delas`,
 
         /* Avisos que não impedem publicar */
         avisoNivel2SemPergunta: "Nenhuma pergunta no formulário",
@@ -269,7 +281,7 @@ export const VARIANTES: Record<VarianteDeNomes, { rotulo: string; t: Vocabulario
     "modalidade-categoria": {
         rotulo: "Modalidade e categoria (padrão)",
         t: montar(MODALIDADE, CATEGORIA, {
-            subtituloDaSecao: "Cada modalidade é uma prova. As categorias dividem os atletas e têm os próprios lotes.",
+            subtituloDaSecao: "Organize as inscrições por modalidade, categoria e lote.",
             ajudaDoTipo: AJUDA_DO_TIPO,
             placeholderNivel1: "Ex.: 10 km",
             placeholderNivel2: "Ex.: Geral, 60+, Feminino 18–29",
@@ -281,7 +293,7 @@ export const VARIANTES: Record<VarianteDeNomes, { rotulo: string; t: Vocabulario
     "prova-categoria": {
         rotulo: "Prova e categoria",
         t: montar(PROVA, CATEGORIA, {
-            subtituloDaSecao: "Cada prova é uma distância do evento. As categorias dividem os atletas e têm os próprios lotes.",
+            subtituloDaSecao: "Organize as inscrições por prova, categoria e lote.",
             ajudaDoTipo: AJUDA_DO_TIPO,
             placeholderNivel1: "Ex.: 10 km",
             placeholderNivel2: "Ex.: Geral, 60+, Feminino 18–29",
@@ -293,7 +305,7 @@ export const VARIANTES: Record<VarianteDeNomes, { rotulo: string; t: Vocabulario
     "percurso-categoria": {
         rotulo: "Percurso e categoria",
         t: montar(PERCURSO, CATEGORIA, {
-            subtituloDaSecao: "Cada percurso é uma distância do evento. As categorias dividem os atletas e têm os próprios lotes.",
+            subtituloDaSecao: "Organize as inscrições por percurso, categoria e lote.",
             ajudaDoTipo: "Classificação padrão do percurso. Usamos para organizar resultados e para encontrar atletas que correm essa distância.",
             placeholderNivel1: "Ex.: 10 km",
             placeholderNivel2: "Ex.: Geral, 60+, Feminino 18–29",
@@ -305,7 +317,7 @@ export const VARIANTES: Record<VarianteDeNomes, { rotulo: string; t: Vocabulario
     "categoria-modalidade": {
         rotulo: "Categoria e modalidade (legado TS)",
         t: montar(CATEGORIA, MODALIDADE, {
-            subtituloDaSecao: "Cada categoria agrupa as modalidades de uma prova, como 10 km. A modalidade é o que o atleta compra: tem as regras e os próprios lotes.",
+            subtituloDaSecao: "Organize as inscrições por categoria, modalidade e lote.",
             ajudaDoTipo: "Classificação padrão da prova desta categoria. Usamos para organizar resultados e para encontrar atletas que correm essa distância.",
             placeholderNivel1: "Ex.: 10 km",
             placeholderNivel2: "Ex.: Geral, 60+, Feminino 18–29",

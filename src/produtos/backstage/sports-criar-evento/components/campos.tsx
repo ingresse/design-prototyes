@@ -1,8 +1,6 @@
 import { useId, type FC, type ReactNode } from "react";
-import { parseDateTime } from "@internationalized/date";
 import { AlertTriangle } from "@untitledui/icons";
 import { ButtonContext as AriaButtonContext, NumberField as AriaNumberField } from "react-aria-components";
-import { DateTimePicker } from "@/components/application/date-picker/date-time-picker";
 import { EmptyState } from "@/components/application/empty-state/empty-state";
 import { ButtonGroup, ButtonGroupItem } from "@/components/base/button-group/button-group";
 import { HintText } from "@/components/base/input/hint-text";
@@ -16,6 +14,7 @@ import { Surgir } from "@/components/foundations/transicao";
 import { cx } from "@/utils/cx";
 import type { Opcao } from "../data/opcoes";
 import { MSG } from "../data/opcoes";
+import { CampoDataEHora } from "./campo-data-e-hora";
 
 /* ------------------------------------------------------------------ */
 /*  Peças do formulário, compostas do DS (UI-DS-009)                   */
@@ -170,9 +169,26 @@ export const CampoTexto = ({ id, label, valor, onChange, onBlur, erro, dica, too
 );
 
 /** Texto longo com contador (TextArea do DS). */
-export const CampoTextoLongo = ({ id, label, valor, onChange, onBlur, erro, dica, placeholder, limite }: Omit<CampoTextoProps, "tooltip" | "isRequired" | "isReadOnly" | "inputMode" | "ocultarLabel">) => (
+export const CampoTextoLongo = ({
+    id,
+    label,
+    valor,
+    onChange,
+    onBlur,
+    erro,
+    dica,
+    placeholder,
+    limite,
+    compacto,
+    umaLinha,
+}: Omit<CampoTextoProps, "tooltip" | "isRequired" | "isReadOnly" | "inputMode" | "ocultarLabel"> & {
+    /** v0.29: mesma altura do cartão de imagem (80 px), para campos lado a lado. */
+    compacto?: boolean;
+    /** v0.65 (SCE-334): começa com uma linha e cresce conforme o texto. */
+    umaLinha?: boolean;
+}) => (
     <div id={id} data-erro={erro ? "" : undefined} className="flex min-w-0 scroll-mt-6 flex-col gap-1.5">
-        <TextArea label={label} value={valor} onChange={onChange} onBlur={onBlur} isInvalid={!!erro} placeholder={placeholder} rows={4} maxLength={limite} />
+        <TextArea label={label} value={valor} onChange={onChange} onBlur={onBlur} isInvalid={!!erro} placeholder={placeholder} rows={umaLinha ? 1 : compacto ? 2 : 4} maxLength={limite} textAreaClassName={umaLinha ? "min-h-10 resize-none field-sizing-content" : compacto ? "h-20 min-h-20" : undefined} />
         <Rodape hint={erro ?? dica} isInvalid={!!erro} contador={limite ? `${valor.length}/${limite}` : undefined} />
     </div>
 );
@@ -288,13 +304,15 @@ interface CampoSelectProps {
     placeholder?: string;
     isRequired?: boolean;
     className?: string;
+    /** Rótulo só para leitor de tela (linhas de tabela com cabeçalho de coluna). */
+    ocultarLabel?: boolean;
 }
 
 /**
  * Lista: Select do DS. Com (?), o rótulo fica fora do Select: dentro dele, o Select repassa as props do
  * gatilho a todo botão, e o (?) virava um segundo gatilho da lista.
  */
-export const CampoSelect = ({ id, label, opcoes, valor, onChange, onBlur, erro, dica, tooltip, placeholder = "Selecione", isRequired, className }: CampoSelectProps) => {
+export const CampoSelect = ({ id, label, opcoes, valor, onChange, onBlur, erro, dica, tooltip, placeholder = "Selecione", isRequired, className, ocultarLabel }: CampoSelectProps) => {
     const rotuloId = `${id}-rotulo`;
     return (
         <div id={id} data-erro={erro ? "" : undefined} className={cx("flex min-w-0 scroll-mt-6 flex-col gap-1.5", className)}>
@@ -304,7 +322,8 @@ export const CampoSelect = ({ id, label, opcoes, valor, onChange, onBlur, erro, 
                 </Label>
             )}
             <Select
-                label={tooltip ? undefined : label}
+                label={tooltip || ocultarLabel ? undefined : label}
+                aria-label={ocultarLabel && !tooltip ? label : undefined}
                 aria-labelledby={tooltip ? rotuloId : undefined}
                 placeholder={placeholder}
                 items={opcoes}
@@ -321,15 +340,7 @@ export const CampoSelect = ({ id, label, opcoes, valor, onChange, onBlur, erro, 
     );
 };
 
-const paraData = (s: string) => {
-    try {
-        return s ? parseDateTime(s) : null;
-    } catch {
-        return null;
-    }
-};
-
-/** Data e hora num campo só: DateTimePicker do DS, 24 h, minuto como menor unidade (UI-FRM-001). */
+/** v0.29: data e hora em dois campos lado a lado (ver campo-data-e-hora.tsx); mesma interface de antes. */
 export const CampoDataHora = ({
     id,
     label,
@@ -349,11 +360,8 @@ export const CampoDataHora = ({
     id: string;
     label: string;
     valor: string;
-    /** v0.16 (SCE-215): data a partir da qual o calendário habilita os dias; o calendário abre no mês dela. */
     minimo?: string;
-    /** v0.20: data máxima habilitada no calendário (ex.: até a largada). */
     maximo?: string;
-    /** v0.20: visível, mas desabilitado (ex.: troca de titularidade desligada). */
     desabilitado?: boolean;
     onChange: (v: string) => void;
     onBlur?: () => void;
@@ -363,27 +371,23 @@ export const CampoDataHora = ({
     revisar?: boolean;
     isRequired?: boolean;
     className?: string;
-    /** Rótulo só para leitor de tela (linhas de tabela com cabeçalho de coluna). */
     ocultarLabel?: boolean;
 }) => (
-    <div id={id} data-erro={erro ? "" : undefined} className={cx("min-w-0 scroll-mt-6", className)}>
-        <DateTimePicker
-            label={ocultarLabel ? undefined : label}
-            aria-label={ocultarLabel ? label : undefined}
-            granularity="minute"
-            hourCycle={24}
-            value={paraData(valor)}
-            minValue={paraData(minimo ?? "") ?? undefined}
-            maxValue={paraData(maximo ?? "") ?? undefined}
-            isDisabled={desabilitado}
-            placeholderValue={paraData(minimo ?? "") ?? undefined}
-            onChange={(v) => onChange(v ? v.toString().slice(0, 16) : "")}
-            onBlur={onBlur}
-            isRequired={isRequired}
-            isInvalid={!!erro}
-            hint={erro ?? (revisar ? <AvisoRevisar texto={valor ? MSG.revisarData : MSG.insiraData} /> : dica)}
-        />
-    </div>
+    <CampoDataEHora
+        id={id}
+        label={label}
+        ocultarLabel={ocultarLabel}
+        valor={valor}
+        minimo={minimo}
+        maximo={maximo}
+        desabilitado={desabilitado}
+        onChange={onChange}
+        onBlur={onBlur}
+        isRequired={isRequired}
+        erro={erro}
+        className={className}
+        hint={erro ?? (revisar ? <AvisoRevisar texto={valor ? MSG.revisarData : MSG.insiraData} /> : dica)}
+    />
 );
 
 /** Escolha entre 2 ou 3 opções curtas: Label do DS (com ?) + ButtonGroup do DS. */

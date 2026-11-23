@@ -5,10 +5,11 @@ import { Dropdown } from "@/components/base/dropdown/dropdown";
 import { BadgeWithIcon } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
 import { Select } from "@/components/base/select/select";
+import { Toggle } from "@/components/base/toggle/toggle";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { TITULO_PAGINA } from "../../components/titulo-pagina";
 import { ehPerfil, escolherPerfil, PERFIS, usePerfil, type Perfil } from "../data/perfil";
-import { useRascunho } from "../data/rascunho";
+import { atualizarRascunho, useRascunho } from "../data/rascunho";
 import { ehVariante, escolherVariante, useVocabulario, VARIANTES, type VarianteDeNomes } from "../data/vocabulario";
 
 /* Cabeçalho das telas: ferramentas de protótipo (perfil e nomes dos níveis), título, salvamento automático e ajuda. v0.13: a Versão B saiu; a criação é o assistente. */
@@ -49,11 +50,12 @@ export function FerramentasDoPrototipo() {
         p.set("nomes", v);
         setParams(p, { replace: true });
     };
+    const { rascunho } = useRascunho();
     return (
         <div className="flex flex-col gap-2 md:items-end" role="group" aria-label="Ferramentas do protótipo">
             <div className="flex flex-wrap items-center gap-x-3 gap-y-2 md:justify-end">
                 <BadgeWithIcon type="pill-color" color="gray" size="sm" iconLeading={Tool02}>
-                    Protótipo v0.15
+                    Protótipo v0.69
                 </BadgeWithIcon>
                 <div className="w-full sm:w-60">
                     <Select
@@ -66,6 +68,8 @@ export function FerramentasDoPrototipo() {
                         {(item) => <Select.Item id={item.id}>{item.label}</Select.Item>}
                     </Select>
                 </div>
+                {/* v0.53 (SCE-313): simular evento publicado, junto das ferramentas do protótipo. */}
+                <Toggle size="sm" label="Simular evento publicado" isSelected={!!rascunho.simularPublicado} onChange={(v) => atualizarRascunho((x) => ({ ...x, simularPublicado: v }))} />
                 <div className="w-full sm:w-72">
                     <Select
                         aria-label="Nomes dos níveis"

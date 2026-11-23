@@ -285,16 +285,8 @@ export function modalidadesDoEvento(e: EventoAnterior): Modalidade[] {
 export function copiarEvento(id: string): Rascunho {
     const e = EVENTOS_ANTERIORES.find((x) => x.id === id);
     if (!e) return rascunhoVazio();
-    // DEMONSTRAÇÃO (v0.6, SCE-176): cupons e chaves de acesso não vêm na cópia (RN-07). Só para mostrar o
-    // indicador de vínculos na tabela, algumas categorias do rascunho copiado ganham contagens fictícias.
-    const modalidades = marcarLotesParaRevisar(
-        modalidadesDoEvento(e).map((m) => ({
-            ...m,
-            categorias: m.categorias.map((c) =>
-                /kit premium/i.test(c.nome) ? { ...c, chavesDeAcesso: 2, cupons: 1 } : /^elite/i.test(c.nome) ? { ...c, chavesDeAcesso: 1 } : c.nome === "Geral" ? { ...c, cupons: 3 } : c,
-            ),
-        })),
-    );
+    const modalidades = marcarLotesParaRevisar(modalidadesDoEvento(e));
+    // v0.46 (SCE-294): cupons e chaves de acesso nunca vêm de outro evento (RN-07): a cópia começa sem nenhum.
     return {
         ...rascunhoVazio(),
         origem: "copia",

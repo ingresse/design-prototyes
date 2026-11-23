@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { AnimatePresence, motion, Reorder, useDragControls } from "motion/react";
 import { toast } from "sonner";
-import { AlertCircle, AlertTriangle, BookOpen01, ChevronDown, Copy01, Link01, Plus, SearchLg, Trash01, XClose } from "@untitledui/icons";
+import { AlertCircle, AlertTriangle, BookOpen01, ChevronDown, Copy01, Plus, SearchLg, Trash01, XClose } from "@untitledui/icons";
 import { Dialog, Modal, ModalOverlay } from "@/components/application/modals/modal";
 import { Badge, BadgeWithIcon } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
@@ -20,7 +20,7 @@ import type { Pergunta, Presenca, TipoDeResposta } from "../data/tipos";
 import { useVocabulario } from "../data/vocabulario";
 import { CampoNumero, CampoSelect, CampoTexto, ErroDaLista } from "./campos";
 import { useFormulario } from "./contexto";
-import { DuplicarDeOutraCategoria } from "./duplicar-de-categoria";
+import { CopiarPerguntasDeOutroEvento } from "./copiar-perguntas";
 import { ItemDaArvore } from "./arvore-de-modalidades";
 import { resumoDaCategoria } from "./secao-modalidades";
 import { mover } from "./operacoes";
@@ -96,11 +96,10 @@ function Conteudo() {
                     <Button size="md" color="secondary" iconLeading={BookOpen01} onClick={() => setBiblioteca(true)}>
                         Perguntas prontas
                     </Button>
-                    {r.perguntas.length > 0 && temCategorias && (
-                        <Button size="md" color="secondary" iconLeading={Link01} onClick={() => setDuplicando(true)}>
-                            {t.duplicarDeOutraNivel2}
-                        </Button>
-                    )}
+                    {/* v0.29: copiar perguntas de outro evento (no lugar de "Duplicar de outra categoria"). */}
+                    <Button size="md" color="secondary" iconLeading={Copy01} onClick={() => setDuplicando(true)}>
+                        Copiar de outro evento
+                    </Button>
                 </div>
                 {/* Estoque vindo de outro evento: aviso com atalho para as perguntas (SCE-172). */}
                 {aRevisar.length > 0 && (
@@ -119,7 +118,7 @@ function Conteudo() {
             {r.perguntas.length === 0 ? (
                 <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-secondary px-6 py-10 text-center">
                     <p className="text-sm font-medium text-secondary">Nenhuma pergunta adicionada</p>
-                    <p className="text-sm text-tertiary">Use uma pergunta pronta, duplique de outra categoria ou crie a sua, nos botões acima.</p>
+                    <p className="text-sm text-tertiary">Use uma pergunta pronta, copie de outro evento ou crie a sua, nos botões acima.</p>
                 </div>
             ) : (
                 <Reorder.Group
@@ -136,7 +135,7 @@ function Conteudo() {
             )}
 
             <PerguntasProntas aberto={biblioteca} onFechar={() => setBiblioteca(false)} />
-            <DuplicarDeOutraCategoria aberto={duplicando} onFechar={() => setDuplicando(false)} />
+            <CopiarPerguntasDeOutroEvento aberto={duplicando} onFechar={() => setDuplicando(false)} />
         </section>
     );
 }
@@ -364,9 +363,17 @@ function EdicaoDaPergunta({ pergunta: p }: { pergunta: Pergunta }) {
                                 Quantidade disponível
                             </Label>
                         </div>
-                        <ul className="flex flex-col gap-2">
+                        {/* v0.29 (Bruna): opções em ordem livre, arrastando pela alça (ou setas do teclado na alça). */}
+                        <Reorder.Group as="ul" axis="y" values={p.opcoes} onReorder={(opcoes) => set((x) => ({ ...x, opcoes }))} className="flex flex-col gap-2">
                             {p.opcoes.map((o, i) => (
-                                <li key={o.id} className="flex items-start gap-3">
+                                <LinhaDaOpcao
+                                    key={o.id}
+                                    opcao={o}
+                                    rotulo={`Opção ${o.nome || i + 1}`}
+                                    podeSubir={i > 0}
+                                    podeDescer={i < p.opcoes.length - 1}
+                                    onMover={(d) => set((x) => ({ ...x, opcoes: mover(x.opcoes, o.id, d) }))}
+                                >
                                     <CampoTexto
                                         id={CAMPO.opcaoNome(o.id)}
                                         label={`Opção ${i + 1}`}
@@ -397,6 +404,21 @@ function EdicaoDaPergunta({ pergunta: p }: { pergunta: Pergunta }) {
                                             </span>
                                         )}
                                     </div>
+                                    {/* v0.29 (Bruna): duplicar a opção logo abaixo dela. */}
+                                    <ButtonUtility
+                                        icon={Copy01}
+                                        color="tertiary"
+                                        size="sm"
+                                        tooltip={`Duplicar opção ${o.nome || i + 1}`}
+                                        className="mt-1.5"
+                                        onClick={() =>
+                                            set((x) => {
+                                                const k = x.opcoes.findIndex((y) => y.id === o.id);
+                                                const copia = { ...novaOpcao(o.nome ? `${o.nome} (cópia)` : "", o.quantidade), aDefinir: o.aDefinir };
+                                                return { ...x, opcoes: [...x.opcoes.slice(0, k + 1), copia, ...x.opcoes.slice(k + 1)] };
+                                            })
+                                        }
+                                    />
                                     <ButtonUtility
                                         icon={Trash01}
                                         color="tertiary"
@@ -405,9 +427,9 @@ function EdicaoDaPergunta({ pergunta: p }: { pergunta: Pergunta }) {
                                         className="mt-1.5"
                                         onClick={() => set((x) => ({ ...x, opcoes: x.opcoes.filter((y) => y.id !== o.id) }))}
                                     />
-                                </li>
+                                </LinhaDaOpcao>
                             ))}
-                        </ul>
+                        </Reorder.Group>
                         <ErroDaLista erro={e(CAMPO.perguntaOpcoes(p.id))} />
                         <Button color="link-color" size="sm" iconLeading={Plus} className="self-start" onClick={() => set((x) => ({ ...x, opcoes: [...x.opcoes, novaOpcao()] }))}>
                             Adicionar opção
@@ -570,5 +592,30 @@ function PerguntasProntas({ aberto, onFechar }: { aberto: boolean; onFechar: () 
                 </Dialog>
             </Modal>
         </ModalOverlay>
+    );
+}
+
+/** v0.29: uma opção da pergunta, arrastável pela alça (mesma alça das perguntas e categorias). */
+function LinhaDaOpcao({
+    opcao,
+    rotulo,
+    podeSubir,
+    podeDescer,
+    onMover,
+    children,
+}: {
+    opcao: Pergunta["opcoes"][number];
+    rotulo: string;
+    podeSubir: boolean;
+    podeDescer: boolean;
+    onMover: (d: -1 | 1) => void;
+    children: ReactNode;
+}) {
+    const controles = useDragControls();
+    return (
+        <Reorder.Item value={opcao} dragListener={false} dragControls={controles} className="flex items-start gap-3 rounded-lg bg-primary">
+            <Alca controles={controles} rotulo={rotulo} onMover={onMover} podeSubir={podeSubir} podeDescer={podeDescer} className="mt-2.5 size-6" />
+            {children}
+        </Reorder.Item>
     );
 }

@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from "react";
-import { horaAgora } from "./campos";
+import { definirMoeda, horaAgora } from "./campos";
 import { rascunhoVazio } from "./modelos";
 import type { Rascunho } from "./tipos";
 
@@ -39,7 +39,11 @@ let estado: Estado = { rascunho: ler() ?? rascunhoVazio(), salvando: false };
 const ouvintes = new Set<() => void>();
 let timer: ReturnType<typeof setTimeout> | undefined;
 
-const emitir = () => ouvintes.forEach((o) => o());
+const emitir = () => {
+    definirMoeda(estado.rascunho.moeda);
+    ouvintes.forEach((o) => o());
+};
+definirMoeda(estado.rascunho.moeda);
 
 const assinar = (o: () => void) => {
     ouvintes.add(o);

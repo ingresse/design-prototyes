@@ -5,8 +5,8 @@ import { Surgir } from "@/components/foundations/transicao";
 import { Label } from "@/components/base/input/label";
 import { Select } from "@/components/base/select/select";
 import { IDADES_COM_CLASSIFICACAO } from "../../eventos/components/classificacao-indicativa";
-import { CAMPO } from "../data/campos";
-import { ESPORTES, LIMITE_NOME } from "../data/opcoes";
+import { agoraIsoLocal, CAMPO } from "../data/campos";
+import { ESPORTES, LIMITE_NOME, MOEDA_PADRAO, MOEDAS } from "../data/opcoes";
 import { regrasDe } from "../data/modelos";
 import type { RegrasDaInscricao } from "../data/tipos";
 import { useVocabulario } from "../data/vocabulario";
@@ -37,7 +37,7 @@ export function SecaoEvento() {
     const e = (campo: string) => erro(campo, "evento");
     return (
         <div id="secao-evento" className="flex scroll-mt-6 flex-col gap-6">
-            <Secao className="@container" titulo="Informações da prova" descricao="O que o atleta vê primeiro na página de inscrição.">
+            <Secao className="@container" titulo="Informações da prova">
                 <div className="grid items-start gap-x-6 gap-y-4 @lg:grid-cols-2 @4xl:grid-cols-3">
                     <CampoTexto
                         className="@lg:col-span-2"
@@ -65,6 +65,7 @@ export function SecaoEvento() {
                         id={CAMPO.largada}
                         label="Data e horário da largada"
                         isRequired
+                        minimo={agoraIsoLocal()}
                         valor={r.largada}
                         revisar={revisar(CAMPO.largada)}
                         onChange={(largada) => {
@@ -105,7 +106,6 @@ export function SecaoEvento() {
                             items={IDADES_COM_CLASSIFICACAO}
                             selectedKey={r.idadeMinima || "0"}
                             onSelectionChange={(k) => k != null && atualizar((a) => ({ ...a, idadeMinima: String(k) }))}
-                            hint="Livre: qualquer idade pode se inscrever."
                         >
                             {(item) => (
                                 <Select.Item id={item.id} icon={item.icon}>
@@ -117,6 +117,16 @@ export function SecaoEvento() {
                     <div className="@lg:col-span-2">
                         <CampoLocal id={CAMPO.local} valor={r.local} onChange={(local) => atualizar((a) => ({ ...a, local }))} onBlur={() => tocar(CAMPO.local)} erro={e(CAMPO.local)} />
                     </div>
+                    {/* v0.68 (SCE-337): moeda do evento, como no AWA; vem sempre em Real brasileiro. */}
+                    <CampoSelect
+                        id="moeda"
+                        label="Moeda"
+                        isRequired
+                        opcoes={MOEDAS}
+                        valor={r.moeda || MOEDA_PADRAO}
+                        onChange={(moeda) => atualizar((a) => ({ ...a, moeda }))}
+                        tooltip="Moeda em que os preços dos lotes são cobrados."
+                    />
                     {/* v0.10 (SCE-206): "Descrição" com o editor do "Sobre o evento" do AWA, na largura toda. */}
                     <div className="@lg:col-span-2 @4xl:col-span-3">
                         <CampoDescricao id={CAMPO.descricao} valor={r.descricao} onChange={(descricao) => atualizar((a) => ({ ...a, descricao }))} erro={e(CAMPO.descricao)} />
@@ -127,13 +137,13 @@ export function SecaoEvento() {
             {/* v0.19 (SCE-238): políticas do evento num lugar só, já com os padrões mais comuns do esporte. */}
             <RegrasDaInscricaoCartao />
 
-            <Secao className="@container" titulo="Imagens" descricao="As duas são opcionais. Depois de escolher, você ajusta o recorte.">
+            <Secao className="@container" titulo="Imagens" descricao="Depois de escolher, você ajusta o recorte.">
                 {/* v0.10 (SCE-205): cartões compactos de uma linha, lado a lado, como o Banner e o Mapa do AWA. */}
                 <div className="grid items-start gap-x-8 gap-y-6 @3xl:grid-cols-2">
                     <CampoImagemComRecorte
                         id={CAMPO.imagem}
-                        label="Banner do evento"
-                        titulo="Adicionar banner"
+                        label="Banner do evento (opcional)"
+                        titulo="Clique para escolher"
                         regras={REGRAS_DO_BANNER}
                         arquivo={r.imagem}
                         dica="A capa do evento na página de inscrição."
@@ -143,8 +153,8 @@ export function SecaoEvento() {
                     />
                     <CampoImagemComRecorte
                         id={CAMPO.percurso}
-                        label="Imagem do percurso da prova"
-                        titulo="Adicionar imagem do percurso"
+                        label="Imagem do percurso da prova (opcional)"
+                        titulo="Clique para escolher"
                         regras={REGRAS_DO_PERCURSO}
                         arquivo={r.percurso}
                         dica="O mapa do percurso, com largada, chegada e pontos de apoio."
@@ -157,13 +167,14 @@ export function SecaoEvento() {
 
             {/* v0.26 (SCE-257): e-mail de confirmação. No esporte o QR Code vai sempre (sem a escolha "Não incluir" do AWA);
                 o organizador só personaliza com um texto e um banner próprios, opcionais. */}
-            <Secao className="@container" titulo="E-mail de confirmação" descricao="Toda inscrição confirmada recebe um e-mail com o QR Code de cada atleta. Você pode acrescentar um recado e uma imagem.">
+            <Secao className="@container" titulo="E-mail de confirmação" descricao="Deixe o e-mail de inscrição confirmada com a cara do seu evento: inclua um recado e uma imagem.">
                 <div className="grid items-start gap-x-8 gap-y-6 @3xl:grid-cols-2">
                     <CampoTextoLongo
                         id={CAMPO.emailInfo}
                         label="Informações adicionais (opcional)"
                         placeholder="Ex.: entre no grupo de WhatsApp da prova; retirada do kit no sábado, das 9h às 18h."
                         limite={500}
+                        compacto
                         valor={r.emailInfo ?? ""}
                         onChange={(emailInfo) => atualizar((a) => ({ ...a, emailInfo }))}
                         dica="Aparece abaixo do QR Code."
@@ -171,7 +182,7 @@ export function SecaoEvento() {
                     <CampoImagemComRecorte
                         id={CAMPO.emailBanner}
                         label="Banner do e-mail (opcional)"
-                        titulo="Adicionar banner do e-mail"
+                        titulo="Clique para escolher"
                         regras={REGRAS_DO_BANNER_DO_EMAIL}
                         arquivo={r.emailBanner ?? null}
                         dica="Imagem própria do e-mail, diferente do banner do evento. Ex.: instruções de retirada do kit."
@@ -297,13 +308,15 @@ function RegrasDaInscricaoCartao() {
                         onChange={(trocaDeTitularidade) => set({ trocaDeTitularidade })}
                     />
                     {/* SCE-241: período sempre visível; desabilitado quando a troca não é permitida. */}
-                    <div className="grid items-start gap-4 pl-14 sm:grid-cols-2">
+                    <div className="grid items-start gap-4 sm:grid-cols-2 sm:pl-14">
                         <CampoDataHora
                             id={CAMPO.trocaInicio}
                             label="Troca permitida a partir de"
                             isRequired={regras.trocaDeTitularidade}
                             desabilitado={!regras.trocaDeTitularidade}
                             valor={regras.trocaInicio}
+                            // v0.29 (Bruna): dias passados nem aparecem para escolher.
+                            minimo={agoraIsoLocal()}
                             maximo={r.largada || undefined}
                             onChange={(trocaInicio) => set({ trocaInicio })}
                             onBlur={() => tocar(CAMPO.trocaInicio)}
@@ -315,7 +328,7 @@ function RegrasDaInscricaoCartao() {
                             isRequired={regras.trocaDeTitularidade}
                             desabilitado={!regras.trocaDeTitularidade}
                             valor={regras.trocaFim}
-                            minimo={regras.trocaInicio || undefined}
+                            minimo={regras.trocaInicio || agoraIsoLocal()}
                             maximo={r.largada || undefined}
                             dica={regras.trocaDeTitularidade ? (regras.trocaFimSugerido ? "Sugerido na véspera da largada. Ajuste se precisar." : "Até a largada, no máximo.") : undefined}
                             onChange={(trocaFim) => set({ trocaFim })}

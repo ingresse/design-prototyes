@@ -29,6 +29,8 @@ export interface Lote {
     dataLimite: string;
     /** v0.8 (SCE-191): lote copiado ou duplicado, ainda não revisado. Sinaliza, mas não impede publicar. */
     revisar?: boolean;
+    /** v0.58 (SCE-324): ativo ou pausado, como o lote no AWA. Ausente = ativo. */
+    ativo?: boolean;
 }
 
 export type Sexo = "todos" | "feminino" | "masculino";
@@ -76,6 +78,8 @@ export interface Categoria {
     /** v0.18 (SCE-236): somente PCD aprovados no formulário de participação do evento (segmentação por lista de documentos). */
     pcd?: boolean;
     maxPorPedido: number | null;
+    /** v0.58 (SCE-324): ativa ou pausada, como o ingresso no AWA. Ausente = ativa. */
+    ativa?: boolean;
     lotes: Lote[];
     /**
      * v0.6 (SCE-176): chaves de acesso (passkeys) e cupons vinculados à categoria. Não vêm na cópia (RN-07)
@@ -130,6 +134,69 @@ export interface Pergunta {
     vinculos: Record<string, Presenca>;
 }
 
+/** v0.30 (SCE-260): canais de venda do evento esportivo nesta primeira versão. */
+export type CanalDeVenda = "site" | "grupos";
+
+/**
+ * v0.51 (SCE-306): configuração dentro da abertura, como no AWA: para quem (público geral ou segmentação), quais
+ * modalidades e categorias e por quais canais. Uma abertura pode ter várias no mesmo período.
+ */
+export interface ConfiguracaoDeVenda {
+    id: string;
+    /** "geral" (público geral) ou o id de uma segmentação; vazio = ainda não escolhido. */
+    publico: string;
+    canais: CanalDeVenda[];
+    /** Ids das categorias à venda. */
+    categorias: string[];
+}
+
+/**
+ * v0.51 (SCE-306): abertura de vendas, como no AWA: nome (visto pelo atleta), início e fim e as configurações.
+ * Não vem na cópia de evento e o evento não publica sem ao menos uma.
+ */
+export interface AberturaDeVendas {
+    id: string;
+    nome: string;
+    /** ISO local `AAAA-MM-DDTHH:mm`. */
+    inicio: string;
+    fim: string;
+    configuracoes: ConfiguracaoDeVenda[];
+}
+
+/**
+ * v0.37 (SCE-279): cupom de desconto do evento, como no AWA (Marketing › Cupons): código, desconto em percentual ou
+ * valor fixo, limite de uso, validade e os lotes em que vale. Aqui só o atalho; a gestão completa segue no menu.
+ */
+export interface CupomDeDesconto {
+    id: string;
+    codigo: string;
+    tipo: "percentual" | "valor";
+    /** Percentual (1 a 100) ou reais. */
+    valor: number | null;
+    /** Usos no evento; `null` = sem limite. */
+    limite: number | null;
+    usados: number;
+    /** ISO local; início obrigatório, fim opcional (como no AWA). */
+    validoDe: string;
+    validoAte: string;
+    ativo: boolean;
+    /** Ids dos lotes em que o cupom vale. */
+    lotes: string[];
+}
+
+/**
+ * v0.37 (SCE-280): chave de acesso (passkey no AWA, Marketing › Chave de acesso): código que libera lotes ocultos
+ * para quem a digita ou abre o link. Lote com chave vinculada fica oculto para o público.
+ */
+export interface ChaveDeAcesso {
+    id: string;
+    codigo: string;
+    limite: number | null;
+    usados: number;
+    ativo: boolean;
+    lotes: string[];
+}
+
 export interface Rascunho {
     origem: "zero" | "copia";
     /** Nome do evento copiado, para o aviso no topo. */
@@ -146,6 +213,8 @@ export interface Rascunho {
     termino: string;
     /** v0.9 (SCE-201): idade mínima do evento, nas faixas da classificação indicativa do AWA ("0" = livre). */
     idadeMinima: string;
+    /** v0.68 (SCE-337): moeda do evento, como no Criar evento do AWA. Padrão: Real brasileiro. */
+    moeda?: string;
     /** v0.9 (SCE-202): imagem do percurso (o "Mapa" do AWA), recortada. Opcional. */
     percurso: Arquivo | null;
     /** v0.26 (SCE-257): e-mail de confirmação (sempre com QR Code): texto adicional e banner próprio, opcionais. */
@@ -163,6 +232,15 @@ export interface Rascunho {
     modalidades: Modalidade[];
     /** Na ordem do formulário. */
     perguntas: Pergunta[];
+    /** v0.51 (SCE-306): aberturas de vendas, na ordem de criação. Ausente: nenhuma (não vem na cópia). */
+    aberturas?: AberturaDeVendas[];
+    /** v0.61 (SCE-328): módulos ligados no evento depois da criação básica (configurados pelo menu do evento). */
+    modulos?: { grupos?: boolean; produtos?: boolean };
+    /** v0.37 (SCE-279, SCE-280): cupons de desconto e chaves de acesso do evento. Não vêm na cópia (RN-07). */
+    cupons?: CupomDeDesconto[];
+    chaves?: ChaveDeAcesso[];
+    /** v0.30 (SCE-264), item de protótipo: simula o evento publicado para mostrar os estados de venda. */
+    simularPublicado?: boolean;
     /** Campos de data copiados que a pessoa ainda não revisou (id do campo). Somem ao editar (RN-07). */
     datasARevisar: string[];
     /** v0.8 (SCE-190): fluxo de cópia em dois passos aberto na etapa Modalidades (ausente: etapa normal). */
@@ -172,7 +250,7 @@ export interface Rascunho {
     publicado: boolean;
 }
 
-export type SecaoId = "evento" | "modalidades" | "inscricao";
+export type SecaoId = "evento" | "modalidades" | "inscricao" | "vendas";
 
 /** Um problema que impede publicar: diz onde está (seção, campo) e o que fazer. */
 export interface Pendencia {

@@ -43,7 +43,7 @@ export interface RegrasDaImagem {
 
 /** Os requisitos numa frase, para a dica antes de enviar. */
 export const textoDosRequisitos = (r: RegrasDaImagem) =>
-    `JPG ou PNG, até ${mb(r.limite)} MB. Recomendado: ${px(r.recomendado.largura)} × ${px(r.recomendado.altura)} px (proporção ${r.proporcao}); mínimo ${px(r.minimo.largura)} × ${px(r.minimo.altura)} px.`;
+    `JPG ou PNG, até ${mb(r.limite)} MB. Recomendado: ${px(r.recomendado.largura)} × ${px(r.recomendado.altura)} px ou maior (proporção ${r.proporcao}).`;
 
 /** Motivo da recusa por formato ou tamanho do arquivo (SCE-23), antes de abrir a imagem. */
 const motivoDoArquivo = (f: File, limite: number): string | null => {
@@ -132,17 +132,17 @@ export function CampoImagemComRecorte({
     const [sobre, setSobre] = useState(false);
     const [edicao, setEdicao] = useState<{ nome: string; tamanho: number; url: string } | null>(null);
     const proporcao = razao(regras.proporcao);
-    const essencial = `JPG ou PNG, até ${mb(regras.limite)} MB, proporção ${regras.proporcao} (${px(regras.recomendado.largura)} × ${px(regras.recomendado.altura)} px)`;
-    const ajuda = `${dica ? `${dica} ` : ""}Mínimo de ${px(regras.minimo.largura)} × ${px(regras.minimo.altura)} px. Depois de escolher, você ajusta o recorte.`;
+    // v0.29 (validação com design): formato, proporção e tamanho saem do cartão e ficam no (?) do rótulo; se a
+    // imagem não servir, o motivo aparece em vermelho embaixo do cartão.
+    const ajuda = `${dica ? `${dica} ` : ""}Para ficar mais nítida, use uma imagem de ${px(regras.recomendado.largura)} × ${px(regras.recomendado.altura)} px ou maior. Depois de escolher, você ajusta o recorte na proporção ${regras.proporcao}.`;
 
     const aceitar = async (f: File) => {
         const motivo = motivoDoArquivo(f, regras.limite);
         if (motivo) return setErro(motivo);
+        // v0.29: qualquer dimensão é aceita; o recorte ajusta a imagem à proporção. Só formato e peso recusam.
         const url = URL.createObjectURL(f);
         try {
-            const d = await dimensoes(url);
-            if (d.largura < regras.minimo.largura || d.altura < regras.minimo.altura)
-                return setErro(`A imagem tem ${px(d.largura)} × ${px(d.altura)} px. Envie uma de pelo menos ${px(regras.minimo.largura)} × ${px(regras.minimo.altura)} px.`);
+            await dimensoes(url);
         } catch {
             return setErro("Não foi possível abrir a imagem. Envie outro arquivo JPG ou PNG.");
         }
@@ -222,19 +222,14 @@ export function CampoImagemComRecorte({
                         const f = e.dataTransfer.files[0];
                         if (f) void aceitar(f);
                     }}
-                    aria-describedby={`${id}-orientacao`}
                     className={cx(caixa, "cursor-pointer outline-focus-ring hover:bg-primary_hover focus-visible:outline-2 focus-visible:outline-offset-2", sobre && "ring-2 ring-brand")}
                 >
                     <span className="flex size-16 shrink-0 items-center justify-center rounded-lg bg-secondary">
                         <ImagePlus className="size-5 text-fg-secondary" aria-hidden="true" />
                     </span>
-                    <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                        <span className="text-sm">
-                            <span className="font-semibold text-primary">{titulo}</span> <span className="text-tertiary">(Opcional)</span>
-                        </span>
-                        <span id={`${id}-orientacao`} className="text-sm text-tertiary">
-                            {essencial}
-                        </span>
+                    {/* v0.29: o rótulo já diz o que é; dentro do cartão, só a ação. */}
+                    <span className="min-w-0 flex-1 text-sm">
+                        <span className="font-semibold text-brand-secondary">{titulo}</span> <span className="text-tertiary">ou arraste uma imagem JPG ou PNG de até {mb(regras.limite)} MB</span>
                     </span>
                 </button>
             )}

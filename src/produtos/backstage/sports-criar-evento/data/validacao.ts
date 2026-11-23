@@ -1,6 +1,7 @@
 import { agoraIsoLocal, CAMPO } from "./campos";
 import { regrasDe, vagasDaCategoria } from "./modelos";
 import { MSG } from "./opcoes";
+import { aberturasDe, categoriasDaConfiguracao } from "./vendas";
 import { idsDasCategorias, precisaDefinirEstoque, temOpcoes } from "./perguntas";
 import type { Categoria, Pendencia, Pergunta, Rascunho, SecaoId } from "./tipos";
 import type { Vocabulario } from "./vocabulario";
@@ -104,6 +105,23 @@ export function validar(r: Rascunho, t: Vocabulario): Pendencia[] {
         }
     }
 
+    /* 4. Aberturas de vendas (v0.51, SCE-307) */
+    const aberturas = aberturasDe(r);
+    if (!aberturas.length) add("vendas", CAMPO.aberturas, MSG.semAbertura);
+    for (const a of aberturas) {
+        const ctx = { contexto: nomeOu(a.nome, "Abertura sem nome") };
+        if (vazio(a.nome)) add("vendas", CAMPO.aberturaNome(a.id), MSG.aberturaNome, ctx);
+        if (!a.inicio) add("vendas", CAMPO.aberturaInicio(a.id), MSG.aberturaInicio, ctx);
+        if (!a.fim) add("vendas", CAMPO.aberturaFim(a.id), MSG.aberturaFim, ctx);
+        else if (a.inicio && a.fim <= a.inicio) add("vendas", CAMPO.aberturaFim(a.id), MSG.aberturaFimAntes, ctx);
+        a.configuracoes.forEach((c, i) => {
+            const cctx = { contexto: a.configuracoes.length > 1 ? `${ctx.contexto}, configuração ${i + 1}` : ctx.contexto };
+            if (!c.publico) add("vendas", CAMPO.cfgPublico(a.id, c.id), MSG.cfgPublico, cctx);
+            if (!categoriasDaConfiguracao(c, r.modalidades).length) add("vendas", CAMPO.cfgCategorias(a.id, c.id), t.vendaNenhumaCategoria, cctx);
+            if (!c.canais.length) add("vendas", CAMPO.cfgCanais(a.id, c.id), MSG.cfgCanais, cctx);
+        });
+    }
+
     return p;
 }
 
@@ -163,8 +181,29 @@ const capacidade = (r: Rascunho, q: Pergunta) => {
     return total;
 };
 
+/** v0.55 (SCE-315): nome que ainda tem "cópia" (vem de duplicar ou copiar). */
+export const temCopiaNoNome = (nome: string) => /c[oó]pia/i.test(nome);
+
 export function avisos(r: Rascunho, t: Vocabulario): Pendencia[] {
     const lista: Pendencia[] = [];
+    // v0.55 (SCE-315): "cópia" no nome do que o atleta vê (modalidade, categoria, pergunta, abertura). Não impede publicar.
+    const MSG_COPIA = 'O nome tem "cópia". Troque por um nome que o atleta entenda';
+    for (const m of r.modalidades) {
+        if (temCopiaNoNome(m.nome)) lista.push({ secao: "modalidades", campo: CAMPO.modNome(m.id), texto: MSG_COPIA, contexto: t.contextoNivel1(m.nome.trim()) });
+        for (const c of m.categorias)
+            if (!c.nova && temCopiaNoNome(c.nome))
+                lista.push({ secao: "modalidades", campo: CAMPO.catNome(c.id), texto: MSG_COPIA, contexto: t.contextoNivel2(nomeOu(m.nome, t.nivel1SemNome), c.nome.trim()), categoria: { modalidadeId: m.id, categoriaId: c.id } });
+    }
+    for (const q of r.perguntas) if (temCopiaNoNome(q.titulo)) lista.push({ secao: "inscricao", campo: CAMPO.perguntaTexto(q.id), texto: MSG_COPIA, contexto: `Pergunta ${q.titulo.trim()}`, pergunta: q.id });
+    // v0.57 (SCE-322): mesma categoria em duas configurações da abertura, com o mesmo público e um canal em comum.
+    for (const a of aberturasDe(r))
+        a.configuracoes.forEach((c, i) => {
+            const outras = a.configuracoes.slice(0, i).filter((o) => c.publico && o.publico === c.publico && o.canais.some((x) => c.canais.includes(x)));
+            if (outras.some((o) => o.categorias.some((id) => c.categorias.includes(id))))
+                lista.push({ secao: "vendas", campo: CAMPO.cfgCategorias(a.id, c.id), texto: t.vendaRepetida, contexto: `${a.nome.trim() || "Abertura"}, configuração ${i + 1}` });
+        });
+    // v0.61 (SCE-328): Vendas em grupo sem o módulo fica no bloco "Necessário para o que você escolheu" da revisão (sem repetir aqui).
+    for (const a of aberturasDe(r)) if (temCopiaNoNome(a.nome)) lista.push({ secao: "vendas", campo: CAMPO.aberturaNome(a.id), texto: MSG_COPIA, contexto: a.nome.trim() });
     for (const m of r.modalidades)
         for (const c of m.categorias) {
             const cat = { categoria: { modalidadeId: m.id, categoriaId: c.id }, contexto: t.contextoNivel2(nomeOu(m.nome, t.nivel1SemNome), nomeOu(c.nome, "sem nome")) };

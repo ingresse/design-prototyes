@@ -13,6 +13,17 @@ export interface Opcao<T extends string = string> {
     label: string;
 }
 
+/** v0.68 (SCE-337): moedas do AWA (Criar evento › Moeda), com o Real brasileiro como padrão. */
+export const MOEDA_PADRAO = "BRL";
+export const MOEDAS: Opcao[] = [
+    { id: "USD", label: "Dólar americano (US$)" },
+    { id: "BRL", label: "Real brasileiro (R$)" },
+    { id: "EUR", label: "Euro (€)" },
+    { id: "MXN", label: "Peso mexicano (MX$)" },
+    { id: "UYU", label: "Peso uruguaio ($U)" },
+    { id: "GBP", label: "Libra esterlina (£)" },
+];
+
 export const ESPORTES: Opcao[] = [
     { id: "corrida-de-rua", label: "Corrida de rua" },
     { id: "trail-run", label: "Trail run" },
@@ -26,17 +37,32 @@ export const ESPORTES: Opcao[] = [
 ];
 
 export const TIPOS_DE_MODALIDADE: Opcao[] = [
+    // v0.29: lista maior, com busca por proximidade no campo (exemplos do protótipo).
+    { id: "1k", label: "1K" },
     { id: "3k", label: "3K" },
     { id: "5k", label: "5K" },
+    { id: "6k", label: "6K" },
+    { id: "7k", label: "7K" },
+    { id: "8k", label: "8K" },
     { id: "10k", label: "10K" },
+    { id: "12k", label: "12K" },
+    { id: "15k", label: "15K" },
     { id: "21k", label: "21K – Meia maratona" },
+    { id: "25k", label: "25K" },
     { id: "42k", label: "42K – Maratona" },
+    { id: "ultra-50k", label: "50K – Ultramaratona" },
+    { id: "revezamento", label: "Corrida de revezamento" },
+    { id: "obstaculos", label: "Corrida de obstáculos" },
+    { id: "duatlo", label: "Duatlo" },
+    { id: "aquatlo", label: "Aquatlo" },
     { id: "triatlo-sprint", label: "Triatlo sprint" },
     { id: "triatlo-olimpico", label: "Triatlo olímpico" },
     { id: "trail-curto", label: "Trail curto" },
     { id: "trail-longo", label: "Trail longo" },
     { id: "mtb-xco", label: "MTB XCO" },
     { id: "mtb-maratona", label: "MTB maratona" },
+    { id: "ciclismo-estrada", label: "Ciclismo de estrada" },
+    { id: "cross-country", label: "Cross country" },
     { id: "aguas-abertas", label: "Natação águas abertas" },
     { id: "kids", label: "Kids" },
     { id: "caminhada", label: "Caminhada" },
@@ -85,7 +111,9 @@ export const PRESENCAS: Opcao<Presenca | "nao">[] = [
 ];
 
 /** Seções na ordem da tela (v0.2: sem "Kit e produtos"). O título da seção dos níveis vem do vocabulário. */
-export const IDS_DAS_SECOES: SecaoId[] = ["evento", "modalidades", "inscricao"];
+export const IDS_DAS_SECOES: SecaoId[] = ["evento", "modalidades", "inscricao", "vendas"];
+
+export const TITULO_VENDAS = "Aberturas de vendas";
 
 export const TITULO_FORMULARIO = "Formulário de inscrição";
 
@@ -93,6 +121,7 @@ export const secoes = (t: Vocabulario): { id: SecaoId; titulo: string }[] => [
     { id: "evento", titulo: "Evento" },
     { id: "modalidades", titulo: t.tituloDaSecao },
     { id: "inscricao", titulo: TITULO_FORMULARIO },
+    { id: "vendas", titulo: TITULO_VENDAS },
 ];
 
 export const labelDe = <T extends string>(opcoes: Opcao<T>[], id: string) => opcoes.find((o) => o.id === id)?.label ?? "";
@@ -123,6 +152,14 @@ export const AJUDA = {
 
 /** Mensagens de erro que não citam os níveis: dizem o motivo e como corrigir (HintText do campo). */
 export const MSG = {
+    /* v0.51 (SCE-307): aberturas de vendas */
+    semAbertura: "Crie uma abertura de vendas: sem ela, as inscrições não abrem",
+    aberturaNome: "Dê um nome à abertura",
+    aberturaInicio: "Informe quando as vendas começam",
+    aberturaFim: "Informe quando as vendas terminam",
+    aberturaFimAntes: "O fim precisa ser depois do início",
+    cfgPublico: "Escolha para quem vender",
+    cfgCanais: "Escolha ao menos um canal",
     nomeDoEvento: "Informe o nome do evento",
     esporte: "Escolha o esporte",
     dataInvalida: "Informe uma data válida",

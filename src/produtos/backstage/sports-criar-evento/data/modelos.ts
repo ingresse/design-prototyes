@@ -96,6 +96,7 @@ export const rascunhoVazio = (): Rascunho => ({
     imagem: null,
     termino: "",
     idadeMinima: "0",
+    moeda: "BRL",
     percurso: null,
     emailInfo: "",
     emailBanner: null,

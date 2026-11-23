@@ -1,23 +1,30 @@
-import { useEffect, useState, type FC } from "react";
+import { useEffect, useRef, useState, type FC, type ReactNode } from "react";
+import { Dialog as AriaDialog, DialogTrigger, Popover as AriaPopover } from "react-aria-components";
+import { NumberParser } from "@internationalized/number";
+import { SlideoutMenu } from "@/components/application/slideout-menus/slideout-menu";
 import { AnimatePresence, motion, Reorder, useDragControls } from "motion/react";
 import { toast } from "sonner";
-import { AlertCircle, AlertTriangle, ChevronDown, ChevronRight, ClipboardCheck, Copy01, Copy06, Edit01, Flag01, HelpCircle, Key01, Lightbulb02, Plus, Ticket01, Trash01, Users01, Zap } from "@untitledui/icons";
+import { AlertCircle, AlertTriangle, Check, ChevronDown, EyeOff, Lock01, XClose, ChevronRight, ClipboardCheck, Copy01, Copy06, Edit01, Flag01, HelpCircle, Key01, Lightbulb02, Plus, Ticket01, Trash01, Users01 } from "@untitledui/icons";
 import { Dialog, Modal, ModalOverlay } from "@/components/application/modals/modal";
-import { BadgeWithIcon } from "@/components/base/badges/badges";
+import { Badge, BadgeWithIcon } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
 import { RadioButton, RadioGroup } from "@/components/base/radio-buttons/radio-buttons";
+import { Toggle } from "@/components/base/toggle/toggle";
+import { Checkbox } from "@/components/base/checkbox/checkbox";
 import { Tooltip, TooltipTrigger } from "@/components/base/tooltip/tooltip";
 import { Surgir, useTransicao } from "@/components/foundations/transicao";
 import { cx } from "@/utils/cx";
-import { CAMPO, formatarDataHora, formatarReais, irParaCampo } from "../data/campos";
+import { CAMPO, FORMATO_REAIS, formatarDataHora, formatarReais, irParaCampo } from "../data/campos";
 import { duplicarCategoria, novaCategoria, novaModalidade, nomeDeCopia, vagasDaCategoria } from "../data/modelos";
 import { labelDe, MSG, SEXOS, TIPOS_DE_MODALIDADE, TIPOS_DE_RESPOSTA } from "../data/opcoes";
-import { copiarVinculos, herdarPerguntas } from "../data/perguntas";
-import type { Categoria, Modalidade, Pendencia, Rascunho } from "../data/tipos";
+import { CampoTipoDeModalidade } from "./campo-tipo-de-modalidade";
+import { comPresenca, copiarVinculos, herdarPerguntas, presencaNa } from "../data/perguntas";
+import type { Categoria, Modalidade, Pendencia, Presenca, Rascunho } from "../data/tipos";
 import { pendenciasDaCategoria, regraSugerida } from "../data/validacao";
 import { useVocabulario, type Vocabulario } from "../data/vocabulario";
-import { CampoSelect, CampoTexto, CampoTextoLongo, CampoVagas, ErroDaLista, Vazio } from "./campos";
+import { AVISO_LOTE_BLOQUEADO, loteComVendasIniciadas, statusDeVenda, type TipoDeStatusDeVenda } from "../data/vendas";
+import { CampoNumero, CampoSelect, CampoTexto, CampoTextoLongo, CampoVagas, ErroDaLista, Vazio } from "./campos";
 
 /** v0.23 (SCE-247): limite da descrição da modalidade, o mesmo da descrição do ingresso no AWA. */
 const LIMITE_DESCRICAO_MODALIDADE = 1000;
@@ -25,6 +32,8 @@ import { useFormulario } from "./contexto";
 import { entrarNaRevisao, FluxoDeCopia } from "./copia-guiada";
 import { comModalidade, inserirDepois, mover } from "./operacoes";
 import { Alca, ProvedorDeOrdem, useOrdem } from "./reordenar";
+import { AtalhoMarketing } from "./atalho-marketing";
+import { loteOculto } from "../data/marketing";
 
 /* ------------------------------------------------------------------ */
 /*  Passo 2: Modalidades e categorias (v0.3 a v0.5, SCE-150 a SCE-166) */
@@ -39,7 +48,7 @@ import { Alca, ProvedorDeOrdem, useOrdem } from "./reordenar";
 /* ------------------------------------------------------------------ */
 
 // Larguras só com a tabela (cartão ≥ 768 px); empilhado, cada valor ocupa o que precisa.
-const COL = { preco: "@3xl:w-36", emissoes: "@3xl:w-48", vinculos: "@3xl:w-36", acoes: "@3xl:w-28" };
+const COL = { preco: "@3xl:w-28", emissoes: "@3xl:w-28", venda: "@3xl:w-36", vinculos: "@3xl:w-40", acoes: "@3xl:w-24" };
 
 /** Explicação de emitidas e pendentes, a partir do texto do detalhe de ingresso do AWA (itens/pages/IngressoDetalhe.tsx). */
 const AJUDA_EMISSOES =
@@ -203,6 +212,7 @@ export function resumoDaCategoria(c: Categoria) {
     return texto.charAt(0).toUpperCase() + texto.slice(1);
 }
 
+const nomeDoLote = (l: Categoria["lotes"][number], i: number) => l.nome.trim() || `${i + 1}º lote`;
 const lotesDe = (c: Categoria) => (c.lotes.length === 1 ? "1 lote" : `${c.lotes.length} lotes`);
 
 /** (?) com a explicação de emitidas e pendentes, no título da coluna. */
@@ -322,6 +332,7 @@ function CartaoModalidade({
                                 <span>
                                     {t.listaNivel2}: <span className="text-secondary">{m.categorias.length}</span>
                                 </span>
+
                             </span>
                         </span>
                     </button>
@@ -377,12 +388,15 @@ function CartaoModalidade({
                     >
                         {/* Cabeçalho das colunas (cartão a partir de 768 px; menor, cada linha empilha) */}
                         <div className="hidden items-center gap-3 border-y border-secondary bg-secondary/40 px-4 py-2.5 @3xl:flex">
+                            {/* v0.69 (critique UI-FRM-005): o toggle tem rótulo visível na coluna. */}
+                            <span className="w-11 shrink-0 text-xs font-semibold whitespace-nowrap text-tertiary">À venda</span>
                             <span className="flex-1 pl-8 text-xs font-semibold text-tertiary">{t.colunaNivel2}</span>
                             <span className={cx("shrink-0 text-xs font-semibold text-tertiary", COL.preco)}>Preço</span>
                             <span className={cx("flex shrink-0 items-center gap-1 text-xs font-semibold text-tertiary", COL.emissoes)}>
                                 Emissões e estoque
                                 <AjudaEmissoes />
                             </span>
+                            <span className={cx("shrink-0 text-xs font-semibold text-tertiary", COL.venda)}>Venda</span>
                             <span className={cx("shrink-0 text-xs font-semibold text-tertiary", COL.vinculos)}>Vínculos</span>
                             <span className={cx("shrink-0 text-right text-xs font-semibold text-tertiary", COL.acoes)}>Ações</span>
                         </div>
@@ -467,6 +481,11 @@ function LinhaCategoria({
     const valores = c.lotes.map((l) => l.valor).filter((v): v is number => v != null);
     const setCategorias = (fn: (cs: Categoria[]) => Categoria[]) => atualizar(comModalidade(m.id, (x) => ({ ...x, categorias: fn(x.categorias) })));
     const editar = () => abrirCategoria({ modalidadeId: m.id, categoriaId: c.id });
+    const setLote = (loteId: string, mudanca: Partial<Categoria["lotes"][number]>) => {
+        const antes = m.categorias;
+        setCategorias((cs) => cs.map((x) => (x.id === c.id ? { ...x, lotes: x.lotes.map((y) => (y.id === loteId ? { ...y, ...mudanca } : y)) } : x)));
+        toast("Lote atualizado.", { action: { label: "Desfazer", onClick: () => setCategorias(() => antes) } });
+    };
     const textoDaOrdem = { titulo: t.ordemNivel2Titulo, texto: t.ordemNivel2Texto(nome, nomeDaModalidade) };
 
     const remover = () => {
@@ -496,6 +515,53 @@ function LinhaCategoria({
         );
     };
     const duplicar = () => (r.modalidades.length > 1 ? setEscolhendoDestino(true) : duplicarEm(m.id));
+    const [detalhesAbertos, setDetalhesAbertos] = useState(false);
+    const pausarCategoria = (ativa: boolean) => setCategorias((cs) => cs.map((x) => (x.id === c.id ? { ...x, ativa } : x)));
+    const pausarLote = (loteId: string, ativo: boolean) =>
+        setCategorias((cs) => cs.map((x) => (x.id === c.id ? { ...x, lotes: x.lotes.map((y) => (y.id === loteId ? { ...y, ativo } : y)) } : x)));
+    const faixaDePreco = valores.length ? (valores.length > 1 && Math.max(...valores) !== Math.min(...valores) ? `${formatarReais(Math.min(...valores))} a ${formatarReais(Math.max(...valores))}` : formatarReais(valores[0])) : "preço a definir";
+    const textoDeEmissoes = emissoes(false, vagasDaCategoria(c), statusDeVenda(r, c).tipo === "esgotada" ? vagasDaCategoria(c) : 0);
+    // v0.66 (SCE-335) e v0.69 (SCE-339): edição rápida de preço e quantidade; travada depois que as vendas do lote começam.
+    const edicaoDoPreco = (l: Categoria["lotes"][number], i: number) => (
+        <EdicaoRapida
+            rotulo={`Preço do ${nomeDoLote(l, i)}`}
+            valor={l.valor}
+            texto={l.valor != null ? formatarReais(l.valor) : "a definir"}
+            formato={FORMATO_REAIS}
+            bloqueado={loteComVendasIniciadas(r, c, l.id)}
+            validar={(v) => (v == null || v < 0 ? `Informe um valor de ${formatarReais(0)} ou mais` : undefined)}
+            onSalvar={(valor) => setLote(l.id, { valor, revisar: false })}
+        />
+    );
+    const edicaoDaQuantidade = (l: Categoria["lotes"][number], i: number) => (
+        <EdicaoRapida
+            rotulo={`Quantidade do ${nomeDoLote(l, i)}`}
+            valor={l.vagas}
+            texto={l.vagas ? emissoes(false, l.vagas) : "a definir"}
+            bloqueado={loteComVendasIniciadas(r, c, l.id)}
+            validar={(v) => (v == null || v < 1 ? "Informe 1 ou mais" : v < EMITIDAS_NO_RASCUNHO ? `Informe ${EMITIDAS_NO_RASCUNHO} ou mais: já foram emitidas ${EMITIDAS_NO_RASCUNHO}` : undefined)}
+            onSalvar={(vagas) => setLote(l.id, { vagas, revisar: false })}
+        />
+    );
+    const selos = (
+        <>
+            {qtd > 0 && (
+                <BadgeWithIcon type="pill-color" color={tentou ? "error" : "warning"} size="sm" iconLeading={AlertCircle}>
+                    {tentou ? (qtd === 1 ? "1 erro" : `${qtd} erros`) : qtd === 1 ? "1 pendência" : `${qtd} pendências`}
+                </BadgeWithIcon>
+            )}
+            {qtd === 0 && ajustes > 0 && (
+                <BadgeWithIcon type="pill-color" color="warning" size="sm" iconLeading={AlertTriangle}>
+                    {t.ajustar}
+                </BadgeWithIcon>
+            )}
+            {qtd === 0 && ajustes === 0 && regra && (
+                <BadgeWithIcon type="pill-color" color="gray" size="sm" iconLeading={Lightbulb02}>
+                    Revisar regra
+                </BadgeWithIcon>
+            )}
+        </>
+    );
 
     return (
         <Reorder.Item
@@ -508,7 +574,7 @@ function LinhaCategoria({
             whileDrag={{ backgroundColor: "var(--color-bg-primary)", boxShadow: "0 8px 24px rgba(16,24,40,0.12)", zIndex: 20 }}
             className="relative"
         >
-            <div className="group/alca relative flex flex-col gap-2 border-b border-secondary px-4 py-3.5 @3xl:flex-row @3xl:items-center @3xl:gap-3">
+            <div className="group/alca relative flex items-center gap-3 border-b border-secondary px-4 py-3.5">
                 <Alca
                     flutuante
                     controles={controles}
@@ -517,93 +583,143 @@ function LinhaCategoria({
                     podeDescer={indice < m.categorias.length - 1}
                     onMover={(d) => ordem.moverComTeclado(textoDaOrdem, () => setCategorias((cs) => mover(cs, c.id, d)))}
                 />
-                <div className="flex min-w-0 flex-1 items-center gap-3">
+                {/* v0.58 (SCE-324): ativa ou pausada, antes do nome, como o ingresso no AWA. */}
+                <AtivaOuPausada nome={nome} ativa={c.ativa !== false} feminino={t.nivel2.genero === "f"} onChange={pausarCategoria} />
+                <div className={cx("flex min-w-0 flex-1 items-center gap-3", c.ativa === false && "opacity-60")}>
                     <button
                         type="button"
                         onClick={onAlternarLotes}
                         aria-label={lotesAbertos ? `Recolher lotes de ${nome}` : `Ver lotes de ${nome}`}
                         aria-expanded={lotesAbertos}
-                        className="flex size-5 shrink-0 items-center justify-center rounded text-fg-quaternary outline-focus-ring transition duration-100 ease-linear hover:text-fg-secondary focus-visible:outline-2"
+                        className="hidden size-5 shrink-0 items-center justify-center rounded text-fg-quaternary outline-focus-ring transition duration-100 ease-linear hover:text-fg-secondary focus-visible:outline-2 @3xl:flex"
                     >
                         <ChevronRight className={cx("size-4 transition-transform duration-200", lotesAbertos && "rotate-90")} />
                     </button>
-                    <button type="button" onClick={editar} className="flex min-w-0 flex-col rounded text-left outline-focus-ring focus-visible:outline-2">
+                    {/* Desktop: o nome abre a edição da categoria. */}
+                    <button type="button" onClick={editar} className="hidden min-w-0 flex-col rounded text-left outline-focus-ring focus-visible:outline-2 @3xl:flex">
                         <span className="flex flex-wrap items-center gap-2">
                             <span className="text-sm font-semibold text-primary">{nome}</span>
-                            {qtd > 0 && (
-                                <BadgeWithIcon type="pill-color" color={tentou ? "error" : "warning"} size="sm" iconLeading={AlertCircle}>
-                                    {tentou ? (qtd === 1 ? "1 erro" : `${qtd} erros`) : qtd === 1 ? "1 pendência" : `${qtd} pendências`}
-                                </BadgeWithIcon>
-                            )}
-                            {qtd === 0 && ajustes > 0 && (
-                                <BadgeWithIcon type="pill-color" color="warning" size="sm" iconLeading={AlertTriangle}>
-                                    {t.ajustar}
-                                </BadgeWithIcon>
-                            )}
-                            {qtd === 0 && ajustes === 0 && regra && (
-                                <BadgeWithIcon type="pill-color" color="gray" size="sm" iconLeading={Lightbulb02}>
-                                    Revisar regra
-                                </BadgeWithIcon>
-                            )}
+                            {selos}
                         </span>
-                        {/* v0.7 (SCE-185): sem a coluna Regras; as regras ficam no detalhe da categoria. */}
-                        <span className="truncate text-sm text-tertiary">{lotesDe(c)}</span>
+                        {/* v0.29 (Bruna): quem pode se inscrever à vista na lista, para conferir a regra logo depois de
+                            duplicar (ex.: a cópia virou PCD, mas a regra ainda é a do original). Clicar abre para editar. */}
+                        <span className="truncate text-sm text-tertiary">
+                            {resumoDaCategoria(c)}, {lotesDe(c)}
+                        </span>
+                    </button>
+                    {/* v0.59 (SCE-325): oculta por chave de acesso: só o ícone, explicação no tooltip (mouse, foco e toque). */}
+                    <span className="hidden @3xl:flex">
+                        <SeloOculta lotes={c.lotes.map((l) => l.id)} />
+                    </span>
+                    {/* v0.69 (critique UI-MOB-005): no celular, tabela-lista: nome, apoio e estado de venda; o toque abre os detalhes. */}
+                    <button
+                        type="button"
+                        onClick={() => setDetalhesAbertos(true)}
+                        aria-label={`Ver detalhes de ${nome}`}
+                        className="flex min-w-0 flex-1 items-center gap-3 rounded text-left outline-focus-ring focus-visible:outline-2 @3xl:hidden"
+                    >
+                        <span className="flex min-w-0 flex-1 flex-col gap-1">
+                            <span className="flex flex-wrap items-center gap-2">
+                                <span className="text-sm font-semibold text-primary">{nome}</span>
+                                {selos}
+                            </span>
+                            <span className="text-sm text-tertiary">
+                                {lotesDe(c)} · {faixaDePreco}
+                            </span>
+                            <SeloDeVenda categoria={c} compacto />
+                        </span>
+                        <ChevronRight className="size-5 shrink-0 text-fg-quaternary" aria-hidden="true" />
                     </button>
                 </div>
-                <div className={cx("flex shrink-0 flex-col pl-8 @3xl:pl-0", COL.preco)}>
+                <div className={cx("hidden shrink-0 flex-col @3xl:flex", COL.preco)}>
                     <span className="text-sm text-secondary">{valores.length ? formatarReais(Math.min(...valores)) : "a definir"}</span>
                     {valores.length > 1 && <span className="text-xs text-tertiary">até {formatarReais(Math.max(...valores))}</span>}
                 </div>
-                <div className={cx("flex shrink-0 flex-col pl-8 @3xl:pl-0", COL.emissoes)}>
-                    <span className="text-sm text-secondary">
-                        <span className="@3xl:hidden">Emissões: </span>
-                        {emissoes(false, vagasDaCategoria(c))}
-                    </span>
+                <div className={cx("hidden shrink-0 flex-col @3xl:flex", COL.emissoes)}>
+                    {/* Na simulação de evento publicado (SCE-264), a esgotada mostra as vagas todas emitidas. */}
+                    <span className="text-sm text-secondary">{textoDeEmissoes}</span>
                 </div>
-                <div className={cx("flex shrink-0 pl-8 @3xl:pl-0", COL.vinculos)}>
+                <div className={cx("hidden shrink-0 @3xl:flex", COL.venda)}>
+                    <SeloDeVenda categoria={c} />
+                </div>
+                <div className={cx("hidden shrink-0 @3xl:flex", COL.vinculos)}>
                     <Vinculos categoria={c} />
                 </div>
-                <div className={cx("flex shrink-0 items-center gap-0.5 pl-6 @3xl:justify-end @3xl:pl-0", COL.acoes)}>
+                <div className={cx("hidden shrink-0 items-center justify-end gap-0.5 @3xl:flex", COL.acoes)}>
                     <ButtonUtility size="xs" color="tertiary" icon={Edit01} tooltip="Editar" aria-label={t.editarNivel2(nome)} onClick={editar} />
                     <ButtonUtility size="xs" color="tertiary" icon={Copy01} tooltip={t.duplicarNivel2} aria-label={`${t.duplicarNivel2} ${nome}`} onClick={duplicar} />
                     <ButtonUtility size="xs" color="tertiary" icon={Trash01} tooltip={t.removerNivel2} aria-label={`${t.removerNivel2} ${nome}`} onClick={remover} />
                 </div>
             </div>
 
-            {/* Lotes (quando aberto), como os lotes por baixo do ingresso no AWA */}
-            <AnimatePresence initial={false}>
-                {lotesAbertos && (
-                    <motion.div key="lotes" initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={transicao} className="overflow-hidden">
-                        {c.lotes.map((l, i) => (
-                            <div key={l.id} className="flex flex-col gap-1 border-b border-secondary py-3 pr-4 pl-12 @3xl:flex-row @3xl:items-center @3xl:gap-3 @3xl:pl-16">
-                                <div className="flex min-w-0 flex-1 flex-col">
-                                    <span className="flex flex-wrap items-center gap-2">
-                                        <span className="truncate text-sm text-primary">{l.nome.trim() || `${i + 1}º lote`}</span>
-                                        {i === 0 && (
-                                            <BadgeWithIcon size="sm" type="pill-color" color="blue" iconLeading={Zap}>
-                                                Vende primeiro
-                                            </BadgeWithIcon>
-                                        )}
-                                        {l.revisar && (
-                                            <BadgeWithIcon size="sm" type="pill-color" color="warning" iconLeading={AlertTriangle}>
-                                                Revisar
-                                            </BadgeWithIcon>
-                                        )}
+            {/* Lotes (quando aberto), como os lotes por baixo do ingresso no AWA. No celular, ficam nos detalhes. */}
+            <div className="hidden @3xl:block">
+                <AnimatePresence initial={false}>
+                    {lotesAbertos && (
+                        <motion.div key="lotes" initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={transicao} className="overflow-hidden">
+                            {c.lotes.map((l, i) => (
+                                <div key={l.id} className="flex items-center gap-3 border-b border-secondary py-3 pr-4 pl-16">
+                                    {/* v0.58 (SCE-324): lote ativo ou pausado, antes do nome, como no AWA. */}
+                                    <AtivaOuPausada nome={nomeDoLote(l, i)} ativa={l.ativo !== false} feminino={false} onChange={(ativo) => pausarLote(l.id, ativo)} />
+                                    <div className={cx("flex min-w-0 flex-1 flex-col", l.ativo === false && "opacity-60")}>
+                                        <span className="flex flex-wrap items-center gap-2">
+                                            <span className="truncate text-sm text-primary">{nomeDoLote(l, i)}</span>
+                                            <SeloOculta lotes={[l.id]} />
+                                            {l.revisar && (
+                                                <BadgeWithIcon size="sm" type="pill-color" color="warning" iconLeading={AlertTriangle}>
+                                                    Revisar
+                                                </BadgeWithIcon>
+                                            )}
+                                        </span>
+                                        <span className="text-sm text-tertiary">{l.dataLimite ? `Até ${formatarDataHora(l.dataLimite)}` : "Vira quando esgota"}</span>
+                                    </div>
+                                    {/* v0.66 (SCE-335): preço e quantidade do lote editáveis na própria linha, pelo lápis. */}
+                                    <span className={cx("shrink-0", COL.preco)}>{edicaoDoPreco(l, i)}</span>
+                                    <span className={cx("shrink-0", COL.emissoes)}>{edicaoDaQuantidade(l, i)}</span>
+                                    {/* v0.59 (SCE-326): o estado do lote fica na coluna Venda, no mesmo estilo da categoria. */}
+                                    <span className={cx("flex shrink-0", COL.venda)}>
+                                        <EstadoDoLote categoria={c} lote={l} />
                                     </span>
-                                    <span className="text-sm text-tertiary">
-                                        {l.dataLimite ? `Até ${formatarDataHora(l.dataLimite)}` : "Vira quando esgota"}
+                                    {/* v0.37 (SCE-279, SCE-280): cupom e chave também no lote (só nele). */}
+                                    <span className={cx("flex shrink-0 flex-col items-start gap-1", COL.vinculos)}>
+                                        <AtalhoMarketing recurso="cupom" alvo={{ categoria: c, lote: l }} />
+                                        <AtalhoMarketing recurso="chave" alvo={{ categoria: c, lote: l }} />
                                     </span>
+                                    <span className={cx("shrink-0", COL.acoes)} />
                                 </div>
-                                <span className={cx("shrink-0 text-sm text-secondary", COL.preco)}>{l.valor != null ? formatarReais(l.valor) : "a definir"}</span>
-                                <span className={cx("shrink-0 text-sm text-secondary", COL.emissoes)}>{l.vagas ? emissoes(false, l.vagas) : "a definir"}</span>
-                                <span className={cx("hidden shrink-0 @3xl:block", COL.vinculos)} />
-                                <span className={cx("hidden shrink-0 @3xl:block", COL.acoes)} />
-                            </div>
-                        ))}
-                        {c.lotes.length === 0 && <p className="border-b border-secondary py-3 pl-16 text-sm text-tertiary">Nenhum lote. Abra para adicionar.</p>}
-                    </motion.div>
-                )}
-            </AnimatePresence>
+                            ))}
+                            {c.lotes.length === 0 && <p className="border-b border-secondary py-3 pl-16 text-sm text-tertiary">Nenhum lote. Abra para adicionar.</p>}
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+            </div>
+            {detalhesAbertos && (
+                <DetalhesDaCategoria
+                    categoria={c}
+                    nome={nome}
+                    nomeDaModalidade={nomeDaModalidade}
+                    selos={selos}
+                    faixaDePreco={faixaDePreco}
+                    textoDeEmissoes={textoDeEmissoes}
+                    onPausarCategoria={pausarCategoria}
+                    onPausarLote={pausarLote}
+                    edicaoDoPreco={edicaoDoPreco}
+                    edicaoDaQuantidade={edicaoDaQuantidade}
+                    onEditar={() => {
+                        setDetalhesAbertos(false);
+                        editar();
+                    }}
+                    onDuplicar={() => {
+                        setDetalhesAbertos(false);
+                        duplicar();
+                    }}
+                    onRemover={() => {
+                        setDetalhesAbertos(false);
+                        remover();
+                    }}
+                    onFechar={() => setDetalhesAbertos(false)}
+                />
+            )}
             <DestinoDaDuplicacao
                 aberto={escolhendoDestino}
                 nomeDaCategoria={nome}
@@ -631,29 +747,34 @@ function Vinculos({ categoria: c }: { categoria: Categoria }) {
     const { rascunho: r } = useFormulario();
     const [listaAberta, setListaAberta] = useState(false);
     const perguntas = r.perguntas.filter((p) => p.vinculos[c.id]).length;
-    const itens: { icone: FC<{ className?: string }>; n: number; texto: string }[] = [
-        { icone: ClipboardCheck, n: perguntas, texto: plural(perguntas, "pergunta do formulário", "perguntas do formulário") },
-        { icone: Key01, n: c.chavesDeAcesso ?? 0, texto: plural(c.chavesDeAcesso ?? 0, "chave de acesso", "chaves de acesso") },
-        { icone: Ticket01, n: c.cupons ?? 0, texto: plural(c.cupons ?? 0, "cupom", "cupons") },
-    ].filter((x) => x.n > 0);
-    if (!itens.length) return <span className="text-sm text-quaternary">Nenhum</span>;
+    const texto = perguntas ? plural(perguntas, "pergunta do formulário", "perguntas do formulário") : "Nenhuma pergunta do formulário";
+    // v0.36 (SCE-278): os três indicadores sempre visíveis, nesta ordem, mesmo com zero (zero fica apagado).
+    // v0.37 (SCE-279, SCE-280): cupom e chave são atalhos: abrem o que está ligado à categoria (todos os lotes) para gerenciar.
     return (
-        <ul className="flex flex-wrap items-center gap-1" aria-label={`Vínculos: ${itens.map((x) => x.texto).join(", ")}`}>
-            {itens.map(({ icone: Icone, n, texto }) => (
-                <li key={texto}>
-                    <Tooltip title={texto} description={Icone === ClipboardCheck ? "Clique para ver a lista" : undefined}>
-                        <TooltipTrigger
-                            aria-label={Icone === ClipboardCheck ? `${texto}: ver a lista` : texto}
-                            // v0.17 (SCE-223): o indicador do formulário abre a lista das perguntas vinculadas.
-                            onPress={Icone === ClipboardCheck ? () => setListaAberta(true) : undefined}
-                            className="flex items-center gap-1 rounded-md bg-primary px-1.5 py-0.5 text-xs font-medium text-secondary ring-1 ring-secondary outline-focus-ring transition duration-100 ease-linear ring-inset hover:bg-primary_hover focus-visible:outline-2"
-                        >
-                            <Icone className="size-3.5 text-fg-quaternary" aria-hidden="true" />
-                            {n}
-                        </TooltipTrigger>
-                    </Tooltip>
-                </li>
-            ))}
+        // v0.49 (SCE-297): um abaixo do outro, cada um com o que é.
+        <ul className="flex flex-col items-start gap-1" aria-label="Vínculos">
+            <li>
+                <Tooltip title={texto} description="Clique para escolher as perguntas desta categoria">
+                    <TooltipTrigger
+                        aria-label={`${texto}: escolher perguntas`}
+                        // v0.44 (SCE-291): abre sempre, mesmo com zero: é o atalho para incluir perguntas.
+                        onPress={() => setListaAberta(true)}
+                        className={cx(
+                            "flex items-center gap-1 rounded-md bg-primary px-1.5 py-0.5 text-xs font-medium ring-1 ring-secondary outline-focus-ring transition duration-100 ease-linear ring-inset hover:bg-primary_hover focus-visible:outline-2",
+                            perguntas > 0 ? "text-secondary" : "text-quaternary",
+                        )}
+                    >
+                        <ClipboardCheck className={cx("size-3.5", perguntas > 0 ? "text-fg-quaternary" : "text-fg-quaternary opacity-50")} aria-hidden="true" />
+                        {perguntas} {perguntas === 1 ? "pergunta" : "perguntas"}
+                    </TooltipTrigger>
+                </Tooltip>
+            </li>
+            <li>
+                <AtalhoMarketing recurso="cupom" alvo={{ categoria: c }} />
+            </li>
+            <li>
+                <AtalhoMarketing recurso="chave" alvo={{ categoria: c }} />
+            </li>
             <PerguntasDaCategoria categoria={c} aberto={listaAberta} onFechar={() => setListaAberta(false)} />
         </ul>
     );
@@ -667,47 +788,79 @@ function Vinculos({ categoria: c }: { categoria: Categoria }) {
 /* ------------------------------------------------------------------ */
 
 function PerguntasDaCategoria({ categoria: c, aberto, onFechar }: { categoria: Categoria; aberto: boolean; onFechar: () => void }) {
-    const { rascunho: r, irParaPendencia } = useFormulario();
+    const { rascunho: r, atualizar, irParaPendencia } = useFormulario();
     const { t } = useVocabulario();
-    const vinculadas = r.perguntas.filter((p) => p.vinculos[c.id]);
     const nome = c.nome.trim() || t.nivel2SemNome;
+    const modalidade = r.modalidades.find((m) => m.categorias.some((x) => x.id === c.id));
+    // v0.44 (SCE-291): atalho como o de cupons: todas as perguntas do evento, marcadas as que aparecem aqui.
+    const [antes, setAntes] = useState(r.perguntas);
+    useEffect(() => {
+        if (aberto) setAntes(r.perguntas);
+    }, [aberto]); // eslint-disable-line react-hooks/exhaustive-deps
+    const marcadas = r.perguntas.filter((p) => presencaNa(p, c.id) !== "nao").length;
+    const mudar = (id: string, estado: Presenca | "nao") => atualizar((x) => ({ ...x, perguntas: x.perguntas.map((p) => (p.id === id ? comPresenca(p, [c.id], estado) : p)) }));
+    const todas = (ligar: boolean) => atualizar((x) => ({ ...x, perguntas: x.perguntas.map((p) => (ligar ? (presencaNa(p, c.id) === "nao" ? comPresenca(p, [c.id], p.padrao) : p) : comPresenca(p, [c.id], "nao"))) }));
+    const cancelar = () => {
+        atualizar((x) => ({ ...x, perguntas: antes }));
+        onFechar();
+    };
     const editar = (perguntaId: string) => {
         onFechar();
         irParaPendencia({ secao: "inscricao", campo: CAMPO.perguntaTexto(perguntaId), texto: "", pergunta: perguntaId });
     };
     return (
+        // v0.57 (SCE-317): fechar (X, Esc, clique fora) mantém; só "Cancelar" desfaz.
         <ModalOverlay isOpen={aberto} onOpenChange={(v) => !v && onFechar()} isDismissable>
             <Modal className="sm:max-w-xl">
                 <Dialog aria-label={`Perguntas de ${nome}`}>
-                    <div className="flex max-h-[85vh] w-full flex-col overflow-hidden rounded-2xl bg-primary shadow-xl ring-1 ring-secondary">
+                    <div className="flex max-h-[88vh] w-full flex-col overflow-hidden rounded-2xl bg-primary shadow-xl ring-1 ring-secondary">
                         <div className="flex shrink-0 flex-col gap-1 px-6 pt-6 pb-4">
-                            <h2 className="text-lg font-semibold text-primary">Perguntas de {nome}</h2>
+                            <h2 className="text-lg font-semibold text-primary">Perguntas do formulário</h2>
                             <p className="text-sm text-tertiary">
-                                {vinculadas.length === 1 ? "1 pergunta do formulário aparece" : `${vinculadas.length} perguntas do formulário aparecem`} na inscrição desta {t.nivel2.um}, nesta ordem.
+                                {modalidade?.nome ?? ""} › {nome} · {marcadas} de {r.perguntas.length} aparecem na inscrição. Marque para incluir.
                             </p>
                         </div>
-                        <ol className="min-h-0 flex-1 divide-y divide-secondary overflow-y-auto border-y border-secondary">
-                            {vinculadas.map((p, i) => (
-                                <li key={p.id} className="flex items-center gap-3 px-6 py-3">
-                                    <span className="w-5 shrink-0 text-sm text-tertiary tabular-nums">{i + 1}.</span>
-                                    <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                                        <span className="flex flex-wrap items-center gap-2">
-                                            <span className="text-sm font-semibold text-primary">{p.titulo.trim() || "Pergunta sem título"}</span>
-                                            <BadgeWithIcon type="pill-color" color={p.vinculos[c.id] === "obrigatoria" ? "brand" : "gray"} size="sm" iconLeading={ClipboardCheck}>
-                                                {p.vinculos[c.id] === "obrigatoria" ? "Obrigatória" : "Opcional"}
-                                            </BadgeWithIcon>
-                                        </span>
-                                        <span className="text-sm text-tertiary">{labelDe(TIPOS_DE_RESPOSTA, p.tipo)}</span>
-                                    </span>
-                                    <Button size="sm" color="secondary" iconLeading={Edit01} onClick={() => editar(p.id)}>
-                                        Editar
-                                    </Button>
-                                </li>
-                            ))}
-                        </ol>
-                        <div className="flex shrink-0 justify-end px-6 py-4">
-                            <Button size="md" color="secondary" onClick={onFechar}>
-                                Fechar
+                        <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto border-y border-secondary px-6 py-5">
+                            {r.perguntas.length === 0 ? (
+                                <p className="py-4 text-center text-sm text-tertiary">O formulário do evento ainda não tem perguntas. Crie no passo Formulário de inscrição.</p>
+                            ) : (
+                                <>
+                                    <div className="flex items-center justify-end gap-1">
+                                        <Button size="sm" color="secondary" isDisabled={marcadas === r.perguntas.length} onClick={() => todas(true)}>
+                                            Marcar todas
+                                        </Button>
+                                        <Button size="sm" color="secondary" isDisabled={marcadas === 0} onClick={() => todas(false)}>
+                                            Desmarcar todas
+                                        </Button>
+                                    </div>
+                                    <ol className="flex flex-col divide-y divide-secondary rounded-xl px-4 ring-1 ring-secondary">
+                                        {r.perguntas.map((p, i) => {
+                                            const presenca = presencaNa(p, c.id);
+                                            const ligada = presenca !== "nao";
+                                            return (
+                                                <li key={p.id} className="flex flex-wrap items-center gap-3 py-2.5">
+                                                    <span className="w-5 shrink-0 text-sm text-tertiary tabular-nums">{i + 1}.</span>
+                                                    <Checkbox
+                                                        className="min-w-0 flex-1"
+                                                        isSelected={ligada}
+                                                        onChange={(v) => mudar(p.id, v ? p.padrao : "nao")}
+                                                        label={<span className="font-semibold text-primary">{p.titulo.trim() || "Pergunta sem título"}</span>}
+                                                        hint={`${labelDe(TIPOS_DE_RESPOSTA, p.tipo)} · ${p.padrao === "obrigatoria" ? "obrigatória" : "opcional"}`}
+                                                    />
+                                                    <ButtonUtility size="xs" color="tertiary" icon={Edit01} tooltip="Editar no formulário" aria-label={`Editar ${p.titulo} no formulário`} onClick={() => editar(p.id)} />
+                                                </li>
+                                            );
+                                        })}
+                                    </ol>
+                                </>
+                            )}
+                        </div>
+                        <div className="flex shrink-0 justify-end gap-3 px-6 py-4">
+                            <Button size="md" color="secondary" onClick={cancelar}>
+                                Cancelar
+                            </Button>
+                            <Button size="md" color="primary" onClick={onFechar}>
+                                Concluir
                             </Button>
                         </div>
                     </div>
@@ -767,7 +920,7 @@ function EdicaoDaModalidade({ modalidade: m, titulo, onFechar }: { modalidade: M
             {/* Erros aparecem na hora: só se edita o que já existe, então um erro aqui é um dado de fato inválido. */}
             <div className="grid items-start gap-4 @2xl:grid-cols-3">
                 <CampoTexto id={CAMPO.modNome(m.id)} label="Nome" isRequired autoFocus placeholder={t.placeholderNivel1} valor={nome} onChange={setNome} erro={erros.nome} />
-                <CampoSelect id={CAMPO.modTipo(m.id)} label={t.tipoDoNivel1} tooltip={t.ajudaDoTipo} isRequired opcoes={TIPOS_DE_MODALIDADE} valor={tipo} onChange={setTipo} erro={erros.tipo} />
+                <CampoTipoDeModalidade id={CAMPO.modTipo(m.id)} label={t.tipoDoNivel1} tooltip={t.ajudaDoTipo} isRequired opcoes={TIPOS_DE_MODALIDADE} valor={tipo} onChange={setTipo} erro={erros.tipo} />
                 {/* v0.15 (SCE-212): vagas da modalidade sempre com número, sem "Sem limite". */}
                 <CampoVagas
                     id={CAMPO.modVagas(m.id)}
@@ -788,6 +941,7 @@ function EdicaoDaModalidade({ modalidade: m, titulo, onFechar }: { modalidade: M
                         valor={descricao}
                         onChange={setDescricao}
                         dica="O atleta vê na escolha da inscrição."
+                                umaLinha
                     />
                 </div>
             </div>
@@ -886,7 +1040,7 @@ function NovaModalidadeModal({ aberto, onFechar, onCriada }: { aberto: boolean; 
                         </div>
                         <div className="flex flex-col gap-4">
                             <CampoTexto id="nova-mod-nome" label="Nome" isRequired autoFocus placeholder={t.placeholderNivel1} valor={nome} onChange={setNome} erro={tentou ? erros.nome : undefined} />
-                            <CampoSelect id="nova-mod-tipo" label={t.tipoDoNivel1} tooltip={t.ajudaDoTipo} isRequired opcoes={TIPOS_DE_MODALIDADE} valor={tipo} onChange={setTipo} erro={tentou ? erros.tipo : undefined} />
+                            <CampoTipoDeModalidade id="nova-mod-tipo" label={t.tipoDoNivel1} tooltip={t.ajudaDoTipo} isRequired opcoes={TIPOS_DE_MODALIDADE} valor={tipo} onChange={setTipo} erro={tentou ? erros.tipo : undefined} />
                             <CampoVagas
                                 id="nova-mod-vagas"
                                 label={t.vagasDoNivel1}
@@ -905,6 +1059,7 @@ function NovaModalidadeModal({ aberto, onFechar, onCriada }: { aberto: boolean; 
                                 valor={descricao}
                                 onChange={setDescricao}
                                 dica="O atleta vê na escolha da inscrição."
+                                umaLinha
                             />
                         </div>
                         <div className="flex justify-end gap-3">
@@ -991,5 +1146,391 @@ function DestinoDaDuplicacao({
                 </Dialog>
             </Modal>
         </ModalOverlay>
+    );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Estado de venda da categoria (v0.30, SCE-263): à venda, programada, */
+/*  não programada, esgotada ou encerrada, com a data de apoio.         */
+/*  "Não programada" leva ao passo Abertura de vendas.                  */
+/* ------------------------------------------------------------------ */
+
+const ESTILO_DO_SELO: Record<TipoDeStatusDeVenda, { cor: "success" | "blue" | "gray" | "error" | "warning"; ponto: string }> = {
+    "a-venda": { cor: "success", ponto: "bg-fg-success-secondary" },
+    programada: { cor: "blue", ponto: "bg-utility-blue-500" },
+    "nao-programada": { cor: "warning", ponto: "bg-fg-warning-secondary" },
+    esgotada: { cor: "error", ponto: "bg-fg-error-secondary" },
+    encerrada: { cor: "gray", ponto: "bg-fg-quaternary" },
+    pausada: { cor: "gray", ponto: "bg-fg-quaternary" },
+};
+
+function SeloDeVenda({ categoria: c, compacto, semRotulo }: { categoria: Categoria; compacto?: boolean; semRotulo?: boolean }) {
+    const { rascunho: r, irParaPendencia } = useFormulario();
+    const s = statusDeVenda(r, c);
+    const estilo = ESTILO_DO_SELO[s.tipo];
+    // v0.69: na linha do celular, só o selo (o toque abre os detalhes; nada de botão dentro de botão).
+    if (compacto)
+        return (
+            <span className="flex">
+                <Badge type="pill-color" size="sm" color={estilo.cor}>
+                    <span className={cx("mr-1.5 size-1.5 rounded-full", estilo.ponto)} aria-hidden="true" />
+                    {s.rotulo}
+                </Badge>
+            </span>
+        );
+    return (
+        <span className="flex flex-col items-start gap-0.5">
+            {!semRotulo && <span className="sr-only">Venda:</span>}
+            <Badge type="pill-color" size="sm" color={estilo.cor}>
+                <span className={cx("mr-1.5 size-1.5 rounded-full", estilo.ponto, s.tipo === "a-venda" && "animate-pulse motion-reduce:animate-none")} aria-hidden="true" />
+                {s.rotulo}
+            </Badge>
+            {s.tipo === "nao-programada" ? (
+                <button
+                    type="button"
+                    className="rounded text-xs font-semibold text-brand-secondary underline underline-offset-2 outline-focus-ring hover:text-brand-secondary_hover focus-visible:outline-2"
+                    onClick={() => irParaPendencia({ secao: "vendas", campo: CAMPO.aberturas, texto: "" })}
+                >
+                    Programar
+                </button>
+            ) : (
+                s.detalhe && <span className="text-xs text-tertiary">{s.detalhe}</span>
+            )}
+        </span>
+    );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Selo "Oculta" (v0.41, SCE-288): item com chave de acesso ativa só  */
+/*  aparece para quem tem a chave ou o link. Curto, roxo, com olho     */
+/*  riscado; o detalhe fica no tooltip.                                */
+/* ------------------------------------------------------------------ */
+
+function SeloOculta({ lotes, comTexto }: { lotes: string[]; comTexto?: boolean }) {
+    const { rascunho: r } = useFormulario();
+    const ocultos = lotes.filter((id) => loteOculto(r, id)).length;
+    if (!ocultos) return null;
+    const titulo = lotes.length === 1 ? "Oculto: só com chave de acesso" : ocultos === lotes.length ? "Oculta: só com chave de acesso" : `${ocultos} de ${lotes.length} lotes ocultos: só com chave`;
+    const explicacao = "Não aparece para o público. Só quem digita a chave de acesso ou abre o link dela vê e compra.";
+    // v0.69: no celular (detalhes), o texto aparece por escrito: o toque não abre tooltip.
+    if (comTexto)
+        return (
+            <p className="flex items-start gap-2 text-sm text-secondary">
+                <EyeOff className="mt-0.5 size-4 shrink-0 text-utility-purple-500" aria-hidden="true" />
+                <span>
+                    <span className="font-semibold text-primary">{titulo}.</span> {explicacao}
+                </span>
+            </p>
+        );
+    return (
+        <Tooltip title={titulo} description="Não aparece para o público. Só quem digita a chave de acesso ou abre o link dela vê e compra.">
+            <TooltipTrigger className="flex size-6 shrink-0 items-center justify-center rounded-md text-utility-purple-500 outline-focus-ring hover:bg-primary_hover focus-visible:outline-2" aria-label={titulo}>
+                <EyeOff className="size-4" aria-hidden="true" />
+            </TooltipTrigger>
+        </Tooltip>
+    );
+}
+
+/** Estado do lote na coluna Venda (SCE-326): pausado, esgotado, vende primeiro / à venda ou aguarda a virada. */
+function EstadoDoLote({ categoria: c, lote: l }: { categoria: Categoria; lote: Categoria["lotes"][number] }) {
+    const { rascunho: r } = useFormulario();
+    const publicado = r.publicado || !!r.simularPublicado;
+    const ativos = c.lotes.filter((x) => x.ativo !== false);
+    const esgotado = statusDeVenda(r, c).tipo === "esgotada" && ativos[ativos.length - 1]?.id === l.id;
+    const [rotulo, ponto] =
+        l.ativo === false || c.ativa === false
+            ? ["Pausado", "bg-fg-quaternary"]
+            : esgotado
+              ? ["Esgotado", "bg-fg-error-secondary"]
+              : ativos[0]?.id === l.id
+                ? [publicado ? "À venda" : "Vende primeiro", publicado ? "bg-fg-success-secondary" : "bg-utility-blue-500"]
+                : ["Aguarda virada", "bg-fg-quaternary"];
+    return (
+        <span className="flex items-center gap-1.5 text-sm text-secondary">
+            <span className={cx("size-1.5 shrink-0 rounded-full", ponto)} aria-hidden="true" />
+            {rotulo}
+        </span>
+    );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Ativa ou pausada (v0.58, SCE-324): toggle antes do nome, como no    */
+/*  AWA (ingresso e lote). Desligar para a venda na hora, com toast e  */
+/*  Desfazer (ITM-03).                                                  */
+/* ------------------------------------------------------------------ */
+
+function AtivaOuPausada({ nome, ativa, feminino, onChange, comRotulo }: { nome: string; ativa: boolean; feminino: boolean; onChange: (v: boolean) => void; comRotulo?: boolean }) {
+    const { rascunho: r } = useFormulario();
+    const publicado = r.publicado || !!r.simularPublicado;
+    const a = feminino ? "a" : "o";
+    const mudar = (v: boolean) => {
+        onChange(v);
+        // v0.69 (critique UI-TXT-001): no rascunho nada vende ainda; o aviso diz o efeito na publicação.
+        const texto = publicado
+            ? v
+                ? `${nome} voltou a vender.`
+                : `${nome} pausad${a}. Para de vender na hora.`
+            : v
+              ? `${nome} vai vender quando o evento for publicado.`
+              : `${nome} pausad${a}. Não vende quando o evento for publicado.`;
+        toast(texto, { action: { label: "Desfazer", onClick: () => onChange(!v) } });
+    };
+    return (
+        // Sem Tooltip em volta: o toggle já é o controle (nada de botão dentro de botão). O estado vai no nome acessível.
+        // v0.69 (critique UI-FRM-005): rótulo visível: "À venda" no cabeçalho da tabela; nos detalhes, ao lado do toggle.
+        <span className={cx("flex shrink-0", comRotulo ? "items-center" : "w-14 flex-col items-start gap-1 @3xl:w-11")}>
+            <Toggle size="sm" aria-label={`${nome}: ${ativa ? "à venda" : "pausad" + a}`} isSelected={ativa} onChange={mudar} label={comRotulo ? (ativa ? "À venda" : `Pausad${a}`) : undefined} />
+            {/* No celular a tabela não tem cabeçalho: o estado fica escrito embaixo do toggle. */}
+            {!comRotulo && (
+                <span className="text-xs whitespace-nowrap text-tertiary @3xl:hidden" aria-hidden="true">
+                    {ativa ? "À venda" : `Pausad${a}`}
+                </span>
+            )}
+        </span>
+    );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Edição rápida de preço e quantidade do lote (v0.66, SCE-335)        */
+/*  Como o "editar estoque" do Backstage: lápis ao lado do valor (no    */
+/*  hover no desktop; sempre visível no toque); o valor vira campo com  */
+/*  Salvar e Cancelar; Enter salva, Esc cancela; erro no próprio campo. */
+/* ------------------------------------------------------------------ */
+
+/** No evento em criação ainda não há inscrições; com o evento publicado, viria das emissões do lote. */
+const EMITIDAS_NO_RASCUNHO = 0;
+
+function EdicaoRapida({
+    rotulo,
+    valor,
+    texto,
+    formato,
+    bloqueado,
+    validar,
+    onSalvar,
+}: {
+    rotulo: string;
+    valor: number | null;
+    texto: string;
+    formato?: Intl.NumberFormatOptions;
+    bloqueado?: boolean;
+    validar: (v: number | null) => string | undefined;
+    onSalvar: (v: number) => void;
+}) {
+    const ancora = useRef<HTMLSpanElement>(null);
+    const [editando, setEditando] = useState(false);
+    const [rascunho, setRascunho] = useState<number | null>(valor);
+    // O NumberField confirma o número ao sair do campo ou no Enter; a ref guarda o último valor confirmado.
+    const atual = useRef<number | null>(valor);
+    const [erro, setErro] = useState<string>();
+    const id = `edicao-${rotulo.replace(/\W+/g, "-")}`;
+    const abrir = () => {
+        atual.current = valor;
+        setRascunho(valor);
+        setErro(undefined);
+        setEditando(true);
+        // O campo já abre com o foco e o valor selecionado, pronto para digitar.
+        setTimeout(() => {
+            const campo = document.querySelector<HTMLInputElement>(`[data-edicao="${id}"] input`);
+            campo?.focus();
+            campo?.select();
+        }, 60);
+    };
+    const salvar = () => {
+        // Lê o que está escrito no campo (o NumberField só confirma ao sair dele).
+        const campo = document.querySelector<HTMLInputElement>(`[data-edicao="${id}"] input`);
+        const texto = campo?.value.trim() ?? "";
+        const lido = campo ? (texto ? new NumberParser("pt-BR", formato ?? {}).parse(texto) : null) : atual.current;
+        const v = lido != null && Number.isNaN(lido) ? null : lido;
+        const e = validar(v);
+        if (e) return setErro(e);
+        if (v !== valor && v != null) onSalvar(v);
+        setEditando(false);
+    };
+    // v0.69 (SCE-339): com as vendas do lote iniciadas, o valor fica fixo e o cadeado explica por quê.
+    if (bloqueado)
+        return (
+            <span className="flex items-center gap-1">
+                <span className="text-sm text-secondary">{texto}</span>
+                <Tooltip title="Vendas iniciadas" description={AVISO_LOTE_BLOQUEADO}>
+                    <TooltipTrigger aria-label={`${rotulo}: não pode mudar. ${AVISO_LOTE_BLOQUEADO}`} className="flex size-7 items-center justify-center rounded-md text-fg-quaternary outline-focus-ring focus-visible:outline-2">
+                        <Lock01 className="size-4" aria-hidden="true" />
+                    </TooltipTrigger>
+                </Tooltip>
+            </span>
+        );
+    // v0.69 (critique UI-VIS-008): a edição abre num balão ancorado no valor; a linha não muda de altura.
+    return (
+        <span ref={ancora} className="group/edicao flex items-center gap-1">
+            <span className="text-sm text-secondary">{texto}</span>
+            <ButtonUtility
+                size="xs"
+                color="tertiary"
+                icon={Edit01}
+                tooltip={`Editar ${rotulo.toLowerCase()}`}
+                aria-label={`Editar ${rotulo.toLowerCase()}`}
+                onClick={abrir}
+                className={cx("opacity-100 transition-opacity @3xl:opacity-0 @3xl:group-hover/edicao:opacity-100 @3xl:focus-visible:opacity-100", editando && "@3xl:opacity-100")}
+            />
+            <AriaPopover
+                triggerRef={ancora}
+                isOpen={editando}
+                onOpenChange={setEditando}
+                placement="bottom start"
+                offset={6}
+                className={({ isEntering, isExiting }) =>
+                    cx(
+                        "z-50 w-72 rounded-xl bg-primary p-4 shadow-lg ring-1 ring-secondary_alt outline-hidden",
+                        isEntering && "duration-150 ease-out animate-in fade-in slide-in-from-top-0.5 motion-reduce:slide-in-from-top-0",
+                        isExiting && "duration-100 ease-in animate-out fade-out",
+                    )
+                }
+            >
+                <AriaDialog aria-label={rotulo} className="outline-hidden">
+                    <form
+                        data-edicao={id}
+                        className="flex flex-col gap-4"
+                        onSubmit={(e) => {
+                            e.preventDefault();
+                            salvar();
+                        }}
+                    >
+                        <CampoNumero id={id} label={rotulo} valor={rascunho} onChange={(v) => ((atual.current = Number.isNaN(v) ? null : v), setRascunho(v), setErro(undefined))} formato={formato} erro={erro} semSetas />
+                        <div className="flex justify-end gap-2">
+                            <Button size="sm" color="secondary" onClick={() => setEditando(false)}>
+                                Cancelar
+                            </Button>
+                            <Button size="sm" color="primary" type="submit" iconLeading={Check}>
+                                Salvar
+                            </Button>
+                        </div>
+                    </form>
+                </AriaDialog>
+            </AriaPopover>
+        </span>
+    );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Detalhes da categoria no celular (v0.69, critique UI-MOB-005)      */
+/*  A linha da tabela-lista abre o painel em tela cheia com tudo o     */
+/*  que a tabela mostra no desktop: venda, preço, emissões, vínculos,  */
+/*  lotes (pausar, editar preço e quantidade, estado, cupom e chave)   */
+/*  e as ações da categoria.                                           */
+/* ------------------------------------------------------------------ */
+
+function DetalhesDaCategoria({
+    categoria: c,
+    nome,
+    nomeDaModalidade,
+    selos,
+    faixaDePreco,
+    textoDeEmissoes,
+    onPausarCategoria,
+    onPausarLote,
+    edicaoDoPreco,
+    edicaoDaQuantidade,
+    onEditar,
+    onDuplicar,
+    onRemover,
+    onFechar,
+}: {
+    categoria: Categoria;
+    nome: string;
+    nomeDaModalidade: string;
+    selos: ReactNode;
+    faixaDePreco: string;
+    textoDeEmissoes: string;
+    onPausarCategoria: (v: boolean) => void;
+    onPausarLote: (loteId: string, v: boolean) => void;
+    edicaoDoPreco: (l: Categoria["lotes"][number], i: number) => ReactNode;
+    edicaoDaQuantidade: (l: Categoria["lotes"][number], i: number) => ReactNode;
+    onEditar: () => void;
+    onDuplicar: () => void;
+    onRemover: () => void;
+    onFechar: () => void;
+}) {
+    const { t } = useVocabulario();
+    const Campo = ({ rotulo, children }: { rotulo: string; children: ReactNode }) => (
+        <div className="flex flex-col gap-1">
+            <dt className="text-sm text-tertiary">{rotulo}</dt>
+            <dd className="text-sm text-primary">{children}</dd>
+        </div>
+    );
+    return (
+        <SlideoutMenu isOpen isDismissable onOpenChange={(v) => !v && onFechar()} className="z-50 pl-0" dialogClassName="gap-0">
+            <SlideoutMenu.Header onClose={onFechar} className="flex flex-col gap-1 pb-4">
+                <h2 className="flex flex-wrap items-center gap-2 pr-8 text-lg font-semibold text-primary">
+                    {nome}
+                    {selos}
+                </h2>
+                <p className="text-sm text-tertiary">
+                    {nomeDaModalidade} · {resumoDaCategoria(c)}
+                </p>
+            </SlideoutMenu.Header>
+            <SlideoutMenu.Content className="gap-0 border-t border-secondary">
+                <section className="flex flex-col gap-4 py-5">
+                    <h3 className="text-md font-semibold text-primary">Venda</h3>
+                    <AtivaOuPausada nome={nome} ativa={c.ativa !== false} feminino={t.nivel2.genero === "f"} onChange={onPausarCategoria} comRotulo />
+                    <dl className="flex flex-col gap-3">
+                        <Campo rotulo="Estado">
+                            <SeloDeVenda categoria={c} semRotulo />
+                        </Campo>
+                        <Campo rotulo="Preço">{faixaDePreco}</Campo>
+                        <Campo rotulo="Emissões e estoque">{textoDeEmissoes}</Campo>
+                    </dl>
+                    <SeloOculta lotes={c.lotes.map((l) => l.id)} comTexto />
+                </section>
+                <section className="flex flex-col gap-3 border-t border-secondary py-5">
+                    <h3 className="text-md font-semibold text-primary">Vínculos</h3>
+                    <Vinculos categoria={c} />
+                </section>
+                <section className="flex flex-col gap-3 border-t border-secondary py-5">
+                    <h3 className="text-md font-semibold text-primary">Lotes</h3>
+                    {c.lotes.length === 0 && <p className="text-sm text-tertiary">Nenhum lote. Toque em "Editar categoria" para adicionar.</p>}
+                    <ol className="flex flex-col divide-y divide-secondary">
+                        {c.lotes.map((l, i) => (
+                            <li key={l.id} className="flex flex-col gap-3 py-4 first:pt-0">
+                                <span className="flex flex-wrap items-center gap-2">
+                                    <span className="text-sm font-semibold text-primary">{nomeDoLote(l, i)}</span>
+                                    {l.revisar && (
+                                        <BadgeWithIcon size="sm" type="pill-color" color="warning" iconLeading={AlertTriangle}>
+                                            Revisar
+                                        </BadgeWithIcon>
+                                    )}
+                                </span>
+                                <span className="-mt-2 text-sm text-tertiary">{l.dataLimite ? `Até ${formatarDataHora(l.dataLimite)}` : "Vira quando esgota"}</span>
+                                <AtivaOuPausada nome={nomeDoLote(l, i)} ativa={l.ativo !== false} feminino={false} onChange={(v) => onPausarLote(l.id, v)} comRotulo />
+                                <dl className="grid grid-cols-2 gap-3">
+                                    <Campo rotulo="Preço">{edicaoDoPreco(l, i)}</Campo>
+                                    <Campo rotulo="Emissões e estoque">{edicaoDaQuantidade(l, i)}</Campo>
+                                    <Campo rotulo="Venda">
+                                        <EstadoDoLote categoria={c} lote={l} />
+                                    </Campo>
+                                </dl>
+                                <SeloOculta lotes={[l.id]} comTexto />
+                                <div className="flex flex-wrap gap-2">
+                                    <AtalhoMarketing recurso="cupom" alvo={{ categoria: c, lote: l }} />
+                                    <AtalhoMarketing recurso="chave" alvo={{ categoria: c, lote: l }} />
+                                </div>
+                            </li>
+                        ))}
+                    </ol>
+                </section>
+            </SlideoutMenu.Content>
+            <SlideoutMenu.Footer className="flex flex-col gap-3">
+                <Button color="primary" size="md" iconLeading={Edit01} onClick={onEditar} className="w-full">
+                    Editar {t.nivel2.um}
+                </Button>
+                <div className="grid grid-cols-2 gap-3">
+                    <Button color="secondary" size="md" iconLeading={Copy01} onClick={onDuplicar}>
+                        {t.duplicarNivel2}
+                    </Button>
+                    <Button color="secondary-destructive" size="md" iconLeading={Trash01} onClick={onRemover}>
+                        Excluir
+                    </Button>
+                </div>
+            </SlideoutMenu.Footer>
+        </SlideoutMenu>
     );
 }

@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { toast } from "sonner";
-import { AlertCircle, AlertTriangle, ArrowLeft, Check, CheckCircle, ClipboardCheck, Lightbulb02, Plus, Trash01, Users01 } from "@untitledui/icons";
+import { AlertCircle, AlertTriangle, ArrowLeft, Check, Lock01, CheckCircle, ClipboardCheck, Lightbulb02, Plus, Trash01, Users01 } from "@untitledui/icons";
 import { BadgeWithIcon } from "@/components/base/badges/badges";
 import { AccordionComponent as Accordion } from "@/components/application/accordion/accordion";
 import { Dialog, Modal, ModalOverlay } from "@/components/application/modals/modal";
@@ -11,15 +11,31 @@ import { Toggle } from "@/components/base/toggle/toggle";
 import { DURACAO_TRANSICAO, Surgir } from "@/components/foundations/transicao";
 import { cx } from "@/utils/cx";
 import { TITULO_PAGINA } from "../../components/titulo-pagina";
-import { CAMPO, FORMATO_REAIS, irParaCampo } from "../data/campos";
-import { novoLote, regrasDe, vagasDaCategoria } from "../data/modelos";
+import { CAMPO, FORMATO_REAIS, formatarReais, irParaCampo } from "../data/campos";
+import { novoLote, regrasDe } from "../data/modelos";
 import { AJUDA, IDADE_CALCULADA_EM, LIMITE_NOME, SEXOS } from "../data/opcoes";
 import type { Categoria, Modalidade, Pendencia } from "../data/tipos";
 import { pendenciasDaCategoria, regraSugerida, textoDaRegraSugerida } from "../data/validacao";
 import { useVocabulario } from "../data/vocabulario";
+import { AVISO_LOTE_BLOQUEADO, loteComVendasIniciadas } from "../data/vendas";
 import { CampoDataHora, CampoNumero, CampoSelect, CampoTexto, CampoTextoLongo, ErroDaLista, Escolha } from "./campos";
 import { useFormulario } from "./contexto";
 import { comCategoria, comLote } from "./operacoes";
+
+/** "Final do ano do evento (31/12/2026)", "Dia do evento (30/12/2026)", "Dia da compra (data da inscrição)". */
+const opcoesDeIdadeEm = (largada: string) => {
+    const dia = largada ? largada.slice(0, 10).split("-").reverse().join("/") : "";
+    const ano = largada ? largada.slice(0, 4) : "";
+    return IDADE_CALCULADA_EM.map((o) =>
+        o.id === "fim-do-ano" && ano
+            ? { ...o, label: `${o.label} (31/12/${ano})` }
+            : o.id === "dia-do-evento" && dia
+              ? { ...o, label: `${o.label} (${dia})` }
+              : o.id === "dia-da-compra"
+                ? { ...o, label: `${o.label} (data da inscrição)` }
+                : o,
+    );
+};
 
 /* ------------------------------------------------------------------ */
 /*  Categoria em tela cheia (v0.3, SCE-150)                            */
@@ -178,7 +194,7 @@ function Detalhe({ modalidade: m, categoria: c, onFechar }: { modalidade: Modali
     const regra = regraSugerida(c);
     const perguntas = r.perguntas.filter((p) => p.vinculos[c.id]);
     const valores = c.lotes.map((l) => l.valor).filter((v): v is number => v != null);
-    const resumo = valores.length ? `${c.lotes.length === 1 ? "1 lote" : `${c.lotes.length} lotes`}, a partir de ${new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Math.min(...valores))}` : undefined;
+    const resumo = valores.length ? `${c.lotes.length === 1 ? "1 lote" : `${c.lotes.length} lotes`}, a partir de ${formatarReais(Math.min(...valores))}` : undefined;
 
     const configurarRegra = () => {
         if (!regra) return;
@@ -291,6 +307,7 @@ function Detalhe({ modalidade: m, categoria: c, onFechar }: { modalidade: Modali
                                 valor={c.descricao ?? ""}
                                 onChange={(descricao) => set((x) => ({ ...x, descricao }))}
                                 dica="O atleta vê na escolha da inscrição."
+                                umaLinha
                             />
                         </div>
                     </div>
@@ -353,7 +370,8 @@ function Detalhe({ modalidade: m, categoria: c, onFechar }: { modalidade: Modali
                                             id={`campo-cat-${c.id}-idade-em`}
                                             label="Idade contada em"
                                             tooltip={AJUDA.idadeCalculadaEm}
-                                            opcoes={IDADE_CALCULADA_EM}
+                                            // v0.29 (Bruna): cada opção mostra a data que vale para este evento.
+                                            opcoes={opcoesDeIdadeEm(r.largada)}
                                             valor={c.idadeEm}
                                             onChange={(v) => set((x) => ({ ...x, idadeEm: v as Categoria["idadeEm"] }))}
                                         />
@@ -421,13 +439,16 @@ function Detalhe({ modalidade: m, categoria: c, onFechar }: { modalidade: Modali
                 <div id={CAMPO.catLotes(c.id)} className="scroll-mt-6">
                     <SecaoDoDetalhe titulo="Preço e lotes" alerta={alertaLotes}>
                         <p className="max-w-[65ch] text-sm text-tertiary">
-                            O lote vira sozinho quando esgota ou na data limite. Só um lote vende por vez. As vagas da {t.nivel2.um} são a soma das quantidades dos lotes
-                            {vagasDaCategoria(c) > 0 ? <span className="font-medium text-secondary">: {vagasDaCategoria(c).toLocaleString("pt-BR")} vagas</span> : null}.
+                            {/* v0.64 (SCE-333): só a regra da virada; saíram "Só um lote vende por vez" e a soma das vagas. */}
+                            O lote vira sozinho quando esgota ou na data limite.
                         </p>
                         {/* v0.25 (critique UI-VIS-019): lotes em linhas separadas por divisória; só o lote a revisar tem fundo (é um objeto a conferir). */}
                         <ol className="flex flex-col divide-y divide-secondary border-y border-secondary">
                             <AnimatePresence initial={false}>
-                                {c.lotes.map((l, i) => (
+                                {c.lotes.map((l, i) => {
+                                    // v0.69 (SCE-339): lote com vendas iniciadas não é editado nem removido; pausar continua na lista.
+                                    const bloqueado = loteComVendasIniciadas(r, c, l.id);
+                                    return (
                                     <motion.li
                                         key={l.id}
                                         layout={!reduzir}
@@ -462,20 +483,30 @@ function Detalhe({ modalidade: m, categoria: c, onFechar }: { modalidade: Modali
                                                         </>
                                                     )}
                                                 </span>
-                                                <ButtonUtility
-                                                    size="xs"
-                                                    color="tertiary"
-                                                    icon={Trash01}
-                                                    tooltip={`Remover ${l.nome.trim() || "lote"}`}
-                                                    onClick={() => set((x) => ({ ...x, lotes: x.lotes.filter((y) => y.id !== l.id) }))}
-                                                />
+                                                {bloqueado ? (
+                                                    <span className="flex items-center gap-1.5 text-sm text-tertiary">
+                                                        <Lock01 className="size-4 shrink-0 text-fg-quaternary" aria-hidden="true" />
+                                                        Vendas iniciadas
+                                                    </span>
+                                                ) : (
+                                                    <ButtonUtility
+                                                        size="xs"
+                                                        color="tertiary"
+                                                        icon={Trash01}
+                                                        tooltip={`Remover ${l.nome.trim() || "lote"}`}
+                                                        onClick={() => set((x) => ({ ...x, lotes: x.lotes.filter((y) => y.id !== l.id) }))}
+                                                    />
+                                                )}
                                             </div>
-                                            <div className="grid items-start gap-3 sm:grid-cols-3 lg:grid-cols-4">
+                                            {bloqueado && <p className="text-sm text-tertiary">{AVISO_LOTE_BLOQUEADO}</p>}
+                                            {/* v0.63 (SCE-332): preço e quantidade estreitos; a data limite (data + hora) ganha espaço para não espremer. */}
+                                            <div className="grid items-start gap-3 sm:grid-cols-3 lg:grid-cols-[minmax(0,1fr)_9rem_8.5rem_minmax(0,1.5fr)]">
                                                 <CampoTexto
                                                     id={CAMPO.loteNome(l.id)}
                                                     label="Nome do lote"
                                                     isRequired
                                                     placeholder="Ex.: 1º lote"
+                                                    isReadOnly={bloqueado}
                                                     valor={l.nome}
                                                     onChange={(nome) => atualizar(comLote(m.id, c.id, l.id, (y) => ({ ...y, nome, revisar: false })))}
                                                     onBlur={() => tocar(CAMPO.loteNome(l.id))}
@@ -485,7 +516,8 @@ function Detalhe({ modalidade: m, categoria: c, onFechar }: { modalidade: Modali
                                                     id={CAMPO.loteValor(l.id)}
                                                     label="Preço"
                                                     isRequired
-                                                    placeholder="R$ 0,00"
+                                                    placeholder={formatarReais(0)}
+                                                    isDisabled={bloqueado}
                                                     formato={FORMATO_REAIS}
                                                     valor={l.valor}
                                                     onChange={(valor) => atualizar(comLote(m.id, c.id, l.id, (y) => ({ ...y, valor, revisar: false })))}
@@ -497,16 +529,18 @@ function Detalhe({ modalidade: m, categoria: c, onFechar }: { modalidade: Modali
                                                     label="Quantidade"
                                                     isRequired
                                                     placeholder="Ex.: 200"
+                                                    isDisabled={bloqueado}
                                                     valor={l.vagas}
                                                     onChange={(vagas) => atualizar(comLote(m.id, c.id, l.id, (y) => ({ ...y, vagas, revisar: false })))}
                                                     onBlur={() => tocar(CAMPO.loteVagas(l.id))}
                                                     erro={e(CAMPO.loteVagas(l.id))}
-                                                    dica="Inscrições neste lote"
+                                                    dica="Vagas do lote"
                                                 />
                                             <div className="border-t border-secondary pt-3 sm:col-span-3 sm:max-w-xs lg:col-span-1 lg:max-w-none lg:border-t-0 lg:pt-0">
                                                 <CampoDataHora
                                                     id={CAMPO.loteLimite(l.id)}
                                                     label="Data limite"
+                                                    desabilitado={bloqueado}
                                                     valor={l.dataLimite}
                                                     dica="Opcional. Em branco, vira quando esgota."
                                                     onChange={(dataLimite) => {
@@ -519,7 +553,8 @@ function Detalhe({ modalidade: m, categoria: c, onFechar }: { modalidade: Modali
                                             </div>
                                         </div>
                                     </motion.li>
-                                ))}
+                                    );
+                                })}
                             </AnimatePresence>
                         </ol>
                         <ErroDaLista erro={e(CAMPO.catLotes(c.id))} />
@@ -528,7 +563,8 @@ function Detalhe({ modalidade: m, categoria: c, onFechar }: { modalidade: Modali
                                 color="secondary"
                                 size="md"
                                 iconLeading={Plus}
-                                onClick={() => set((x) => ({ ...x, lotes: [...x.lotes, novoLote(x.lotes.length + 1, { valor: x.lotes.at(-1)?.valor ?? null })] }))}
+                                // v0.29 (Bruna): o lote novo vem com o preço em branco, para o organizador não repetir o valor sem querer.
+                                onClick={() => set((x) => ({ ...x, lotes: [...x.lotes, novoLote(x.lotes.length + 1)] }))}
                             >
                                 Adicionar lote
                             </Button>

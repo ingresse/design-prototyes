@@ -1,10 +1,12 @@
-import { useState, type FC, type ReactNode } from "react";
+import { MotionConfig } from "motion/react";
+import { useEffect, useState, type FC, type ReactNode } from "react";
 import { useNavigate } from "react-router";
 import { Button as AriaButton } from "react-aria-components";
 import { toast } from "sonner";
 import {
     Announcement01,
     BarChart01,
+    CheckCircle,
     ChevronDown,
     ChevronRight,
     ClipboardCheck,
@@ -28,7 +30,8 @@ import { ICONES_ORGANIZACAO } from "../../components/icones-organizacao";
 import { FORA_DO_ESCOPO, TITULO_FORMULARIO } from "../data/opcoes";
 import { useVocabulario } from "../data/vocabulario";
 import { ORGANIZACAO_ATUAL } from "../data/perfil";
-import { useRascunho } from "../data/rascunho";
+import { atualizarRascunho, useRascunho } from "../data/rascunho";
+import { validar } from "../data/validacao";
 
 /* ------------------------------------------------------------------ */
 /*  Shell do AWA, fiel ao Backstage de hoje (SCE-140 a SCE-143)        */
@@ -40,7 +43,7 @@ import { useRascunho } from "../data/rascunho";
 /*  é outro (BKS-07) e os itens dele navegam para outros protótipos.   */
 /* ------------------------------------------------------------------ */
 
-export type DestinoDoEvento = "informacoes" | "inscricoes" | "perguntas";
+export type DestinoDoEvento = "informacoes" | "inscricoes" | "perguntas" | "aberturas" | "revisao";
 
 interface MenuDoEvento {
     ativo: DestinoDoEvento | null;
@@ -61,6 +64,8 @@ const ORG_NAV: { id: string; label: string; icon: FC<{ className?: string }>; ro
 export function ShellAwa({ evento, children }: { evento?: MenuDoEvento; children: ReactNode }) {
     const [menuAberto, setMenuAberto] = useState(false);
     return (
+        // v0.69 (critique UI-VIS-008 · WCAG 2.3.3): com "reduzir movimento" no sistema, as animações viram fade ou somem.
+        <MotionConfig reducedMotion="user">
         <div className="min-h-screen bg-primary_alt">
             {/* Celular e tablet: barra no topo; o menu abre por baixo dela. */}
             <div className="sticky top-0 z-30 border-b border-secondary bg-primary_alt lg:hidden">
@@ -106,6 +111,7 @@ export function ShellAwa({ evento, children }: { evento?: MenuDoEvento; children
                 <main className="flex min-w-0 flex-1 flex-col overflow-x-clip px-2 pb-6 md:px-6">{children}</main>
             </div>
         </div>
+        </MotionConfig>
     );
 }
 
@@ -185,10 +191,10 @@ const menuDoEvento = (inscricoes: string): ItemDoMenu[] => [
         filhos: [
             { id: "inscricoes", label: inscricoes, destino: "inscricoes" },
             { id: "produtos", label: "Produtos" },
-            { id: "aberturas", label: "Aberturas de vendas" },
+            { id: "aberturas", label: "Aberturas de vendas", destino: "aberturas" },
         ],
     },
-    { id: "estrategias", label: "Estratégias de venda", icon: Users03, filhos: [] },
+    { id: "estrategias", label: "Estratégias de venda", icon: Users03, filhos: [{ id: "grupos", label: "Grupos e assessorias" }] },
     { id: "relatorios", label: "Relatórios", icon: BarChart01, filhos: [] },
     { id: "marketing", label: "Marketing", icon: Announcement01, filhos: [] },
     { id: "formulario", label: TITULO_FORMULARIO, icon: ClipboardCheck, filhos: [{ id: "perguntas", label: "Perguntas", destino: "perguntas" }] },
@@ -205,10 +211,25 @@ function RailDoEvento({ evento }: { evento: MenuDoEvento }) {
     const { rascunho: r } = useRascunho();
     const dia = formatarDia(r.largada);
     const { t } = useVocabulario();
-    const MENU_DO_EVENTO = menuDoEvento(t.menuInscricoes);
+    const MENU_DO_EVENTO = menuDoEvento(t.tituloDaSecao); // v0.47 (SCE-295): o nome do passo, ex.: "Modalidades e categorias"
     const [abertos, setAbertos] = useState<Set<string>>(new Set(["itens", "formulario"]));
+    // v0.61 (SCE-329): os atalhos da revisão abrem o grupo e destacam o item no menu por alguns segundos.
+    const [destaque, setDestaque] = useState<string | null>(null);
+    useEffect(() => {
+        const ouvir = (e: Event) => {
+            const id = (e as CustomEvent<string>).detail;
+            const pai = MENU_DO_EVENTO.find((i) => i.filhos?.some((f) => f.id === id));
+            if (pai) setAbertos((s) => new Set(s).add(pai.id));
+            setDestaque(id);
+            setTimeout(() => document.querySelector(`[data-menu="${id}"]`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 120);
+            setTimeout(() => setDestaque(null), 3200);
+        };
+        window.addEventListener("sce-destacar-menu", ouvir);
+        return () => window.removeEventListener("sce-destacar-menu", ouvir);
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
     const alternar = (id: string) => setAbertos((s) => (s.has(id) ? (s.delete(id), new Set(s)) : new Set(s).add(id)));
     const publicado = r.publicado;
+    const faltam = validar(r, t).length;
 
     return (
         <div className="flex flex-col gap-4">
@@ -243,8 +264,9 @@ function RailDoEvento({ evento }: { evento: MenuDoEvento }) {
                 </div>
                 <div className="flex items-center gap-2">
                     <ButtonUtility icon={LinkExternal01} color="secondary" size="sm" tooltip="Abrir página do evento" onClick={foraDoEscopo} />
+                    {/* v0.56 (SCE-316): em rascunho, o status leva à Revisão (onde se publica). */}
                     <AriaButton
-                        onPress={foraDoEscopo}
+                        onPress={() => (publicado ? foraDoEscopo() : evento.onIr("revisao"))}
                         className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary ring-1 ring-secondary outline-focus-ring ring-inset focus-visible:outline-2"
                     >
                         {publicado ? "Publicado" : "Rascunho"}
@@ -255,6 +277,31 @@ function RailDoEvento({ evento }: { evento: MenuDoEvento }) {
 
             <nav aria-label="Menu do evento">
                 <ul className="flex flex-col gap-0.5">
+                    {/* v0.56 (SCE-316): "Revisar e publicar" no topo, só em rascunho, com o que falta. */}
+                    {!publicado && (
+                        <li className="mb-1">
+                            <AriaButton
+                                onPress={() => evento.onIr("revisao")}
+                                aria-current={evento.ativo === "revisao" ? "page" : undefined}
+                                className={cx(
+                                    "flex w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-2 text-left text-sm outline-focus-ring ring-1 transition duration-100 ease-linear ring-inset focus-visible:outline-2",
+                                    evento.ativo === "revisao" ? "bg-tertiary font-semibold text-primary ring-transparent" : "font-semibold text-primary ring-secondary hover:bg-primary_hover",
+                                )}
+                            >
+                                <CheckCircle className="size-4 shrink-0 text-fg-quaternary" aria-hidden="true" />
+                                <span className="flex-1 truncate">Revisar e publicar</span>
+                                <span
+                                    className={cx(
+                                        "shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold",
+                                        // v0.57 (SCE-323): enquanto monta, o que falta é neutro (cinza); pronto fica verde.
+                                        faltam ? "bg-tertiary text-secondary" : "bg-success-primary text-success-primary",
+                                    )}
+                                >
+                                    {faltam ? (faltam === 1 ? "falta 1" : `faltam ${faltam}`) : "Pronto"}
+                                </span>
+                            </AriaButton>
+                        </li>
+                    )}
                     {MENU_DO_EVENTO.map((item) => (
                         <li key={item.id}>
                             <ItemDoMenuDoEvento item={item} evento={evento} aberto={abertos.has(item.id)} onAlternar={() => alternar(item.id)} />
@@ -263,7 +310,7 @@ function RailDoEvento({ evento }: { evento: MenuDoEvento }) {
                                     <ul className="flex flex-col gap-0.5 py-0.5 pl-6">
                                         {item.filhos.map((f) => (
                                             <li key={f.id}>
-                                                <ItemDoMenuDoEvento item={f} evento={evento} filho />
+                                                <ItemDoMenuDoEvento item={f} evento={evento} filho destacado={destaque === f.id} />
                                             </li>
                                         ))}
                                     </ul>
@@ -277,23 +324,32 @@ function RailDoEvento({ evento }: { evento: MenuDoEvento }) {
     );
 }
 
-function ItemDoMenuDoEvento({ item, evento, aberto, onAlternar, filho }: { item: ItemDoMenu; evento: MenuDoEvento; aberto?: boolean; onAlternar?: () => void; filho?: boolean }) {
+function ItemDoMenuDoEvento({ item, evento, aberto, onAlternar, filho, destacado }: { item: ItemDoMenu; evento: MenuDoEvento; aberto?: boolean; onAlternar?: () => void; filho?: boolean; destacado?: boolean }) {
     const Icone = item.icon;
     const ativo = !!item.destino && evento.ativo === item.destino;
     const grupo = !!item.filhos;
     const acao = () => {
         if (grupo && item.filhos!.length) return onAlternar?.();
         if (item.destino) return evento.onIr(item.destino);
+        // Item de protótipo: Grupos e assessorias e Produtos são outras telas do AWA; aqui só se liga o módulo.
+        if (item.id === "grupos" || item.id === "produtos") {
+            const nome = item.id === "grupos" ? "Grupos e assessorias" : "Produtos adicionais";
+            return toast(`${nome}: configuração fora deste protótipo.`, {
+                action: { label: "Simular ativado", onClick: () => atualizarRascunho((r) => ({ ...r, modulos: { ...r.modulos, [item.id]: true } })) },
+            });
+        }
         foraDoEscopo();
     };
     return (
         <AriaButton
             onPress={acao}
+            data-menu={item.id}
             aria-expanded={grupo && item.filhos!.length ? aberto : undefined}
             aria-current={ativo ? "page" : undefined}
             className={cx(
                 "flex w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-2 text-left text-sm outline-focus-ring transition duration-100 ease-linear focus-visible:outline-2",
                 ativo ? "bg-tertiary font-semibold text-primary" : "font-medium text-secondary hover:bg-primary_hover",
+                destacado && "bg-brand-primary_alt text-primary ring-2 ring-brand ring-inset motion-safe:animate-pulse",
                 !item.destino && !grupo && "text-tertiary",
             )}
         >

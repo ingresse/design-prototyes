@@ -161,13 +161,12 @@ export function CampoDescricao({ id, valor, onChange, erro }: { id: string; valo
     return (
         <EditorDeTexto
             id={id}
-            rotulo="Descrição"
+            rotulo="Descrição (opcional)"
             valor={valor}
             onChange={onChange}
             erro={erro}
             limite={LIMITE_DA_DESCRICAO}
             placeholder="Conte como é a prova: percurso, programação, kit e o que está incluso."
-            dica="Opcional. Aparece na página do evento, abaixo das informações da prova."
         />
     );
 }

@@ -63,9 +63,7 @@ export function CampoLocal({
         ? MSG.localFalhou
         : vazio
           ? "Tente só o nome do lugar ou a rua com a cidade (ex.: Beira-Mar Norte, Florianópolis)."
-          : !escolhido && !texto
-            ? "Busque pelo nome do lugar (parque, praça, arena) ou pelo endereço."
-            : undefined;
+          : undefined;
 
     return (
         <div id={id} data-erro={erro || falhou ? "" : undefined} className="min-w-0 scroll-mt-6">

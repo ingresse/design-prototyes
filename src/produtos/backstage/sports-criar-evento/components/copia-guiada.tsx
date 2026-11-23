@@ -244,7 +244,7 @@ const RotuloEstreito = ({ children }: { children: ReactNode }) => (
     </span>
 );
 
-const COLUNAS_DO_LOTE = "@4xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.9fr)_minmax(0,1fr)_15rem_14.5rem]";
+const COLUNAS_DO_LOTE = "@4xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.9fr)_minmax(0,1fr)_17.5rem_14.5rem]";
 
 function RevisarCopia() {
     const { rascunho: r, atualizar } = useFormulario();
@@ -291,11 +291,6 @@ function RevisarCopia() {
                             {t.camposEmBranco(emBranco)}
                         </Badge>
                     )}
-                    {aRevisar > 0 && (
-                        <Button size="sm" color="secondary" iconLeading={Check} onClick={() => marcarRevisados(idsDoEscopo)}>
-                            Confirmar todos os lotes
-                        </Button>
-                    )}
                 </div>
             </div>
 
@@ -309,6 +304,12 @@ function RevisarCopia() {
                 {f.antes && (
                     <Button size="md" color="link-gray" onClick={desfazer} className="sm:mr-auto">
                         {t.desfazerCopia}
+                    </Button>
+                )}
+                {/* v0.29 (validação com design): "Confirmar todos" só no fim, depois de rolar por todos os lotes copiados. */}
+                {aRevisar > 0 && (
+                    <Button size="md" color="secondary" iconLeading={Check} onClick={() => marcarRevisados(idsDoEscopo)}>
+                        Confirmar todos os lotes
                     </Button>
                 )}
                 <Button
@@ -442,12 +443,6 @@ function BlocoDaCategoria({ modalidade: m, categoriaId, onMarcar }: { modalidade
                         dica={vazio(c.nome) ? <Falta /> : undefined}
                     />
                 </div>
-                {pendentes.length > 1 && (
-                    <Button size="sm" color="secondary" iconLeading={Check} onClick={() => onMarcar(new Set(pendentes.map((l) => l.id)))} className="mt-6">
-                        {/* v0.17 (SCE-231): sem a quantidade; mesmo verbo do botão de cada lote ("Revisado"). */}
-                        Confirmar todos
-                    </Button>
-                )}
             </div>
 
             {c.lotes.length === 0 ? (
@@ -471,6 +466,12 @@ function BlocoDaCategoria({ modalidade: m, categoriaId, onMarcar }: { modalidade
                         <LinhaDoLote key={l.id} modalidade={m} categoriaId={c.id} lote={l} />
                     ))}
                 </div>
+            )}
+            {/* v0.29: o atalho da categoria fica depois dos lotes, para confirmar só o que já passou pelos olhos. */}
+            {pendentes.length > 1 && (
+                <Button size="sm" color="secondary" iconLeading={Check} onClick={() => onMarcar(new Set(pendentes.map((l) => l.id)))} className="self-end">
+                    Confirmar os lotes acima
+                </Button>
             )}
         </div>
     );
@@ -505,7 +506,7 @@ function LinhaDoLote({ modalidade: m, categoriaId, lote: l }: { modalidade: Moda
                     label="Valor"
                     ocultarLabel
                     semSetas
-                    placeholder="R$ 0,00"
+                    placeholder={formatarReais(0)}
                     formato={FORMATO_REAIS}
                     valor={l.valor}
                     onChange={(valor) => set({ valor })}
