@@ -99,7 +99,7 @@ interface BlocoProps {
     /** Como ler o bloco em voz alta: "menos", "mais", "igual a". */
     leitura?: string;
     resultado?: boolean;
-    /** O bloco é uma subtração: mostra o valor com sinal de menos e a cor do negativo (zero fica neutro). */
+    /** O bloco é uma subtração: valor na cor do negativo, sem sinal de menos (o operador entre os blocos já diz "menos"). Zero fica neutro. */
     sai?: boolean;
     /** "Ver detalhe" (painel lateral) ou o link do relatório de vendas, na página do evento. */
     acao?: ReactNode;
@@ -114,7 +114,7 @@ const Bloco = ({ parte, valor, legenda, leitura, resultado, sai, acao }: BlocoPr
             </span>
             <Dica termo={ROTULO_DA_PARTE[parte]} texto={DEFINICAO[parte]} />
         </span>
-        <span className={cx("font-semibold whitespace-nowrap tabular-nums", resultado ? "text-xl @6xl:text-display-xs" : "text-lg @6xl:text-xl", (sai ? valor > 0 : valor < 0) ? COR_DO_NEGATIVO : "text-primary")}>{reais(sai ? -valor || 0 : valor)}</span>
+        <span className={cx("font-semibold whitespace-nowrap tabular-nums", resultado ? "text-xl @6xl:text-display-xs" : "text-lg @6xl:text-xl", (sai ? valor > 0 : valor < 0) ? COR_DO_NEGATIVO : "text-primary")}>{reais(valor)}</span>
         {legenda && <span className="text-xs text-tertiary">{legenda}</span>}
         {acao && <span className="mt-auto pt-1">{acao}</span>}
     </div>

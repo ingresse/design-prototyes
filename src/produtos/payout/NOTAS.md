@@ -96,6 +96,7 @@ Decisões de interface
     - **"Saldo disponível"** é o nome único do saldo, em todas as telas, painéis e arquivos baixados.
     - **Cascata reordenada:** Vendido + Créditos − Taxas e custos − Devoluções = Líquido.
     - **Negativo com padrão único:** sinal de menos e o token `text-error-primary` (`COR_DO_NEGATIVO`), para o que sai e para saldo negativo; zero fica neutro. Substitui a decisão 22 e a 37 (saída em cor neutra).
+    - **Cascata sem sinal duplicado** (pedido de 23/11): Taxas e custos e Devoluções mantêm a cor do negativo, mas perderam o "−" do valor; o operador entre os blocos já diz "menos".
     - **Líquido por situação** começa pelo Saldo disponível; "Sacado" vem por último, separado por um divisor e um espaço na barra.
     - **Filtro de eventos em barra própria, abaixo das abas** (layout enviado pela Laricia em 23/11, com o `FilterBar` do DS): "Filtros" · "Evento" · "Aplica-se a todos os dados da página". Para o aviso ser verdadeiro, o filtro passou a valer para toda a página, inclusive Próximas liberações, Últimos movimentos e a lista "Saldo por evento". Isso muda o pedido original do CPTO ("a lista continua como atalho"): com filtro, a lista mostra só os eventos escolhidos, e o Saldo disponível volta a ser o mesmo no card, no total da lista e no Extrato. **A confirmar com o CPTO.**
 
