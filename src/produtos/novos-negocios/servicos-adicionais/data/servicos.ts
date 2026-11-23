@@ -2,7 +2,6 @@ import type { FC } from "react";
 import festivalAurora from "../assets/festival-aurora.svg";
 import gopTun from "../assets/gop-tun.svg";
 import showPalco from "../assets/show-palco.svg";
-import meepSimbolo from "../assets/meep-simbolo.png";
 import uberLogo from "../assets/uber-logo.svg";
 import { IconlyCadeado, IconlyRemedio, IconlyCalendario, IconlyCamera, IconlyCarteira, IconlyComida, IconlyCartao, IconlyDesconto, IconlyEnviar, IconlyEscudo, IconlyImagem, IconlyRaio } from "../components/icones-iconly";
 
@@ -241,43 +240,50 @@ export const SERVICOS: Record<ServicoId, Servico> = {
     meep: {
         id: "meep",
         parceiro: "Meep",
-        simbolo: meepSimbolo,
-        categoria: "Consumo no evento",
-        marca: { nome: "Consumo antecipado Meep" },
+        // Sem o logo da Meep (marca pouco conhecida): o selo mostra comida, que diz pra que serve o saldo
+        iconeSelo: IconlyComida,
+        corSelo: "bg-utility-orange-600",
+        categoria: "Comida e bebida no evento",
+        marca: { nome: "Consumo antecipado" },
         evento: true,
-        titulo: "Menos filas, mais rolê",
-        legenda: "Recarregue antes de sair de casa e chegue só pra curtir.",
-        descricao: "Antecipe sua recarga e use o saldo para consumir no evento.",
+        titulo: "Chegue com saldo pra comer e beber",
+        legenda: "Compre antes de sair de casa e use nos bares e comidas {doEvento}.",
+        descricao: "Compre antes de sair de casa o saldo pra comer e beber no evento.",
         beneficios: [
             { icone: IconlyComida, texto: "Use nos bares, comidas e lojas" },
             { icone: IconlyCarteira, texto: "Você decide quanto vai gastar" },
         ],
-        pergunta: "Quanto deseja recarregar?",
-        item: "Saldo Meep",
+        pergunta: "Quanto você quer de saldo?",
+        item: "Saldo pra comer e beber",
         valores: [50, 100, 150],
         valorDestaque: { valor: 100, selo: "Mais escolhido" },
         desconto: 0,
         outroValor: true,
         minimo: 10,
         maximo: 1000,
-        cta: "Carregar meu saldo",
+        cta: "Comprar meu saldo",
         compartilhar: {
             rotulo: "Compartilhar com a galera",
             titulo: "Avisa quem vai com você",
-            legenda: "Assim todo mundo antecipa a recarga {proEvento}.",
-            mensagem: "Dá pra antecipar a recarga {proEvento} por aqui:",
+            legenda: "Assim todo mundo chega com saldo pra comer e beber {noEvento}.",
+            mensagem: "Dá pra comprar saldo pra comer e beber {noEvento} por aqui:",
         },
         aviso: "O que sobrar do saldo pode ser devolvido depois do evento.",
         condicoes: [
-            "Use o saldo para consumir {noEvento}.",
-            "Você usa o saldo com um cartão ou uma pulseira, conforme o formato do evento.",
+            "Use o saldo pra comprar comida e bebida {noEvento}.",
+            "No evento, informe seu CPF em qualquer caixa e retire o cartão com o saldo.",
             "Pedidos de devolução do saldo seguem as regras e prazos da Meep.",
         ],
-        destino: { rotulo: "CPF do cadastro Meep", valor: USUARIO.cpf },
+        destino: { rotulo: "CPF pra retirar o cartão no evento", valor: USUARIO.cpf },
         confirmacao: {
             titulo: "Tudo certo com seu saldo",
-            descricao: "Agora é só usar seu saldo {noEvento}.",
-            passos: ["Use o saldo com um cartão ou uma pulseira, conforme o formato do evento.", "Acompanhe o saldo pelo app da Meep."],
+            // A pessoa já tem o saldo: no evento, o CPF em qualquer caixa retira o cartão carregado
+            descricao: "Você já tem saldo pra comer e beber {noEvento}. Pra usar, é só retirar o cartão em qualquer caixa.",
+            passos: [
+                "No evento, vá a qualquer caixa e informe seu CPF.",
+                "Retire o cartão, que já vem com o seu saldo.",
+                "Use nos bares e comidas e acompanhe o saldo pelo app da Meep.",
+            ],
         },
     },
     fotos: {
@@ -506,9 +512,9 @@ export const ROLE = {
                 {
                     id: "meep",
                     titulo: "Chegue com saldo pra comer e beber",
-                    apoio: "Consumo antecipado Meep",
-                    rotulo: "Ver oferta de consumo antecipado Meep",
-                    status: { titulo: "Saldo pronto pro {categoria}!", apoio: "{valor} pra comer e beber", acao: "Ver saldo", rotulo: "Saldo Meep de {valor} carregado. Ver saldo" },
+                    apoio: "Consumo antecipado",
+                    rotulo: "Ver oferta de saldo pra comer e beber",
+                    status: { titulo: "Saldo pronto pro {categoria}!", apoio: "{valor} pra comer e beber", acao: "Ver saldo", rotulo: "Saldo de {valor} pra comer e beber comprado. Ver saldo" },
                 },
                 {
                     id: "guarda-volumes",

@@ -100,7 +100,7 @@ export function SeletorValor({ servico, selecao }: { servico: Servico; selecao: 
                     size="lg"
                     icon={Prefixo}
                     inputMode="numeric"
-                    placeholder={temDesconto ? "Digite o valor do crédito" : "Digite o valor da recarga"}
+                    placeholder={temDesconto ? "Digite o valor do crédito" : "Digite o valor do saldo"}
                     value={selecao.outro}
                     onChange={selecao.setOutro}
                     onBlur={selecao.marcarTocado}

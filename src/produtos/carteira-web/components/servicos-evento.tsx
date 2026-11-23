@@ -3,10 +3,9 @@ import { useNavigate } from "react-router";
 import { ChevronRight, XClose } from "@untitledui/icons";
 import { cx } from "@/utils/cx";
 import ingresseSimbolo from "../assets/ingresse-simbolo.svg";
-import meepSimbolo from "../assets/meep-simbolo.png";
 import type { ServicoEvento } from "../data/eventos";
 
-type Destino = { titulo: string; apoio: string; rotulo?: string; simbolo?: string; link: string };
+type Destino = { titulo: string; apoio: string; rotulo?: string; comida?: boolean; link: string };
 
 /** Textos do atalho do hub por evento (copy: agente de Writing com ux-copy). */
 const HUB: Record<string, { titulo: string; apoio: string; rotulo: string }> = {
@@ -17,13 +16,13 @@ const HUB: Record<string, { titulo: string; apoio: string; rotulo: string }> = {
     },
 };
 
-/** Destino de cada serviço: a oferta da Meep ou o hub de serviços do evento, em Serviços adicionais. */
+/** Destino de cada serviço: a oferta do consumo antecipado (Meep) ou o hub de serviços do evento, em Serviços adicionais. */
 /** Atalho de cada caso: a oferta direta (evento com um serviço só) ou o hub (mais de um). */
 const SERVICOS: Partial<Record<ServicoEvento | "hub", (eventoId: string) => Destino | null>> = {
     meep: () => ({
-        titulo: "Consumo antecipado Meep",
-        apoio: "Chegue com saldo pra comer e beber",
-        simbolo: meepSimbolo,
+        titulo: "Chegue com saldo pra comer e beber",
+        apoio: "Consumo antecipado no evento",
+        comida: true,
         link: "/novos-negocios/servicos-adicionais/meep",
     }),
     hub: (eventoId) => (HUB[eventoId] ? { ...HUB[eventoId], link: `/novos-negocios/servicos-adicionais/checklist?evento=${eventoId}` } : null),
@@ -119,10 +118,8 @@ export function ServicosEvento({
                                 <span aria-hidden="true" className="absolute inset-0 -z-10 bg-gradient-to-r from-black/80 via-black/55 to-black/15" />
                             </>
                         )}
-                        {s.simbolo ? (
-                            <span className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-primary ring-1 ring-secondary ring-inset">
-                                <img src={s.simbolo} alt="" aria-hidden="true" className="size-8" />
-                            </span>
+                        {s.comida ? (
+                            <SeloComida />
                         ) : (
                             // Hub: vários serviços, sem logo de parceiro — selo da Ingresse
                             <span className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-brand-solid">
@@ -138,5 +135,21 @@ export function ServicosEvento({
                 );
             })}
         </section>
+    );
+}
+
+/** Selo do consumo antecipado: hambúrguer (Iconly Light), que diz pra que serve o saldo melhor que o logo da Meep. */
+function SeloComida() {
+    return (
+        <span className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-utility-orange-600 text-white">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="size-6">
+                <path d="M18.6192 10.6693C19.7397 10.6693 20.5782 9.75839 20.3088 8.81516C19.3529 5.47612 15.8728 3 11.7266 3C7.58052 3 4.10043 5.47612 3.14446 8.81516C2.87511 9.75839 3.71354 10.6693 4.83406 10.6693H18.6192Z" />
+                <path d="M17.211 21H6.78834C4.74809 21 3.09375 19.3457 3.09375 17.3054C3.09375 17.0194 3.32491 16.7882 3.61091 16.7882H20.3894C20.6744 16.7882 20.9055 17.0194 20.9055 17.3054C20.9055 19.3457 19.2512 21 17.211 21Z" />
+                <path d="M3.09375 13.6686C3.55606 13.9938 3.98116 14.3425 4.89403 14.3425C6.61203 14.3425 6.61203 13.1152 8.33004 13.1152C10.049 13.1152 10.049 14.3425 11.7553 14.3425C13.4733 14.3425 13.4733 13.1152 15.1923 13.1152C16.9103 13.1152 16.9103 14.3425 18.6283 14.3425C19.4922 14.3425 19.927 14.0359 20.359 13.7293" />
+                <path d="M11.8082 6.38704H11.7269" />
+                <path d="M15.5768 7.79887H15.4955" />
+                <path d="M8.04504 7.79887H7.96374" />
+            </svg>
+        </span>
     );
 }
