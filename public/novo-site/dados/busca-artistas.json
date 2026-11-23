@@ -1,0 +1,6972 @@
+{
+ "versao": 1,
+ "sintetico": true,
+ "agora": "2026-10-29T00:00:00-03:00",
+ "total": 161,
+ "artistas": [
+  {
+   "id": "sorriso-maroto",
+   "nome": "Sorriso Maroto",
+   "aliases": [
+    "sorriso",
+    "maroto",
+    "sorriso eu gosto no pagode"
+   ],
+   "busca": "sorriso maroto sorriso maroto sorriso eu gosto no pagode",
+   "generos": [
+    "samba-pagode",
+    "sertanejo",
+    "mpb",
+    "forro"
+   ],
+   "generoRotulos": [
+    "Samba e pagode",
+    "Sertanejo",
+    "MPB",
+    "Forró"
+   ],
+   "generoRotulo": "Samba e pagode",
+   "generoOrigem": "Samba e pagode",
+   "cidade": "Ribeirão Preto",
+   "cidades": [
+    "Ribeirão Preto",
+    "São Paulo"
+   ],
+   "lugar": "br-sp-ribeirao-preto",
+   "lugares": [
+    "br-sp-ribeirao-preto",
+    "br-sp-sao-paulo"
+   ],
+   "foto": "./assets/artistas/sorriso-maroto.jpg",
+   "fotoFonte": "spotify",
+   "avatar": null,
+   "eventos": 2,
+   "eventosNoCatalogo": 2,
+   "proximo": {
+    "id": 193,
+    "nome": "Sorriso Eu Gosto no Pagode — Ribeirão Preto",
+    "iso": "2026-10-31T15:00:00-03:00"
+   },
+   "eventoIds": [
+    193,
+    194
+   ],
+   "emAlta": true,
+   "homeId": "sorriso",
+   "origem": "v5.3",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=sorriso-maroto"
+  },
+  {
+   "id": "solomun",
+   "nome": "Solomun",
+   "aliases": [],
+   "busca": "solomun",
+   "generos": [
+    "eletronica",
+    "pop"
+   ],
+   "generoRotulos": [
+    "Eletrônica",
+    "Pop"
+   ],
+   "generoRotulo": "Eletrônica",
+   "generoOrigem": "Eletrônica",
+   "cidade": "Curitiba",
+   "cidades": [
+    "Curitiba"
+   ],
+   "lugar": "br-pr-curitiba",
+   "lugares": [
+    "br-pr-curitiba"
+   ],
+   "foto": "./assets/artistas/solomun.jpg",
+   "fotoFonte": "spotify",
+   "avatar": null,
+   "eventos": 1,
+   "eventosNoCatalogo": 0,
+   "proximo": {
+    "id": null,
+    "nome": "Solomun :: CWB",
+    "iso": "2026-10-31T14:00:00-03:00"
+   },
+   "eventoIds": [],
+   "emAlta": true,
+   "homeId": "solomun",
+   "origem": "v5.3",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=solomun"
+  },
+  {
+   "id": "alok",
+   "nome": "Alok",
+   "aliases": [],
+   "busca": "alok",
+   "generos": [
+    "eletronica",
+    "pop",
+    "funk",
+    "rap",
+    "rock"
+   ],
+   "generoRotulos": [
+    "Eletrônica",
+    "Pop",
+    "Funk",
+    "Rap e trap",
+    "Rock"
+   ],
+   "generoRotulo": "Eletrônica",
+   "generoOrigem": "Eletrônica",
+   "cidade": null,
+   "cidades": [],
+   "lugar": null,
+   "lugares": [],
+   "foto": "./assets/artistas/alok.jpg",
+   "fotoFonte": "spotify",
+   "avatar": null,
+   "eventos": 0,
+   "eventosNoCatalogo": 0,
+   "proximo": null,
+   "eventoIds": [],
+   "emAlta": true,
+   "homeId": "alok",
+   "origem": "v5.3",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=alok"
+  },
+  {
+   "id": "boris-brejcha",
+   "nome": "Boris Brejcha",
+   "aliases": [
+    "brejcha",
+    "boris"
+   ],
+   "busca": "boris brejcha brejcha boris",
+   "generos": [
+    "eletronica"
+   ],
+   "generoRotulos": [
+    "Eletrônica"
+   ],
+   "generoRotulo": "Eletrônica",
+   "generoOrigem": "Eletrônica",
+   "cidade": null,
+   "cidades": [],
+   "lugar": null,
+   "lugares": [],
+   "foto": "./assets/artistas/boris-brejcha.jpg",
+   "fotoFonte": "spotify",
+   "avatar": null,
+   "eventos": 0,
+   "eventosNoCatalogo": 0,
+   "proximo": null,
+   "eventoIds": [],
+   "emAlta": true,
+   "homeId": "boris",
+   "origem": "v5.3",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=boris-brejcha"
+  },
+  {
+   "id": "clementaum",
+   "nome": "Clementaum",
+   "aliases": [],
+   "busca": "clementaum",
+   "generos": [],
+   "generoRotulos": [],
+   "generoRotulo": "",
+   "generoOrigem": "Festa e balada · Salvador",
+   "cidade": null,
+   "cidades": [],
+   "lugar": null,
+   "lugares": [],
+   "foto": "./assets/artistas/clementaum.jpg",
+   "fotoFonte": "spotify",
+   "avatar": null,
+   "eventos": 0,
+   "eventosNoCatalogo": 0,
+   "proximo": null,
+   "eventoIds": [],
+   "emAlta": true,
+   "homeId": "clementaum",
+   "origem": "v5.3",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=clementaum"
+  },
+  {
+   "id": "dominguinho",
+   "nome": "Dominguinho",
+   "aliases": [],
+   "busca": "dominguinho",
+   "generos": [
+    "mpb",
+    "forro",
+    "axe",
+    "arrocha"
+   ],
+   "generoRotulos": [
+    "MPB",
+    "Forró",
+    "Axé",
+    "Arrocha"
+   ],
+   "generoRotulo": "MPB",
+   "generoOrigem": "MPB · turnê",
+   "cidade": null,
+   "cidades": [],
+   "lugar": null,
+   "lugares": [],
+   "foto": "./assets/artistas/dominguinho.jpg",
+   "fotoFonte": "spotify",
+   "avatar": null,
+   "eventos": 0,
+   "eventosNoCatalogo": 0,
+   "proximo": null,
+   "eventoIds": [],
+   "emAlta": true,
+   "homeId": "dominguinho",
+   "origem": "v5.3",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=dominguinho"
+  },
+  {
+   "id": "eli-iwasa",
+   "nome": "Eli iWasa",
+   "aliases": [
+    "eliiwasa",
+    "eli"
+   ],
+   "busca": "eli iwasa eliiwasa eli",
+   "generos": [
+    "eletronica"
+   ],
+   "generoRotulos": [
+    "Eletrônica"
+   ],
+   "generoRotulo": "Eletrônica",
+   "generoOrigem": "Eletrônica",
+   "cidade": null,
+   "cidades": [],
+   "lugar": null,
+   "lugares": [],
+   "foto": "./assets/artistas/eli-iwasa.jpg",
+   "fotoFonte": "spotify",
+   "avatar": null,
+   "eventos": 0,
+   "eventosNoCatalogo": 0,
+   "proximo": null,
+   "eventoIds": [],
+   "emAlta": true,
+   "homeId": "eli",
+   "origem": "v5.3",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=eli-iwasa"
+  },
+  {
+   "id": "manerinho",
+   "nome": "Manerinho",
+   "aliases": [],
+   "busca": "manerinho",
+   "generos": [
+    "rap"
+   ],
+   "generoRotulos": [
+    "Rap e trap"
+   ],
+   "generoRotulo": "Rap e trap",
+   "generoOrigem": "Rap e trap",
+   "cidade": null,
+   "cidades": [],
+   "lugar": null,
+   "lugares": [],
+   "foto": "./assets/artistas/manerinho.jpg",
+   "fotoFonte": "spotify",
+   "avatar": null,
+   "eventos": 0,
+   "eventosNoCatalogo": 0,
+   "proximo": null,
+   "eventoIds": [],
+   "emAlta": true,
+   "homeId": "manerinho",
+   "origem": "v5.3",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=manerinho"
+  },
+  {
+   "id": "marvvila",
+   "nome": "Marvvila",
+   "aliases": [],
+   "busca": "marvvila",
+   "generos": [
+    "samba-pagode",
+    "mpb",
+    "pop"
+   ],
+   "generoRotulos": [
+    "Samba e pagode",
+    "MPB",
+    "Pop"
+   ],
+   "generoRotulo": "Samba e pagode",
+   "generoOrigem": "Samba e pagode",
+   "cidade": null,
+   "cidades": [],
+   "lugar": null,
+   "lugares": [],
+   "foto": "./assets/artistas/marvvila.jpg",
+   "fotoFonte": "spotify",
+   "avatar": null,
+   "eventos": 0,
+   "eventosNoCatalogo": 0,
+   "proximo": null,
+   "eventoIds": [],
+   "emAlta": true,
+   "homeId": "marvvila",
+   "origem": "v5.3",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=marvvila"
+  },
+  {
+   "id": "ratier",
+   "nome": "Ratier",
+   "aliases": [],
+   "busca": "ratier",
+   "generos": [
+    "eletronica"
+   ],
+   "generoRotulos": [
+    "Eletrônica"
+   ],
+   "generoRotulo": "Eletrônica",
+   "generoOrigem": "Eletrônica",
+   "cidade": null,
+   "cidades": [],
+   "lugar": null,
+   "lugares": [],
+   "foto": "./assets/artistas/ratier.jpg",
+   "fotoFonte": "spotify",
+   "avatar": null,
+   "eventos": 0,
+   "eventosNoCatalogo": 0,
+   "proximo": null,
+   "eventoIds": [],
+   "emAlta": true,
+   "homeId": "ratier",
+   "origem": "v5.3",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=ratier"
+  },
+  {
+   "id": "rey-castro",
+   "nome": "Rey Castro",
+   "aliases": [
+    "reycastro"
+   ],
+   "busca": "rey castro reycastro",
+   "generos": [],
+   "generoRotulos": [],
+   "generoRotulo": "",
+   "generoOrigem": "Festival",
+   "cidade": null,
+   "cidades": [],
+   "lugar": null,
+   "lugares": [],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-samba-rey-castro.png",
+   "eventos": 0,
+   "eventosNoCatalogo": 0,
+   "proximo": null,
+   "eventoIds": [],
+   "emAlta": true,
+   "homeId": "reycastro",
+   "origem": "v5.3",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=rey-castro"
+  },
+  {
+   "id": "victor-lou",
+   "nome": "Victor Lou",
+   "aliases": [
+    "victor"
+   ],
+   "busca": "victor lou victor",
+   "generos": [
+    "eletronica"
+   ],
+   "generoRotulos": [
+    "Eletrônica"
+   ],
+   "generoRotulo": "Eletrônica",
+   "generoOrigem": "Eletrônica",
+   "cidade": null,
+   "cidades": [],
+   "lugar": null,
+   "lugares": [],
+   "foto": "./assets/artistas/victor-lou.jpg",
+   "fotoFonte": "spotify",
+   "avatar": null,
+   "eventos": 0,
+   "eventosNoCatalogo": 0,
+   "proximo": null,
+   "eventoIds": [],
+   "emAlta": true,
+   "homeId": "victor",
+   "origem": "v5.3",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=victor-lou"
+  },
+  {
+   "id": "dj-leandra-vortex",
+   "nome": "DJ Leandra Vortex",
+   "aliases": [
+    "Leandra Vortex"
+   ],
+   "busca": "dj leandra vortex leandra vortex",
+   "generos": [
+    "eletronica",
+    "tribal"
+   ],
+   "generoRotulos": [
+    "Eletrônica",
+    "Tribal"
+   ],
+   "generoRotulo": "Eletrônica",
+   "generoOrigem": "Tribal",
+   "cidade": "Belo Horizonte",
+   "cidades": [
+    "Belo Horizonte",
+    "Lisboa",
+    "Madri",
+    "Miami",
+    "Santiago",
+    "São Paulo"
+   ],
+   "lugar": "br-mg-belo-horizonte",
+   "lugares": [
+    "br-mg-belo-horizonte",
+    "br-sp-sao-paulo",
+    "cl-santiago-santiago",
+    "es-madri-madri",
+    "pt-lisboa-lisboa",
+    "us-florida-miami"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-pop-dj-leandra-vortex.png",
+   "eventos": 6,
+   "eventosNoCatalogo": 6,
+   "proximo": {
+    "id": 148,
+    "nome": "Tribal Sunset",
+    "iso": "2026-12-06T16:00:00-03:00"
+   },
+   "eventoIds": [
+    148,
+    1820,
+    149,
+    1817,
+    1804,
+    1809
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=dj-leandra-vortex"
+  },
+  {
+   "id": "dj-marea-roja",
+   "nome": "DJ Marea Roja",
+   "aliases": [
+    "Marea Roja"
+   ],
+   "busca": "dj marea roja marea roja",
+   "generos": [
+    "eletronica"
+   ],
+   "generoRotulos": [
+    "Eletrônica"
+   ],
+   "generoRotulo": "Eletrônica",
+   "generoOrigem": "Eletrônica",
+   "cidade": "Barcelona",
+   "cidades": [
+    "Barcelona",
+    "Buenos Aires",
+    "Londres",
+    "Madri",
+    "Miami",
+    "Santiago"
+   ],
+   "lugar": "ar-buenos-aires-buenos-aires",
+   "lugares": [
+    "ar-buenos-aires-buenos-aires",
+    "cl-santiago-santiago",
+    "es-catalunha-barcelona",
+    "es-madri-madri",
+    "gb-inglaterra-londres",
+    "us-florida-miami"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-eletronica-dj-marea-roja.png",
+   "eventos": 6,
+   "eventosNoCatalogo": 6,
+   "proximo": {
+    "id": 1814,
+    "nome": "Palermo Open Air",
+    "iso": "2026-11-14T23:00:00-03:00"
+   },
+   "eventoIds": [
+    1814,
+    1820,
+    1810,
+    1817,
+    1826,
+    1809
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=dj-marea-roja"
+  },
+  {
+   "id": "cassia-lamarca",
+   "nome": "Cássia Lamarca",
+   "aliases": [
+    "Cássia"
+   ],
+   "busca": "cassia lamarca cassia",
+   "generos": [
+    "jazz-blues",
+    "mpb",
+    "samba-pagode"
+   ],
+   "generoRotulos": [
+    "Jazz e blues",
+    "MPB",
+    "Samba e pagode"
+   ],
+   "generoRotulo": "Jazz e blues",
+   "generoOrigem": "Jazz e blues",
+   "cidade": "Barcelona",
+   "cidades": [
+    "Barcelona",
+    "Belo Horizonte",
+    "Londres",
+    "Madri",
+    "Porto Alegre"
+   ],
+   "lugar": "br-mg-belo-horizonte",
+   "lugares": [
+    "br-mg-belo-horizonte",
+    "br-rs-porto-alegre",
+    "es-catalunha-barcelona",
+    "es-madri-madri",
+    "gb-inglaterra-londres"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-mpb-cassia-lamarca.png",
+   "eventos": 5,
+   "eventosNoCatalogo": 5,
+   "proximo": {
+    "id": 1807,
+    "nome": "MPB em Madri",
+    "iso": "2026-11-27T21:00:00+01:00"
+   },
+   "eventoIds": [
+    1807,
+    126,
+    1825,
+    125,
+    1811
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=cassia-lamarca"
+  },
+  {
+   "id": "dj-mare-viva",
+   "nome": "DJ Maré Viva",
+   "aliases": [
+    "Maré Viva"
+   ],
+   "busca": "dj mare viva mare viva",
+   "generos": [
+    "eletronica",
+    "tribal"
+   ],
+   "generoRotulos": [
+    "Eletrônica",
+    "Tribal"
+   ],
+   "generoRotulo": "Eletrônica",
+   "generoOrigem": "Tribal",
+   "cidade": "Barcelona",
+   "cidades": [
+    "Barcelona",
+    "Lisboa",
+    "Londres",
+    "Rio de Janeiro",
+    "São Paulo"
+   ],
+   "lugar": "br-rj-rio-de-janeiro",
+   "lugares": [
+    "br-rj-rio-de-janeiro",
+    "br-sp-sao-paulo",
+    "es-catalunha-barcelona",
+    "gb-inglaterra-londres",
+    "pt-lisboa-lisboa"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-pop-dj-mare-viva.png",
+   "eventos": 5,
+   "eventosNoCatalogo": 5,
+   "proximo": {
+    "id": 148,
+    "nome": "Tribal Sunset",
+    "iso": "2026-12-06T16:00:00-03:00"
+   },
+   "eventoIds": [
+    148,
+    1810,
+    150,
+    1804,
+    1826
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=dj-mare-viva"
+  },
+  {
+   "id": "grupo-pe-de-cais",
+   "nome": "Grupo Pé de Cais",
+   "aliases": [
+    "Pé de Cais"
+   ],
+   "busca": "grupo pe de cais pe de cais",
+   "generos": [
+    "samba-pagode"
+   ],
+   "generoRotulos": [
+    "Samba e pagode"
+   ],
+   "generoRotulo": "Samba e pagode",
+   "generoOrigem": "Samba e pagode",
+   "cidade": "Buenos Aires",
+   "cidades": [
+    "Buenos Aires",
+    "Lisboa",
+    "Londres",
+    "Miami",
+    "Porto"
+   ],
+   "lugar": "ar-buenos-aires-buenos-aires",
+   "lugares": [
+    "ar-buenos-aires-buenos-aires",
+    "gb-inglaterra-londres",
+    "pt-lisboa-lisboa",
+    "pt-porto-porto",
+    "us-florida-miami"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-samba-grupo-pe-de-cais.png",
+   "eventos": 5,
+   "eventosNoCatalogo": 5,
+   "proximo": {
+    "id": 1801,
+    "nome": "Roda de Samba no Tejo",
+    "iso": "2026-11-21T20:00:00+00:00"
+   },
+   "eventoIds": [
+    1801,
+    1805,
+    1824,
+    1813,
+    1819
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=grupo-pe-de-cais"
+  },
+  {
+   "id": "lia-mandacaru",
+   "nome": "Lia Mandacaru",
+   "aliases": [],
+   "busca": "lia mandacaru",
+   "generos": [
+    "forro",
+    "arrocha",
+    "sertanejo",
+    "pop",
+    "mpb",
+    "axe"
+   ],
+   "generoRotulos": [
+    "Forró",
+    "Arrocha",
+    "Sertanejo",
+    "Pop",
+    "MPB",
+    "Axé"
+   ],
+   "generoRotulo": "Forró",
+   "generoOrigem": "Forró",
+   "cidade": "Fortaleza",
+   "cidades": [
+    "Fortaleza",
+    "Lisboa",
+    "Orlando",
+    "Porto Alegre",
+    "Salvador"
+   ],
+   "lugar": "br-ba-salvador",
+   "lugares": [
+    "br-ba-salvador",
+    "br-ce-fortaleza",
+    "br-rs-porto-alegre",
+    "pt-lisboa-lisboa",
+    "us-florida-orlando"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-samba-lia-mandacaru.png",
+   "eventos": 5,
+   "eventosNoCatalogo": 5,
+   "proximo": {
+    "id": 115,
+    "nome": "Forró no Farol",
+    "iso": "2026-11-13T21:00:00-03:00"
+   },
+   "eventoIds": [
+    115,
+    1802,
+    118,
+    1822,
+    121
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=lia-mandacaru"
+  },
+  {
+   "id": "banda-mel-de-dende",
+   "nome": "Banda Mel de Dendê",
+   "aliases": [
+    "Mel de Dendê"
+   ],
+   "busca": "banda mel de dende mel de dende",
+   "generos": [
+    "samba-pagode",
+    "axe",
+    "forro",
+    "arrocha"
+   ],
+   "generoRotulos": [
+    "Samba e pagode",
+    "Axé",
+    "Forró",
+    "Arrocha"
+   ],
+   "generoRotulo": "Samba e pagode",
+   "generoOrigem": "Axé",
+   "cidade": "Salvador",
+   "cidades": [
+    "Salvador",
+    "Buenos Aires",
+    "Miami"
+   ],
+   "lugar": "br-ba-salvador",
+   "lugares": [
+    "br-ba-salvador",
+    "ar-buenos-aires-buenos-aires",
+    "us-florida-miami"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-samba-banda-mel-de-dende.png",
+   "eventos": 4,
+   "eventosNoCatalogo": 4,
+   "proximo": {
+    "id": 135,
+    "nome": "Axé Pé na Areia",
+    "iso": "2026-11-14T16:00:00-03:00"
+   },
+   "eventoIds": [
+    135,
+    138,
+    1813,
+    1819
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=banda-mel-de-dende"
+  },
+  {
+   "id": "dj-tambor-eletrico",
+   "nome": "DJ Tambor Elétrico",
+   "aliases": [
+    "Tambor Elétrico"
+   ],
+   "busca": "dj tambor eletrico tambor eletrico",
+   "generos": [
+    "eletronica",
+    "tribal"
+   ],
+   "generoRotulos": [
+    "Eletrônica",
+    "Tribal"
+   ],
+   "generoRotulo": "Eletrônica",
+   "generoOrigem": "Tribal",
+   "cidade": "Belo Horizonte",
+   "cidades": [
+    "Belo Horizonte",
+    "Buenos Aires",
+    "Madri",
+    "São Paulo"
+   ],
+   "lugar": "ar-buenos-aires-buenos-aires",
+   "lugares": [
+    "ar-buenos-aires-buenos-aires",
+    "br-mg-belo-horizonte",
+    "br-sp-sao-paulo",
+    "es-madri-madri"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-pop-dj-tambor-eletrico.png",
+   "eventos": 4,
+   "eventosNoCatalogo": 4,
+   "proximo": {
+    "id": 146,
+    "nome": "Tribal Halloween",
+    "iso": "2026-10-31T23:00:00-03:00"
+   },
+   "eventoIds": [
+    146,
+    1814,
+    149,
+    1809
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=dj-tambor-eletrico"
+  },
+  {
+   "id": "ferrugem-azul",
+   "nome": "Ferrugem Azul",
+   "aliases": [
+    "Ferrugem"
+   ],
+   "busca": "ferrugem azul ferrugem",
+   "generos": [
+    "rock"
+   ],
+   "generoRotulos": [
+    "Rock"
+   ],
+   "generoRotulo": "Rock",
+   "generoOrigem": "Rock",
+   "cidade": "Brasília",
+   "cidades": [
+    "Brasília",
+    "Porto",
+    "Recife",
+    "São Paulo"
+   ],
+   "lugar": "br-df-brasilia",
+   "lugares": [
+    "br-df-brasilia",
+    "br-pe-recife",
+    "br-sp-sao-paulo",
+    "pt-porto-porto"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-rock-ferrugem-azul.png",
+   "eventos": 4,
+   "eventosNoCatalogo": 4,
+   "proximo": {
+    "id": 185,
+    "nome": "Rock na Ferrovia",
+    "iso": "2026-11-06T22:00:00-03:00"
+   },
+   "eventoIds": [
+    185,
+    192,
+    1806,
+    190
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=ferrugem-azul"
+  },
+  {
+   "id": "thiago-ventura",
+   "nome": "Thiago Ventura",
+   "aliases": [
+    "Thiago"
+   ],
+   "busca": "thiago ventura thiago",
+   "generos": [],
+   "generoRotulos": [],
+   "generoRotulo": "",
+   "generoOrigem": "Humor",
+   "cidade": "São Paulo",
+   "cidades": [
+    "São Paulo",
+    "Belo Horizonte"
+   ],
+   "lugar": "br-sp-sao-paulo",
+   "lugares": [
+    "br-sp-sao-paulo",
+    "br-mg-belo-horizonte"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-pop-thiago-ventura.png",
+   "eventos": 4,
+   "eventosNoCatalogo": 4,
+   "proximo": {
+    "id": 1728,
+    "nome": "Thiago Ventura: Stand-up",
+    "iso": "2026-12-04T21:00:00-03:00"
+   },
+   "eventoIds": [
+    1728,
+    1748,
+    1752,
+    1750
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=thiago-ventura"
+  },
+  {
+   "id": "banda-arrocha-fino",
+   "nome": "Banda Arrocha Fino",
+   "aliases": [
+    "Arrocha Fino"
+   ],
+   "busca": "banda arrocha fino arrocha fino",
+   "generos": [
+    "arrocha"
+   ],
+   "generoRotulos": [
+    "Arrocha"
+   ],
+   "generoRotulo": "Arrocha",
+   "generoOrigem": "Arrocha",
+   "cidade": "Recife",
+   "cidades": [
+    "Recife",
+    "Salvador",
+    "São Paulo"
+   ],
+   "lugar": "br-ba-salvador",
+   "lugares": [
+    "br-ba-salvador",
+    "br-pe-recife",
+    "br-sp-sao-paulo"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-samba-banda-arrocha-fino.png",
+   "eventos": 3,
+   "eventosNoCatalogo": 3,
+   "proximo": {
+    "id": 140,
+    "nome": "Noite do Arrocha",
+    "iso": "2026-11-20T22:00:00-03:00"
+   },
+   "eventoIds": [
+    140,
+    143,
+    144
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=banda-arrocha-fino"
+  },
+  {
+   "id": "banda-folia-de-mare",
+   "nome": "Banda Folia de Maré",
+   "aliases": [
+    "Folia de Maré"
+   ],
+   "busca": "banda folia de mare folia de mare",
+   "generos": [
+    "axe"
+   ],
+   "generoRotulos": [
+    "Axé"
+   ],
+   "generoRotulo": "Axé",
+   "generoOrigem": "Axé",
+   "cidade": "Rio de Janeiro",
+   "cidades": [
+    "Rio de Janeiro",
+    "Salvador",
+    "São Paulo"
+   ],
+   "lugar": "br-ba-salvador",
+   "lugares": [
+    "br-ba-salvador",
+    "br-rj-rio-de-janeiro",
+    "br-sp-sao-paulo"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-samba-banda-folia-de-mare.png",
+   "eventos": 3,
+   "eventosNoCatalogo": 3,
+   "proximo": {
+    "id": 137,
+    "nome": "Axé Night",
+    "iso": "2026-12-11T22:00:00-03:00"
+   },
+   "eventoIds": [
+    137,
+    134,
+    139
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=banda-folia-de-mare"
+  },
+  {
+   "id": "banda-neon-caju",
+   "nome": "Banda Neon Caju",
+   "aliases": [
+    "neon caju"
+   ],
+   "busca": "banda neon caju neon caju",
+   "generos": [
+    "pop"
+   ],
+   "generoRotulos": [
+    "Pop"
+   ],
+   "generoRotulo": "Pop",
+   "generoOrigem": "Pop · 3 datas",
+   "cidade": "São Paulo",
+   "cidades": [
+    "São Paulo",
+    "Rio de Janeiro"
+   ],
+   "lugar": "br-sp-sao-paulo",
+   "lugares": [
+    "br-sp-sao-paulo",
+    "br-rj-rio-de-janeiro"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-pop-banda-neon-caju.png",
+   "eventos": 3,
+   "eventosNoCatalogo": 3,
+   "proximo": {
+    "id": 29,
+    "nome": "Vento Cobalto em São Paulo",
+    "iso": "2027-03-20T21:00:00-03:00"
+   },
+   "eventoIds": [
+    29,
+    31,
+    41
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=banda-neon-caju"
+  },
+  {
+   "id": "beto-manaca",
+   "nome": "Beto Manacá",
+   "aliases": [
+    "Beto"
+   ],
+   "busca": "beto manaca beto",
+   "generos": [
+    "mpb"
+   ],
+   "generoRotulos": [
+    "MPB"
+   ],
+   "generoRotulo": "MPB",
+   "generoOrigem": "MPB",
+   "cidade": "Rio de Janeiro",
+   "cidades": [
+    "Rio de Janeiro",
+    "Porto Alegre"
+   ],
+   "lugar": "br-rj-rio-de-janeiro",
+   "lugares": [
+    "br-rj-rio-de-janeiro",
+    "br-rs-porto-alegre"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-mpb-beto-manaca.png",
+   "eventos": 3,
+   "eventosNoCatalogo": 3,
+   "proximo": {
+    "id": 178,
+    "nome": "Brasilidades ao Pôr do Sol",
+    "iso": "2026-11-29T16:00:00-03:00"
+   },
+   "eventoIds": [
+    178,
+    184,
+    180
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=beto-manaca"
+  },
+  {
+   "id": "biel-cimento",
+   "nome": "Biel Cimento",
+   "aliases": [
+    "Biel"
+   ],
+   "busca": "biel cimento biel",
+   "generos": [
+    "rap"
+   ],
+   "generoRotulos": [
+    "Rap e trap"
+   ],
+   "generoRotulo": "Rap e trap",
+   "generoOrigem": "Rap e trap",
+   "cidade": "Brasília",
+   "cidades": [
+    "Brasília",
+    "Santiago",
+    "São Paulo"
+   ],
+   "lugar": "br-df-brasilia",
+   "lugares": [
+    "br-df-brasilia",
+    "br-sp-sao-paulo",
+    "cl-santiago-santiago"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-rock-biel-cimento.png",
+   "eventos": 3,
+   "eventosNoCatalogo": 3,
+   "proximo": {
+    "id": 1818,
+    "nome": "Rap en el Barrio",
+    "iso": "2027-01-09T20:00:00-03:00"
+   },
+   "eventoIds": [
+    1818,
+    130,
+    133
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=biel-cimento"
+  },
+  {
+   "id": "caca-marujo",
+   "nome": "Cacá Marujo",
+   "aliases": [
+    "Cacá"
+   ],
+   "busca": "caca marujo caca",
+   "generos": [
+    "axe"
+   ],
+   "generoRotulos": [
+    "Axé"
+   ],
+   "generoRotulo": "Axé",
+   "generoOrigem": "Axé",
+   "cidade": "Salvador",
+   "cidades": [
+    "Salvador",
+    "Belo Horizonte"
+   ],
+   "lugar": "br-ba-salvador",
+   "lugares": [
+    "br-ba-salvador",
+    "br-mg-belo-horizonte"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-samba-caca-marujo.png",
+   "eventos": 3,
+   "eventosNoCatalogo": 3,
+   "proximo": {
+    "id": 138,
+    "nome": "Réveillon do Farol",
+    "iso": "2026-12-31T22:00:00-03:00"
+   },
+   "eventoIds": [
+    138,
+    134,
+    136
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=caca-marujo"
+  },
+  {
+   "id": "dalila-vox",
+   "nome": "Dalila Vox",
+   "aliases": [
+    "Dalila"
+   ],
+   "busca": "dalila vox dalila",
+   "generos": [
+    "rap"
+   ],
+   "generoRotulos": [
+    "Rap e trap"
+   ],
+   "generoRotulo": "Rap e trap",
+   "generoOrigem": "Rap e trap",
+   "cidade": "Rio de Janeiro",
+   "cidades": [
+    "Rio de Janeiro",
+    "Santiago",
+    "São Paulo"
+   ],
+   "lugar": "br-rj-rio-de-janeiro",
+   "lugares": [
+    "br-rj-rio-de-janeiro",
+    "br-sp-sao-paulo",
+    "cl-santiago-santiago"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-rock-dalila-vox.png",
+   "eventos": 3,
+   "eventosNoCatalogo": 3,
+   "proximo": {
+    "id": 129,
+    "nome": "Rap Nacional ao Vivo",
+    "iso": "2026-12-18T21:00:00-03:00"
+   },
+   "eventoIds": [
+    129,
+    1818,
+    131
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=dalila-vox"
+  },
+  {
+   "id": "dj-corvo-branco",
+   "nome": "DJ Corvo Branco",
+   "aliases": [
+    "Corvo Branco"
+   ],
+   "busca": "dj corvo branco corvo branco",
+   "generos": [
+    "eletronica"
+   ],
+   "generoRotulos": [
+    "Eletrônica"
+   ],
+   "generoRotulo": "Eletrônica",
+   "generoOrigem": "Eletrônica",
+   "cidade": "Curitiba",
+   "cidades": [
+    "Curitiba",
+    "São Paulo"
+   ],
+   "lugar": "br-pr-curitiba",
+   "lugares": [
+    "br-pr-curitiba",
+    "br-sp-sao-paulo"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-eletronica-dj-corvo-branco.png",
+   "eventos": 3,
+   "eventosNoCatalogo": 3,
+   "proximo": {
+    "id": 161,
+    "nome": "Pulso Warehouse",
+    "iso": "2026-11-07T23:00:00-03:00"
+   },
+   "eventoIds": [
+    161,
+    166,
+    164
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=dj-corvo-branco"
+  },
+  {
+   "id": "duo-cereja-eletrica",
+   "nome": "Duo Cereja Elétrica",
+   "aliases": [
+    "Cereja Elétrica"
+   ],
+   "busca": "duo cereja eletrica cereja eletrica",
+   "generos": [
+    "pop"
+   ],
+   "generoRotulos": [
+    "Pop"
+   ],
+   "generoRotulo": "Pop",
+   "generoOrigem": "Pop",
+   "cidade": "Recife",
+   "cidades": [
+    "Recife",
+    "Rio de Janeiro",
+    "São Paulo"
+   ],
+   "lugar": "br-pe-recife",
+   "lugares": [
+    "br-pe-recife",
+    "br-rj-rio-de-janeiro",
+    "br-sp-sao-paulo"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-pop-duo-cereja-eletrica.png",
+   "eventos": 3,
+   "eventosNoCatalogo": 3,
+   "proximo": {
+    "id": 173,
+    "nome": "Festa Pop Anos 2000",
+    "iso": "2026-11-27T23:00:00-03:00"
+   },
+   "eventoIds": [
+    173,
+    170,
+    176
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=duo-cereja-eletrica"
+  },
+  {
+   "id": "helena-strobo",
+   "nome": "Helena Strobo",
+   "aliases": [
+    "Helena"
+   ],
+   "busca": "helena strobo helena",
+   "generos": [
+    "eletronica"
+   ],
+   "generoRotulos": [
+    "Eletrônica"
+   ],
+   "generoRotulo": "Eletrônica",
+   "generoOrigem": "Eletrônica",
+   "cidade": "Curitiba",
+   "cidades": [
+    "Curitiba",
+    "Florianópolis",
+    "São Paulo"
+   ],
+   "lugar": "br-pr-curitiba",
+   "lugares": [
+    "br-pr-curitiba",
+    "br-sc-florianopolis",
+    "br-sp-sao-paulo"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-eletronica-helena-strobo.png",
+   "eventos": 3,
+   "eventosNoCatalogo": 3,
+   "proximo": {
+    "id": 161,
+    "nome": "Pulso Warehouse",
+    "iso": "2026-11-07T23:00:00-03:00"
+   },
+   "eventoIds": [
+    161,
+    167,
+    164
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=helena-strobo"
+  },
+  {
+   "id": "kelly-dourado",
+   "nome": "Kelly Dourado",
+   "aliases": [
+    "Kelly"
+   ],
+   "busca": "kelly dourado kelly",
+   "generos": [
+    "arrocha"
+   ],
+   "generoRotulos": [
+    "Arrocha"
+   ],
+   "generoRotulo": "Arrocha",
+   "generoOrigem": "Arrocha",
+   "cidade": "Salvador",
+   "cidades": [
+    "Salvador",
+    "Recife"
+   ],
+   "lugar": "br-ba-salvador",
+   "lugares": [
+    "br-ba-salvador",
+    "br-pe-recife"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-samba-kelly-dourado.png",
+   "eventos": 3,
+   "eventosNoCatalogo": 3,
+   "proximo": {
+    "id": 140,
+    "nome": "Noite do Arrocha",
+    "iso": "2026-11-20T22:00:00-03:00"
+   },
+   "eventoIds": [
+    140,
+    142,
+    144
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=kelly-dourado"
+  },
+  {
+   "id": "leo-do-reconcavo",
+   "nome": "Léo do Recôncavo",
+   "aliases": [],
+   "busca": "leo do reconcavo",
+   "generos": [
+    "arrocha"
+   ],
+   "generoRotulos": [
+    "Arrocha"
+   ],
+   "generoRotulo": "Arrocha",
+   "generoOrigem": "Arrocha",
+   "cidade": "Recife",
+   "cidades": [
+    "Recife",
+    "Salvador",
+    "São Paulo"
+   ],
+   "lugar": "br-ba-salvador",
+   "lugares": [
+    "br-ba-salvador",
+    "br-pe-recife",
+    "br-sp-sao-paulo"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-samba-leo-do-reconcavo.png",
+   "eventos": 3,
+   "eventosNoCatalogo": 3,
+   "proximo": {
+    "id": 141,
+    "nome": "Arrocha Apaixonado",
+    "iso": "2026-12-04T21:00:00-03:00"
+   },
+   "eventoIds": [
+    141,
+    143,
+    144
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=leo-do-reconcavo"
+  },
+  {
+   "id": "marcela-tamborim",
+   "nome": "Marcela Tamborim",
+   "aliases": [
+    "Marcela"
+   ],
+   "busca": "marcela tamborim marcela",
+   "generos": [
+    "samba-pagode"
+   ],
+   "generoRotulos": [
+    "Samba e pagode"
+   ],
+   "generoRotulo": "Samba e pagode",
+   "generoOrigem": "Samba e pagode",
+   "cidade": "Belo Horizonte",
+   "cidades": [
+    "Belo Horizonte",
+    "Rio de Janeiro",
+    "Salvador"
+   ],
+   "lugar": "br-ba-salvador",
+   "lugares": [
+    "br-ba-salvador",
+    "br-mg-belo-horizonte",
+    "br-rj-rio-de-janeiro"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-samba-marcela-tamborim.png",
+   "eventos": 3,
+   "eventosNoCatalogo": 3,
+   "proximo": {
+    "id": 154,
+    "nome": "Samba da Gente",
+    "iso": "2026-11-13T20:00:00-03:00"
+   },
+   "eventoIds": [
+    154,
+    155,
+    157
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=marcela-tamborim"
+  },
+  {
+   "id": "marina-salgueiro-quinteto",
+   "nome": "Marina Salgueiro Quinteto",
+   "aliases": [],
+   "busca": "marina salgueiro quinteto",
+   "generos": [
+    "jazz-blues",
+    "mpb"
+   ],
+   "generoRotulos": [
+    "Jazz e blues",
+    "MPB"
+   ],
+   "generoRotulo": "Jazz e blues",
+   "generoOrigem": "Jazz e blues",
+   "cidade": "Barcelona",
+   "cidades": [
+    "Barcelona",
+    "Lisboa",
+    "Rio de Janeiro"
+   ],
+   "lugar": "br-rj-rio-de-janeiro",
+   "lugares": [
+    "br-rj-rio-de-janeiro",
+    "es-catalunha-barcelona",
+    "pt-lisboa-lisboa"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-mpb-marina-salgueiro-quinteto.png",
+   "eventos": 3,
+   "eventosNoCatalogo": 3,
+   "proximo": {
+    "id": 124,
+    "nome": "Jazz ao Pôr do Sol",
+    "iso": "2026-12-06T17:00:00-03:00"
+   },
+   "eventoIds": [
+    124,
+    1811,
+    1803
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=marina-salgueiro-quinteto"
+  },
+  {
+   "id": "polvora-doce",
+   "nome": "Pólvora Doce",
+   "aliases": [
+    "Pólvora"
+   ],
+   "busca": "polvora doce polvora",
+   "generos": [
+    "rock"
+   ],
+   "generoRotulos": [
+    "Rock"
+   ],
+   "generoRotulo": "Rock",
+   "generoOrigem": "Rock",
+   "cidade": "Brasília",
+   "cidades": [
+    "Brasília",
+    "Curitiba",
+    "Porto Alegre"
+   ],
+   "lugar": "br-df-brasilia",
+   "lugares": [
+    "br-df-brasilia",
+    "br-pr-curitiba",
+    "br-rs-porto-alegre"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-rock-polvora-doce.png",
+   "eventos": 3,
+   "eventosNoCatalogo": 3,
+   "proximo": {
+    "id": 191,
+    "nome": "Garagem Sessions",
+    "iso": "2026-11-13T21:00:00-03:00"
+   },
+   "eventoIds": [
+    191,
+    186,
+    190
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=polvora-doce"
+  },
+  {
+   "id": "thais-alcantara",
+   "nome": "Thaís Alcântara",
+   "aliases": [
+    "Thaís"
+   ],
+   "busca": "thais alcantara thais",
+   "generos": [
+    "arrocha"
+   ],
+   "generoRotulos": [
+    "Arrocha"
+   ],
+   "generoRotulo": "Arrocha",
+   "generoOrigem": "Arrocha",
+   "cidade": "Fortaleza",
+   "cidades": [
+    "Fortaleza",
+    "Recife",
+    "Salvador"
+   ],
+   "lugar": "br-ba-salvador",
+   "lugares": [
+    "br-ba-salvador",
+    "br-ce-fortaleza",
+    "br-pe-recife"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-samba-thais-alcantara.png",
+   "eventos": 3,
+   "eventosNoCatalogo": 3,
+   "proximo": {
+    "id": 142,
+    "nome": "Arrocha Sunset",
+    "iso": "2026-11-29T16:00:00-03:00"
+   },
+   "eventoIds": [
+    142,
+    144,
+    145
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=thais-alcantara"
+  },
+  {
+   "id": "trio-veludo-azul",
+   "nome": "Trio Veludo Azul",
+   "aliases": [
+    "Veludo Azul"
+   ],
+   "busca": "trio veludo azul veludo azul",
+   "generos": [
+    "jazz-blues"
+   ],
+   "generoRotulos": [
+    "Jazz e blues"
+   ],
+   "generoRotulo": "Jazz e blues",
+   "generoOrigem": "Jazz e blues",
+   "cidade": "São Paulo",
+   "cidades": [
+    "São Paulo",
+    "Miami"
+   ],
+   "lugar": "br-sp-sao-paulo",
+   "lugares": [
+    "br-sp-sao-paulo",
+    "us-florida-miami"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-mpb-trio-veludo-azul.png",
+   "eventos": 3,
+   "eventosNoCatalogo": 3,
+   "proximo": {
+    "id": 122,
+    "nome": "Noite de Jazz no Boa Vista",
+    "iso": "2026-11-06T21:00:00-03:00"
+   },
+   "eventoIds": [
+    122,
+    127,
+    1823
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=trio-veludo-azul"
+  },
+  {
+   "id": "zeca-marinheiro",
+   "nome": "Zeca Marinheiro",
+   "aliases": [
+    "Zeca"
+   ],
+   "busca": "zeca marinheiro zeca",
+   "generos": [
+    "samba-pagode",
+    "mpb"
+   ],
+   "generoRotulos": [
+    "Samba e pagode",
+    "MPB"
+   ],
+   "generoRotulo": "Samba e pagode",
+   "generoOrigem": "Samba e pagode",
+   "cidade": "Lisboa",
+   "cidades": [
+    "Lisboa",
+    "Londres"
+   ],
+   "lugar": "pt-lisboa-lisboa",
+   "lugares": [
+    "pt-lisboa-lisboa",
+    "gb-inglaterra-londres"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-samba-zeca-marinheiro.png",
+   "eventos": 3,
+   "eventosNoCatalogo": 3,
+   "proximo": {
+    "id": 1801,
+    "nome": "Roda de Samba no Tejo",
+    "iso": "2026-11-21T20:00:00+00:00"
+   },
+   "eventoIds": [
+    1801,
+    1824,
+    1803
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=zeca-marinheiro"
+  },
+  {
+   "id": "afonso-padilha",
+   "nome": "Afonso Padilha",
+   "aliases": [
+    "Afonso"
+   ],
+   "busca": "afonso padilha afonso",
+   "generos": [],
+   "generoRotulos": [],
+   "generoRotulo": "",
+   "generoOrigem": "Humor",
+   "cidade": "Belo Horizonte",
+   "cidades": [
+    "Belo Horizonte",
+    "Rio de Janeiro"
+   ],
+   "lugar": "br-mg-belo-horizonte",
+   "lugares": [
+    "br-mg-belo-horizonte",
+    "br-rj-rio-de-janeiro"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-pop-afonso-padilha.png",
+   "eventos": 2,
+   "eventosNoCatalogo": 2,
+   "proximo": {
+    "id": 1729,
+    "nome": "Afonso Padilha ao Vivo",
+    "iso": "2026-12-11T21:00:00-03:00"
+   },
+   "eventoIds": [
+    1729,
+    1752
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=afonso-padilha"
+  },
+  {
+   "id": "ana-castela",
+   "nome": "Ana Castela",
+   "aliases": [],
+   "busca": "ana castela",
+   "generos": [
+    "sertanejo"
+   ],
+   "generoRotulos": [
+    "Sertanejo"
+   ],
+   "generoRotulo": "Sertanejo",
+   "generoOrigem": "Sertanejo",
+   "cidade": "Belo Horizonte",
+   "cidades": [
+    "Belo Horizonte"
+   ],
+   "lugar": "br-mg-belo-horizonte",
+   "lugares": [
+    "br-mg-belo-horizonte"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-samba-ana-castela.png",
+   "eventos": 2,
+   "eventosNoCatalogo": 2,
+   "proximo": {
+    "id": 1703,
+    "nome": "Calourada UFMG 2027",
+    "iso": "2027-03-06T21:00:00-03:00"
+   },
+   "eventoIds": [
+    1703,
+    1717
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=ana-castela"
+  },
+  {
+   "id": "banda-samba-de-tarde",
+   "nome": "Banda Samba de Tarde",
+   "aliases": [
+    "Samba de Tarde"
+   ],
+   "busca": "banda samba de tarde samba de tarde",
+   "generos": [
+    "samba-pagode"
+   ],
+   "generoRotulos": [
+    "Samba e pagode"
+   ],
+   "generoRotulo": "Samba e pagode",
+   "generoOrigem": "Samba e pagode",
+   "cidade": "Recife",
+   "cidades": [
+    "Recife",
+    "Rio de Janeiro"
+   ],
+   "lugar": "br-pe-recife",
+   "lugares": [
+    "br-pe-recife",
+    "br-rj-rio-de-janeiro"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-samba-banda-samba-de-tarde.png",
+   "eventos": 2,
+   "eventosNoCatalogo": 2,
+   "proximo": {
+    "id": 155,
+    "nome": "Festival Samba e Pagode do Litoral",
+    "iso": "2026-11-22T13:00:00-03:00"
+   },
+   "eventoIds": [
+    155,
+    159
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=banda-samba-de-tarde"
+  },
+  {
+   "id": "banda-sol-de-cajueiro",
+   "nome": "Banda Sol de Cajueiro",
+   "aliases": [
+    "Sol de Cajueiro"
+   ],
+   "busca": "banda sol de cajueiro sol de cajueiro",
+   "generos": [
+    "forro"
+   ],
+   "generoRotulos": [
+    "Forró"
+   ],
+   "generoRotulo": "Forró",
+   "generoOrigem": "Forró",
+   "cidade": "Fortaleza",
+   "cidades": [
+    "Fortaleza",
+    "Recife"
+   ],
+   "lugar": "br-ce-fortaleza",
+   "lugares": [
+    "br-ce-fortaleza",
+    "br-pe-recife"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-samba-banda-sol-de-cajueiro.png",
+   "eventos": 2,
+   "eventosNoCatalogo": 2,
+   "proximo": {
+    "id": 117,
+    "nome": "Arraiá Fora de Época",
+    "iso": "2026-12-12T20:00:00-03:00"
+   },
+   "eventoIds": [
+    117,
+    120
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=banda-sol-de-cajueiro"
+  },
+  {
+   "id": "banda-vitrola-azul",
+   "nome": "Banda Vitrola Azul",
+   "aliases": [
+    "Vitrola Azul"
+   ],
+   "busca": "banda vitrola azul vitrola azul",
+   "generos": [
+    "pop"
+   ],
+   "generoRotulos": [
+    "Pop"
+   ],
+   "generoRotulo": "Pop",
+   "generoOrigem": "Pop",
+   "cidade": "Rio de Janeiro",
+   "cidades": [
+    "Rio de Janeiro",
+    "São Paulo"
+   ],
+   "lugar": "br-rj-rio-de-janeiro",
+   "lugares": [
+    "br-rj-rio-de-janeiro",
+    "br-sp-sao-paulo"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-pop-banda-vitrola-azul.png",
+   "eventos": 2,
+   "eventosNoCatalogo": 2,
+   "proximo": {
+    "id": 174,
+    "nome": "Vitrola Azul Acústico",
+    "iso": "2026-12-04T20:00:00-03:00"
+   },
+   "eventoIds": [
+    174,
+    170
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=banda-vitrola-azul"
+  },
+  {
+   "id": "bruna-louise",
+   "nome": "Bruna Louise",
+   "aliases": [
+    "Bruna"
+   ],
+   "busca": "bruna louise bruna",
+   "generos": [],
+   "generoRotulos": [],
+   "generoRotulo": "",
+   "generoOrigem": "Humor",
+   "cidade": "Curitiba",
+   "cidades": [
+    "Curitiba",
+    "São Paulo"
+   ],
+   "lugar": "br-pr-curitiba",
+   "lugares": [
+    "br-pr-curitiba",
+    "br-sp-sao-paulo"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-pop-bruna-louise.png",
+   "eventos": 2,
+   "eventosNoCatalogo": 2,
+   "proximo": {
+    "id": 1747,
+    "nome": "Comedians: Noite de Stand-up",
+    "iso": "2026-11-26T21:00:00-03:00"
+   },
+   "eventoIds": [
+    1747,
+    1735
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=bruna-louise"
+  },
+  {
+   "id": "caio-ventura-e-os-satelites",
+   "nome": "Caio Ventura & Os Satélites",
+   "aliases": [
+    "caio ventura",
+    "os satelites"
+   ],
+   "busca": "caio ventura os satelites caio ventura os satelites",
+   "generos": [
+    "pop"
+   ],
+   "generoRotulos": [
+    "Pop"
+   ],
+   "generoRotulo": "Pop",
+   "generoOrigem": "Pop",
+   "cidade": "Recife",
+   "cidades": [
+    "Recife",
+    "Salvador"
+   ],
+   "lugar": "br-ba-salvador",
+   "lugares": [
+    "br-ba-salvador",
+    "br-pe-recife"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-pop-caio-ventura-os-satelites.png",
+   "eventos": 2,
+   "eventosNoCatalogo": 2,
+   "proximo": {
+    "id": 175,
+    "nome": "Caio Ventura e Os Satélites",
+    "iso": "2027-01-29T21:00:00-03:00"
+   },
+   "eventoIds": [
+    175,
+    176
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=caio-ventura-e-os-satelites"
+  },
+  {
+   "id": "cia-cortina-aberta",
+   "nome": "Cia Cortina Aberta",
+   "aliases": [
+    "Cortina Aberta"
+   ],
+   "busca": "cia cortina aberta cortina aberta",
+   "generos": [],
+   "generoRotulos": [],
+   "generoRotulo": "",
+   "generoOrigem": "Drama · 3 datas",
+   "cidade": "São Paulo",
+   "cidades": [
+    "São Paulo"
+   ],
+   "lugar": "br-sp-sao-paulo",
+   "lugares": [
+    "br-sp-sao-paulo"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-mpb-cia-cortina-aberta.png",
+   "eventos": 2,
+   "eventosNoCatalogo": 2,
+   "proximo": {
+    "id": 34,
+    "nome": "A Casa de Vento",
+    "iso": "2027-03-12T20:00:00-03:00"
+   },
+   "eventoIds": [
+    34,
+    43
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=cia-cortina-aberta"
+  },
+  {
+   "id": "coletivo-pele-de-tambor",
+   "nome": "Coletivo Pele de Tambor",
+   "aliases": [
+    "Pele de Tambor"
+   ],
+   "busca": "coletivo pele de tambor pele de tambor",
+   "generos": [
+    "tribal"
+   ],
+   "generoRotulos": [
+    "Tribal"
+   ],
+   "generoRotulo": "Tribal",
+   "generoOrigem": "Tribal",
+   "cidade": "Belo Horizonte",
+   "cidades": [
+    "Belo Horizonte",
+    "Salvador"
+   ],
+   "lugar": "br-ba-salvador",
+   "lugares": [
+    "br-ba-salvador",
+    "br-mg-belo-horizonte"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-pop-coletivo-pele-de-tambor.png",
+   "eventos": 2,
+   "eventosNoCatalogo": 2,
+   "proximo": {
+    "id": 149,
+    "nome": "Tribal Open Air",
+    "iso": "2027-01-09T22:00:00-03:00"
+   },
+   "eventoIds": [
+    149,
+    151
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=coletivo-pele-de-tambor"
+  },
+  {
+   "id": "coletivo-voz-do-asfalto",
+   "nome": "Coletivo Voz do Asfalto",
+   "aliases": [
+    "Voz do Asfalto"
+   ],
+   "busca": "coletivo voz do asfalto voz do asfalto",
+   "generos": [
+    "rap"
+   ],
+   "generoRotulos": [
+    "Rap e trap"
+   ],
+   "generoRotulo": "Rap e trap",
+   "generoOrigem": "Rap e trap",
+   "cidade": "Rio de Janeiro",
+   "cidades": [
+    "Rio de Janeiro",
+    "São Paulo"
+   ],
+   "lugar": "br-rj-rio-de-janeiro",
+   "lugares": [
+    "br-rj-rio-de-janeiro",
+    "br-sp-sao-paulo"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-rock-coletivo-voz-do-asfalto.png",
+   "eventos": 2,
+   "eventosNoCatalogo": 2,
+   "proximo": {
+    "id": 128,
+    "nome": "Batalha de Rima: Final Estadual",
+    "iso": "2026-11-07T20:00:00-03:00"
+   },
+   "eventoIds": [
+    128,
+    131
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=coletivo-voz-do-asfalto"
+  },
+  {
+   "id": "dani-calabresa",
+   "nome": "Dani Calabresa",
+   "aliases": [
+    "Dani"
+   ],
+   "busca": "dani calabresa dani",
+   "generos": [],
+   "generoRotulos": [],
+   "generoRotulo": "",
+   "generoOrigem": "Humor",
+   "cidade": "São Paulo",
+   "cidades": [
+    "São Paulo"
+   ],
+   "lugar": "br-sp-sao-paulo",
+   "lugares": [
+    "br-sp-sao-paulo"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-pop-dani-calabresa.png",
+   "eventos": 2,
+   "eventosNoCatalogo": 2,
+   "proximo": {
+    "id": 1732,
+    "nome": "Dani Calabresa ao Vivo",
+    "iso": "2027-02-19T21:00:00-03:00"
+   },
+   "eventoIds": [
+    1732,
+    1750
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=dani-calabresa"
+  },
+  {
+   "id": "dennis-dj",
+   "nome": "Dennis DJ",
+   "aliases": [
+    "Dennis"
+   ],
+   "busca": "dennis dj dennis",
+   "generos": [
+    "funk"
+   ],
+   "generoRotulos": [
+    "Funk"
+   ],
+   "generoRotulo": "Funk",
+   "generoOrigem": "Funk",
+   "cidade": "Brasília",
+   "cidades": [
+    "Brasília",
+    "Rio de Janeiro"
+   ],
+   "lugar": "br-df-brasilia",
+   "lugares": [
+    "br-df-brasilia",
+    "br-rj-rio-de-janeiro"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-samba-dennis-dj.png",
+   "eventos": 2,
+   "eventosNoCatalogo": 2,
+   "proximo": {
+    "id": 1702,
+    "nome": "Chopada da Medicina UFRJ",
+    "iso": "2027-03-13T22:00:00-03:00"
+   },
+   "eventoIds": [
+    1702,
+    1710
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=dennis-dj"
+  },
+  {
+   "id": "distorcao-norte",
+   "nome": "Distorção Norte",
+   "aliases": [
+    "Distorção"
+   ],
+   "busca": "distorcao norte distorcao",
+   "generos": [
+    "rock"
+   ],
+   "generoRotulos": [
+    "Rock"
+   ],
+   "generoRotulo": "Rock",
+   "generoOrigem": "Rock",
+   "cidade": "Brasília",
+   "cidades": [
+    "Brasília",
+    "Porto Alegre"
+   ],
+   "lugar": "br-df-brasilia",
+   "lugares": [
+    "br-df-brasilia",
+    "br-rs-porto-alegre"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-rock-distorcao-norte.png",
+   "eventos": 2,
+   "eventosNoCatalogo": 2,
+   "proximo": {
+    "id": 186,
+    "nome": "Festival Distorção",
+    "iso": "2026-11-28T14:00:00-03:00"
+   },
+   "eventoIds": [
+    186,
+    190
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=distorcao-norte"
+  },
+  {
+   "id": "dj-cacau-neon",
+   "nome": "DJ Cacau Neon",
+   "aliases": [
+    "Cacau Neon"
+   ],
+   "busca": "dj cacau neon cacau neon",
+   "generos": [
+    "funk"
+   ],
+   "generoRotulos": [
+    "Funk"
+   ],
+   "generoRotulo": "Funk",
+   "generoOrigem": "Funk",
+   "cidade": "Belo Horizonte",
+   "cidades": [
+    "Belo Horizonte",
+    "São Paulo"
+   ],
+   "lugar": "br-mg-belo-horizonte",
+   "lugares": [
+    "br-mg-belo-horizonte",
+    "br-sp-sao-paulo"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-samba-dj-cacau-neon.png",
+   "eventos": 2,
+   "eventosNoCatalogo": 2,
+   "proximo": {
+    "id": 102,
+    "nome": "Funk na Laje Open Air",
+    "iso": "2026-11-14T22:00:00-03:00"
+   },
+   "eventoIds": [
+    102,
+    106
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=dj-cacau-neon"
+  },
+  {
+   "id": "dj-sintonia-fina",
+   "nome": "DJ Sintonia Fina",
+   "aliases": [
+    "Sintonia Fina"
+   ],
+   "busca": "dj sintonia fina sintonia fina",
+   "generos": [
+    "eletronica"
+   ],
+   "generoRotulos": [
+    "Eletrônica"
+   ],
+   "generoRotulo": "Eletrônica",
+   "generoOrigem": "Eletrônica",
+   "cidade": "Brasília",
+   "cidades": [
+    "Brasília",
+    "Salvador"
+   ],
+   "lugar": "br-ba-salvador",
+   "lugares": [
+    "br-ba-salvador",
+    "br-df-brasilia"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-eletronica-dj-sintonia-fina.png",
+   "eventos": 2,
+   "eventosNoCatalogo": 2,
+   "proximo": {
+    "id": 165,
+    "nome": "Rave Cerrado",
+    "iso": "2026-12-12T22:00:00-03:00"
+   },
+   "eventoIds": [
+    165,
+    168
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=dj-sintonia-fina"
+  },
+  {
+   "id": "dj-tijolo",
+   "nome": "DJ Tijolo",
+   "aliases": [
+    "Tijolo"
+   ],
+   "busca": "dj tijolo tijolo",
+   "generos": [
+    "rap"
+   ],
+   "generoRotulos": [
+    "Rap e trap"
+   ],
+   "generoRotulo": "Rap e trap",
+   "generoOrigem": "Rap e trap",
+   "cidade": "Porto Alegre",
+   "cidades": [
+    "Porto Alegre",
+    "Rio de Janeiro"
+   ],
+   "lugar": "br-rj-rio-de-janeiro",
+   "lugares": [
+    "br-rj-rio-de-janeiro",
+    "br-rs-porto-alegre"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-rock-dj-tijolo.png",
+   "eventos": 2,
+   "eventosNoCatalogo": 2,
+   "proximo": {
+    "id": 132,
+    "nome": "Noite Boom Bap",
+    "iso": "2026-11-21T21:00:00-03:00"
+   },
+   "eventoIds": [
+    132,
+    131
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=dj-tijolo"
+  },
+  {
+   "id": "dora-pinheiro",
+   "nome": "Dora Pinheiro",
+   "aliases": [
+    "Dora"
+   ],
+   "busca": "dora pinheiro dora",
+   "generos": [
+    "mpb"
+   ],
+   "generoRotulos": [
+    "MPB"
+   ],
+   "generoRotulo": "MPB",
+   "generoOrigem": "MPB",
+   "cidade": "Porto Alegre",
+   "cidades": [
+    "Porto Alegre",
+    "São Paulo"
+   ],
+   "lugar": "br-rs-porto-alegre",
+   "lugares": [
+    "br-rs-porto-alegre",
+    "br-sp-sao-paulo"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-mpb-dora-pinheiro.png",
+   "eventos": 2,
+   "eventosNoCatalogo": 2,
+   "proximo": {
+    "id": 177,
+    "nome": "MPB no Boa Vista",
+    "iso": "2026-11-13T20:00:00-03:00"
+   },
+   "eventoIds": [
+    177,
+    180
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=dora-pinheiro"
+  },
+  {
+   "id": "dubdogz",
+   "nome": "Dubdogz",
+   "aliases": [],
+   "busca": "dubdogz",
+   "generos": [
+    "eletronica"
+   ],
+   "generoRotulos": [
+    "Eletrônica"
+   ],
+   "generoRotulo": "Eletrônica",
+   "generoOrigem": "Eletrônica",
+   "cidade": "Piracicaba",
+   "cidades": [
+    "Piracicaba",
+    "Porto Alegre"
+   ],
+   "lugar": "br-rs-porto-alegre",
+   "lugares": [
+    "br-rs-porto-alegre",
+    "br-sp-piracicaba"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-eletronica-dubdogz.png",
+   "eventos": 2,
+   "eventosNoCatalogo": 2,
+   "proximo": {
+    "id": 1725,
+    "nome": "Calourada Integrada Porto Alegre",
+    "iso": "2027-03-13T22:00:00-03:00"
+   },
+   "eventoIds": [
+    1725,
+    1704
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=dubdogz"
+  },
+  {
+   "id": "duda-e-matheus-reis",
+   "nome": "Duda & Matheus Reis",
+   "aliases": [
+    "Duda",
+    "Matheus Reis"
+   ],
+   "busca": "duda matheus reis duda matheus reis",
+   "generos": [
+    "sertanejo"
+   ],
+   "generoRotulos": [
+    "Sertanejo"
+   ],
+   "generoRotulo": "Sertanejo",
+   "generoOrigem": "Sertanejo",
+   "cidade": "Campinas",
+   "cidades": [
+    "Campinas",
+    "Porto Alegre"
+   ],
+   "lugar": "br-rs-porto-alegre",
+   "lugares": [
+    "br-rs-porto-alegre",
+    "br-sp-campinas"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-samba-duda-matheus-reis.png",
+   "eventos": 2,
+   "eventosNoCatalogo": 2,
+   "proximo": {
+    "id": 108,
+    "nome": "Sertanejo no Planalto",
+    "iso": "2026-11-21T21:00:00-03:00"
+   },
+   "eventoIds": [
+    108,
+    113
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=duda-e-matheus-reis"
+  },
+  {
+   "id": "dupla-quasar",
+   "nome": "Dupla Quasar",
+   "aliases": [
+    "Quasar"
+   ],
+   "busca": "dupla quasar quasar",
+   "generos": [
+    "eletronica"
+   ],
+   "generoRotulos": [
+    "Eletrônica"
+   ],
+   "generoRotulo": "Eletrônica",
+   "generoOrigem": "Eletrônica",
+   "cidade": "Florianópolis",
+   "cidades": [
+    "Florianópolis",
+    "São Paulo"
+   ],
+   "lugar": "br-sc-florianopolis",
+   "lugares": [
+    "br-sc-florianopolis",
+    "br-sp-sao-paulo"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-eletronica-dupla-quasar.png",
+   "eventos": 2,
+   "eventosNoCatalogo": 2,
+   "proximo": {
+    "id": 162,
+    "nome": "Sunset House Sessions",
+    "iso": "2026-11-15T16:00:00-03:00"
+   },
+   "eventoIds": [
+    162,
+    167
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=dupla-quasar"
+  },
+  {
+   "id": "estevam-nabote",
+   "nome": "Estevam Nabote",
+   "aliases": [
+    "Estevam"
+   ],
+   "busca": "estevam nabote estevam",
+   "generos": [],
+   "generoRotulos": [],
+   "generoRotulo": "",
+   "generoOrigem": "Humor",
+   "cidade": "Recife",
+   "cidades": [
+    "Recife",
+    "São Paulo"
+   ],
+   "lugar": "br-pe-recife",
+   "lugares": [
+    "br-pe-recife",
+    "br-sp-sao-paulo"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-pop-estevam-nabote.png",
+   "eventos": 2,
+   "eventosNoCatalogo": 2,
+   "proximo": {
+    "id": 1749,
+    "nome": "Comedians: Novos Comediantes",
+    "iso": "2026-12-09T21:00:00-03:00"
+   },
+   "eventoIds": [
+    1749,
+    1742
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=estevam-nabote"
+  },
+  {
+   "id": "fabio-porchat",
+   "nome": "Fábio Porchat",
+   "aliases": [
+    "Fábio"
+   ],
+   "busca": "fabio porchat fabio",
+   "generos": [],
+   "generoRotulos": [],
+   "generoRotulo": "",
+   "generoOrigem": "Humor",
+   "cidade": "São Paulo",
+   "cidades": [
+    "São Paulo"
+   ],
+   "lugar": "br-sp-sao-paulo",
+   "lugares": [
+    "br-sp-sao-paulo"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-pop-fabio-porchat.png",
+   "eventos": 2,
+   "eventosNoCatalogo": 2,
+   "proximo": {
+    "id": 1727,
+    "nome": "Fábio Porchat ao Vivo",
+    "iso": "2026-11-27T21:00:00-03:00"
+   },
+   "eventoIds": [
+    1727,
+    1750
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=fabio-porchat"
+  },
+  {
+   "id": "gloria-groove",
+   "nome": "Gloria Groove",
+   "aliases": [
+    "Gloria"
+   ],
+   "busca": "gloria groove gloria",
+   "generos": [
+    "pop"
+   ],
+   "generoRotulos": [
+    "Pop"
+   ],
+   "generoRotulo": "Pop",
+   "generoOrigem": "Pop",
+   "cidade": "São Paulo",
+   "cidades": [
+    "São Paulo"
+   ],
+   "lugar": "br-sp-sao-paulo",
+   "lugares": [
+    "br-sp-sao-paulo"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-pop-gloria-groove.png",
+   "eventos": 2,
+   "eventosNoCatalogo": 2,
+   "proximo": {
+    "id": 1719,
+    "nome": "Festa Neon Universitária SP",
+    "iso": "2026-12-05T23:00:00-03:00"
+   },
+   "eventoIds": [
+    1719,
+    1707
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=gloria-groove"
+  },
+  {
+   "id": "grupo-cavaquinho-de-ouro",
+   "nome": "Grupo Cavaquinho de Ouro",
+   "aliases": [
+    "Cavaquinho de Ouro"
+   ],
+   "busca": "grupo cavaquinho de ouro cavaquinho de ouro",
+   "generos": [
+    "samba-pagode"
+   ],
+   "generoRotulos": [
+    "Samba e pagode"
+   ],
+   "generoRotulo": "Samba e pagode",
+   "generoOrigem": "Samba e pagode",
+   "cidade": "Porto Alegre",
+   "cidades": [
+    "Porto Alegre",
+    "Rio de Janeiro"
+   ],
+   "lugar": "br-rj-rio-de-janeiro",
+   "lugares": [
+    "br-rj-rio-de-janeiro",
+    "br-rs-porto-alegre"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-samba-grupo-cavaquinho-de-ouro.png",
+   "eventos": 2,
+   "eventosNoCatalogo": 2,
+   "proximo": {
+    "id": 155,
+    "nome": "Festival Samba e Pagode do Litoral",
+    "iso": "2026-11-22T13:00:00-03:00"
+   },
+   "eventoIds": [
+    155,
+    160
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=grupo-cavaquinho-de-ouro"
+  },
+  {
+   "id": "grupo-pagode-de-quintal",
+   "nome": "Grupo Pagode de Quintal",
+   "aliases": [
+    "Pagode de Quintal"
+   ],
+   "busca": "grupo pagode de quintal pagode de quintal",
+   "generos": [
+    "samba-pagode"
+   ],
+   "generoRotulos": [
+    "Samba e pagode"
+   ],
+   "generoRotulo": "Samba e pagode",
+   "generoOrigem": "Samba e pagode",
+   "cidade": "Porto Alegre",
+   "cidades": [
+    "Porto Alegre",
+    "Rio de Janeiro"
+   ],
+   "lugar": "br-rj-rio-de-janeiro",
+   "lugares": [
+    "br-rj-rio-de-janeiro",
+    "br-rs-porto-alegre"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-samba-grupo-pagode-de-quintal.png",
+   "eventos": 2,
+   "eventosNoCatalogo": 2,
+   "proximo": {
+    "id": 153,
+    "nome": "Pagode de Quintal",
+    "iso": "2026-11-06T20:00:00-03:00"
+   },
+   "eventoIds": [
+    153,
+    156
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=grupo-pagode-de-quintal"
+  },
+  {
+   "id": "helo-sabara",
+   "nome": "Helô Sabará",
+   "aliases": [
+    "Helô"
+   ],
+   "busca": "helo sabara helo",
+   "generos": [
+    "mpb"
+   ],
+   "generoRotulos": [
+    "MPB"
+   ],
+   "generoRotulo": "MPB",
+   "generoOrigem": "MPB",
+   "cidade": "Porto Alegre",
+   "cidades": [
+    "Porto Alegre",
+    "São Paulo"
+   ],
+   "lugar": "br-rs-porto-alegre",
+   "lugares": [
+    "br-rs-porto-alegre",
+    "br-sp-sao-paulo"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-mpb-helo-sabara.png",
+   "eventos": 2,
+   "eventosNoCatalogo": 2,
+   "proximo": {
+    "id": 181,
+    "nome": "Helô Sabará Canta Clássicos",
+    "iso": "2026-12-18T20:00:00-03:00"
+   },
+   "eventoIds": [
+    181,
+    180
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=helo-sabara"
+  },
+  {
+   "id": "henrique-rangel",
+   "nome": "Henrique Rangel",
+   "aliases": [
+    "Henrique"
+   ],
+   "busca": "henrique rangel henrique",
+   "generos": [
+    "sertanejo"
+   ],
+   "generoRotulos": [
+    "Sertanejo"
+   ],
+   "generoRotulo": "Sertanejo",
+   "generoOrigem": "Sertanejo",
+   "cidade": "Goiânia",
+   "cidades": [
+    "Goiânia",
+    "Porto Alegre"
+   ],
+   "lugar": "br-go-goiania",
+   "lugares": [
+    "br-go-goiania",
+    "br-rs-porto-alegre"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-samba-henrique-rangel.png",
+   "eventos": 2,
+   "eventosNoCatalogo": 2,
+   "proximo": {
+    "id": 109,
+    "nome": "Noite Sertaneja Cerrado",
+    "iso": "2026-11-27T22:00:00-03:00"
+   },
+   "eventoIds": [
+    109,
+    113
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=henrique-rangel"
+  },
+  {
+   "id": "hugo-e-guilherme",
+   "nome": "Hugo & Guilherme",
+   "aliases": [
+    "Hugo",
+    "Guilherme"
+   ],
+   "busca": "hugo guilherme hugo guilherme",
+   "generos": [
+    "sertanejo"
+   ],
+   "generoRotulos": [
+    "Sertanejo"
+   ],
+   "generoRotulo": "Sertanejo",
+   "generoOrigem": "Sertanejo",
+   "cidade": "Ribeirão Preto",
+   "cidades": [
+    "Ribeirão Preto",
+    "São Paulo"
+   ],
+   "lugar": "br-sp-ribeirao-preto",
+   "lugares": [
+    "br-sp-ribeirao-preto",
+    "br-sp-sao-paulo"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-samba-hugo-guilherme.png",
+   "eventos": 2,
+   "eventosNoCatalogo": 2,
+   "proximo": {
+    "id": 1724,
+    "nome": "Formatura Day: Festa dos Formandos SP",
+    "iso": "2026-12-19T22:00:00-03:00"
+   },
+   "eventoIds": [
+    1724,
+    1706
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=hugo-e-guilherme"
+  },
+  {
+   "id": "igor-guimaraes",
+   "nome": "Igor Guimarães",
+   "aliases": [
+    "Igor"
+   ],
+   "busca": "igor guimaraes igor",
+   "generos": [],
+   "generoRotulos": [],
+   "generoRotulo": "",
+   "generoOrigem": "Humor",
+   "cidade": "Belo Horizonte",
+   "cidades": [
+    "Belo Horizonte",
+    "São Paulo"
+   ],
+   "lugar": "br-mg-belo-horizonte",
+   "lugares": [
+    "br-mg-belo-horizonte",
+    "br-sp-sao-paulo"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-pop-igor-guimaraes.png",
+   "eventos": 2,
+   "eventosNoCatalogo": 2,
+   "proximo": {
+    "id": 1748,
+    "nome": "Comedians: Sexta da Comédia",
+    "iso": "2026-12-04T22:00:00-03:00"
+   },
+   "eventoIds": [
+    1748,
+    1743
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=igor-guimaraes"
+  },
+  {
+   "id": "israel-e-rodolffo",
+   "nome": "Israel & Rodolffo",
+   "aliases": [
+    "Israel",
+    "Rodolffo"
+   ],
+   "busca": "israel rodolffo israel rodolffo",
+   "generos": [
+    "sertanejo"
+   ],
+   "generoRotulos": [
+    "Sertanejo"
+   ],
+   "generoRotulo": "Sertanejo",
+   "generoOrigem": "Sertanejo",
+   "cidade": "Juiz de Fora",
+   "cidades": [
+    "Juiz de Fora",
+    "Ribeirão Preto"
+   ],
+   "lugar": "br-mg-juiz-de-fora",
+   "lugares": [
+    "br-mg-juiz-de-fora",
+    "br-sp-ribeirao-preto"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-samba-israel-rodolffo.png",
+   "eventos": 2,
+   "eventosNoCatalogo": 2,
+   "proximo": {
+    "id": 1706,
+    "nome": "Intermed 2027: Noite Sertaneja",
+    "iso": "2027-04-17T22:00:00-03:00"
+   },
+   "eventoIds": [
+    1706,
+    1720
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=israel-e-rodolffo"
+  },
+  {
+   "id": "jetlag-music",
+   "nome": "JetLag Music",
+   "aliases": [
+    "JetLag"
+   ],
+   "busca": "jetlag music jetlag",
+   "generos": [
+    "eletronica"
+   ],
+   "generoRotulos": [
+    "Eletrônica"
+   ],
+   "generoRotulo": "Eletrônica",
+   "generoOrigem": "Eletrônica",
+   "cidade": "Curitiba",
+   "cidades": [
+    "Curitiba",
+    "Piracicaba"
+   ],
+   "lugar": "br-pr-curitiba",
+   "lugares": [
+    "br-pr-curitiba",
+    "br-sp-piracicaba"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-eletronica-jetlag-music.png",
+   "eventos": 2,
+   "eventosNoCatalogo": 2,
+   "proximo": {
+    "id": 1721,
+    "nome": "Calourada UFPR 2027",
+    "iso": "2027-03-20T22:00:00-03:00"
+   },
+   "eventoIds": [
+    1721,
+    1704
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=jetlag-music"
+  },
+  {
+   "id": "julia-mares",
+   "nome": "Júlia Marés",
+   "aliases": [
+    "Júlia"
+   ],
+   "busca": "julia mares julia",
+   "generos": [
+    "pop"
+   ],
+   "generoRotulos": [
+    "Pop"
+   ],
+   "generoRotulo": "Pop",
+   "generoOrigem": "Pop",
+   "cidade": "Belo Horizonte",
+   "cidades": [
+    "Belo Horizonte",
+    "Rio de Janeiro"
+   ],
+   "lugar": "br-mg-belo-horizonte",
+   "lugares": [
+    "br-mg-belo-horizonte",
+    "br-rj-rio-de-janeiro"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-pop-julia-mares.png",
+   "eventos": 2,
+   "eventosNoCatalogo": 2,
+   "proximo": {
+    "id": 171,
+    "nome": "Júlia Marés ao Vivo",
+    "iso": "2026-11-14T21:00:00-03:00"
+   },
+   "eventoIds": [
+    171,
+    170
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=julia-mares"
+  },
+  {
+   "id": "kaua-tinta",
+   "nome": "Kauã Tinta",
+   "aliases": [
+    "Kauã"
+   ],
+   "busca": "kaua tinta kaua",
+   "generos": [
+    "rap"
+   ],
+   "generoRotulos": [
+    "Rap e trap"
+   ],
+   "generoRotulo": "Rap e trap",
+   "generoOrigem": "Rap e trap",
+   "cidade": "Porto Alegre",
+   "cidades": [
+    "Porto Alegre",
+    "São Paulo"
+   ],
+   "lugar": "br-rs-porto-alegre",
+   "lugares": [
+    "br-rs-porto-alegre",
+    "br-sp-sao-paulo"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-rock-kaua-tinta.png",
+   "eventos": 2,
+   "eventosNoCatalogo": 2,
+   "proximo": {
+    "id": 132,
+    "nome": "Noite Boom Bap",
+    "iso": "2026-11-21T21:00:00-03:00"
+   },
+   "eventoIds": [
+    132,
+    129
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=kaua-tinta"
+  },
+  {
+   "id": "kevin-o-chris",
+   "nome": "Kevin O Chris",
+   "aliases": [],
+   "busca": "kevin o chris",
+   "generos": [
+    "funk"
+   ],
+   "generoRotulos": [
+    "Funk"
+   ],
+   "generoRotulo": "Funk",
+   "generoOrigem": "Funk",
+   "cidade": "Rio de Janeiro",
+   "cidades": [
+    "Rio de Janeiro"
+   ],
+   "lugar": "br-rj-rio-de-janeiro",
+   "lugares": [
+    "br-rj-rio-de-janeiro"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-samba-kevin-o-chris.png",
+   "eventos": 2,
+   "eventosNoCatalogo": 2,
+   "proximo": {
+    "id": 1702,
+    "nome": "Chopada da Medicina UFRJ",
+    "iso": "2027-03-13T22:00:00-03:00"
+   },
+   "eventoIds": [
+    1702,
+    1718
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=kevin-o-chris"
+  },
+  {
+   "id": "larissa-mourao",
+   "nome": "Larissa Mourão",
+   "aliases": [
+    "Larissa"
+   ],
+   "busca": "larissa mourao larissa",
+   "generos": [
+    "sertanejo"
+   ],
+   "generoRotulos": [
+    "Sertanejo"
+   ],
+   "generoRotulo": "Sertanejo",
+   "generoOrigem": "Sertanejo",
+   "cidade": "Campinas",
+   "cidades": [
+    "Campinas",
+    "São Paulo"
+   ],
+   "lugar": "br-sp-campinas",
+   "lugares": [
+    "br-sp-campinas",
+    "br-sp-sao-paulo"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-samba-larissa-mourao.png",
+   "eventos": 2,
+   "eventosNoCatalogo": 2,
+   "proximo": {
+    "id": 108,
+    "nome": "Sertanejo no Planalto",
+    "iso": "2026-11-21T21:00:00-03:00"
+   },
+   "eventoIds": [
+    108,
+    112
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=larissa-mourao"
+  },
+  {
+   "id": "leo-santana",
+   "nome": "Léo Santana",
+   "aliases": [],
+   "busca": "leo santana",
+   "generos": [
+    "funk",
+    "axe"
+   ],
+   "generoRotulos": [
+    "Funk",
+    "Axé"
+   ],
+   "generoRotulo": "Funk",
+   "generoOrigem": "Axé",
+   "cidade": "Salvador",
+   "cidades": [
+    "Salvador"
+   ],
+   "lugar": "br-ba-salvador",
+   "lugares": [
+    "br-ba-salvador"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-samba-leo-santana.png",
+   "eventos": 2,
+   "eventosNoCatalogo": 2,
+   "proximo": {
+    "id": 1711,
+    "nome": "Calourada UFBA 2027",
+    "iso": "2027-03-13T21:00:00-03:00"
+   },
+   "eventoIds": [
+    1711,
+    1726
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=leo-santana"
+  },
+  {
+   "id": "lia-prado",
+   "nome": "Lia Prado",
+   "aliases": [],
+   "busca": "lia prado",
+   "generos": [
+    "pop"
+   ],
+   "generoRotulos": [
+    "Pop"
+   ],
+   "generoRotulo": "Pop",
+   "generoOrigem": "Pop",
+   "cidade": "Recife",
+   "cidades": [
+    "Recife",
+    "São Paulo"
+   ],
+   "lugar": "br-pe-recife",
+   "lugares": [
+    "br-pe-recife",
+    "br-sp-sao-paulo"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-pop-lia-prado.png",
+   "eventos": 2,
+   "eventosNoCatalogo": 2,
+   "proximo": {
+    "id": 169,
+    "nome": "Pop Night Aurora",
+    "iso": "2026-11-20T21:00:00-03:00"
+   },
+   "eventoIds": [
+    169,
+    176
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=lia-prado"
+  },
+  {
+   "id": "lia-tambor",
+   "nome": "Lia Tambor",
+   "aliases": [],
+   "busca": "lia tambor",
+   "generos": [
+    "axe"
+   ],
+   "generoRotulos": [
+    "Axé"
+   ],
+   "generoRotulo": "Axé",
+   "generoOrigem": "Axé",
+   "cidade": "Belo Horizonte",
+   "cidades": [
+    "Belo Horizonte",
+    "São Paulo"
+   ],
+   "lugar": "br-mg-belo-horizonte",
+   "lugares": [
+    "br-mg-belo-horizonte",
+    "br-sp-sao-paulo"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-samba-lia-tambor.png",
+   "eventos": 2,
+   "eventosNoCatalogo": 2,
+   "proximo": {
+    "id": 137,
+    "nome": "Axé Night",
+    "iso": "2026-12-11T22:00:00-03:00"
+   },
+   "eventoIds": [
+    137,
+    136
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=lia-tambor"
+  },
+  {
+   "id": "lorena-campos",
+   "nome": "Lorena Campos",
+   "aliases": [
+    "Lorena"
+   ],
+   "busca": "lorena campos lorena",
+   "generos": [
+    "sertanejo"
+   ],
+   "generoRotulos": [
+    "Sertanejo"
+   ],
+   "generoRotulo": "Sertanejo",
+   "generoOrigem": "Sertanejo",
+   "cidade": "Brasília",
+   "cidades": [
+    "Brasília",
+    "Ribeirão Preto"
+   ],
+   "lugar": "br-df-brasilia",
+   "lugares": [
+    "br-df-brasilia",
+    "br-sp-ribeirao-preto"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-samba-lorena-campos.png",
+   "eventos": 2,
+   "eventosNoCatalogo": 2,
+   "proximo": {
+    "id": 114,
+    "nome": "Sunset Sertanejo",
+    "iso": "2026-11-14T17:00:00-03:00"
+   },
+   "eventoIds": [
+    114,
+    110
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=lorena-campos"
+  },
+  {
+   "id": "luan-pereira",
+   "nome": "Luan Pereira",
+   "aliases": [
+    "Luan"
+   ],
+   "busca": "luan pereira luan",
+   "generos": [
+    "sertanejo"
+   ],
+   "generoRotulos": [
+    "Sertanejo"
+   ],
+   "generoRotulo": "Sertanejo",
+   "generoOrigem": "Sertanejo",
+   "cidade": "Belo Horizonte",
+   "cidades": [
+    "Belo Horizonte",
+    "Porto Alegre"
+   ],
+   "lugar": "br-mg-belo-horizonte",
+   "lugares": [
+    "br-mg-belo-horizonte",
+    "br-rs-porto-alegre"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-samba-luan-pereira.png",
+   "eventos": 2,
+   "eventosNoCatalogo": 2,
+   "proximo": {
+    "id": 1703,
+    "nome": "Calourada UFMG 2027",
+    "iso": "2027-03-06T21:00:00-03:00"
+   },
+   "eventoIds": [
+    1703,
+    1714
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=luan-pereira"
+  },
+  {
+   "id": "lume",
+   "nome": "Lume",
+   "aliases": [],
+   "busca": "lume",
+   "generos": [
+    "eletronica"
+   ],
+   "generoRotulos": [
+    "Eletrônica"
+   ],
+   "generoRotulo": "Eletrônica",
+   "generoOrigem": "Eletrônica",
+   "cidade": "Brasília",
+   "cidades": [
+    "Brasília",
+    "Curitiba"
+   ],
+   "lugar": "br-df-brasilia",
+   "lugares": [
+    "br-df-brasilia",
+    "br-pr-curitiba"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-eletronica-lume.png",
+   "eventos": 2,
+   "eventosNoCatalogo": 2,
+   "proximo": {
+    "id": 165,
+    "nome": "Rave Cerrado",
+    "iso": "2026-12-12T22:00:00-03:00"
+   },
+   "eventoIds": [
+    165,
+    164
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=lume"
+  },
+  {
+   "id": "luna-arrabal",
+   "nome": "Luna Arrabal",
+   "aliases": [
+    "Luna"
+   ],
+   "busca": "luna arrabal luna",
+   "generos": [
+    "pop"
+   ],
+   "generoRotulos": [
+    "Pop"
+   ],
+   "generoRotulo": "Pop",
+   "generoOrigem": "Pop",
+   "cidade": "Buenos Aires",
+   "cidades": [
+    "Buenos Aires",
+    "Madri"
+   ],
+   "lugar": "ar-buenos-aires-buenos-aires",
+   "lugares": [
+    "ar-buenos-aires-buenos-aires",
+    "es-madri-madri"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-pop-luna-arrabal.png",
+   "eventos": 2,
+   "eventosNoCatalogo": 2,
+   "proximo": {
+    "id": 1808,
+    "nome": "Noche Latina Madri",
+    "iso": "2027-02-20T22:00:00+01:00"
+   },
+   "eventoIds": [
+    1808,
+    1815
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=luna-arrabal"
+  },
+  {
+   "id": "matheus-e-kauan",
+   "nome": "Matheus & Kauan",
+   "aliases": [
+    "Matheus",
+    "Kauan"
+   ],
+   "busca": "matheus kauan matheus kauan",
+   "generos": [
+    "sertanejo"
+   ],
+   "generoRotulos": [
+    "Sertanejo"
+   ],
+   "generoRotulo": "Sertanejo",
+   "generoOrigem": "Sertanejo",
+   "cidade": "Belo Horizonte",
+   "cidades": [
+    "Belo Horizonte",
+    "São Paulo"
+   ],
+   "lugar": "br-mg-belo-horizonte",
+   "lugares": [
+    "br-mg-belo-horizonte",
+    "br-sp-sao-paulo"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-samba-matheus-kauan.png",
+   "eventos": 2,
+   "eventosNoCatalogo": 2,
+   "proximo": {
+    "id": 1724,
+    "nome": "Formatura Day: Festa dos Formandos SP",
+    "iso": "2026-12-19T22:00:00-03:00"
+   },
+   "eventoIds": [
+    1724,
+    1709
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=matheus-e-kauan"
+  },
+  {
+   "id": "mc-dani-marimbondo",
+   "nome": "MC Dani Marimbondo",
+   "aliases": [
+    "Dani Marimbondo"
+   ],
+   "busca": "mc dani marimbondo dani marimbondo",
+   "generos": [
+    "funk"
+   ],
+   "generoRotulos": [
+    "Funk"
+   ],
+   "generoRotulo": "Funk",
+   "generoOrigem": "Funk",
+   "cidade": "Salvador",
+   "cidades": [
+    "Salvador",
+    "São Paulo"
+   ],
+   "lugar": "br-ba-salvador",
+   "lugares": [
+    "br-ba-salvador",
+    "br-sp-sao-paulo"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-samba-mc-dani-marimbondo.png",
+   "eventos": 2,
+   "eventosNoCatalogo": 2,
+   "proximo": {
+    "id": 102,
+    "nome": "Funk na Laje Open Air",
+    "iso": "2026-11-14T22:00:00-03:00"
+   },
+   "eventoIds": [
+    102,
+    107
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=mc-dani-marimbondo"
+  },
+  {
+   "id": "mc-daniel",
+   "nome": "MC Daniel",
+   "aliases": [
+    "Daniel"
+   ],
+   "busca": "mc daniel daniel",
+   "generos": [
+    "funk"
+   ],
+   "generoRotulos": [
+    "Funk"
+   ],
+   "generoRotulo": "Funk",
+   "generoOrigem": "Funk",
+   "cidade": "São Paulo",
+   "cidades": [
+    "São Paulo"
+   ],
+   "lugar": "br-sp-sao-paulo",
+   "lugares": [
+    "br-sp-sao-paulo"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-samba-mc-daniel.png",
+   "eventos": 2,
+   "eventosNoCatalogo": 2,
+   "proximo": {
+    "id": 1708,
+    "nome": "Cervejada da Poli USP",
+    "iso": "2026-11-28T22:00:00-03:00"
+   },
+   "eventoIds": [
+    1708,
+    1701
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=mc-daniel"
+  },
+  {
+   "id": "mc-lele-sabia",
+   "nome": "MC Lelê Sabiá",
+   "aliases": [
+    "Lelê Sabiá"
+   ],
+   "busca": "mc lele sabia lele sabia",
+   "generos": [
+    "funk"
+   ],
+   "generoRotulos": [
+    "Funk"
+   ],
+   "generoRotulo": "Funk",
+   "generoOrigem": "Funk",
+   "cidade": "Belo Horizonte",
+   "cidades": [
+    "Belo Horizonte",
+    "Porto Alegre"
+   ],
+   "lugar": "br-mg-belo-horizonte",
+   "lugares": [
+    "br-mg-belo-horizonte",
+    "br-rs-porto-alegre"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-samba-mc-lele-sabia.png",
+   "eventos": 2,
+   "eventosNoCatalogo": 2,
+   "proximo": {
+    "id": 104,
+    "nome": "Funk Fest Sul",
+    "iso": "2027-01-23T18:00:00-03:00"
+   },
+   "eventoIds": [
+    104,
+    106
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=mc-lele-sabia"
+  },
+  {
+   "id": "mc-livinho",
+   "nome": "MC Livinho",
+   "aliases": [
+    "Livinho"
+   ],
+   "busca": "mc livinho livinho",
+   "generos": [
+    "funk"
+   ],
+   "generoRotulos": [
+    "Funk"
+   ],
+   "generoRotulo": "Funk",
+   "generoOrigem": "Funk",
+   "cidade": "Brasília",
+   "cidades": [
+    "Brasília",
+    "Salvador"
+   ],
+   "lugar": "br-ba-salvador",
+   "lugares": [
+    "br-ba-salvador",
+    "br-df-brasilia"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-samba-mc-livinho.png",
+   "eventos": 2,
+   "eventosNoCatalogo": 2,
+   "proximo": {
+    "id": 1710,
+    "nome": "Integração dos Calouros UnB",
+    "iso": "2027-03-27T22:00:00-03:00"
+   },
+   "eventoIds": [
+    1710,
+    1726
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=mc-livinho"
+  },
+  {
+   "id": "mc-nana-cacimba",
+   "nome": "MC Nana Cacimba",
+   "aliases": [
+    "Nana Cacimba"
+   ],
+   "busca": "mc nana cacimba nana cacimba",
+   "generos": [
+    "funk"
+   ],
+   "generoRotulos": [
+    "Funk"
+   ],
+   "generoRotulo": "Funk",
+   "generoOrigem": "Funk",
+   "cidade": "Rio de Janeiro",
+   "cidades": [
+    "Rio de Janeiro"
+   ],
+   "lugar": "br-rj-rio-de-janeiro",
+   "lugares": [
+    "br-rj-rio-de-janeiro"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-samba-mc-nana-cacimba.png",
+   "eventos": 2,
+   "eventosNoCatalogo": 2,
+   "proximo": {
+    "id": 103,
+    "nome": "Baile da Maré Cheia",
+    "iso": "2026-12-12T23:00:00-03:00"
+   },
+   "eventoIds": [
+    103,
+    105
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=mc-nana-cacimba"
+  },
+  {
+   "id": "mc-ruan-cometa",
+   "nome": "MC Ruan Cometa",
+   "aliases": [
+    "Ruan Cometa"
+   ],
+   "busca": "mc ruan cometa ruan cometa",
+   "generos": [
+    "funk"
+   ],
+   "generoRotulos": [
+    "Funk"
+   ],
+   "generoRotulo": "Funk",
+   "generoOrigem": "Funk",
+   "cidade": "Rio de Janeiro",
+   "cidades": [
+    "Rio de Janeiro",
+    "Salvador"
+   ],
+   "lugar": "br-ba-salvador",
+   "lugares": [
+    "br-ba-salvador",
+    "br-rj-rio-de-janeiro"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-samba-mc-ruan-cometa.png",
+   "eventos": 2,
+   "eventosNoCatalogo": 2,
+   "proximo": {
+    "id": 103,
+    "nome": "Baile da Maré Cheia",
+    "iso": "2026-12-12T23:00:00-03:00"
+   },
+   "eventoIds": [
+    103,
+    107
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=mc-ruan-cometa"
+  },
+  {
+   "id": "mc-ryan-sp",
+   "nome": "MC Ryan SP",
+   "aliases": [
+    "Ryan SP"
+   ],
+   "busca": "mc ryan sp ryan sp",
+   "generos": [
+    "funk"
+   ],
+   "generoRotulos": [
+    "Funk"
+   ],
+   "generoRotulo": "Funk",
+   "generoOrigem": "Funk",
+   "cidade": "Piracicaba",
+   "cidades": [
+    "Piracicaba",
+    "São Paulo"
+   ],
+   "lugar": "br-sp-piracicaba",
+   "lugares": [
+    "br-sp-piracicaba",
+    "br-sp-sao-paulo"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-samba-mc-ryan-sp.png",
+   "eventos": 2,
+   "eventosNoCatalogo": 2,
+   "proximo": {
+    "id": 1722,
+    "nome": "Pós-Prova FGV",
+    "iso": "2026-12-12T23:00:00-03:00"
+   },
+   "eventoIds": [
+    1722,
+    1705
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=mc-ryan-sp"
+  },
+  {
+   "id": "mc-tavinho-lunar",
+   "nome": "MC Tavinho Lunar",
+   "aliases": [
+    "Tavinho Lunar"
+   ],
+   "busca": "mc tavinho lunar tavinho lunar",
+   "generos": [
+    "funk"
+   ],
+   "generoRotulos": [
+    "Funk"
+   ],
+   "generoRotulo": "Funk",
+   "generoOrigem": "Funk",
+   "cidade": "Rio de Janeiro",
+   "cidades": [
+    "Rio de Janeiro"
+   ],
+   "lugar": "br-rj-rio-de-janeiro",
+   "lugares": [
+    "br-rj-rio-de-janeiro"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-samba-mc-tavinho-lunar.png",
+   "eventos": 2,
+   "eventosNoCatalogo": 2,
+   "proximo": {
+    "id": 101,
+    "nome": "Baile de Halloween do Tamborzão",
+    "iso": "2026-10-31T23:00:00-03:00"
+   },
+   "eventoIds": [
+    101,
+    105
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=mc-tavinho-lunar"
+  },
+  {
+   "id": "murilo-couto",
+   "nome": "Murilo Couto",
+   "aliases": [
+    "Murilo"
+   ],
+   "busca": "murilo couto murilo",
+   "generos": [],
+   "generoRotulos": [],
+   "generoRotulo": "",
+   "generoOrigem": "Humor",
+   "cidade": "Porto Alegre",
+   "cidades": [
+    "Porto Alegre",
+    "São Paulo"
+   ],
+   "lugar": "br-rs-porto-alegre",
+   "lugares": [
+    "br-rs-porto-alegre",
+    "br-sp-sao-paulo"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-pop-murilo-couto.png",
+   "eventos": 2,
+   "eventosNoCatalogo": 2,
+   "proximo": {
+    "id": 1747,
+    "nome": "Comedians: Noite de Stand-up",
+    "iso": "2026-11-26T21:00:00-03:00"
+   },
+   "eventoIds": [
+    1747,
+    1736
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=murilo-couto"
+  },
+  {
+   "id": "nanda-caracol",
+   "nome": "Nanda Caracol",
+   "aliases": [
+    "Nanda"
+   ],
+   "busca": "nanda caracol nanda",
+   "generos": [
+    "mpb"
+   ],
+   "generoRotulos": [
+    "MPB"
+   ],
+   "generoRotulo": "MPB",
+   "generoOrigem": "MPB",
+   "cidade": "Rio de Janeiro",
+   "cidades": [
+    "Rio de Janeiro",
+    "Salvador"
+   ],
+   "lugar": "br-ba-salvador",
+   "lugares": [
+    "br-ba-salvador",
+    "br-rj-rio-de-janeiro"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-mpb-nanda-caracol.png",
+   "eventos": 2,
+   "eventosNoCatalogo": 2,
+   "proximo": {
+    "id": 178,
+    "nome": "Brasilidades ao Pôr do Sol",
+    "iso": "2026-11-29T16:00:00-03:00"
+   },
+   "eventoIds": [
+    178,
+    183
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=nanda-caracol"
+  },
+  {
+   "id": "nando-xaxado",
+   "nome": "Nando Xaxado",
+   "aliases": [
+    "Nando"
+   ],
+   "busca": "nando xaxado nando",
+   "generos": [
+    "forro"
+   ],
+   "generoRotulos": [
+    "Forró"
+   ],
+   "generoRotulo": "Forró",
+   "generoOrigem": "Forró",
+   "cidade": "Porto Alegre",
+   "cidades": [
+    "Porto Alegre",
+    "Recife"
+   ],
+   "lugar": "br-pe-recife",
+   "lugares": [
+    "br-pe-recife",
+    "br-rs-porto-alegre"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-samba-nando-xaxado.png",
+   "eventos": 2,
+   "eventosNoCatalogo": 2,
+   "proximo": {
+    "id": 117,
+    "nome": "Arraiá Fora de Época",
+    "iso": "2026-12-12T20:00:00-03:00"
+   },
+   "eventoIds": [
+    117,
+    121
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=nando-xaxado"
+  },
+  {
+   "id": "nebula-808",
+   "nome": "Nébula 808",
+   "aliases": [
+    "nebula"
+   ],
+   "busca": "nebula 808 nebula",
+   "generos": [
+    "eletronica"
+   ],
+   "generoRotulos": [
+    "Eletrônica"
+   ],
+   "generoRotulo": "Eletrônica",
+   "generoOrigem": "Eletrônica · 2 datas",
+   "cidade": "São Paulo",
+   "cidades": [
+    "São Paulo"
+   ],
+   "lugar": "br-sp-sao-paulo",
+   "lugares": [
+    "br-sp-sao-paulo"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-eletronica-nebula-808.png",
+   "eventos": 2,
+   "eventosNoCatalogo": 2,
+   "proximo": {
+    "id": 40,
+    "nome": "Noite Pulso com Nébula 808",
+    "iso": "2027-04-24T23:00:00-03:00"
+   },
+   "eventoIds": [
+    40,
+    41
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=nebula-808"
+  },
+  {
+   "id": "nina-batida",
+   "nome": "Nina Batida",
+   "aliases": [
+    "Nina"
+   ],
+   "busca": "nina batida nina",
+   "generos": [
+    "rap"
+   ],
+   "generoRotulos": [
+    "Rap e trap"
+   ],
+   "generoRotulo": "Rap e trap",
+   "generoOrigem": "Rap e trap",
+   "cidade": "Brasília",
+   "cidades": [
+    "Brasília",
+    "São Paulo"
+   ],
+   "lugar": "br-df-brasilia",
+   "lugares": [
+    "br-df-brasilia",
+    "br-sp-sao-paulo"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-rock-nina-batida.png",
+   "eventos": 2,
+   "eventosNoCatalogo": 2,
+   "proximo": {
+    "id": 130,
+    "nome": "Trap e Neon",
+    "iso": "2027-01-09T23:00:00-03:00"
+   },
+   "eventoIds": [
+    130,
+    133
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=nina-batida"
+  },
+  {
+   "id": "orbital-vega",
+   "nome": "Orbital Vega",
+   "aliases": [
+    "Orbital"
+   ],
+   "busca": "orbital vega orbital",
+   "generos": [
+    "eletronica"
+   ],
+   "generoRotulos": [
+    "Eletrônica"
+   ],
+   "generoRotulo": "Eletrônica",
+   "generoOrigem": "Eletrônica",
+   "cidade": "Curitiba",
+   "cidades": [
+    "Curitiba",
+    "Rio de Janeiro"
+   ],
+   "lugar": "br-pr-curitiba",
+   "lugares": [
+    "br-pr-curitiba",
+    "br-rj-rio-de-janeiro"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-eletronica-orbital-vega.png",
+   "eventos": 2,
+   "eventosNoCatalogo": 2,
+   "proximo": {
+    "id": 163,
+    "nome": "Techno Orla",
+    "iso": "2026-11-28T15:00:00-03:00"
+   },
+   "eventoIds": [
+    163,
+    164
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=orbital-vega"
+  },
+  {
+   "id": "orquestra-brasilidades-do-sul",
+   "nome": "Orquestra Brasilidades do Sul",
+   "aliases": [
+    "Brasilidades do Sul"
+   ],
+   "busca": "orquestra brasilidades do sul brasilidades do sul",
+   "generos": [
+    "mpb"
+   ],
+   "generoRotulos": [
+    "MPB"
+   ],
+   "generoRotulo": "MPB",
+   "generoOrigem": "MPB",
+   "cidade": "Belo Horizonte",
+   "cidades": [
+    "Belo Horizonte",
+    "Porto Alegre"
+   ],
+   "lugar": "br-mg-belo-horizonte",
+   "lugares": [
+    "br-mg-belo-horizonte",
+    "br-rs-porto-alegre"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-mpb-orquestra-brasilidades-do-sul.png",
+   "eventos": 2,
+   "eventosNoCatalogo": 2,
+   "proximo": {
+    "id": 182,
+    "nome": "Concerto de Fim de Ano da Orquestra Brasilidades",
+    "iso": "2026-12-20T19:00:00-03:00"
+   },
+   "eventoIds": [
+    182,
+    180
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=orquestra-brasilidades-do-sul"
+  },
+  {
+   "id": "os-caes-de-vidro",
+   "nome": "Os Cães de Vidro",
+   "aliases": [],
+   "busca": "os caes de vidro",
+   "generos": [
+    "rock"
+   ],
+   "generoRotulos": [
+    "Rock"
+   ],
+   "generoRotulo": "Rock",
+   "generoOrigem": "Rock",
+   "cidade": "Rio de Janeiro",
+   "cidades": [
+    "Rio de Janeiro",
+    "São Paulo"
+   ],
+   "lugar": "br-rj-rio-de-janeiro",
+   "lugares": [
+    "br-rj-rio-de-janeiro",
+    "br-sp-sao-paulo"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-rock-os-caes-de-vidro.png",
+   "eventos": 2,
+   "eventosNoCatalogo": 2,
+   "proximo": {
+    "id": 185,
+    "nome": "Rock na Ferrovia",
+    "iso": "2026-11-06T22:00:00-03:00"
+   },
+   "eventoIds": [
+    185,
+    187
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=os-caes-de-vidro"
+  },
+  {
+   "id": "paulo-vieira",
+   "nome": "Paulo Vieira",
+   "aliases": [
+    "Paulo"
+   ],
+   "busca": "paulo vieira paulo",
+   "generos": [],
+   "generoRotulos": [],
+   "generoRotulo": "",
+   "generoOrigem": "Humor",
+   "cidade": "Belo Horizonte",
+   "cidades": [
+    "Belo Horizonte",
+    "São Paulo"
+   ],
+   "lugar": "br-mg-belo-horizonte",
+   "lugares": [
+    "br-mg-belo-horizonte",
+    "br-sp-sao-paulo"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-pop-paulo-vieira.png",
+   "eventos": 2,
+   "eventosNoCatalogo": 2,
+   "proximo": {
+    "id": 1731,
+    "nome": "Paulo Vieira: Stand-up",
+    "iso": "2027-02-06T21:00:00-03:00"
+   },
+   "eventoIds": [
+    1731,
+    1750
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=paulo-vieira"
+  },
+  {
+   "id": "pedro-sampaio",
+   "nome": "Pedro Sampaio",
+   "aliases": [
+    "Pedro"
+   ],
+   "busca": "pedro sampaio pedro",
+   "generos": [
+    "funk"
+   ],
+   "generoRotulos": [
+    "Funk"
+   ],
+   "generoRotulo": "Funk",
+   "generoOrigem": "Funk",
+   "cidade": "Piracicaba",
+   "cidades": [
+    "Piracicaba",
+    "São Paulo"
+   ],
+   "lugar": "br-sp-piracicaba",
+   "lugares": [
+    "br-sp-piracicaba",
+    "br-sp-sao-paulo"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-samba-pedro-sampaio.png",
+   "eventos": 2,
+   "eventosNoCatalogo": 2,
+   "proximo": {
+    "id": 1701,
+    "nome": "Calourada Unificada SP 2027",
+    "iso": "2027-02-27T22:00:00-03:00"
+   },
+   "eventoIds": [
+    1701,
+    1705
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=pedro-sampaio"
+  },
+  {
+   "id": "piseiro-alvorada",
+   "nome": "Piseiro Alvorada",
+   "aliases": [
+    "Piseiro"
+   ],
+   "busca": "piseiro alvorada piseiro",
+   "generos": [
+    "forro"
+   ],
+   "generoRotulos": [
+    "Forró"
+   ],
+   "generoRotulo": "Forró",
+   "generoOrigem": "Forró",
+   "cidade": "Belo Horizonte",
+   "cidades": [
+    "Belo Horizonte",
+    "Fortaleza"
+   ],
+   "lugar": "br-ce-fortaleza",
+   "lugares": [
+    "br-ce-fortaleza",
+    "br-mg-belo-horizonte"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-samba-piseiro-alvorada.png",
+   "eventos": 2,
+   "eventosNoCatalogo": 2,
+   "proximo": {
+    "id": 116,
+    "nome": "Piseiro das Gerais",
+    "iso": "2026-11-28T22:00:00-03:00"
+   },
+   "eventoIds": [
+    116,
+    120
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=piseiro-alvorada"
+  },
+  {
+   "id": "pocah",
+   "nome": "Pocah",
+   "aliases": [],
+   "busca": "pocah",
+   "generos": [
+    "funk",
+    "pop"
+   ],
+   "generoRotulos": [
+    "Funk",
+    "Pop"
+   ],
+   "generoRotulo": "Funk",
+   "generoOrigem": "Pop",
+   "cidade": "Rio de Janeiro",
+   "cidades": [
+    "Rio de Janeiro",
+    "São Paulo"
+   ],
+   "lugar": "br-rj-rio-de-janeiro",
+   "lugares": [
+    "br-rj-rio-de-janeiro",
+    "br-sp-sao-paulo"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-pop-pocah.png",
+   "eventos": 2,
+   "eventosNoCatalogo": 2,
+   "proximo": {
+    "id": 1707,
+    "nome": "JUCA 2027: Festa de Encerramento",
+    "iso": "2027-05-29T23:00:00-03:00"
+   },
+   "eventoIds": [
+    1707,
+    1718
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=pocah"
+  },
+  {
+   "id": "quinteto-roda-viva",
+   "nome": "Quinteto Roda Viva",
+   "aliases": [
+    "Roda Viva"
+   ],
+   "busca": "quinteto roda viva roda viva",
+   "generos": [
+    "samba-pagode"
+   ],
+   "generoRotulos": [
+    "Samba e pagode"
+   ],
+   "generoRotulo": "Samba e pagode",
+   "generoOrigem": "Samba e pagode",
+   "cidade": "Salvador",
+   "cidades": [
+    "Salvador",
+    "São Paulo"
+   ],
+   "lugar": "br-ba-salvador",
+   "lugares": [
+    "br-ba-salvador",
+    "br-sp-sao-paulo"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-samba-quinteto-roda-viva.png",
+   "eventos": 2,
+   "eventosNoCatalogo": 2,
+   "proximo": {
+    "id": 152,
+    "nome": "Roda de Samba do Terreirão",
+    "iso": "2026-11-01T15:00:00-03:00"
+   },
+   "eventoIds": [
+    152,
+    157
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=quinteto-roda-viva"
+  },
+  {
+   "id": "rodrigo-marques",
+   "nome": "Rodrigo Marques",
+   "aliases": [
+    "Rodrigo"
+   ],
+   "busca": "rodrigo marques rodrigo",
+   "generos": [],
+   "generoRotulos": [],
+   "generoRotulo": "",
+   "generoOrigem": "Humor",
+   "cidade": "São Paulo",
+   "cidades": [
+    "São Paulo"
+   ],
+   "lugar": "br-sp-sao-paulo",
+   "lugares": [
+    "br-sp-sao-paulo"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-pop-rodrigo-marques.png",
+   "eventos": 2,
+   "eventosNoCatalogo": 2,
+   "proximo": {
+    "id": 1739,
+    "nome": "Rodrigo Marques ao Vivo",
+    "iso": "2026-11-20T21:00:00-03:00"
+   },
+   "eventoIds": [
+    1739,
+    1747
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=rodrigo-marques"
+  },
+  {
+   "id": "seu-ivo-e-cia",
+   "nome": "Seu Ivo e Cia",
+   "aliases": [
+    "Seu Ivo",
+    "Ivo e Cia"
+   ],
+   "busca": "seu ivo e cia seu ivo ivo e cia",
+   "generos": [
+    "samba-pagode"
+   ],
+   "generoRotulos": [
+    "Samba e pagode"
+   ],
+   "generoRotulo": "Samba e pagode",
+   "generoOrigem": "Samba e pagode",
+   "cidade": "Belo Horizonte",
+   "cidades": [
+    "Belo Horizonte",
+    "São Paulo"
+   ],
+   "lugar": "br-mg-belo-horizonte",
+   "lugares": [
+    "br-mg-belo-horizonte",
+    "br-sp-sao-paulo"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-samba-seu-ivo-e-cia.png",
+   "eventos": 2,
+   "eventosNoCatalogo": 2,
+   "proximo": {
+    "id": 154,
+    "nome": "Samba da Gente",
+    "iso": "2026-11-13T20:00:00-03:00"
+   },
+   "eventoIds": [
+    154,
+    158
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=seu-ivo-e-cia"
+  },
+  {
+   "id": "tempestade-eletrica",
+   "nome": "Tempestade Elétrica",
+   "aliases": [
+    "Tempestade"
+   ],
+   "busca": "tempestade eletrica tempestade",
+   "generos": [
+    "rock"
+   ],
+   "generoRotulos": [
+    "Rock"
+   ],
+   "generoRotulo": "Rock",
+   "generoOrigem": "Rock",
+   "cidade": "Belo Horizonte",
+   "cidades": [
+    "Belo Horizonte",
+    "Porto Alegre"
+   ],
+   "lugar": "br-mg-belo-horizonte",
+   "lugares": [
+    "br-mg-belo-horizonte",
+    "br-rs-porto-alegre"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-rock-tempestade-eletrica.png",
+   "eventos": 2,
+   "eventosNoCatalogo": 2,
+   "proximo": {
+    "id": 186,
+    "nome": "Festival Distorção",
+    "iso": "2026-11-28T14:00:00-03:00"
+   },
+   "eventoIds": [
+    186,
+    188
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=tempestade-eletrica"
+  },
+  {
+   "id": "tomas-jaguatirica",
+   "nome": "Tomás Jaguatirica",
+   "aliases": [
+    "Tomás"
+   ],
+   "busca": "tomas jaguatirica tomas",
+   "generos": [
+    "mpb"
+   ],
+   "generoRotulos": [
+    "MPB"
+   ],
+   "generoRotulo": "MPB",
+   "generoOrigem": "MPB",
+   "cidade": "Belo Horizonte",
+   "cidades": [
+    "Belo Horizonte",
+    "Rio de Janeiro"
+   ],
+   "lugar": "br-mg-belo-horizonte",
+   "lugares": [
+    "br-mg-belo-horizonte",
+    "br-rj-rio-de-janeiro"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-mpb-tomas-jaguatirica.png",
+   "eventos": 2,
+   "eventosNoCatalogo": 2,
+   "proximo": {
+    "id": 179,
+    "nome": "Noite de Seresta",
+    "iso": "2026-12-11T20:00:00-03:00"
+   },
+   "eventoIds": [
+    179,
+    184
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=tomas-jaguatirica"
+  },
+  {
+   "id": "trio-sanfona-de-prata",
+   "nome": "Trio Sanfona de Prata",
+   "aliases": [
+    "Sanfona de Prata"
+   ],
+   "busca": "trio sanfona de prata sanfona de prata",
+   "generos": [
+    "forro"
+   ],
+   "generoRotulos": [
+    "Forró"
+   ],
+   "generoRotulo": "Forró",
+   "generoOrigem": "Forró",
+   "cidade": "Fortaleza",
+   "cidades": [
+    "Fortaleza",
+    "São Paulo"
+   ],
+   "lugar": "br-ce-fortaleza",
+   "lugares": [
+    "br-ce-fortaleza",
+    "br-sp-sao-paulo"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-samba-trio-sanfona-de-prata.png",
+   "eventos": 2,
+   "eventosNoCatalogo": 2,
+   "proximo": {
+    "id": 115,
+    "nome": "Forró no Farol",
+    "iso": "2026-11-13T21:00:00-03:00"
+   },
+   "eventoIds": [
+    115,
+    119
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=trio-sanfona-de-prata"
+  },
+  {
+   "id": "trio-xote-do-tejo",
+   "nome": "Trio Xote do Tejo",
+   "aliases": [
+    "Xote do Tejo"
+   ],
+   "busca": "trio xote do tejo xote do tejo",
+   "generos": [
+    "forro"
+   ],
+   "generoRotulos": [
+    "Forró"
+   ],
+   "generoRotulo": "Forró",
+   "generoOrigem": "Forró",
+   "cidade": "Lisboa",
+   "cidades": [
+    "Lisboa",
+    "Orlando"
+   ],
+   "lugar": "pt-lisboa-lisboa",
+   "lugares": [
+    "pt-lisboa-lisboa",
+    "us-florida-orlando"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-samba-trio-xote-do-tejo.png",
+   "eventos": 2,
+   "eventosNoCatalogo": 2,
+   "proximo": {
+    "id": 1802,
+    "nome": "Forró Pé de Serra em Lisboa",
+    "iso": "2026-12-05T22:00:00+00:00"
+   },
+   "eventoIds": [
+    1802,
+    1822
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=trio-xote-do-tejo"
+  },
+  {
+   "id": "vento-cobalto",
+   "nome": "Vento Cobalto",
+   "aliases": [
+    "Vento"
+   ],
+   "busca": "vento cobalto vento",
+   "generos": [
+    "rock"
+   ],
+   "generoRotulos": [
+    "Rock"
+   ],
+   "generoRotulo": "Rock",
+   "generoOrigem": "Rock · 2 datas",
+   "cidade": "Rio de Janeiro",
+   "cidades": [
+    "Rio de Janeiro",
+    "São Paulo"
+   ],
+   "lugar": "br-rj-rio-de-janeiro",
+   "lugares": [
+    "br-rj-rio-de-janeiro",
+    "br-sp-sao-paulo"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-rock-vento-cobalto.png",
+   "eventos": 2,
+   "eventosNoCatalogo": 2,
+   "proximo": {
+    "id": 29,
+    "nome": "Vento Cobalto em São Paulo",
+    "iso": "2027-03-20T21:00:00-03:00"
+   },
+   "eventoIds": [
+    29,
+    31
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=vento-cobalto"
+  },
+  {
+   "id": "victor-sarro",
+   "nome": "Victor Sarro",
+   "aliases": [
+    "Victor"
+   ],
+   "busca": "victor sarro victor",
+   "generos": [],
+   "generoRotulos": [],
+   "generoRotulo": "",
+   "generoOrigem": "Humor",
+   "cidade": "Campinas",
+   "cidades": [
+    "Campinas",
+    "São Paulo"
+   ],
+   "lugar": "br-sp-campinas",
+   "lugares": [
+    "br-sp-campinas",
+    "br-sp-sao-paulo"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-pop-victor-sarro.png",
+   "eventos": 2,
+   "eventosNoCatalogo": 2,
+   "proximo": {
+    "id": 1749,
+    "nome": "Comedians: Novos Comediantes",
+    "iso": "2026-12-09T21:00:00-03:00"
+   },
+   "eventoIds": [
+    1749,
+    1741
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=victor-sarro"
+  },
+  {
+   "id": "vitor-cordeiro-band",
+   "nome": "Vitor Cordeiro Band",
+   "aliases": [],
+   "busca": "vitor cordeiro band",
+   "generos": [
+    "jazz-blues"
+   ],
+   "generoRotulos": [
+    "Jazz e blues"
+   ],
+   "generoRotulo": "Jazz e blues",
+   "generoOrigem": "Jazz e blues",
+   "cidade": "Porto Alegre",
+   "cidades": [
+    "Porto Alegre",
+    "Rio de Janeiro"
+   ],
+   "lugar": "br-rj-rio-de-janeiro",
+   "lugares": [
+    "br-rj-rio-de-janeiro",
+    "br-rs-porto-alegre"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-mpb-vitor-cordeiro-band.png",
+   "eventos": 2,
+   "eventosNoCatalogo": 2,
+   "proximo": {
+    "id": 123,
+    "nome": "Blues no Porão",
+    "iso": "2026-11-20T21:00:00-03:00"
+   },
+   "eventoIds": [
+    123,
+    126
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=vitor-cordeiro-band"
+  },
+  {
+   "id": "whindersson-nunes",
+   "nome": "Whindersson Nunes",
+   "aliases": [
+    "Whindersson"
+   ],
+   "busca": "whindersson nunes whindersson",
+   "generos": [],
+   "generoRotulos": [],
+   "generoRotulo": "",
+   "generoOrigem": "Humor",
+   "cidade": "Fortaleza",
+   "cidades": [
+    "Fortaleza",
+    "São Paulo"
+   ],
+   "lugar": "br-ce-fortaleza",
+   "lugares": [
+    "br-ce-fortaleza",
+    "br-sp-sao-paulo"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-pop-whindersson-nunes.png",
+   "eventos": 2,
+   "eventosNoCatalogo": 2,
+   "proximo": {
+    "id": 1730,
+    "nome": "Whindersson Nunes: Turnê 2027",
+    "iso": "2027-01-23T20:00:00-03:00"
+   },
+   "eventoIds": [
+    1730,
+    1751
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=whindersson-nunes"
+  },
+  {
+   "id": "ze-bandolim",
+   "nome": "Zé Bandolim",
+   "aliases": [],
+   "busca": "ze bandolim",
+   "generos": [
+    "forro"
+   ],
+   "generoRotulos": [
+    "Forró"
+   ],
+   "generoRotulo": "Forró",
+   "generoOrigem": "Forró",
+   "cidade": "Porto Alegre",
+   "cidades": [
+    "Porto Alegre",
+    "São Paulo"
+   ],
+   "lugar": "br-rs-porto-alegre",
+   "lugares": [
+    "br-rs-porto-alegre",
+    "br-sp-sao-paulo"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-samba-ze-bandolim.png",
+   "eventos": 2,
+   "eventosNoCatalogo": 2,
+   "proximo": {
+    "id": 119,
+    "nome": "Noite do Xote",
+    "iso": "2026-12-04T22:00:00-03:00"
+   },
+   "eventoIds": [
+    119,
+    121
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=ze-bandolim"
+  },
+  {
+   "id": "ze-eugenio",
+   "nome": "Zé Eugênio",
+   "aliases": [],
+   "busca": "ze eugenio",
+   "generos": [
+    "sertanejo"
+   ],
+   "generoRotulos": [
+    "Sertanejo"
+   ],
+   "generoRotulo": "Sertanejo",
+   "generoOrigem": "Sertanejo",
+   "cidade": "Porto Alegre",
+   "cidades": [
+    "Porto Alegre",
+    "Ribeirão Preto"
+   ],
+   "lugar": "br-rs-porto-alegre",
+   "lugares": [
+    "br-rs-porto-alegre",
+    "br-sp-ribeirao-preto"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-samba-ze-eugenio.png",
+   "eventos": 2,
+   "eventosNoCatalogo": 2,
+   "proximo": {
+    "id": 113,
+    "nome": "Festival Boiadeiro Sul",
+    "iso": "2027-03-27T17:00:00-03:00"
+   },
+   "eventoIds": [
+    113,
+    110
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=ze-eugenio"
+  },
+  {
+   "id": "aurora-lemos",
+   "nome": "Aurora Lemos",
+   "aliases": [
+    "Aurora"
+   ],
+   "busca": "aurora lemos aurora",
+   "generos": [
+    "pop"
+   ],
+   "generoRotulos": [
+    "Pop"
+   ],
+   "generoRotulo": "Pop",
+   "generoOrigem": "Pop",
+   "cidade": "Porto Alegre",
+   "cidades": [
+    "Porto Alegre"
+   ],
+   "lugar": "br-rs-porto-alegre",
+   "lugares": [
+    "br-rs-porto-alegre"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-pop-aurora-lemos.png",
+   "eventos": 1,
+   "eventosNoCatalogo": 1,
+   "proximo": {
+    "id": 172,
+    "nome": "Aurora Lemos: Turnê Céu Aberto",
+    "iso": "2027-02-13T20:00:00-03:00"
+   },
+   "eventoIds": [
+    172
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=aurora-lemos"
+  },
+  {
+   "id": "banda-cordillera-sur",
+   "nome": "Banda Cordillera Sur",
+   "aliases": [
+    "Cordillera Sur"
+   ],
+   "busca": "banda cordillera sur cordillera sur",
+   "generos": [
+    "rock"
+   ],
+   "generoRotulos": [
+    "Rock"
+   ],
+   "generoRotulo": "Rock",
+   "generoOrigem": "Rock",
+   "cidade": "Santiago",
+   "cidades": [
+    "Santiago"
+   ],
+   "lugar": "cl-santiago-santiago",
+   "lugares": [
+    "cl-santiago-santiago"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-rock-banda-cordillera-sur.png",
+   "eventos": 1,
+   "eventosNoCatalogo": 1,
+   "proximo": {
+    "id": 1816,
+    "nome": "Rock Nocturno Santiago",
+    "iso": "2026-11-20T21:00:00-03:00"
+   },
+   "eventoIds": [
+    1816
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=banda-cordillera-sur"
+  },
+  {
+   "id": "banda-pampa-electrica",
+   "nome": "Banda Pampa Eléctrica",
+   "aliases": [
+    "Pampa Eléctrica"
+   ],
+   "busca": "banda pampa electrica pampa electrica",
+   "generos": [
+    "rock"
+   ],
+   "generoRotulos": [
+    "Rock"
+   ],
+   "generoRotulo": "Rock",
+   "generoOrigem": "Rock",
+   "cidade": "Buenos Aires",
+   "cidades": [
+    "Buenos Aires"
+   ],
+   "lugar": "ar-buenos-aires-buenos-aires",
+   "lugares": [
+    "ar-buenos-aires-buenos-aires"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-rock-banda-pampa-electrica.png",
+   "eventos": 1,
+   "eventosNoCatalogo": 1,
+   "proximo": {
+    "id": 1812,
+    "nome": "Rock en la Costanera",
+    "iso": "2026-12-04T21:00:00-03:00"
+   },
+   "eventoIds": [
+    1812
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=banda-pampa-electrica"
+  },
+  {
+   "id": "bell-marques",
+   "nome": "Bell Marques",
+   "aliases": [
+    "Bell"
+   ],
+   "busca": "bell marques bell",
+   "generos": [
+    "axe"
+   ],
+   "generoRotulos": [
+    "Axé"
+   ],
+   "generoRotulo": "Axé",
+   "generoOrigem": "Axé",
+   "cidade": "Rio de Janeiro",
+   "cidades": [
+    "Rio de Janeiro"
+   ],
+   "lugar": "br-rj-rio-de-janeiro",
+   "lugares": [
+    "br-rj-rio-de-janeiro"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-samba-bell-marques.png",
+   "eventos": 1,
+   "eventosNoCatalogo": 1,
+   "proximo": {
+    "id": 1723,
+    "nome": "Esquenta de Carnaval das Atléticas",
+    "iso": "2027-01-30T21:00:00-03:00"
+   },
+   "eventoIds": [
+    1723
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=bell-marques"
+  },
+  {
+   "id": "big-band-da-ponte",
+   "nome": "Big Band da Ponte",
+   "aliases": [],
+   "busca": "big band da ponte",
+   "generos": [
+    "jazz-blues"
+   ],
+   "generoRotulos": [
+    "Jazz e blues"
+   ],
+   "generoRotulo": "Jazz e blues",
+   "generoOrigem": "Jazz e blues",
+   "cidade": "Belo Horizonte",
+   "cidades": [
+    "Belo Horizonte"
+   ],
+   "lugar": "br-mg-belo-horizonte",
+   "lugares": [
+    "br-mg-belo-horizonte"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-mpb-big-band-da-ponte.png",
+   "eventos": 1,
+   "eventosNoCatalogo": 1,
+   "proximo": {
+    "id": 125,
+    "nome": "Festival de Jazz e Blues da Serra",
+    "iso": "2027-03-20T16:00:00-03:00"
+   },
+   "eventoIds": [
+    125
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=big-band-da-ponte"
+  },
+  {
+   "id": "bruna-faisca",
+   "nome": "Bruna Faísca",
+   "aliases": [
+    "Bruna"
+   ],
+   "busca": "bruna faisca bruna",
+   "generos": [
+    "rock"
+   ],
+   "generoRotulos": [
+    "Rock"
+   ],
+   "generoRotulo": "Rock",
+   "generoOrigem": "Rock",
+   "cidade": "São Paulo",
+   "cidades": [
+    "São Paulo"
+   ],
+   "lugar": "br-sp-sao-paulo",
+   "lugares": [
+    "br-sp-sao-paulo"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-rock-bruna-faisca.png",
+   "eventos": 1,
+   "eventosNoCatalogo": 1,
+   "proximo": {
+    "id": 189,
+    "nome": "Bruna Faísca: Turnê Fogo e Chuva",
+    "iso": "2027-02-27T21:00:00-03:00"
+   },
+   "eventoIds": [
+    189
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=bruna-faisca"
+  },
+  {
+   "id": "cia-do-rancho",
+   "nome": "Cia do Rancho",
+   "aliases": [],
+   "busca": "cia do rancho",
+   "generos": [
+    "sertanejo"
+   ],
+   "generoRotulos": [
+    "Sertanejo"
+   ],
+   "generoRotulo": "Sertanejo",
+   "generoOrigem": "Sertanejo",
+   "cidade": "Belo Horizonte",
+   "cidades": [
+    "Belo Horizonte"
+   ],
+   "lugar": "br-mg-belo-horizonte",
+   "lugares": [
+    "br-mg-belo-horizonte"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-samba-cia-do-rancho.png",
+   "eventos": 1,
+   "eventosNoCatalogo": 1,
+   "proximo": {
+    "id": 111,
+    "nome": "Sertanejo Universitário Open Bar",
+    "iso": "2026-12-05T22:00:00-03:00"
+   },
+   "eventoIds": [
+    111
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=cia-do-rancho"
+  },
+  {
+   "id": "clara-beira-rio",
+   "nome": "Clara Beira-Rio",
+   "aliases": [
+    "Clara"
+   ],
+   "busca": "clara beira rio clara",
+   "generos": [
+    "mpb"
+   ],
+   "generoRotulos": [
+    "MPB"
+   ],
+   "generoRotulo": "MPB",
+   "generoOrigem": "MPB",
+   "cidade": "Lisboa",
+   "cidades": [
+    "Lisboa"
+   ],
+   "lugar": "pt-lisboa-lisboa",
+   "lugares": [
+    "pt-lisboa-lisboa"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-mpb-clara-beira-rio.png",
+   "eventos": 1,
+   "eventosNoCatalogo": 1,
+   "proximo": {
+    "id": 1803,
+    "nome": "Festival Brasil em Lisboa",
+    "iso": "2027-06-12T15:00:00+01:00"
+   },
+   "eventoIds": [
+    1803
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=clara-beira-rio"
+  },
+  {
+   "id": "clara-taquari",
+   "nome": "Clara Taquari",
+   "aliases": [
+    "Clara"
+   ],
+   "busca": "clara taquari clara",
+   "generos": [
+    "mpb"
+   ],
+   "generoRotulos": [
+    "MPB"
+   ],
+   "generoRotulo": "MPB",
+   "generoOrigem": "MPB · 2 datas",
+   "cidade": "Rio de Janeiro",
+   "cidades": [
+    "Rio de Janeiro"
+   ],
+   "lugar": "br-rj-rio-de-janeiro",
+   "lugares": [
+    "br-rj-rio-de-janeiro"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-mpb-clara-taquari.png",
+   "eventos": 1,
+   "eventosNoCatalogo": 1,
+   "proximo": {
+    "id": 31,
+    "nome": "Festival Horizonte Sul 2027",
+    "iso": "2027-05-15T15:00:00-03:00"
+   },
+   "eventoIds": [
+    31
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=clara-taquari"
+  },
+  {
+   "id": "coletivo-mare-de-papel",
+   "nome": "Coletivo Maré de Papel",
+   "aliases": [
+    "Maré de Papel"
+   ],
+   "busca": "coletivo mare de papel mare de papel",
+   "generos": [],
+   "generoRotulos": [],
+   "generoRotulo": "",
+   "generoOrigem": "Exposição",
+   "cidade": "Salvador",
+   "cidades": [
+    "Salvador"
+   ],
+   "lugar": "br-ba-salvador",
+   "lugares": [
+    "br-ba-salvador"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-pop-coletivo-mare-de-papel.png",
+   "eventos": 1,
+   "eventosNoCatalogo": 1,
+   "proximo": {
+    "id": 36,
+    "nome": "Exposição Mares de Papel",
+    "iso": "2027-01-16T10:00:00-03:00"
+   },
+   "eventoIds": [
+    36
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=coletivo-mare-de-papel"
+  },
+  {
+   "id": "cozinha-do-patio",
+   "nome": "Cozinha do Pátio",
+   "aliases": [],
+   "busca": "cozinha do patio",
+   "generos": [],
+   "generoRotulos": [],
+   "generoRotulo": "",
+   "generoOrigem": "Jantar",
+   "cidade": "São Paulo",
+   "cidades": [
+    "São Paulo"
+   ],
+   "lugar": "br-sp-sao-paulo",
+   "lugares": [
+    "br-sp-sao-paulo"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-pop-cozinha-do-patio.png",
+   "eventos": 1,
+   "eventosNoCatalogo": 1,
+   "proximo": {
+    "id": 38,
+    "nome": "Mesa Longa do Pátio",
+    "iso": "2027-04-10T19:30:00-03:00"
+   },
+   "eventoIds": [
+    38
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=cozinha-do-patio"
+  },
+  {
+   "id": "diogo-portugal",
+   "nome": "Diogo Portugal",
+   "aliases": [
+    "Diogo"
+   ],
+   "busca": "diogo portugal diogo",
+   "generos": [],
+   "generoRotulos": [],
+   "generoRotulo": "",
+   "generoOrigem": "Humor",
+   "cidade": "Curitiba",
+   "cidades": [
+    "Curitiba"
+   ],
+   "lugar": "br-pr-curitiba",
+   "lugares": [
+    "br-pr-curitiba"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-pop-diogo-portugal.png",
+   "eventos": 1,
+   "eventosNoCatalogo": 1,
+   "proximo": {
+    "id": 1738,
+    "nome": "Diogo Portugal: Stand-up",
+    "iso": "2027-03-12T21:00:00-03:00"
+   },
+   "eventoIds": [
+    1738
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=diogo-portugal"
+  },
+  {
+   "id": "dj-betinho-ferrugem",
+   "nome": "DJ Betinho Ferrugem",
+   "aliases": [
+    "Betinho Ferrugem"
+   ],
+   "busca": "dj betinho ferrugem betinho ferrugem",
+   "generos": [
+    "funk"
+   ],
+   "generoRotulos": [
+    "Funk"
+   ],
+   "generoRotulo": "Funk",
+   "generoOrigem": "Funk",
+   "cidade": "Porto Alegre",
+   "cidades": [
+    "Porto Alegre"
+   ],
+   "lugar": "br-rs-porto-alegre",
+   "lugares": [
+    "br-rs-porto-alegre"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-samba-dj-betinho-ferrugem.png",
+   "eventos": 1,
+   "eventosNoCatalogo": 1,
+   "proximo": {
+    "id": 104,
+    "nome": "Funk Fest Sul",
+    "iso": "2027-01-23T18:00:00-03:00"
+   },
+   "eventoIds": [
+    104
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=dj-betinho-ferrugem"
+  },
+  {
+   "id": "dj-gbr",
+   "nome": "DJ GBR",
+   "aliases": [],
+   "busca": "dj gbr",
+   "generos": [
+    "funk"
+   ],
+   "generoRotulos": [
+    "Funk"
+   ],
+   "generoRotulo": "Funk",
+   "generoOrigem": "Funk",
+   "cidade": "São Paulo",
+   "cidades": [
+    "São Paulo"
+   ],
+   "lugar": "br-sp-sao-paulo",
+   "lugares": [
+    "br-sp-sao-paulo"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-samba-dj-gbr.png",
+   "eventos": 1,
+   "eventosNoCatalogo": 1,
+   "proximo": {
+    "id": 1708,
+    "nome": "Cervejada da Poli USP",
+    "iso": "2026-11-28T22:00:00-03:00"
+   },
+   "eventoIds": [
+    1708
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=dj-gbr"
+  },
+  {
+   "id": "dj-tutu-da-laje",
+   "nome": "DJ Tutu da Laje",
+   "aliases": [
+    "Tutu da Laje"
+   ],
+   "busca": "dj tutu da laje tutu da laje",
+   "generos": [
+    "funk"
+   ],
+   "generoRotulos": [
+    "Funk"
+   ],
+   "generoRotulo": "Funk",
+   "generoOrigem": "Funk",
+   "cidade": "Rio de Janeiro",
+   "cidades": [
+    "Rio de Janeiro"
+   ],
+   "lugar": "br-rj-rio-de-janeiro",
+   "lugares": [
+    "br-rj-rio-de-janeiro"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-samba-dj-tutu-da-laje.png",
+   "eventos": 1,
+   "eventosNoCatalogo": 1,
+   "proximo": {
+    "id": 101,
+    "nome": "Baile de Halloween do Tamborzão",
+    "iso": "2026-10-31T23:00:00-03:00"
+   },
+   "eventoIds": [
+    101
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=dj-tutu-da-laje"
+  },
+  {
+   "id": "duo-batuque-sintetico",
+   "nome": "Duo Batuque Sintético",
+   "aliases": [
+    "Batuque Sintético"
+   ],
+   "busca": "duo batuque sintetico batuque sintetico",
+   "generos": [
+    "tribal"
+   ],
+   "generoRotulos": [
+    "Tribal"
+   ],
+   "generoRotulo": "Tribal",
+   "generoOrigem": "Tribal",
+   "cidade": "Rio de Janeiro",
+   "cidades": [
+    "Rio de Janeiro"
+   ],
+   "lugar": "br-rj-rio-de-janeiro",
+   "lugares": [
+    "br-rj-rio-de-janeiro"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-pop-duo-batuque-sintetico.png",
+   "eventos": 1,
+   "eventosNoCatalogo": 1,
+   "proximo": {
+    "id": 147,
+    "nome": "Noite Tribal: Batuque Sintético",
+    "iso": "2026-11-21T23:00:00-03:00"
+   },
+   "eventoIds": [
+    147
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=duo-batuque-sintetico"
+  },
+  {
+   "id": "fabio-rabin",
+   "nome": "Fábio Rabin",
+   "aliases": [
+    "Fábio"
+   ],
+   "busca": "fabio rabin fabio",
+   "generos": [],
+   "generoRotulos": [],
+   "generoRotulo": "",
+   "generoOrigem": "Humor",
+   "cidade": "São Paulo",
+   "cidades": [
+    "São Paulo"
+   ],
+   "lugar": "br-sp-sao-paulo",
+   "lugares": [
+    "br-sp-sao-paulo"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-pop-fabio-rabin.png",
+   "eventos": 1,
+   "eventosNoCatalogo": 1,
+   "proximo": {
+    "id": 1744,
+    "nome": "Fábio Rabin: Stand-up",
+    "iso": "2027-04-02T21:00:00-03:00"
+   },
+   "eventoIds": [
+    1744
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=fabio-rabin"
+  },
+  {
+   "id": "guias-da-baia",
+   "nome": "Guias da Baía",
+   "aliases": [],
+   "busca": "guias da baia",
+   "generos": [],
+   "generoRotulos": [],
+   "generoRotulo": "",
+   "generoOrigem": "Passeio de barco",
+   "cidade": "Rio de Janeiro",
+   "cidades": [
+    "Rio de Janeiro"
+   ],
+   "lugar": "br-rj-rio-de-janeiro",
+   "lugares": [
+    "br-rj-rio-de-janeiro"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-pop-guias-da-baia.png",
+   "eventos": 1,
+   "eventosNoCatalogo": 1,
+   "proximo": {
+    "id": 37,
+    "nome": "Passeio de Escuna pela Baía",
+    "iso": "2027-02-13T09:30:00-03:00"
+   },
+   "eventoIds": [
+    37
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=guias-da-baia"
+  },
+  {
+   "id": "gustavo-e-rafael-campos",
+   "nome": "Gustavo & Rafael Campos",
+   "aliases": [
+    "Gustavo",
+    "Rafael Campos"
+   ],
+   "busca": "gustavo rafael campos gustavo rafael campos",
+   "generos": [
+    "sertanejo"
+   ],
+   "generoRotulos": [
+    "Sertanejo"
+   ],
+   "generoRotulo": "Sertanejo",
+   "generoOrigem": "Sertanejo",
+   "cidade": "Orlando",
+   "cidades": [
+    "Orlando"
+   ],
+   "lugar": "us-florida-orlando",
+   "lugares": [
+    "us-florida-orlando"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-samba-gustavo-rafael-campos.png",
+   "eventos": 1,
+   "eventosNoCatalogo": 1,
+   "proximo": {
+    "id": 1821,
+    "nome": "Sertanejo em Orlando",
+    "iso": "2026-12-05T21:00:00-05:00"
+   },
+   "eventoIds": [
+    1821
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=gustavo-e-rafael-campos"
+  },
+  {
+   "id": "joao-gomes",
+   "nome": "João Gomes",
+   "aliases": [
+    "João"
+   ],
+   "busca": "joao gomes joao",
+   "generos": [
+    "forro"
+   ],
+   "generoRotulos": [
+    "Forró"
+   ],
+   "generoRotulo": "Forró",
+   "generoOrigem": "Forró",
+   "cidade": "Recife",
+   "cidades": [
+    "Recife"
+   ],
+   "lugar": "br-pe-recife",
+   "lugares": [
+    "br-pe-recife"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-samba-joao-gomes.png",
+   "eventos": 1,
+   "eventosNoCatalogo": 1,
+   "proximo": {
+    "id": 1712,
+    "nome": "Chopada da Federal de Pernambuco",
+    "iso": "2027-04-03T22:00:00-03:00"
+   },
+   "eventoIds": [
+    1712
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=joao-gomes"
+  },
+  {
+   "id": "lua-ventania",
+   "nome": "Lua Ventania",
+   "aliases": [],
+   "busca": "lua ventania",
+   "generos": [
+    "pop"
+   ],
+   "generoRotulos": [
+    "Pop"
+   ],
+   "generoRotulo": "Pop",
+   "generoOrigem": "Pop · 2 datas",
+   "cidade": "Belo Horizonte",
+   "cidades": [
+    "Belo Horizonte"
+   ],
+   "lugar": "br-mg-belo-horizonte",
+   "lugares": [
+    "br-mg-belo-horizonte"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-pop-lua-ventania.png",
+   "eventos": 1,
+   "eventosNoCatalogo": 1,
+   "proximo": {
+    "id": 30,
+    "nome": "Lua Ventania em Belo Horizonte",
+    "iso": "2027-04-17T21:00:00-03:00"
+   },
+   "eventoIds": [
+    30
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=lua-ventania"
+  },
+  {
+   "id": "ludmilla",
+   "nome": "Ludmilla",
+   "aliases": [],
+   "busca": "ludmilla",
+   "generos": [
+    "funk"
+   ],
+   "generoRotulos": [
+    "Funk"
+   ],
+   "generoRotulo": "Funk",
+   "generoOrigem": "Funk",
+   "cidade": "São Paulo",
+   "cidades": [
+    "São Paulo"
+   ],
+   "lugar": "br-sp-sao-paulo",
+   "lugares": [
+    "br-sp-sao-paulo"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-samba-ludmilla.png",
+   "eventos": 1,
+   "eventosNoCatalogo": 1,
+   "proximo": {
+    "id": 1716,
+    "nome": "Baile de Máscaras da Atlética Mackenzie",
+    "iso": "2027-04-10T23:00:00-03:00"
+   },
+   "eventoIds": [
+    1716
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=ludmilla"
+  },
+  {
+   "id": "mar-aberto-b2b-ferrugem",
+   "nome": "Mar Aberto b2b Ferrugem",
+   "aliases": [],
+   "busca": "mar aberto b2b ferrugem",
+   "generos": [
+    "eletronica"
+   ],
+   "generoRotulos": [
+    "Eletrônica"
+   ],
+   "generoRotulo": "Eletrônica",
+   "generoOrigem": "Eletrônica",
+   "cidade": "Curitiba",
+   "cidades": [
+    "Curitiba"
+   ],
+   "lugar": "br-pr-curitiba",
+   "lugares": [
+    "br-pr-curitiba"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-eletronica-mar-aberto-b2b-ferrugem.png",
+   "eventos": 1,
+   "eventosNoCatalogo": 1,
+   "proximo": {
+    "id": 166,
+    "nome": "Eletrônica na Pedreira",
+    "iso": "2026-12-05T22:00:00-03:00"
+   },
+   "eventoIds": [
+    166
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=mar-aberto-b2b-ferrugem"
+  },
+  {
+   "id": "marcelo-adnet",
+   "nome": "Marcelo Adnet",
+   "aliases": [
+    "Marcelo"
+   ],
+   "busca": "marcelo adnet marcelo",
+   "generos": [],
+   "generoRotulos": [],
+   "generoRotulo": "",
+   "generoOrigem": "Humor",
+   "cidade": "Rio de Janeiro",
+   "cidades": [
+    "Rio de Janeiro"
+   ],
+   "lugar": "br-rj-rio-de-janeiro",
+   "lugares": [
+    "br-rj-rio-de-janeiro"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-pop-marcelo-adnet.png",
+   "eventos": 1,
+   "eventosNoCatalogo": 1,
+   "proximo": {
+    "id": 1734,
+    "nome": "Marcelo Adnet: Improviso e Stand-up",
+    "iso": "2026-11-21T20:00:00-03:00"
+   },
+   "eventoIds": [
+    1734
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=marcelo-adnet"
+  },
+  {
+   "id": "marcos-castro",
+   "nome": "Marcos Castro",
+   "aliases": [
+    "Marcos"
+   ],
+   "busca": "marcos castro marcos",
+   "generos": [],
+   "generoRotulos": [],
+   "generoRotulo": "",
+   "generoOrigem": "Humor",
+   "cidade": "Porto Alegre",
+   "cidades": [
+    "Porto Alegre"
+   ],
+   "lugar": "br-rs-porto-alegre",
+   "lugares": [
+    "br-rs-porto-alegre"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-pop-marcos-castro.png",
+   "eventos": 1,
+   "eventosNoCatalogo": 1,
+   "proximo": {
+    "id": 1746,
+    "nome": "Marcos Castro: Stand-up",
+    "iso": "2027-04-16T21:00:00-03:00"
+   },
+   "eventoIds": [
+    1746
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=marcos-castro"
+  },
+  {
+   "id": "mauricio-meirelles",
+   "nome": "Maurício Meirelles",
+   "aliases": [
+    "Maurício"
+   ],
+   "busca": "mauricio meirelles mauricio",
+   "generos": [],
+   "generoRotulos": [],
+   "generoRotulo": "",
+   "generoOrigem": "Humor",
+   "cidade": "Rio de Janeiro",
+   "cidades": [
+    "Rio de Janeiro"
+   ],
+   "lugar": "br-rj-rio-de-janeiro",
+   "lugares": [
+    "br-rj-rio-de-janeiro"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-pop-mauricio-meirelles.png",
+   "eventos": 1,
+   "eventosNoCatalogo": 1,
+   "proximo": {
+    "id": 1745,
+    "nome": "Maurício Meirelles ao Vivo",
+    "iso": "2027-04-09T21:00:00-03:00"
+   },
+   "eventoIds": [
+    1745
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=mauricio-meirelles"
+  },
+  {
+   "id": "mc-zeca-bambu",
+   "nome": "MC Zeca Bambu",
+   "aliases": [
+    "Zeca Bambu"
+   ],
+   "busca": "mc zeca bambu zeca bambu",
+   "generos": [
+    "funk"
+   ],
+   "generoRotulos": [
+    "Funk"
+   ],
+   "generoRotulo": "Funk",
+   "generoOrigem": "Funk",
+   "cidade": "Porto Alegre",
+   "cidades": [
+    "Porto Alegre"
+   ],
+   "lugar": "br-rs-porto-alegre",
+   "lugares": [
+    "br-rs-porto-alegre"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-samba-mc-zeca-bambu.png",
+   "eventos": 1,
+   "eventosNoCatalogo": 1,
+   "proximo": {
+    "id": 104,
+    "nome": "Funk Fest Sul",
+    "iso": "2027-01-23T18:00:00-03:00"
+   },
+   "eventoIds": [
+    104
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=mc-zeca-bambu"
+  },
+  {
+   "id": "mhel-marrer",
+   "nome": "Mhel Marrer",
+   "aliases": [
+    "Mhel"
+   ],
+   "busca": "mhel marrer mhel",
+   "generos": [],
+   "generoRotulos": [],
+   "generoRotulo": "",
+   "generoOrigem": "Humor",
+   "cidade": "Brasília",
+   "cidades": [
+    "Brasília"
+   ],
+   "lugar": "br-df-brasilia",
+   "lugares": [
+    "br-df-brasilia"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-pop-mhel-marrer.png",
+   "eventos": 1,
+   "eventosNoCatalogo": 1,
+   "proximo": {
+    "id": 1740,
+    "nome": "Mhel Marrer: Stand-up",
+    "iso": "2027-01-29T21:00:00-03:00"
+   },
+   "eventoIds": [
+    1740
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=mhel-marrer"
+  },
+  {
+   "id": "mochakk",
+   "nome": "Mochakk",
+   "aliases": [],
+   "busca": "mochakk",
+   "generos": [
+    "eletronica"
+   ],
+   "generoRotulos": [
+    "Eletrônica"
+   ],
+   "generoRotulo": "Eletrônica",
+   "generoOrigem": "Eletrônica",
+   "cidade": "Campinas",
+   "cidades": [
+    "Campinas"
+   ],
+   "lugar": "br-sp-campinas",
+   "lugares": [
+    "br-sp-campinas"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-eletronica-mochakk.png",
+   "eventos": 1,
+   "eventosNoCatalogo": 1,
+   "proximo": {
+    "id": 1715,
+    "nome": "Calourada Unicamp 2027",
+    "iso": "2027-03-06T23:00:00-03:00"
+   },
+   "eventoIds": [
+    1715
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=mochakk"
+  },
+  {
+   "id": "nando-viana",
+   "nome": "Nando Viana",
+   "aliases": [
+    "Nando"
+   ],
+   "busca": "nando viana nando",
+   "generos": [],
+   "generoRotulos": [],
+   "generoRotulo": "",
+   "generoOrigem": "Humor",
+   "cidade": "Salvador",
+   "cidades": [
+    "Salvador"
+   ],
+   "lugar": "br-ba-salvador",
+   "lugares": [
+    "br-ba-salvador"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-pop-nando-viana.png",
+   "eventos": 1,
+   "eventosNoCatalogo": 1,
+   "proximo": {
+    "id": 1737,
+    "nome": "Nando Viana ao Vivo",
+    "iso": "2027-02-13T20:00:00-03:00"
+   },
+   "eventoIds": [
+    1737
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=nando-viana"
+  },
+  {
+   "id": "nico-ferrer",
+   "nome": "Nico Ferrer",
+   "aliases": [
+    "Nico"
+   ],
+   "busca": "nico ferrer nico",
+   "generos": [
+    "rock"
+   ],
+   "generoRotulos": [
+    "Rock"
+   ],
+   "generoRotulo": "Rock",
+   "generoOrigem": "Rock",
+   "cidade": "Buenos Aires",
+   "cidades": [
+    "Buenos Aires"
+   ],
+   "lugar": "ar-buenos-aires-buenos-aires",
+   "lugares": [
+    "ar-buenos-aires-buenos-aires"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-rock-nico-ferrer.png",
+   "eventos": 1,
+   "eventosNoCatalogo": 1,
+   "proximo": {
+    "id": 1812,
+    "nome": "Rock en la Costanera",
+    "iso": "2026-12-04T21:00:00-03:00"
+   },
+   "eventoIds": [
+    1812
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=nico-ferrer"
+  },
+  {
+   "id": "nino-vidal",
+   "nome": "Nino Vidal",
+   "aliases": [
+    "Nino"
+   ],
+   "busca": "nino vidal nino",
+   "generos": [
+    "rock"
+   ],
+   "generoRotulos": [
+    "Rock"
+   ],
+   "generoRotulo": "Rock",
+   "generoOrigem": "Rock",
+   "cidade": "Porto",
+   "cidades": [
+    "Porto"
+   ],
+   "lugar": "pt-porto-porto",
+   "lugares": [
+    "pt-porto-porto"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-rock-nino-vidal.png",
+   "eventos": 1,
+   "eventosNoCatalogo": 1,
+   "proximo": {
+    "id": 1806,
+    "nome": "Noite de Rock no Douro",
+    "iso": "2027-01-23T21:00:00+00:00"
+   },
+   "eventoIds": [
+    1806
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=nino-vidal"
+  },
+  {
+   "id": "psirico",
+   "nome": "Psirico",
+   "aliases": [],
+   "busca": "psirico",
+   "generos": [
+    "axe"
+   ],
+   "generoRotulos": [
+    "Axé"
+   ],
+   "generoRotulo": "Axé",
+   "generoOrigem": "Axé",
+   "cidade": "Salvador",
+   "cidades": [
+    "Salvador"
+   ],
+   "lugar": "br-ba-salvador",
+   "lugares": [
+    "br-ba-salvador"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-samba-psirico.png",
+   "eventos": 1,
+   "eventosNoCatalogo": 1,
+   "proximo": {
+    "id": 1711,
+    "nome": "Calourada UFBA 2027",
+    "iso": "2027-03-13T21:00:00-03:00"
+   },
+   "eventoIds": [
+    1711
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=psirico"
+  },
+  {
+   "id": "quarteto-maresia",
+   "nome": "Quarteto Maresia",
+   "aliases": [
+    "Maresia"
+   ],
+   "busca": "quarteto maresia maresia",
+   "generos": [
+    "jazz-blues"
+   ],
+   "generoRotulos": [
+    "Jazz e blues"
+   ],
+   "generoRotulo": "Jazz e blues",
+   "generoOrigem": "Jazz · 2 datas",
+   "cidade": "Rio de Janeiro",
+   "cidades": [
+    "Rio de Janeiro"
+   ],
+   "lugar": "br-rj-rio-de-janeiro",
+   "lugares": [
+    "br-rj-rio-de-janeiro"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-mpb-quarteto-maresia.png",
+   "eventos": 1,
+   "eventosNoCatalogo": 1,
+   "proximo": {
+    "id": 31,
+    "nome": "Festival Horizonte Sul 2027",
+    "iso": "2027-05-15T15:00:00-03:00"
+   },
+   "eventoIds": [
+    31
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=quarteto-maresia"
+  },
+  {
+   "id": "rafael-portugal",
+   "nome": "Rafael Portugal",
+   "aliases": [
+    "Rafael"
+   ],
+   "busca": "rafael portugal rafael",
+   "generos": [],
+   "generoRotulos": [],
+   "generoRotulo": "",
+   "generoOrigem": "Humor",
+   "cidade": "Rio de Janeiro",
+   "cidades": [
+    "Rio de Janeiro"
+   ],
+   "lugar": "br-rj-rio-de-janeiro",
+   "lugares": [
+    "br-rj-rio-de-janeiro"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-pop-rafael-portugal.png",
+   "eventos": 1,
+   "eventosNoCatalogo": 1,
+   "proximo": {
+    "id": 1733,
+    "nome": "Rafael Portugal: Stand-up",
+    "iso": "2027-03-05T21:00:00-03:00"
+   },
+   "eventoIds": [
+    1733
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=rafael-portugal"
+  },
+  {
+   "id": "sexteto-noite-densa",
+   "nome": "Sexteto Noite Densa",
+   "aliases": [
+    "Noite Densa"
+   ],
+   "busca": "sexteto noite densa noite densa",
+   "generos": [
+    "jazz-blues"
+   ],
+   "generoRotulos": [
+    "Jazz e blues"
+   ],
+   "generoRotulo": "Jazz e blues",
+   "generoOrigem": "Jazz e blues",
+   "cidade": "Belo Horizonte",
+   "cidades": [
+    "Belo Horizonte"
+   ],
+   "lugar": "br-mg-belo-horizonte",
+   "lugares": [
+    "br-mg-belo-horizonte"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-mpb-sexteto-noite-densa.png",
+   "eventos": 1,
+   "eventosNoCatalogo": 1,
+   "proximo": {
+    "id": 125,
+    "nome": "Festival de Jazz e Blues da Serra",
+    "iso": "2027-03-20T16:00:00-03:00"
+   },
+   "eventoIds": [
+    125
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=sexteto-noite-densa"
+  },
+  {
+   "id": "teo-costa-del-sol",
+   "nome": "Teo Costa del Sol",
+   "aliases": [],
+   "busca": "teo costa del sol",
+   "generos": [
+    "pop"
+   ],
+   "generoRotulos": [
+    "Pop"
+   ],
+   "generoRotulo": "Pop",
+   "generoOrigem": "Pop",
+   "cidade": "Madri",
+   "cidades": [
+    "Madri"
+   ],
+   "lugar": "es-madri-madri",
+   "lugares": [
+    "es-madri-madri"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-pop-teo-costa-del-sol.png",
+   "eventos": 1,
+   "eventosNoCatalogo": 1,
+   "proximo": {
+    "id": 1808,
+    "nome": "Noche Latina Madri",
+    "iso": "2027-02-20T22:00:00+01:00"
+   },
+   "eventoIds": [
+    1808
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=teo-costa-del-sol"
+  },
+  {
+   "id": "thiago-e-leandro-brandao",
+   "nome": "Thiago & Leandro Brandão",
+   "aliases": [
+    "Thiago",
+    "Leandro Brandão"
+   ],
+   "busca": "thiago leandro brandao thiago leandro brandao",
+   "generos": [
+    "sertanejo"
+   ],
+   "generoRotulos": [
+    "Sertanejo"
+   ],
+   "generoRotulo": "Sertanejo",
+   "generoOrigem": "Sertanejo",
+   "cidade": "Belo Horizonte",
+   "cidades": [
+    "Belo Horizonte"
+   ],
+   "lugar": "br-mg-belo-horizonte",
+   "lugares": [
+    "br-mg-belo-horizonte"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-samba-thiago-leandro-brandao.png",
+   "eventos": 1,
+   "eventosNoCatalogo": 1,
+   "proximo": {
+    "id": 111,
+    "nome": "Sertanejo Universitário Open Bar",
+    "iso": "2026-12-05T22:00:00-03:00"
+   },
+   "eventoIds": [
+    111
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=thiago-e-leandro-brandao"
+  },
+  {
+   "id": "tiao-e-nando",
+   "nome": "Tião & Nando",
+   "aliases": [
+    "Tião",
+    "Nando"
+   ],
+   "busca": "tiao nando tiao nando",
+   "generos": [
+    "sertanejo"
+   ],
+   "generoRotulos": [
+    "Sertanejo"
+   ],
+   "generoRotulo": "Sertanejo",
+   "generoOrigem": "Sertanejo",
+   "cidade": "Ribeirão Preto",
+   "cidades": [
+    "Ribeirão Preto"
+   ],
+   "lugar": "br-sp-ribeirao-preto",
+   "lugares": [
+    "br-sp-ribeirao-preto"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-samba-tiao-nando.png",
+   "eventos": 1,
+   "eventosNoCatalogo": 1,
+   "proximo": {
+    "id": 110,
+    "nome": "Rodeio Cerrado 2027",
+    "iso": "2027-04-24T20:00:00-03:00"
+   },
+   "eventoIds": [
+    110
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=tiao-e-nando"
+  },
+  {
+   "id": "trupe-pe-de-vento",
+   "nome": "Trupe Pé de Vento",
+   "aliases": [],
+   "busca": "trupe pe de vento",
+   "generos": [],
+   "generoRotulos": [],
+   "generoRotulo": "",
+   "generoOrigem": "Circo",
+   "cidade": "Porto Alegre",
+   "cidades": [
+    "Porto Alegre"
+   ],
+   "lugar": "br-rs-porto-alegre",
+   "lugares": [
+    "br-rs-porto-alegre"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-pop-trupe-pe-de-vento.png",
+   "eventos": 1,
+   "eventosNoCatalogo": 1,
+   "proximo": {
+    "id": 39,
+    "nome": "O Circo das Nuvens",
+    "iso": "2027-05-08T11:00:00-03:00"
+   },
+   "eventoIds": [
+    39
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=trupe-pe-de-vento"
+  },
+  {
+   "id": "vintage-culture",
+   "nome": "Vintage Culture",
+   "aliases": [
+    "Vintage"
+   ],
+   "busca": "vintage culture vintage",
+   "generos": [
+    "eletronica"
+   ],
+   "generoRotulos": [
+    "Eletrônica"
+   ],
+   "generoRotulo": "Eletrônica",
+   "generoOrigem": "Eletrônica",
+   "cidade": "Campinas",
+   "cidades": [
+    "Campinas"
+   ],
+   "lugar": "br-sp-campinas",
+   "lugares": [
+    "br-sp-campinas"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-eletronica-vintage-culture.png",
+   "eventos": 1,
+   "eventosNoCatalogo": 1,
+   "proximo": {
+    "id": 1715,
+    "nome": "Calourada Unicamp 2027",
+    "iso": "2027-03-06T23:00:00-03:00"
+   },
+   "eventoIds": [
+    1715
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=vintage-culture"
+  },
+  {
+   "id": "vitor-fernandes",
+   "nome": "Vitor Fernandes",
+   "aliases": [
+    "Vitor"
+   ],
+   "busca": "vitor fernandes vitor",
+   "generos": [
+    "forro"
+   ],
+   "generoRotulos": [
+    "Forró"
+   ],
+   "generoRotulo": "Forró",
+   "generoOrigem": "Forró",
+   "cidade": "Recife",
+   "cidades": [
+    "Recife"
+   ],
+   "lugar": "br-pe-recife",
+   "lugares": [
+    "br-pe-recife"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-samba-vitor-fernandes.png",
+   "eventos": 1,
+   "eventosNoCatalogo": 1,
+   "proximo": {
+    "id": 1712,
+    "nome": "Chopada da Federal de Pernambuco",
+    "iso": "2027-04-03T22:00:00-03:00"
+   },
+   "eventoIds": [
+    1712
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=vitor-fernandes"
+  },
+  {
+   "id": "vitoria-beira-mar",
+   "nome": "Vitória Beira-Mar",
+   "aliases": [
+    "Vitória"
+   ],
+   "busca": "vitoria beira mar vitoria",
+   "generos": [
+    "mpb"
+   ],
+   "generoRotulos": [
+    "MPB"
+   ],
+   "generoRotulo": "MPB",
+   "generoOrigem": "MPB",
+   "cidade": "Madri",
+   "cidades": [
+    "Madri"
+   ],
+   "lugar": "es-madri-madri",
+   "lugares": [
+    "es-madri-madri"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-mpb-vitoria-beira-mar.png",
+   "eventos": 1,
+   "eventosNoCatalogo": 1,
+   "proximo": {
+    "id": 1807,
+    "nome": "MPB em Madri",
+    "iso": "2026-11-27T21:00:00+01:00"
+   },
+   "eventoIds": [
+    1807
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=vitoria-beira-mar"
+  },
+  {
+   "id": "wesley-safadao",
+   "nome": "Wesley Safadão",
+   "aliases": [
+    "Wesley"
+   ],
+   "busca": "wesley safadao wesley",
+   "generos": [
+    "forro"
+   ],
+   "generoRotulos": [
+    "Forró"
+   ],
+   "generoRotulo": "Forró",
+   "generoOrigem": "Forró",
+   "cidade": "Fortaleza",
+   "cidades": [
+    "Fortaleza"
+   ],
+   "lugar": "br-ce-fortaleza",
+   "lugares": [
+    "br-ce-fortaleza"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-samba-wesley-safadao.png",
+   "eventos": 1,
+   "eventosNoCatalogo": 1,
+   "proximo": {
+    "id": 1713,
+    "nome": "Baile da Federal do Ceará",
+    "iso": "2027-04-24T22:00:00-03:00"
+   },
+   "eventoIds": [
+    1713
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=wesley-safadao"
+  },
+  {
+   "id": "ze-felipe",
+   "nome": "Zé Felipe",
+   "aliases": [],
+   "busca": "ze felipe",
+   "generos": [
+    "sertanejo"
+   ],
+   "generoRotulos": [
+    "Sertanejo"
+   ],
+   "generoRotulo": "Sertanejo",
+   "generoOrigem": "Sertanejo",
+   "cidade": "Belo Horizonte",
+   "cidades": [
+    "Belo Horizonte"
+   ],
+   "lugar": "br-mg-belo-horizonte",
+   "lugares": [
+    "br-mg-belo-horizonte"
+   ],
+   "foto": null,
+   "fotoFonte": null,
+   "avatar": "./cymatics/art-samba-ze-felipe.png",
+   "eventos": 1,
+   "eventosNoCatalogo": 1,
+   "proximo": {
+    "id": 1717,
+    "nome": "Arraiá das Atléticas de BH",
+    "iso": "2027-06-19T20:00:00-03:00"
+   },
+   "eventoIds": [
+    1717
+   ],
+   "emAlta": false,
+   "homeId": null,
+   "origem": "sintetico",
+   "href": "Artista.dc.html",
+   "hrefAlvo": "Artista.dc.html?a=ze-felipe"
+  }
+ ]
+}

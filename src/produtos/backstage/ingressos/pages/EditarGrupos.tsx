@@ -1,13 +1,13 @@
 import { useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router";
-import { ChevronDown, ChevronLeft, Copy01, InfoCircle, Plus, Trash01, XClose } from "@untitledui/icons";
+import { ChevronDown, Copy01, InfoCircle, Plus, Trash01, XClose } from "@untitledui/icons";
 import { AnimatePresence, motion } from "motion/react";
 import { Button } from "@/components/base/buttons/button";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
 import { Checkbox } from "@/components/base/checkbox/checkbox";
 import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
-import { TITULO_PAGINA } from "@/produtos/backstage/components/titulo-pagina";
+import { CabecalhoDaPagina } from "../../components/cabecalho-da-pagina";
 
 interface GrupoRow {
     id: string;
@@ -154,23 +154,15 @@ export function EditarGrupos() {
     return (
         <BackstageLayout activeSection="itens" activeItem="catalogo-ingressos">
             <div className="flex min-w-0 flex-1 flex-col">
-                {/* Header */}
-                <header className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                        <button
-                            type="button"
-                            aria-label="Voltar"
-                            onClick={() => navigate("/backstage/catalogo/ingressos")}
-                            className="flex size-9 items-center justify-center rounded-lg text-fg-secondary ring-1 ring-border-secondary transition duration-100 ease-linear hover:bg-secondary"
-                        >
-                            <ChevronLeft className="size-5" />
-                        </button>
-                        <h1 className={TITULO_PAGINA}>Editar grupos</h1>
-                    </div>
-                    <Button size="md" color="primary">
-                        Salvar alterações
-                    </Button>
-                </header>
+                <CabecalhoDaPagina
+                    voltar={{ rotulo: "Ingressos", onClick: () => navigate("/backstage/catalogo/ingressos") }}
+                    titulo="Editar grupos"
+                    acoes={
+                        <Button size="md" color="primary">
+                            Salvar alterações
+                        </Button>
+                    }
+                />
 
                 {/* Sessões */}
                 <div className="mt-8 flex flex-col gap-6">

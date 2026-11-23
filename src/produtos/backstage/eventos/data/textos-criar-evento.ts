@@ -27,6 +27,21 @@ const PT_BR = {
     localECidade: "{local}, {cidade}",
     buscando: "Buscando…",
     nenhumLocal: "Nenhum local encontrado",
+    /** Troca do tipo na criação (EVT-163): o que o tipo novo pede, o que fica guardado do anterior e o que continua. */
+    trocaDeTipo: {
+        pede: {
+            futebol: "Futebol pede os times da partida.",
+            show: "Entretenimento pede a categoria; as tags são opcionais.",
+            esportivo: "Evento esportivo pede a modalidade, e as sessões viram largadas.",
+        },
+        guarda: {
+            futebol: "Os times ficam guardados se você voltar para Futebol.",
+            show: "A categoria e as tags ficam guardadas se você voltar para Entretenimento.",
+            esportivo: "A modalidade fica guardada se você voltar para Evento esportivo.",
+        },
+        continua: "Nome, datas, local, descrição e banners continuam.",
+        soNaCriacao: "O tipo se escolhe na criação e não muda depois.",
+    },
     /** Vocabulário por tipo: frases inteiras, porque gênero e artigo mudam com a palavra (Sessão, Largada). */
     porTipo: {
         evento: {

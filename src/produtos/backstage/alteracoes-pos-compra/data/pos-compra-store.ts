@@ -1,5 +1,20 @@
 import { useSyncExternalStore } from "react";
-import { assinarBanco, lerColecao, loteAtual, saldoDoLote, transferirIngresso, vendidosPorLote, type Pedido as PedidoBanco } from "@/plataforma";
+import {
+    assinarBanco,
+    editarFormularioDoIngresso,
+    lerColecao,
+    loteAtual,
+    registrarAlteracaoNoPedido,
+    saldoDoLote,
+    transferirIngresso,
+    trocarItemDoPedido,
+    vendidosPorLote,
+    type AlteracaoDoPedido,
+    type IngressoEmitido,
+    type Pedido as PedidoBanco,
+    type Pergunta as PerguntaBanco,
+} from "@/plataforma";
+import { lerMembroLogado, nomeDoMembro } from "../../components/membros-store";
 import FOTO_CAMISETA from "../../../../assets/products/camisa_oficial/1.webp";
 import FOTO_KIT from "../../../../assets/products/kit_oficial/1.png";
 import FOTO_COPO from "../../../../assets/products/copo_oficial/1.png";
@@ -38,9 +53,10 @@ export const PRAZO_REAL_LABEL = "15 minutos";
 /** Prazo acelerado usado na demonstração (em segundos). */
 export const PRAZO_DEMO_SEGUNDOS = 60;
 /** Antecedência mínima para trocar para uma sessão. */
-/** Quem está operando o Backstage nesta sessão. Sem autenticação no protótipo, é um nome fixo,
- *  mas toda ação grava um autor real: "Operador do backoffice" não responde "quem fez isso?". */
-export const OPERADOR_ATUAL = "Renata Lopes";
+/** Quem está operando o Backstage: o membro logado (sem login no protótipo, o primeiro administrador
+ *  da organização em contexto, MEM-67). Toda ação grava um autor real: "Operador do backoffice" não
+ *  responde "quem fez isso?". */
+export const operadorAtual = () => nomeDoMembro(lerMembroLogado()) || "Operador do Backstage";
 
 /* ------------------------------------------------------------------ */
 /*  Tipos                                                              */
@@ -142,6 +158,8 @@ export interface CatalogoItem {
     /** O que o combo empacota: ids dos itens do próprio catálogo, na ordem configurada. O combo
      *  não é a unidade atômica — ele agrupa ingressos (cada um com grupo e lote) e produtos. */
     itensCombo?: string[];
+    /** Item do banco: onde ele fica no catálogo do evento, para a troca gravar de volta. */
+    refBanco?: { sessaoId: string; grupoId: string; ingressoId: string };
     /** Controle de nominalidade: uma unidade por documento/conta. Sem valor explícito, segue o padrão do tipo
         (ingresso é nominal, produto e combo não são). */
     nominal?: boolean;
@@ -201,7 +219,9 @@ export interface Vocabulario {
 
 export const VOCABULARIO: Record<TipoEvento, Vocabulario> = {
     entretenimento: { grupo: "Grupo", ingresso: "Ingresso", ingressos: "Ingressos", formulario: "formulário", formularios: "formulários", oFormulario: "o formulário", doFormulario: "do formulário" },
-    esporte: { grupo: "Modalidade", ingresso: "Categoria", ingressos: "Categorias", formulario: "ficha de inscrição", formularios: "fichas de inscrição", oFormulario: "a ficha de inscrição", doFormulario: "da ficha de inscrição" },
+    /* "Inscrição" é o nome decidido para o item vendido em evento esportivo (22/11/2026, PED-103):
+       antes era "Categoria", que no Backstage já é a categoria do evento. */
+    esporte: { grupo: "Modalidade", ingresso: "Inscrição", ingressos: "Inscrições", formulario: "ficha de inscrição", formularios: "fichas de inscrição", oFormulario: "a ficha de inscrição", doFormulario: "da ficha de inscrição" },
 };
 
 export interface EventoOrg {
@@ -244,9 +264,11 @@ export const motivoValido = (motivo: Motivo) =>
 
 export const descreverMotivo = (motivo?: Motivo) =>
     motivo
-        ? [motivo.categoria && CATEGORIA_MOTIVO_LABEL[motivo.categoria], motivo.nota.trim(), motivo.chamado.trim() && `Chamado ${motivo.chamado.trim()}`]
+        ? /* Frases, não "·" (T9): "Pedido do cliente. Trocou de tamanho. Chamado 98231." */
+          [motivo.categoria && CATEGORIA_MOTIVO_LABEL[motivo.categoria], motivo.nota.trim(), motivo.chamado.trim() && `Chamado ${motivo.chamado.trim()}`]
               .filter(Boolean)
-              .join(" · ")
+              .map((parte) => `${String(parte).replace(/[.\s]+$/, "")}.`)
+              .join(" ")
         : "";
 
 export interface EntradaHistorico {
@@ -345,6 +367,8 @@ export interface Pedido {
     meioPagamento: string;
     /** Proteção contratada na compra: cancelamento e remarcação. Nem todo pedido tem. */
     protecao?: number;
+    /** Juros do parcelamento cobrados no checkout (pedido do banco). Entram no total pago. */
+    juros?: number;
     cupom?: string;
     criadoEmLabel: string;
     atualizadoEmLabel: string;
@@ -361,6 +385,16 @@ export interface Pedido {
 /*  Dados fictícios                                                    */
 /* ------------------------------------------------------------------ */
 
+/* Um formato de data só em toda a feature (PED-104): "26 nov 2026" e, com hora, "26 nov 2026, 20:00".
+   Declarada como função para valer antes das sessões semeadas logo abaixo. */
+function dataCurta(d: Date) {
+    const meses = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+    return `${String(d.getDate()).padStart(2, "0")} ${meses[d.getMonth()]} ${d.getFullYear()}`;
+}
+function horaCurta(d: Date) {
+    return d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+}
+
 /* Datas relativas ao dia de hoje para o protótipo nunca ficar com sessões vencidas por acidente. */
 const criarSessao = (id: string, eventoId: string, dias: number, hora: number, minuto: number): Sessao => {
     const inicio = new Date();
@@ -370,8 +404,8 @@ const criarSessao = (id: string, eventoId: string, dias: number, hora: number, m
         id,
         eventoId,
         inicio: inicio.getTime(),
-        dataLabel: inicio.toLocaleDateString("pt-BR", { weekday: "short", day: "2-digit", month: "short" }).replace(".", ""),
-        horaLabel: inicio.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
+        dataLabel: dataCurta(inicio),
+        horaLabel: horaCurta(inicio),
     };
 };
 
@@ -1471,10 +1505,11 @@ export const totaisDoPedido = (pedido: Pedido) => {
     const final = arredondar(pedido.itens.reduce((soma, l) => soma + l.valorPago, 0));
     const taxaServico = arredondar(pedido.itens.reduce((soma, l) => soma + taxaPagaNaLinha(l), 0));
     const protecao = pedido.protecao ?? 0;
+    const juros = pedido.juros ?? 0;
     const original = pedido.cupom
         ? arredondar(pedido.itens.reduce((soma, l) => soma + Math.max(l.valorPago, getItem(l.itemId)?.precoIntegral ?? l.valorPago), 0))
         : final;
-    return { final, original, desconto: arredondar(original - final), taxaServico, protecao, pago: arredondar(final + taxaServico + protecao) };
+    return { final, original, desconto: arredondar(original - final), taxaServico, protecao, juros, pago: arredondar(final + taxaServico + protecao + juros) };
 };
 
 export const formatarMoeda = (valor: number) =>
@@ -1487,10 +1522,8 @@ const MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "o
 /* Mesmo formato das datas semeadas ("28 ago 2026, 16:02"): o histórico não pode misturar dois
    jeitos de escrever a mesma coisa. */
 const dataLabel = (d: Date) => `${String(d.getDate()).padStart(2, "0")} ${MESES[d.getMonth()]} ${d.getFullYear()}`;
-const agoraLabel = () => {
-    const d = new Date();
-    return `${dataLabel(d)}, ${d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`;
-};
+const dataHoraLabel = (d: Date) => `${dataLabel(d)}, ${horaCurta(d)}`;
+const agoraLabel = () => dataHoraLabel(new Date());
 
 const novoId = (prefixo: string) => `${prefixo}-${Math.random().toString(36).slice(2, 9)}`;
 
@@ -1577,6 +1610,18 @@ const percentualDoItem = (item?: CatalogoItem) => item?.taxaServicoPercent ?? TA
 const taxaServicoSobre = (valor: number, item?: CatalogoItem) => arredondar(valor * percentualDoItem(item));
 /** Taxa de serviço paga na linha. Sem registro, deriva do que foi efetivamente pago. */
 const taxaPagaNaLinha = (linha: PedidoItem) => linha.taxaServicoPaga ?? taxaServicoSobre(linha.valorPago, getItem(linha.itemId));
+
+/**
+ * PED-100: a compra no histórico vale o que foi cobrado (itens, taxa de serviço, proteção e juros),
+ * o mesmo "Total pago" da lista e do cartão do pedido. As sementes guardavam só a soma dos itens,
+ * e o mesmo pedido aparecia com três valores na tela (lista, cartão e histórico).
+ */
+const comValorDaCompra = (pedido: Pedido): Pedido => {
+    const { pago } = totaisDoPedido(pedido);
+    return { ...pedido, historico: pedido.historico.map((h) => (h.marco === "compra" ? { ...h, valor: pago } : h)) };
+};
+/* Depois de `taxaPagaNaLinha`: o total lê o catálogo do estado, que só existe a partir daqui. */
+estado = { ...estado, pedidos: estado.pedidos.map(comValorDaCompra) };
 
 export interface ParTroca {
     linha: PedidoItem;
@@ -2022,7 +2067,7 @@ export const criarSolicitacao = ({ pedidoId, tipo, resumo, detalhes, mudancas, l
             aplicar,
             reservas,
             motivo,
-            operador: OPERADOR_ATUAL,
+            operador: operadorAtual(),
         };
         devolverEstoqueDasOrigens(pedido, semCobranca);
         atualizarPedido(pedidoId, (p) =>
@@ -2034,7 +2079,7 @@ export const criarSolicitacao = ({ pedidoId, tipo, resumo, detalhes, mudancas, l
                         {
                             id: novoId("h"),
                             dataLabel: agoraLabel(),
-                            responsavel: OPERADOR_ATUAL,
+                            responsavel: operadorAtual(),
                             titulo: `${TIPO_OPERACAO_CURTO[tipo]} sem cobrança`,
                             descricao: "Sem valor a pagar: aplicada na hora, sem link e sem prazo.",
                             detalhes,
@@ -2076,7 +2121,7 @@ export const criarSolicitacao = ({ pedidoId, tipo, resumo, detalhes, mudancas, l
                     aplicar,
                     reservas,
                     motivo,
-                    operador: OPERADOR_ATUAL,
+                    operador: operadorAtual(),
                 },
             ],
             historico: [
@@ -2084,7 +2129,7 @@ export const criarSolicitacao = ({ pedidoId, tipo, resumo, detalhes, mudancas, l
                 {
                     id: novoId("h"),
                     dataLabel: agoraLabel(),
-                    responsavel: OPERADOR_ATUAL,
+                    responsavel: operadorAtual(),
                     titulo: `${TIPO_OPERACAO_CURTO[tipo]} solicitada`,
                     descricao: `Link enviado por ${canalLabel(canalEnvio)} para ${destinatarioEnvio}.`,
                     detalhes,
@@ -2115,7 +2160,7 @@ export const reenviarLink = (pedidoId: string, solicitacaoId: string, canal: Can
                 {
                     id: novoId("h"),
                     dataLabel: agoraLabel(),
-                    responsavel: OPERADOR_ATUAL,
+                    responsavel: operadorAtual(),
                     titulo: "Link reenviado",
                     descricao: `Por ${canalLabel(canal)} para ${destinatario}.`,
                     valor: atual.total,
@@ -2133,7 +2178,7 @@ export const ultimoEnvio = (pedido: Pedido, solicitacaoId: string) =>
 
 /** Aplica o que a solicitação prometeu e tira ela da lista de operações abertas. */
 const aplicarSolicitacao = (p: Pedido, solicitacao: Solicitacao): Pedido => {
-    gravarTransferencias(p, solicitacao);
+    gravarNoBanco(p, solicitacao);
     const { aplicar, tipo, resumo, total, detalhes, mudancas } = solicitacao;
     const trocasPorLinha = new Map((aplicar.trocas ?? []).map((t) => [t.pedidoItemId, t.novoItemId]));
     const quando = agoraLabel();
@@ -2224,7 +2269,7 @@ export const registrarPagamento = (pedidoId: string, solicitacaoId: string, refe
                 {
                     id: novoId("h"),
                     dataLabel: agoraLabel(),
-                    responsavel: OPERADOR_ATUAL,
+                    responsavel: operadorAtual(),
                     titulo: "Pagamento registrado manualmente",
                     descricao: `Referência informada: ${referenciaPagamento}.`,
                     valor: atual.total,
@@ -2332,7 +2377,7 @@ export const cancelarSolicitacao = (pedidoId: string, solicitacaoId: string) =>
     encerrarSolicitacao(pedidoId, solicitacaoId, {
         titulo: (s) => `${TIPO_OPERACAO_CURTO[s.tipo]} cancelada`,
         descricao: "Cancelada antes do pagamento. Reserva liberada e nada foi cobrado.",
-        responsavel: OPERADOR_ATUAL,
+        responsavel: operadorAtual(),
         marco: "cancelada",
     });
 
@@ -2345,13 +2390,23 @@ export const retomarPedido = (pedidoId: string) =>
 /*  Pedidos do banco unificado (src/plataforma)                        */
 /*                                                                     */
 /*  Todo pedido pago no site, no link, na bilheteria ou em cortesia    */
-/*  entra aqui com o evento, as sessões, o catálogo e as contas reais. */
-/*  Pedido que já está na tela não é sobrescrito: alterações abertas   */
-/*  vivem em memória. Transferência de titularidade aplicada grava no  */
-/*  banco (a carteira muda); troca de item e respostas ainda não.      */
+/*  entra aqui com o evento, as sessões, o catálogo, o questionário e  */
+/*  as contas reais. Pedido que já está na tela não é sobrescrito:     */
+/*  alterações abertas vivem em memória. Alteração aplicada grava no   */
+/*  banco: transferência (titular), troca de item (o ingresso muda de  */
+/*  tipo) e formulário (respostas do ingresso), com autor no pedido.   */
 /* ------------------------------------------------------------------ */
 
-const doBanco = { eventos: new Set<string>(), sessoes: new Set<string>(), contas: new Set<string>(), itens: new Set<string>() };
+const doBanco = {
+    eventos: new Set<string>(),
+    sessoes: new Set<string>(),
+    contas: new Set<string>(),
+    itens: new Set<string>(),
+    perguntas: new Set<string>(),
+    formularios: new Set<string>(),
+};
+/** Como cada pedido do banco estava na última montagem (pedido + ingressos dele). */
+const assinaturas = new Map<string, string>();
 
 const CANAL_DO_BANCO: Record<PedidoBanco["canal"], Pedido["canal"]> = { site: "Online", link: "Online", app: "Online", bilheteria: "Bilheteria", cortesia: "Cortesia" };
 const METODO_DO_BANCO: Record<NonNullable<PedidoBanco["pagamento"]>["metodo"], string> = {
@@ -2369,6 +2424,48 @@ const contaDoBanco = (nome: string, email: string): Conta => ({ id: contaId(emai
 /** Pedido do banco: ids no formato `ped_…`. Só eles gravam alteração de volta. */
 export const ehPedidoDoBanco = (id: string) => id.startsWith("ped_");
 
+/** Pergunta do questionário do evento (QST) no formato do formulário daqui. Múltipla escolha vira texto. */
+const perguntaDoBanco = (q: PerguntaBanco): Pergunta => ({
+    id: q.id,
+    label: q.titulo,
+    tipo: q.tipo === "opcao-unica" ? "opcao" : q.tipo === "anexo" ? "anexo" : "texto",
+    opcoes: q.tipo === "opcao-unica" ? (q.opcoes ?? []).map((o) => ({ valor: o.rotulo, ...(typeof o.estoque === "number" ? { estoque: o.estoque } : {}) })) : [],
+    ...(q.tipo === "texto-curto" ? { limiteCaracteres: 120 } : {}),
+    ...(q.tipo === "multipla" ? { ajuda: "Escreva as opções separadas por vírgula." } : {}),
+});
+
+const TITULO_DA_ALTERACAO: Record<AlteracaoDoPedido["tipo"], string> = {
+    "troca-item": "Troca de item aplicada",
+    formulario: "Formulário editado",
+    transferencia: "Transferência aplicada",
+};
+const TIPO_DA_ALTERACAO: Record<AlteracaoDoPedido["tipo"], TipoOperacao> = {
+    "troca-item": "troca-item",
+    formulario: "alterar-respostas",
+    transferencia: "troca-titularidade",
+};
+const rotuloDeIso = (iso: string) => {
+    const d = new Date(iso);
+    return `${dataLabel(d)}, ${d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`;
+};
+
+/** Alteração gravada no pedido do banco, como entrada do histórico (PED-19). */
+const entradaDaAlteracao = (a: AlteracaoDoPedido): EntradaHistorico => ({
+    id: a.id,
+    dataLabel: rotuloDeIso(a.em),
+    responsavel: a.autor,
+    titulo: TITULO_DA_ALTERACAO[a.tipo],
+    descricao: a.descricao,
+    detalhes: a.motivo ? [a.motivo] : undefined,
+    mudancas: a.mudancas,
+    valor: a.valor,
+    estado: "concluido",
+    marco: "aplicada",
+    solicitacaoId: a.id,
+    tipo: TIPO_DA_ALTERACAO[a.tipo],
+    linhaIds: a.ingressoIds,
+});
+
 function espelharBanco() {
     const pagos = lerColecao("pedidos").filter((p) => p.status !== "aguardando-pagamento");
     if (pagos.length === 0 && doBanco.eventos.size === 0) return;
@@ -2384,25 +2481,42 @@ function espelharBanco() {
     tirar(EVENTOS, doBanco.eventos);
     tirar(SESSOES, doBanco.sessoes);
     tirar(CONTAS_EXTRA, doBanco.contas);
+    tirar(FORMULARIOS, doBanco.formularios);
 
     const catalogo: CatalogoItem[] = [];
+    const perguntas: Pergunta[] = [];
     for (const ev of eventos) {
         const primeira = ev.sessoes.map((s) => s.inicio).sort()[0] ?? ev.data;
-        EVENTOS.push({ id: ev.id, nome: ev.nome, data: new Date(primeira).toLocaleDateString("pt-BR", { weekday: "short", day: "2-digit", month: "short" }).replace(".", ""), capa: ev.capa });
+        EVENTOS.push({
+            id: ev.id,
+            nome: ev.nome,
+            data: new Date(primeira).toLocaleDateString("pt-BR", { weekday: "short", day: "2-digit", month: "short" }).replace(".", ""),
+            capa: ev.capa,
+            ...(ev.tipo === "esportivo" ? { tipo: "esporte" as const } : {}),
+        });
         doBanco.eventos.add(ev.id);
+        // Questionário do evento: cada ingresso recebe as perguntas que o marcaram (QST).
+        const doEvento = ev.perguntas ?? [];
+        perguntas.push(...doEvento.map(perguntaDoBanco));
         for (const s of ev.sessoes) {
             const inicio = new Date(s.inicio);
             SESSOES.push({
                 id: s.id,
                 eventoId: ev.id,
                 inicio: inicio.getTime(),
-                dataLabel: inicio.toLocaleDateString("pt-BR", { weekday: "short", day: "2-digit", month: "short" }).replace(".", ""),
-                horaLabel: inicio.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
+                dataLabel: dataCurta(inicio),
+                horaLabel: horaCurta(inicio),
             });
             doBanco.sessoes.add(s.id);
             for (const g of s.grupos)
                 for (const t of g.ingressos) {
                     const lote = loteAtual(t, vendidos) ?? t.lotes[t.lotes.length - 1];
+                    const perguntaIds = doEvento.filter((q) => q.itens.some((i) => i.tipo === "ingresso" && i.id === t.id)).map((q) => q.id);
+                    const formularioId = perguntaIds.length ? `form-${t.id}` : undefined;
+                    if (formularioId) {
+                        FORMULARIOS.push({ id: formularioId, nome: "Questionário", perguntaIds });
+                        doBanco.formularios.add(formularioId);
+                    }
                     catalogo.push({
                         id: t.id,
                         tipo: "ingresso",
@@ -2416,6 +2530,8 @@ function espelharBanco() {
                         grupo: g.nome,
                         lote: lote?.nome,
                         descricao: t.descricao,
+                        formularioId,
+                        refBanco: { sessaoId: s.id, grupoId: g.id, ingressoId: t.id },
                     });
                 }
         }
@@ -2431,68 +2547,135 @@ function espelharBanco() {
         doBanco.contas.add(c.id);
     }
 
-    setEstado((atual) => {
-        const existentes = new Set(atual.pedidos.map((p) => p.id));
-        const novos: Pedido[] = pagos
-            .filter((p) => !existentes.has(p.id))
-            .map((p) => {
-                const pagoEm = new Date(p.pagamento?.pagoEm ?? p.criadoEm);
-                const linhas: PedidoItem[] = ingressos
-                    .filter((i) => i.pedidoId === p.id && i.status !== "transferido")
-                    .map((i) => {
-                        const item = p.itens.find((x) => x.loteId === i.loteId);
-                        const titular = contaId(i.titular.email);
-                        return {
-                            id: i.id,
-                            itemId: i.ingressoId,
-                            titularId: titular === contaId(p.comprador.email) ? undefined : titular,
-                            valorPago: item?.face ?? 0,
-                            taxaServicoPaga: item?.taxa ?? 0,
-                            respostas: {},
-                        };
-                    });
-                const status: StatusPedido = "ativo";
+    const porPedido = new Map<string, IngressoEmitido[]>();
+    for (const i of ingressos) porPedido.set(i.pedidoId, [...(porPedido.get(i.pedidoId) ?? []), i]);
+    const montar = (p: PedidoBanco, doPedido: IngressoEmitido[]): Pedido => {
+        const pagoEm = new Date(p.pagamento?.pagoEm ?? p.criadoEm);
+        const linhas: PedidoItem[] = doPedido
+            .filter((i) => i.status !== "transferido")
+            .map((i) => {
+                const item = p.itens.find((x) => x.loteId === i.loteId && x.ingressoId === i.ingressoId) ?? p.itens.find((x) => x.loteId === i.loteId);
+                const titular = contaId(i.titular.email);
                 return {
-                    id: p.id,
-                    eventoId: p.eventoId,
-                    compradorId: contaId(p.comprador.email),
-                    itens: linhas,
-                    dataCompraLabel: dataLabel(pagoEm),
-                    canal: CANAL_DO_BANCO[p.canal],
-                    meioPagamento: p.pagamento ? METODO_DO_BANCO[p.pagamento.metodo] : "—",
-                    protecao: p.adicionais?.protecao || undefined,
-                    criadoEmLabel: dataLabel(new Date(p.criadoEm)),
-                    atualizadoEmLabel: dataLabel(new Date(p.atualizadoEm)),
-                    status,
-                    baseStatus: status,
-                    solicitacoes: [],
-                    historico: [
-                        {
-                            id: `h-${p.id}`,
-                            dataLabel: dataLabel(pagoEm),
-                            responsavel: p.comprador.nome,
-                            titulo: "Compra realizada",
-                            descricao: `${linhas.length} ${linhas.length === 1 ? "ingresso emitido" : "ingressos emitidos"} · ${CANAL_DO_BANCO[p.canal]}`,
-                            valor: p.total,
-                            estado: "concluido" as const,
-                            marco: "compra" as const,
-                        },
-                    ],
+                    id: i.id,
+                    itemId: i.ingressoId,
+                    titularId: titular === contaId(p.comprador.email) ? undefined : titular,
+                    valorPago: item?.face ?? 0,
+                    taxaServicoPaga: item?.taxa ?? 0,
+                    respostas: i.respostas ?? {},
                 };
             });
+        const historico: EntradaHistorico[] = [
+            {
+                id: `h-${p.id}`,
+                dataLabel: dataHoraLabel(pagoEm),
+                responsavel: p.comprador.nome,
+                titulo: "Compra realizada",
+                descricao: `${linhas.length} ${linhas.length === 1 ? "ingresso emitido" : "ingressos emitidos"} · ${CANAL_DO_BANCO[p.canal]}`,
+                // Trocado logo abaixo pelo total derivado das linhas (PED-100).
+                valor: p.total,
+                estado: "concluido" as const,
+                marco: "compra" as const,
+            },
+            // Alterações gravadas pelo Backstage, com autor (PED-93).
+            ...(p.alteracoes ?? []).map(entradaDaAlteracao),
+        ];
+        const status: StatusPedido = p.alteracoes?.length ? "alteracao-concluida" : "ativo";
+        return comValorDaCompra({
+            id: p.id,
+            eventoId: p.eventoId,
+            compradorId: contaId(p.comprador.email),
+            itens: linhas,
+            dataCompraLabel: dataLabel(pagoEm),
+            canal: CANAL_DO_BANCO[p.canal],
+            meioPagamento: p.pagamento ? METODO_DO_BANCO[p.pagamento.metodo] : "—",
+            protecao: p.adicionais?.protecao || undefined,
+            juros: p.adicionais?.juros || undefined,
+            cupom: p.cupom?.codigo,
+            criadoEmLabel: dataHoraLabel(new Date(p.criadoEm)),
+            atualizadoEmLabel: dataHoraLabel(new Date(p.atualizadoEm)),
+            status,
+            baseStatus: status,
+            solicitacoes: [],
+            historico,
+        });
+    };
+
+    setEstado((atual) => {
+        /* Pedido do banco já na tela é remontado quando o banco muda (pagamento que emite os ingressos
+           depois do pedido, alteração gravada, transferência), desde que não tenha alteração aberta:
+           a aberta vive só aqui. */
+        const naTela = new Map(atual.pedidos.map((p) => [p.id, p]));
+        const novos: Pedido[] = [];
+        const remontados = new Map<string, Pedido>();
+        for (const p of pagos) {
+            const doPedido = porPedido.get(p.id) ?? [];
+            const assinatura = `${p.atualizadoEm}|${doPedido.map((i) => `${i.id}:${i.status}:${i.atualizadoEm}`).join(",")}`;
+            const atualNaTela = naTela.get(p.id);
+            if (atualNaTela && (atualNaTela.solicitacoes.length > 0 || assinaturas.get(p.id) === assinatura)) continue;
+            assinaturas.set(p.id, assinatura);
+            if (atualNaTela) remontados.set(p.id, montar(p, doPedido));
+            else novos.push(montar(p, doPedido));
+        }
         const outros = atual.catalogo.filter((i) => !doBanco.itens.has(i.id));
         doBanco.itens = new Set(catalogo.map((i) => i.id));
-        return { ...atual, pedidos: [...novos, ...atual.pedidos], catalogo: [...catalogo, ...outros] };
+        const outrasPerguntas = atual.perguntas.filter((q) => !doBanco.perguntas.has(q.id));
+        doBanco.perguntas = new Set(perguntas.map((q) => q.id));
+        return {
+            ...atual,
+            pedidos: [...novos, ...atual.pedidos.map((p) => remontados.get(p.id) ?? p)],
+            catalogo: [...catalogo, ...outros],
+            perguntas: [...perguntas, ...outrasPerguntas],
+        };
     });
 }
 
-/** Transferência aplicada num pedido do banco: muda o titular do ingresso de verdade. */
-function gravarTransferencias(pedido: Pedido, solicitacao: Solicitacao) {
+/**
+ * Linha transferida nesta sessão: a transferência emite um ingresso novo no banco (o antigo fica
+ * "transferido"), mas a linha na tela mantém o id. Guarda o id novo para a próxima alteração gravar
+ * no ingresso certo.
+ */
+const idNoBanco = new Map<string, string>();
+const ingressoDaLinha = (linhaId: string) => idNoBanco.get(linhaId) ?? linhaId;
+
+/** As gravações de um pedido vão em fila: cada uma lê o pedido que a anterior gravou. */
+let filaDoBanco: Promise<unknown> = Promise.resolve();
+
+/**
+ * Alteração aplicada num pedido do banco grava de volta (PED-91, PED-93, PED-94): transferência muda
+ * o titular, troca muda o tipo do ingresso e formulário grava as respostas, sempre com o autor no
+ * pedido. Fora do `setEstado` (a gravação avisa o espelho, que também mexe no estado).
+ */
+function gravarNoBanco(pedido: Pedido, solicitacao: Solicitacao) {
     if (!ehPedidoDoBanco(pedido.id)) return;
-    for (const [linhaId, idDaConta] of Object.entries(solicitacao.aplicar.titularPorLinha ?? {})) {
-        const conta = getConta(idDaConta);
-        if (conta) void transferirIngresso(linhaId, { nome: conta.nome, email: conta.email });
-    }
+    const { aplicar, operador, resumo, mudancas, total, motivo } = solicitacao;
+    const registro = { autor: operador, descricao: resumo, mudancas, valor: total || undefined, motivo: descreverMotivo(motivo) || undefined };
+    const trocadas = new Set((aplicar.trocas ?? []).map((t) => t.pedidoItemId));
+    const tarefa = async () => {
+        const titulares = Object.entries(aplicar.titularPorLinha ?? {});
+        if (titulares.length) {
+            const novos: string[] = [];
+            for (const [linhaId, idDaConta] of titulares) {
+                const conta = getConta(idDaConta);
+                const novo = conta && (await transferirIngresso(ingressoDaLinha(linhaId), { nome: conta.nome, email: conta.email }));
+                if (novo) {
+                    idNoBanco.set(linhaId, novo.id);
+                    novos.push(novo.id);
+                }
+            }
+            if (novos.length) await registrarAlteracaoNoPedido(pedido.id, { ...registro, tipo: "transferencia", ingressoIds: novos });
+        }
+        const trocas = (aplicar.trocas ?? []).flatMap((t) => {
+            const ref = getItem(t.novoItemId)?.refBanco;
+            return ref ? [{ ingressoEmitidoId: ingressoDaLinha(t.pedidoItemId), para: ref, respostas: aplicar.respostasPorItem?.[t.pedidoItemId] }] : [];
+        });
+        if (trocas.length) await trocarItemDoPedido(pedido.id, trocas, registro);
+        for (const [linhaId, respostas] of Object.entries(aplicar.respostasPorItem ?? {})) {
+            if (trocadas.has(linhaId)) continue;
+            await editarFormularioDoIngresso(ingressoDaLinha(linhaId), respostas, solicitacao.tipo === "alterar-respostas" ? registro : { ...registro, descricao: "Respostas do formulário na transferência", mudancas: undefined, valor: undefined });
+        }
+    };
+    filaDoBanco = filaDoBanco.then(() => new Promise((r) => setTimeout(r, 0))).then(tarefa).catch(() => undefined);
 }
 
 if (typeof window !== "undefined") {

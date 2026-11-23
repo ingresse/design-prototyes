@@ -24,7 +24,7 @@ import { BarraDeSalvar, CabecalhoDoItem, CampoPreco, ConfirmarSaida } from "../c
 const LISTA = "/backstage/catalogo/produtos";
 
 const T = {
-    voltar: "Produtos",
+    voltar: "Ingressos e produtos",
     naoEncontrado: "Produto não encontrado",
     naoEncontradoDica: "Ele pode ter sido removido deste evento. Volte para a lista e escolha outro.",
     voltarParaProdutos: "Voltar para Produtos",

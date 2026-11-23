@@ -18,16 +18,24 @@ export function useBiblioteca() {
     const salva = useDoc("organizacoes", orgId || null);
     const biblioteca = useMemo(() => bibliotecaDe(salva, orgId), [salva, orgId]);
 
-    /** Quantos eventos da organização vendem cada produto. */
-    const usos = useMemo(() => {
-        const m = new Map<string, number>();
-        for (const e of atual?.eventos ?? []) for (const p of e.produtos ?? []) m.set(p.produtoId, (m.get(p.produtoId) ?? 0) + 1);
+    /** Em quais eventos da organização cada produto está (POR-07: o bloqueio de excluir nomeia os eventos). */
+    const eventosDoProduto = useMemo(() => {
+        const m = new Map<string, Array<{ id: string; nome: string }>>();
+        for (const e of atual?.eventos ?? [])
+            for (const p of e.produtos ?? []) {
+                const lista = m.get(p.produtoId) ?? [];
+                if (!lista.some((x) => x.id === e.id)) lista.push({ id: e.id, nome: e.nome });
+                m.set(p.produtoId, lista);
+            }
         return m;
     }, [atual]);
+
+    /** Em quantos eventos da organização cada produto está. */
+    const usos = useMemo(() => new Map([...eventosDoProduto].map(([id, lista]) => [id, lista.length])), [eventosDoProduto]);
 
     // Organização que ainda não está gravada (banco antigo) nasce com nome e sigla da que está em contexto.
     const base: Organizacao | undefined = salva ?? (atual ? { id: atual.id, nome: atual.nome, sigla: atual.sigla, criadoEm: atual.criadoEm } : undefined);
     const gravar = (produtos: ProdutoDaOrganizacao[]) => salvarBiblioteca(base, orgId, produtos);
 
-    return { carregando: modo === "carregando" || !atual, organizacao: atual, biblioteca, usos, gravar };
+    return { carregando: modo === "carregando" || !atual, organizacao: atual, biblioteca, usos, eventosDoProduto, gravar };
 }

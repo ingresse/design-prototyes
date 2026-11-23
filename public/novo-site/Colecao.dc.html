@@ -1,0 +1,742 @@
+<!doctype html>
+<html lang="pt-BR" data-pagina="colecao" data-superficie="chao">
+<head>
+<meta charset="utf-8">
+<script src="./ponte-backstage.js" data-ponte-backstage></script>
+<script src="./transicao-evento.js" data-previa-te></script>
+<script data-previa-esportes-cedo>(function () {
+  var root = document.documentElement, qs = new URLSearchParams(location.search), v = null;
+  try {
+    if (qs.get('dados') === 'mock' || qs.get('dados') === 'bff') localStorage.setItem('previa-dados', qs.get('dados'));
+    v = localStorage.getItem('previa-dados') || 'bff'; // padrão no design-prototypes: dados do Backstage (ponte-backstage.js)
+  } catch (e) {}
+  root.setAttribute('data-dados', v === 'bff' ? 'bff' : 'mock');
+  if (v !== 'bff' || !window.fetch) return;
+  var f0 = window.fetch;
+  window.fetch = function (u, o) {
+    var url = typeof u === 'string' ? u : (u && u.url) || '', alvo = null, md;
+    if (/\/api\/eventos(\.json)?(\?|$)/.test(url)) alvo = url.replace(/\/api\/eventos(\.json)?/, '/api/bff/eventos');
+    else if ((md = /(?:^|\/)dados\/((?:busca-artistas|busca-locais|catalogo-indice|sorteio-pool|home-reais|categoria-[a-z0-9-]+)\.json)(\?|$)/.exec(url))) alvo = '/api/bff/dados/' + md[1]; // os índices e as categorias também saem do BFF
+    if (!alvo) return f0.apply(this, arguments);
+    var self = this, args = arguments;
+    return f0.call(this, alvo, o).then(function (r) {
+      if (r.ok) { root.setAttribute('data-dados-ok', ''); return r; }
+      return r.clone().json().catch(function () { return {}; }).then(function (d) { root.setAttribute('data-dados-falha', (d && d.error) || ('HTTP ' + r.status)); return f0.apply(self, args); });
+    }, function () { root.setAttribute('data-dados-falha', 'sem conexão com o servidor local'); return f0.apply(self, args); });
+  };
+})();
+(function () {
+  var root = document.documentElement, qs = new URLSearchParams(location.search), v = null;
+  try {
+    if (qs.get('esportes') === 'on' || qs.get('esportes') === 'off') localStorage.setItem('previa-esportes', qs.get('esportes'));
+    v = localStorage.getItem('previa-esportes');
+  } catch (e) {}
+  var ligado = v === 'on';
+  root.setAttribute('data-esportes', ligado ? 'on' : 'off');
+  var DESCOBERTA = ['home', 'busca', 'categoria', 'artista', 'venue', 'colecao'];
+  if (ligado || DESCOBERTA.indexOf(root.getAttribute('data-pagina')) < 0 || qs.get('escopo') === 'esportes') return;
+  root.setAttribute('data-esportes-ocultar', '');
+  var prova = function (e) { var c = (e && e.cats) || []; return c.indexOf('corridas') >= 0 || (c.indexOf('esportes') >= 0 && c.indexOf('futebol') < 0); };
+  var f0 = window.fetch;
+  if (!f0) return;
+  window.fetch = function (u) {
+    var url = typeof u === 'string' ? u : (u && u.url) || '', p = f0.apply(this, arguments);
+    if (!/\/api\/eventos(\.json)?(\?|$)/.test(url)) return p;
+    return p.then(function (r) {
+      if (!r.ok) return r;
+      return r.clone().json().then(function (d) {
+        if (!d || !d.events) return r;
+        d.events = d.events.filter(function (e) { return !prova(e); });
+        if (d.categories) d.categories = d.categories.filter(function (c) { return c.id !== 'corridas'; });
+        return new Response(JSON.stringify(d), { status: r.status, statusText: r.statusText, headers: { 'Content-Type': 'application/json' } });
+      }).catch(function () { return r; });
+    });
+  };
+})();</script>
+<script data-previa-nav-cedo>(function () {
+  try {
+    var h = document.documentElement;
+    var tema = localStorage.getItem('prototipo-theme');
+    if (tema !== 'dark' && tema !== 'light') tema = window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    if (/\/(Ingressos|Checkout|Pagamento)\.dc\.html$/.test(location.pathname) || (/\/Evento\.dc\.html$/.test(location.pathname) && sessionStorage.getItem('mov:de'))) {
+      // chegada do movimento-compra.js (ele tem o seu portão e a sua entrada): aqui só o fundo da última tela vista, que fecha o quadro
+      // branco do tema escuro entre a saída e a entrada. Sai em movimento-navegacao.js quando o portão dele abre.
+      h.setAttribute('data-mov-dona', '');
+      var bgc = localStorage.getItem('mov:bg:' + tema);
+      if (bgc) {
+        h.style.setProperty('background-color', bgc, 'important');
+        h.setAttribute('data-mov-bgcompra', '');
+        setTimeout(function () { h.removeAttribute('data-mov-bgcompra'); h.style.removeProperty('background-color'); }, 3000);
+      }
+      return;
+    }
+    var j = sessionStorage.getItem('mov:nav');
+    var o = j ? JSON.parse(j) : null;
+    // o registro vale para esta URL (ou para qualquer uma, quando a tela anterior saiu sem clique nosso: Voltar, URL digitada, recarregar)
+    if (!o || o.v !== 1 || Date.now() - o.t > 6000 || (o.para && o.para !== location.pathname)) {
+      o = { v: 1, padrao: 'direta', bg: localStorage.getItem('mov:bg:' + tema) || '' };
+    }
+    h.setAttribute('data-mov-nav', o.padrao || '');
+    h.setAttribute('data-mov-nav-gate', '');
+    var g = document.createElement('style');
+    g.id = 'mov-nav-portao';
+    // sem transições (data-mov-nav, que sai 2 quadros depois do portão abrir): os estilos chegam com a tela escondida e, sem isto, cores e bordas
+    // ainda estariam em transição de 160 ms quando ela aparece (e, em movimento reduzido, a própria visibilidade levaria um quadro para virar)
+    g.textContent = 'html[data-mov-nav-gate] #dc-root{visibility:hidden}html[data-mov-nav] #dc-root,html[data-mov-nav] #dc-root *,html[data-mov-nav] #dc-root *::before,html[data-mov-nav] #dc-root *::after{transition:none !important}';
+    (document.head || h).appendChild(g);
+    if (o.bg) h.style.setProperty('background-color', o.bg, 'important');
+    if (o.ponte && o.ponte.html) {
+      // a fonte da ponte tem nome próprio (ElzaPonte): a identidade da tela nova declara "Elza" com font-display swap e, se a ponte usasse
+      // esse nome, o texto trocaria para a fonte de sistema quando o CSS novo chegasse. Os dados (base64, guardados pela tela anterior)
+      // entram por FontFace binária, sem espera; sem eles, cai na URL (block = texto invisível até a fonte chegar).
+      var r4 = sessionStorage.getItem('mov:fonte400'), r6 = sessionStorage.getItem('mov:fonte600');
+      var bin = function (b64) { var t = atob(b64), u = new Uint8Array(t.length), i; for (i = 0; i < t.length; i++) u[i] = t.charCodeAt(i); return u.buffer; };
+      var doDados = false;
+      if (r4 && r6 && window.FontFace) {
+        // FontFace com dados binários fica pronta na hora (status "loaded" no mesmo instante): o texto da ponte já nasce na fonte certa
+        try {
+          document.fonts.add(new FontFace('ElzaPonte', bin(r4), { weight: '400 500' }));
+          document.fonts.add(new FontFace('ElzaPonte', bin(r6), { weight: '600 700' }));
+          doDados = true;
+        } catch (e) {}
+      }
+      if (!doDados) {
+        var f = document.createElement('style');
+        f.id = 'mov-ponte-fonte';
+        f.textContent = '@font-face{font-family:"ElzaPonte";src:url(./fontes/Elza-Regular.woff2) format("woff2");font-weight:400 500;font-display:block}' +
+          '@font-face{font-family:"ElzaPonte";src:url(./fontes/Elza-Semibold.woff2) format("woff2");font-weight:600 700;font-display:block}';
+        (document.head || h).appendChild(f);
+      }
+      // dentro de um shadow root: o CSS da tela nova (div, span, a, svg…) não alcança a ponte enquanto ela espera
+      var d = document.createElement('div');
+      d.id = 'mov-ponte';
+      d.setAttribute('aria-hidden', 'true');
+      d.style.cssText = 'all:initial;position:fixed;left:0;top:' + (o.ponte.top || 0) + 'px;width:' + o.ponte.w + 'px;height:' + o.ponte.h + 'px;z-index:2147483000;pointer-events:none;overflow:hidden;display:block';
+      var sr = d.attachShadow ? d.attachShadow({ mode: 'open' }) : d;
+      sr.innerHTML = o.ponte.html;
+      h.appendChild(d);
+    }
+    if (o.poster && o.poster.src) {
+      var im = document.createElement('img');
+      im.id = 'mov-ponte-poster';
+      im.alt = '';
+      im.setAttribute('aria-hidden', 'true');
+      im.src = o.poster.src;
+      im.style.cssText = 'all:initial;position:fixed;left:' + o.poster.x + 'px;top:' + o.poster.y + 'px;width:' + o.poster.w + 'px;height:' + o.poster.h + 'px;object-fit:cover;border-radius:' + (o.poster.r || '0') + ';z-index:' + (o.poster.z || 1) + ';pointer-events:none;display:block';
+      h.appendChild(im);
+    }
+    setTimeout(function () {
+      var pp = document.getElementById('mov-ponte-poster');
+      if (pp) pp.remove();
+      var p = document.getElementById('mov-ponte');
+      if (p) p.remove();
+      var s = document.getElementById('mov-ponte-fonte');
+      if (s) s.remove();
+      h.removeAttribute('data-mov-nav-gate');
+      h.removeAttribute('data-mov-nav');
+      h.style.removeProperty('background-color');
+    }, 3000);
+  } catch (e) {}
+})();</script>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#F5F4F2">
+<meta name="format-detection" content="telephone=no">
+<link rel="preload" href="./fontes/Elza-Semibold.woff2" as="font" type="font/woff2" crossorigin data-previa>
+<link rel="preload" href="./fontes/Elza-Regular.woff2" as="font" type="font/woff2" crossorigin data-previa>
+<title>Turnê Sorriso Eu Gosto no Pagode — datas e ingressos | Ingresse</title>
+<script src="./vendor/react.js"></script>
+<script src="./vendor/react-dom.js"></script>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<script src="./destinos.js" defer data-previa></script>
+<style>
+/* Estilos específicos desta tela. Componentes: base.css */
+.thumb{width:54px;height:72px;border-radius:var(--r-2);overflow:hidden;background:var(--line);flex:0 0 auto;display:block}
+
+</style>
+<style data-tur>
+/* turnê (colecao-turne.mjs): classes tur-*, só tokens da identidade */
+.tur-hero { position: relative; isolation: isolate; color: var(--color-text-primary);
+  background: var(--tur-fundo, none) center / cover no-repeat, radial-gradient(ellipse 90% 140% at 0% 100%, var(--tur-cor) 0%, transparent 62%), var(--color-bg-island); }
+.tur-hero::before { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(90deg, color-mix(in srgb, var(--color-bg-island) 55%, transparent) 0%, transparent 70%); pointer-events: none; border-radius: 0 !important; }
+.tur-hero-in { max-width: calc(var(--layout-content-max) + 2 * var(--layout-margin)); margin: 0 auto; padding: var(--space-hero-y) var(--layout-margin); display: flex; gap: var(--space-8); align-items: center; justify-content: space-between; }
+.tur-hero-txt { flex: 1 1 520px; min-width: 0; display: flex; flex-direction: column; gap: var(--space-5); align-items: flex-start; }
+.tur-apre { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-4); font-size: var(--font-size-label); letter-spacing: var(--font-ls-label); text-transform: uppercase; color: var(--color-text-secondary); }
+.tur-pat { display: inline-flex; align-items: center; min-height: var(--size-touch-min); font-weight: 600; color: var(--color-text-primary); }
+.tur-pat + .tur-pat::before { content: "&"; margin-right: var(--space-4); font-weight: 400; color: var(--color-text-secondary); }
+.tur-pat img { height: 28px; width: auto; display: block; border-radius: 0 !important; }
+.tur-apre-r { order: 9; }
+.tur-selos { display: flex; gap: var(--space-2); flex-wrap: wrap; }
+.tur-selo { display: inline-flex; align-items: center; min-height: 32px; padding: 0 var(--space-3); border: var(--border-width-strong) solid var(--color-border-control); font-size: var(--font-size-label); font-weight: 600; letter-spacing: var(--font-ls-label); text-transform: uppercase; }
+.tur-nome { margin: 0; font-size: var(--font-size-display); line-height: var(--font-lh-display); letter-spacing: var(--font-ls-display); text-wrap: balance; color: var(--color-text-primary); }
+.tur-nome img { display: block; max-width: min(100%, 560px); height: auto; border-radius: 0 !important; }
+.tur-sub { margin: 0; font-size: var(--font-size-body); color: var(--color-text-secondary); }
+.tur-hero .tur-sub a { color: var(--color-text-primary) !important; text-decoration: underline; text-underline-offset: 3px; }
+.tur-pracas { display: flex; flex-wrap: wrap; gap: var(--space-2); max-width: 100%; }
+.tur-pracas[data-muitas="true"] { flex-wrap: nowrap; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: thin; padding-bottom: var(--space-2); } /* muitas praças: os chips rolam em uma linha só */
+.tur-pracas[data-muitas="true"] .tur-praca { flex: 0 0 auto; }
+.tur-pracas .tur-praca { display: inline-flex; align-items: center; gap: var(--space-2); min-height: var(--size-control-md); text-decoration: none; }
+.tur-hero .tur-pracas .tur-praca { color: var(--color-text-primary) !important; background: transparent; border-color: var(--color-border-control); } /* só a cor muda na ilha escura: borda e padding vêm do .chip (uma implementação só) */
+.tur-hero .tur-pracas .tur-praca:hover, .tur-hero .tur-pracas .tur-praca:focus-visible { border-color: var(--color-border-strong); background: var(--color-bg-hover); }
+.tur-pracas .tur-praca b { font-weight: 600; }
+.tur-pracas .tur-praca > span:last-child { color: var(--color-text-secondary); font-variant-numeric: tabular-nums; }
+.tur-ic { width: 18px; height: 18px; flex: 0 0 auto; background: currentColor; -webkit-mask: var(--ic) center / contain no-repeat; mask: var(--ic) center / contain no-repeat; border-radius: 0 !important; }
+[data-sit="venda"] { --ic: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%2024%2024'%20fill%3D'none'%20stroke%3D'black'%20stroke-width%3D'2'%20stroke-linecap%3D'round'%20stroke-linejoin%3D'round'%3E%3Cpath%20d%3D%22M3%209a2%202%200%200%200%200%204v3h18v-3a2%202%200%200%201%200-4V6H3v3Z%22%2F%3E%3Cpath%20d%3D%22M13%206v12%22%20stroke-dasharray%3D%222%202%22%2F%3E%3C%2Fsvg%3E"); }
+[data-sit="esgotado"] { --ic: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%2024%2024'%20fill%3D'none'%20stroke%3D'black'%20stroke-width%3D'2'%20stroke-linecap%3D'round'%20stroke-linejoin%3D'round'%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%229%22%2F%3E%3Cpath%20d%3D%22M8%2012h8%22%2F%3E%3C%2Fsvg%3E"); }
+[data-sit="nao-aberto"] { --ic: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%2024%2024'%20fill%3D'none'%20stroke%3D'black'%20stroke-width%3D'2'%20stroke-linecap%3D'round'%20stroke-linejoin%3D'round'%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%229%22%2F%3E%3Cpath%20d%3D%22M12%207v5l3%202%22%2F%3E%3C%2Fsvg%3E"); }
+[data-sit="encerrado"] { --ic: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%2024%2024'%20fill%3D'none'%20stroke%3D'black'%20stroke-width%3D'2'%20stroke-linecap%3D'round'%20stroke-linejoin%3D'round'%3E%3Crect%20x%3D%224%22%20y%3D%225%22%20width%3D%2216%22%20height%3D%2215%22%2F%3E%3Cpath%20d%3D%22M4%2010h16M8%203v4M16%203v4%22%2F%3E%3C%2Fsvg%3E"); }
+[data-sit="cancelado"] { --ic: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%2024%2024'%20fill%3D'none'%20stroke%3D'black'%20stroke-width%3D'2'%20stroke-linecap%3D'round'%20stroke-linejoin%3D'round'%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%229%22%2F%3E%3Cpath%20d%3D%22m9%209%206%206M15%209l-6%206%22%2F%3E%3C%2Fsvg%3E"); }
+.tur-capa { flex: 0 1 380px; display: flex; gap: var(--space-3); align-items: center; justify-content: flex-end; }
+.tur-capa img { width: 28%; aspect-ratio: 3 / 4; object-fit: cover; border: var(--border-width-hairline) solid var(--color-border-control); }
+.tur-capa img:nth-child(2) { width: 34%; }
+@media (max-width: 900px) { .tur-capa { display: none; } }
+/* resumo e cabeçalho da lista */
+.tur-cal-topo { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2) var(--space-5); margin-bottom: var(--space-5); }
+.tur-cal-t { margin: 0; flex: 1 1 100%; font-size: var(--font-size-title-3); line-height: var(--font-lh-title-3); font-weight: 600; letter-spacing: 0; }
+.tur-resumo { margin: 0; flex: 1 1 auto; font-size: var(--font-size-small); color: var(--color-text-secondary); font-variant-numeric: tabular-nums; }
+.tur-cal-t { order: 0; } .tur-resumo { order: 1; } .tur-cal-topo > .bs { order: 2; } .tur-sr { order: 9; }
+.tur-filtros { order: 3; flex: 1 1 100%; display: flex; flex-wrap: wrap; gap: var(--space-2); } /* todos os estados da turnê, sem limite: os chips quebram linha e, no celular, rolam em uma linha só */
+@media (max-width: 640px) { .tur-filtros { flex-wrap: nowrap; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: thin; padding-bottom: var(--space-2); } .tur-filtros .chip { flex: 0 0 auto; } }
+.tur-sr { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+/* cartões das datas (praças): data > cidade > local; a situação tem cor e forma, além do texto */
+.tur-cards { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-3); }
+.tur-p { position: relative; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-4) var(--space-6); padding: var(--space-5) var(--space-5) var(--space-5) calc(var(--space-5) + var(--space-1)); scroll-margin-top: calc(var(--size-header) + var(--space-4)); transition: border-color var(--motion-duration-base) var(--motion-ease-move), background-color var(--motion-duration-base) var(--motion-ease-move); }
+.tur-p::before, .tur-p-txt::before { content: ""; position: absolute; left: -1px; top: -1px; bottom: -1px; width: var(--space-1); background: transparent; border-radius: 0 !important; }
+.tur-p[data-sit="venda"]::before, .tur-p[data-sit="venda"] .tur-p-txt::before { background: var(--color-alert-success-fg); } /* à venda: verde (token de sucesso da casa) */
+.tur-p[data-sit="nao-aberto"]::before, .tur-p[data-sit="nao-aberto"] .tur-p-txt::before { background: repeating-linear-gradient(180deg, var(--color-border-strong) 0 6px, transparent 6px 10px); } /* ainda não abriu: tracejado */
+.tur-p:hover, .tur-p:target { border-color: var(--color-border-strong); }
+.tur-p:target { background: var(--color-bg-hover); }
+.tur-p-corpo { display: flex; align-items: center; gap: var(--space-5); min-width: 0; flex: 1 1 340px; }
+.tur-p-data { flex: 0 0 auto; width: 76px; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; padding: var(--space-2) 0; border: var(--border-width-hairline) solid var(--color-border-control); background: var(--color-bg-page); line-height: 1.1; }
+.tur-p-sem, .tur-p-mes { font-size: var(--font-size-label); font-weight: 600; letter-spacing: var(--font-ls-label); text-transform: uppercase; color: var(--color-text-secondary); }
+.tur-p-dia { font-size: var(--font-size-title-2); font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.tur-p-onde { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
+.tur-p-onde p { margin: 0; }
+.tur-p-cidade { margin: 0; display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--space-2); font-size: var(--font-size-title-3); line-height: var(--font-lh-title-3); font-weight: 700; letter-spacing: 0; }
+.tur-p-uf { font-size: var(--font-size-small); font-weight: 600; color: var(--color-text-secondary); }
+.tur-p-local { font-size: var(--font-size-body); }
+.tur-p-hora { font-size: var(--font-size-small); color: var(--color-text-secondary); font-variant-numeric: tabular-nums; }
+.tur-p-lado { flex: 0 0 280px; width: 280px; display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-3); } /* coluna fixa: a situação e a ação alinham de um cartão para o outro */
+.tur-sit { display: inline-flex; align-items: center; gap: var(--space-2); min-height: 32px; padding: 0 var(--space-3); border: var(--border-width-strong) solid var(--color-border-strong); background: var(--color-bg-page); color: var(--color-text-primary); font-size: var(--font-size-label); font-weight: 600; line-height: 1; letter-spacing: var(--font-ls-label); text-transform: uppercase; white-space: nowrap; }
+.tur-p[data-sit="venda"] .tur-sit { background: var(--color-alert-success-bg); color: var(--color-alert-success-fg); border-color: var(--color-alert-success-fg); }
+.tur-p[data-sit="nao-aberto"] .tur-sit { background: var(--color-status-notopen-bg); color: var(--color-status-notopen-fg); border-color: var(--color-status-notopen-border); border-style: dashed; }
+.tur-p[data-sit="esgotado"] .tur-sit { background-color: var(--color-status-soldout-bg); color: var(--color-status-soldout-fg); border-color: var(--color-status-soldout-border); background-image: repeating-linear-gradient(135deg, transparent 0 6px, color-mix(in srgb, var(--color-status-soldout-border) 35%, transparent) 6px 7px); }
+.tur-p[data-sit="encerrado"] .tur-sit { background: var(--color-status-ended-bg); color: var(--color-status-ended-fg); border-color: var(--color-status-ended-border); }
+.tur-p[data-sit="cancelado"] .tur-sit { background: var(--color-status-cancelled-bg); color: var(--color-status-cancelled-fg); border-color: var(--color-status-cancelled-border); }
+/* esgotado: o corpo do cartão fica opaco (a ação, a Revenda Oficial, segue inteira) */
+.tur-p[data-sit="esgotado"] .tur-p-corpo { opacity: .72; }
+.tur-p[data-sit="esgotado"] .tur-p-dia { color: var(--color-text-secondary); }
+/* encerrado: a data passada fica discreta e em cinza */
+.tur-p[data-sit="encerrado"] .tur-p-corpo { filter: grayscale(1); }
+.tur-p[data-sit="encerrado"] .tur-p-cidade, .tur-p[data-sit="encerrado"] .tur-p-dia { color: var(--color-text-secondary); }
+.tur-p[data-sit="cancelado"] .tur-p-cidade { text-decoration: line-through; text-decoration-thickness: 2px; } /* o mesmo traço do cartão cancelado da Home e da Busca */
+.tur-p[data-sit="cancelado"] .tur-p-corpo { opacity: .72; }
+/* a ação cobre o cartão inteiro (um link só por data); o bloco de abertura NÃO é link: o botão de aviso e o de compra têm o próprio alvo */
+.tur-cta { position: static; min-height: var(--size-touch-default); }
+.tur-cta::after { content: ""; position: absolute; inset: 0; }
+/* capa da praça: só no celular (abaixo). No desktop o cartão segue como era: .tur-p-txt some da árvore de caixas (display: contents) e a capa não existe */
+.tur-p-txt { display: contents; }
+.tur-p-txt::before { display: none; }
+.tur-p-capa { display: none; }
+/* celular (< 640 px), igual aos cartões de lista de tools/previa/cartao-evento.css (pedido do Wander, 16/11/2026: «imagem acima do texto»): a capa ocupa a largura do cartão, em quadrado (capa de turnê, --size-sport-cover-ratio),
+   object-fit: cover, só os cantos de cima arredondados e a base reta; o texto vem abaixo. A caixa da capa tem a proporção definida, então a lista não salta quando a imagem chega. A faixa de situação (::before) desce para o bloco de texto. */
+@media (max-width: 640px) {
+  .tur-p { display: block; padding: 0; }
+  .tur-p::before { display: none; }
+  .tur-p-txt::before { display: block; top: 0; }
+  .tur-p-capa { position: relative; display: block; overflow: hidden; aspect-ratio: var(--size-sport-cover-ratio); background: var(--color-bg-island); border-radius: var(--radius-base) var(--radius-base) 0 0 !important; }
+  .tur-p-capa img { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: cover; object-position: 50% 50%; border-radius: 0 !important; }
+  .tur-p[data-sit="encerrado"] .tur-p-capa img, .tur-p[data-sit="cancelado"] .tur-p-capa img { filter: grayscale(1); }
+  .tur-p[data-sit="cancelado"] .tur-p-capa img { opacity: var(--motion-opacity-dim); }
+  .tur-p-txt { position: relative; display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-4) var(--space-6); padding: var(--space-5) var(--space-5) var(--space-5) calc(var(--space-5) + var(--space-1)); }
+}
+@media (max-width: 640px) { .tur-p-lado { flex: 1 1 100%; width: auto; } .tur-cta { width: 100%; box-sizing: border-box; justify-content: center; } .tur-p-corpo { flex-basis: 100%; gap: var(--space-4); } html[data-pagina="colecao"] main > section.card > .bp { flex: 1 1 100%; justify-content: center; } }
+/* mapa das paradas: quadro listrado (o mesmo da página do evento), ponto preto por cidade e rótulo com cidade e data */
+.tur-mapa { position: relative; margin-bottom: var(--space-4); overflow: hidden; display: flex; flex-direction: column; }
+.tur-mapa-q { position: relative; height: var(--hd, 290px); overflow: hidden; background: repeating-linear-gradient(35deg, var(--color-bg-page) 0 22px, var(--color-bg-subtle) 22px 24px), var(--color-bg-page); }
+@media (max-width: 1023px) { .tur-mapa-q { height: var(--ht, 290px); } }
+@media (max-width: 640px) { .tur-mapa-q { height: var(--hm, 290px); } }
+.tur-pino { position: absolute; display: inline-flex; align-items: center; gap: var(--space-2); min-height: var(--size-touch-min); text-decoration: none; color: var(--color-text-primary); transform: translate(-7px, -50%); }
+.tur-pino[data-lado="e"] { flex-direction: row-reverse; transform: translate(calc(-100% + 7px), -50%); text-align: right; }
+.tur-pino-p { width: 14px; height: 14px; flex: 0 0 auto; background: var(--color-text-primary); border: var(--border-width-strong) solid var(--color-bg-page); outline: var(--border-width-hairline) solid var(--color-text-primary); border-radius: 50% !important; }
+.tur-pino-t { display: flex; flex-direction: column; line-height: 1.25; padding: 2px var(--space-2); background: var(--color-bg-page); border: var(--border-width-hairline) solid var(--color-border-subtle); }
+.tur-pino-t b { font-size: var(--font-size-small); }
+.tur-pino-t span { font-size: var(--font-size-label); color: var(--color-text-secondary); font-variant-numeric: tabular-nums; }
+.tur-pino[data-sit="encerrado"] .tur-pino-p { background: var(--color-text-secondary); outline-color: var(--color-text-secondary); }
+.tur-pino:hover .tur-pino-t, .tur-pino:focus-visible .tur-pino-t { border-color: var(--color-border-strong); background: var(--color-bg-hover); }
+/* muitas praças: pino numerado (a ordem da lista), posição própria para cada layout (relaxada no gerador) e legenda abaixo */
+.tur-mapa[data-num="true"] .tur-pino { left: var(--xd); top: var(--yd); width: var(--size-touch-min); justify-content: center; transform: translate(-50%, -50%); }
+@media (max-width: 1023px) { .tur-mapa[data-num="true"] .tur-pino { left: var(--xt); top: var(--yt); } }
+@media (max-width: 640px) { .tur-mapa[data-num="true"] .tur-pino { left: var(--xm); top: var(--ym); } }
+.tur-mapa[data-num="true"] .tur-pino-p, .tur-leg-n { display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; width: 32px; height: 32px; outline: 0; background: var(--color-text-primary); color: var(--color-bg-page); font-size: var(--font-size-small); font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; transition: background-color var(--motion-duration-fast) var(--motion-ease-move), border-color var(--motion-duration-fast) var(--motion-ease-move); }
+.tur-mapa[data-num="true"] .tur-pino:hover .tur-pino-p, .tur-mapa[data-num="true"] .tur-pino:focus-visible .tur-pino-p { background: var(--color-bg-page); color: var(--color-text-primary); border-color: var(--color-text-primary); }
+.tur-mapa[data-num="true"] .tur-pino[data-sit="encerrado"] .tur-pino-p, .tur-leg[data-sit="encerrado"] .tur-leg-n { background: var(--color-text-secondary); }
+.tur-legenda { list-style: none; margin: 0; padding: var(--space-3) var(--space-4); display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-5); border-top: var(--border-width-hairline) solid var(--color-border-subtle); }
+.tur-leg { display: inline-flex; align-items: center; gap: var(--space-2); min-height: var(--size-touch-min); color: var(--color-text-primary); text-decoration: none; font-size: var(--font-size-small); }
+.tur-leg-n { width: 28px; height: 28px; border-radius: 50% !important; }
+.tur-leg:hover > span:last-child, .tur-leg:focus-visible > span:last-child { text-decoration: underline; text-underline-offset: 3px; }
+.tur-leg[data-sit="encerrado"] { color: var(--color-text-secondary); }
+.tur-mapa-nota { padding: var(--space-2) var(--space-4) var(--space-3); font-size: var(--font-size-label); color: var(--color-text-secondary); }
+/* "Quem vai": grupo de avatares, frase e pessoas com nome (classes uui-* do identidade-componentes.css) */
+.tur-qv { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-4); }
+.tur-qv-frase { margin: 0; font-size: var(--font-size-small); color: var(--color-text-secondary); }
+.tur-qv-lista { display: flex; flex-direction: column; gap: var(--space-3); width: 100%; }
+/* engrenagem: o relógio do protótipo */
+.proto-agora { flex: 1 1 100%; margin: 0; font-size: var(--font-size-small); color: var(--color-text-secondary); }
+.proto-in .chip[aria-disabled="true"] { opacity: .5; cursor: not-allowed; }
+/* âncora das praças: rolagem suave, sem corte seco (some com movimento reduzido) */
+@media (prefers-reduced-motion: no-preference) { html[data-pagina="colecao"]:not([data-motion="reduce"]) { scroll-behavior: smooth; } }
+</style>
+<style data-pb>
+/* lupa de busca do menu (pilula-busca.mjs) */
+.hdr-search.hdr-lupa { flex: 0 0 auto !important; display: inline-flex !important; align-items: center; justify-content: center; width: var(--size-touch-default); height: var(--size-touch-default); min-height: var(--size-touch-default) !important; padding: 0 !important; margin: 0 0 0 auto !important; max-width: none; border-radius: var(--radius-base); color: var(--color-text-primary) !important; cursor: pointer; }
+.hdr-search.hdr-lupa svg { stroke: currentColor; }
+.hdr .crumbs { min-width: 0; flex: 0 1 auto; overflow: hidden; }
+.hdr .crumbs .crumb-cur, .hdr .crumbs [aria-current] { overflow: hidden; text-overflow: ellipsis; }
+</style>
+<link rel="stylesheet" href="./theme.css">
+<link rel="stylesheet" href="./base.css">
+<script src="./theme.js"></script>
+<link rel="stylesheet" href="./ux.css">
+<link rel="stylesheet" href="./ds.css">
+<script src="./ux.js" defer></script>
+<link rel="stylesheet" href="./identidade-v1.css" data-previa>
+<style data-ib>
+/* ícone animado de botão (Lottie): 24 px, o traço segue a cor do texto do botão, no claro e no escuro */
+.btn-ic { flex: 0 0 auto; width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; }
+.btn-ic svg { width: 24px; height: 24px; display: block; }
+.btn-ic [stroke]:not([stroke="none"]) { stroke: currentColor; }
+/* "Quero ir" ligado: coração cheio na cor da marca (o Lottie traz fill-opacity 0, então os dois valores) */
+/* chip e botão: o ícone respira em relação ao texto */
+.chip > .btn-ic { margin-right: var(--space-2); } /* .bs e .bp já têm gap */
+/* barra de compra móvel do Evento: com o ícone do estado o rótulo é mais largo; se não couber ao lado do preço, a barra quebra e o botão ocupa a linha de baixo (antes o botão pisava no texto do preço) */
+.mbar { flex-wrap: wrap !important; }
+html .mbar > div { flex: 1 1 9rem !important; min-width: 9rem !important; } /* inline: flex: 1; min-width: 0 */ /* o preço não encolhe abaixo de 9rem: se o botão não couber ao lado, ele desce e ocupa a linha */
+.mbar .bp:has(.btn-ic) { flex: 1 1 auto; min-width: 0; justify-content: center; }
+button[aria-pressed="true"] .btn-ic-heart { color: var(--color-fg-wish); } /* alias de fg.brand: vermelho na Ingresse, azul na Ingresse Sports (decisão de 27/10/2026) */
+button[aria-pressed="true"] .btn-ic-heart svg [stroke]:not([stroke="none"]) { fill: currentColor; fill-opacity: 1; }
+</style>
+<script src="./vendor/lottie_svg.min.js" defer data-previa></script>
+<script src="./icones-motion.js" defer data-previa></script>
+<script src="./previa.js" defer data-previa></script>
+<script src="./movimento-compra.js" defer data-previa></script>
+<script src="./movimento-navegacao.js" defer data-previa></script>
+<link rel="stylesheet" href="./cidade-cabecalho.css" data-previa>
+<script src="./modal-uui.js" defer data-previa></script>
+<script src="./local.js" defer data-previa></script>
+<script src="./local-ui.js" defer data-previa></script>
+<script src="./lugares-consulta.js" defer data-previa></script>
+<script src="./cidade-cabecalho.js" defer data-previa></script>
+<link rel="stylesheet" href="./lembretes.css" data-previa>
+<script src="./lembretes.js" defer data-previa></script>
+<link rel="stylesheet" href="./menu-conta.css" data-previa>
+<script src="./menu-conta.js" defer data-previa></script>
+<script src="./cartao-evento.js" defer data-previa></script>
+<script src="./lacunas.js" defer data-previa></script>
+<link rel="stylesheet" href="./transicao-evento.css" data-previa data-previa-te>
+</helmet>
+
+<div style="min-height: 100vh; background: var(--pagina-bg)">
+<header class="hdr">
+  <div class="hdr-row" style="max-width: 1280px; margin: 0 auto; padding: 14px 24px; display: flex; align-items: center; gap: 24px; flex-wrap: wrap">
+    <a href="Main.dc.html" aria-label="Ingresse — início" class="hdr-logo"><img src="./assets/8703fb5f412b57860d569f5abeea2cae.svg" alt="Ingresse"></a>
+    <nav aria-label="Trilha" class="crumbs"><span class="crumb-mid"><a href="Main.dc.html" style="color: var(--muted)">Início</a> / </span><a class="crumb-back" href="Busca.dc.html" style="color: var(--muted)">Turnês</a><span class="crumb-cur"> / <span style="color: var(--ink)">Sorriso Eu Gosto no Pagode</span></span></nav>
+    <a href="Busca.dc.html" class="hdr-search hdr-lupa" aria-label="Buscar evento, prova, time, artista ou local" title="Buscar">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+    </a>
+    <span class="cid" data-cidade>
+      <button type="button" class="bs cid-btn" data-cidade-btn data-marcado="true" aria-haspopup="dialog" aria-expanded="false" aria-label="Cidade: São Paulo. Trocar">
+        <span class="btn-ic cid-pin" aria-hidden="true" data-lottie="./assets/icones/esp-perto-de-voce.json" data-repouso="0" data-loop="0"></span>
+        <span class="cid-nome" data-cidade-nome>São Paulo</span>
+        <svg class="cid-chev ico ico-14" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+      </button>
+    </span>
+        <!-- mc:ini --><button type="button" class="avatar-hdr mc-av" data-menu-conta data-conta="true" aria-haspopup="menu" aria-expanded="false" aria-label="Minha conta"><span class="uui-avatar uui-avatar--lg" aria-hidden="true"><span class="uui-avatar__content"><span class="mc-ini" aria-hidden="true">PE</span><svg class="mc-gen" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 21a8 8 0 0 0-16 0"/><path d="M12 13a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"/></svg><img src="./assets/pessoas/pessoa-exemplo.jpg" srcset="./assets/pessoas/pessoa-exemplo.jpg 96w, ./assets/pessoas/pessoa-exemplo@2x.jpg 192w" sizes="48px" width="48" height="48" alt=""></span></span><span class="mc-n" data-mc-n data-vazio="true" aria-hidden="true">0</span></button><!-- mc:fim -->
+  </div>
+</header>
+
+<!-- tur:ini -->
+<section class="ilha tur-hero" aria-labelledby="tur-titulo" style="{{turStyle}}">
+  <div class="tur-hero-in">
+    <div class="tur-hero-txt">
+      <sc-if value="{{temPat}}" hint-placeholder-val="{{true}}"><div class="tur-apre">
+        <sc-for list="{{patrocinadores}}" as="p" hint-placeholder-count="2">
+          <span class="tur-pat"><sc-if value="{{p.hasLogo}}" hint-placeholder-val="{{false}}"><img src="{{p.logo}}" alt="{{p.nome}}"></sc-if><sc-if value="{{p.noLogo}}" hint-placeholder-val="{{true}}"><span>{{p.nome}}</span></sc-if></span>
+        </sc-for>
+        <span class="tur-apre-r">apresentam</span>
+      </div></sc-if>
+      <div class="tur-selos"><span class="tur-selo">Turnê</span><span class="tur-selo">Em andamento</span></div>
+      <h1 id="tur-titulo" class="disp tur-nome"><sc-if value="{{hasLogo}}" hint-placeholder-val="{{false}}"><img src="{{turLogo}}" alt="{{turNomeLogo}}"></sc-if><sc-if value="{{noLogo}}" hint-placeholder-val="{{true}}">Turnê Sorriso Eu Gosto no Pagode — datas no Brasil</sc-if></h1>
+      <p class="tur-sub"><a href="Artista.dc.html">Sorriso Maroto</a> · {{nPracas}} · {{periodo}}</p>
+      <nav class="tur-pracas" aria-label="Escolha a cidade" data-muitas="{{muitasPracas}}">
+        <sc-for list="{{pracas}}" as="s" hint-placeholder-count="3">
+          <a href="{{s.anchor}}" class="chip tur-praca" data-sit="{{s.sit}}" aria-label="{{s.label}}"><span class="tur-ic" aria-hidden="true"></span><b>{{s.city}}</b><span>{{s.dia}}</span></a>
+        </sc-for>
+      </nav>
+    </div>
+    <div class="tur-capa" aria-hidden="true">
+      <img src="./assets/real/105383.avif" alt="">
+      <img src="./assets/real/104717.avif" alt="">
+      <img src="./assets/real/91221.avif" alt="">
+    </div>
+  </div>
+</section>
+<main style="max-width: 1280px; margin: 0 auto; padding: 32px 24px 80px; display: flex; flex-direction: column; gap: 40px">
+  <!-- PASSAPORTE -->
+  <section class="card" style="padding: 24px 28px; display: flex; flex-wrap: wrap; gap: 20px; align-items: center; justify-content: space-between; border-style: dashed">
+    <div style="flex: 1 1 380px">
+      <div class="over">Passaporte da turnê</div>
+      <div style="font-size: 20px; font-weight: 700; margin-top: 6px">Vá a mais de uma cidade e pague menos</div>
+      <div style="font-size: 14px; color: var(--muted); margin-top: 4px">Ainda não temos os detalhes do passaporte.</div>
+    </div>
+    <button type="button" class="bp">Escolher passaporte</button>
+  </section>
+
+  <!-- CALENDÁRIO -->
+  <section aria-labelledby="tur-cal-h">
+    <div class="tur-cal-topo">
+      <h2 id="tur-cal-h" class="tur-cal-t">Todas as cidades</h2>
+      <p class="tur-resumo">{{resumo}}</p>
+      <p class="tur-sr" role="status" aria-live="polite" aria-atomic="true">{{anuncio}}</p>
+      <sc-if value="{{temFiltros}}" hint-placeholder-val="{{false}}"><div class="tur-filtros" role="group" aria-label="Filtrar por estado">
+        <sc-for list="{{filters}}" as="f" hint-placeholder-count="3">
+          <button type="button" onClick="{{f.pick}}" aria-pressed="{{f.pressed}}" class="chip">{{f.label}}</button>
+        </sc-for>
+      </div></sc-if>
+      <sc-if value="{{temMapa}}" hint-placeholder-val="{{false}}"><button type="button" class="bs" onClick="{{toggleMap}}" aria-pressed="{{mapPressed}}">{{mapLabel}}</button></sc-if>
+    </div>
+    <sc-if value="{{showMap}}" hint-placeholder-val="{{false}}">
+      <div class="card tur-mapa" role="group" aria-label="Paradas da turnê no mapa" data-num="{{mapaNum}}">
+        <div class="tur-mapa-q" style="{{mapaEstilo}}">
+          <sc-for list="{{pinos}}" as="p" hint-placeholder-count="4">
+            <a href="{{p.anchor}}" class="tur-pino" data-lado="{{p.lado}}" data-sit="{{p.sit}}" style="{{p.estilo}}" aria-label="{{p.label}}"><span class="tur-pino-p" aria-hidden="true"><sc-if value="{{mapaNum}}" hint-placeholder-val="{{false}}">{{p.num}}</sc-if></span><sc-if value="{{mapaNome}}" hint-placeholder-val="{{true}}"><span class="tur-pino-t"><b>{{p.city}}</b><span>{{p.dia}}</span></span></sc-if></a>
+          </sc-for>
+        </div>
+        <sc-if value="{{mapaNum}}" hint-placeholder-val="{{false}}"><ol class="tur-legenda" aria-label="Legenda do mapa">
+          <sc-for list="{{pinos}}" as="p" hint-placeholder-count="4">
+            <li><a href="{{p.anchor}}" class="tur-leg" data-sit="{{p.sit}}" aria-label="{{p.label}}"><span class="tur-leg-n" aria-hidden="true">{{p.num}}</span><span>{{p.city}} · {{p.dia}}</span></a></li>
+          </sc-for>
+        </ol></sc-if>
+        <span class="tur-mapa-nota">Posição aproximada das cidades.</span>
+      </div>
+    </sc-if>
+    <ol class="tur-cards" id="datas" aria-label="Datas e cidades da turnê" data-track-list="turne-sorriso-datas" data-track-list-name="Turnê Sorriso Eu Gosto no Pagode · Datas">
+      <sc-for list="{{stops}}" as="s" hint-placeholder-count="4">
+        <li id="{{s.domId}}" class="card tur-p" data-sit="{{s.sitEf}}" data-track-item="{{s.eventoId}}" data-track-index="{{s.pos}}">
+          <span class="tur-p-capa" aria-hidden="true"><sc-if value="{{s.temCapa}}" hint-placeholder-val="{{false}}"><img src="{{s.capa}}" alt="" loading="lazy" decoding="async"></sc-if></span>
+          <div class="tur-p-txt">
+          <div class="tur-p-corpo">
+            <div class="tur-p-data" aria-hidden="true"><span class="tur-p-sem">{{s.sem}}</span><span class="tur-p-dia">{{s.dia}}</span><span class="tur-p-mes">{{s.mes}}</span></div>
+            <div class="tur-p-onde">
+              <h3 class="tur-p-cidade">{{s.city}}<span class="tur-p-uf">{{s.uf}}</span></h3>
+              <p class="tur-p-local">{{s.venue}}</p>
+              <p class="tur-p-hora"><span class="tur-sr">{{s.date}}, </span>{{s.time}}</p>
+            </div>
+          </div>
+          <div class="tur-p-lado">
+            <sc-if value="{{s.temRotulo}}" hint-placeholder-val="{{false}}"><span class="tur-sit"><span class="tur-ic" aria-hidden="true"></span>{{s.rotulo}}</span></sc-if>
+            <sc-if value="{{s.isVenda}}" hint-placeholder-val="{{true}}"><a href="Evento.dc.html" class="bp tur-cta" data-track-select-item="{{s.eventoId}}" data-track-index="{{s.pos}}" aria-label="Ver ingressos: {{s.city}}, {{s.date}}">Ver ingressos</a></sc-if>
+            <sc-if value="{{s.isEsgotado}}" hint-placeholder-val="{{false}}"><a href="Evento.dc.html" class="bs tur-cta" data-track-select-item="{{s.eventoId}}" data-track-index="{{s.pos}}" aria-label="Ver Revenda Oficial: {{s.city}}, {{s.date}}">Ver Revenda Oficial</a></sc-if>
+            <sc-if value="{{s.isAbrir}}" hint-placeholder-val="{{false}}">
+          <div class="ab" data-ab data-estado="{{s.ab.estado}}">
+            <sc-if value="{{s.ab.aguardando}}" hint-placeholder-val="{{true}}">
+              <p class="ab-quando"><span class="ab-rot">{{s.ab.rotulo}}</span><time datetime="{{s.ab.iso}}">{{s.ab.quando}}</time></p>
+              <sc-if value="{{s.ab.temFalta}}" hint-placeholder-val="{{true}}"><p class="ab-falta">Abre {{s.ab.falta}}</p></sc-if>
+              <button type="button" class="bs ab-avisar {{s.ab.avisarClasse}}" aria-pressed="{{s.ab.avisarPressed}}" aria-label="{{s.ab.avisarNome}}" data-lembrete-id="{{s.ab.id}}" data-track-lembrete="alternar" data-track-item-id="{{s.ab.id}}"><span class="btn-ic btn-ic-bell" aria-hidden="true" data-lottie="./assets/icones/avisar.json" data-repouso="0" data-loop="0"></span><svg class="ico ab-ok" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg><span class="ab-lbl"><span data-l="off">Me avisar quando abrir</span><span data-l="on">Aviso ativado</span></span></button>
+            </sc-if>
+            <sc-if value="{{s.ab.aberto}}" hint-placeholder-val="{{false}}">
+              <a href="{{s.ab.href}}" class="bp ab-comprar tur-cta" data-track-select-item="{{s.eventoId}}" data-track-index="{{s.pos}}">Ver ingressos</a>
+            </sc-if>
+          </div>
+            </sc-if>
+            <sc-if value="{{s.isFim}}" hint-placeholder-val="{{false}}"><a href="Evento.dc.html" class="bs tur-cta" data-track-select-item="{{s.eventoId}}" data-track-index="{{s.pos}}" aria-label="Ver evento: {{s.city}}, {{s.date}}">Ver evento</a></sc-if>
+            <sc-if value="{{s.isCancelado}}" hint-placeholder-val="{{false}}"><a href="Evento.dc.html" class="bs tur-cta" data-track-select-item="{{s.eventoId}}" data-track-index="{{s.pos}}" aria-label="Ver detalhes: {{s.city}}, {{s.date}}">Ver detalhes</a></sc-if>
+          </div>
+          </div>
+        </li>
+      </sc-for>
+    </ol>
+  </section>
+
+  <section>
+    <h2 style="margin: 0 0 16px; font-size: 24px; font-weight: 700">Comunidade da turnê</h2>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px">
+      <div class="card tur-qv" style="padding: 24px; min-height: 110px"><div class="over">Quem vai</div>
+        <!-- uui:avatar-group -->
+          <span class="uui-avatar-group" role="group" aria-label="Pessoas que vão à turnê: Ju, Caio, Bia, Dani, Theo e mais 42">
+            <span class="uui-avatar uui-avatar--md" role="img" aria-label="Ju"><span class="uui-avatar__content">JU<img src="./assets/pessoas/ju.jpg" alt="" width="160" height="160" loading="lazy"></span></span>
+            <span class="uui-avatar uui-avatar--md" role="img" aria-label="Caio"><span class="uui-avatar__content">CA<img src="./assets/pessoas/caio.jpg" alt="" width="160" height="160" loading="lazy"></span></span>
+            <span class="uui-avatar uui-avatar--md" role="img" aria-label="Bia"><span class="uui-avatar__content">BI<img src="./assets/pessoas/bia.jpg" alt="" width="160" height="160" loading="lazy"></span></span>
+            <span class="uui-avatar uui-avatar--md" role="img" aria-label="Dani"><span class="uui-avatar__content">DA<img src="./assets/pessoas/dani.jpg" alt="" width="160" height="160" loading="lazy"></span></span>
+            <span class="uui-avatar uui-avatar--md" role="img" aria-label="Theo"><span class="uui-avatar__content">TH<img src="./assets/pessoas/theo.jpg" alt="" width="160" height="160" loading="lazy"></span></span>
+            <span class="uui-avatar uui-avatar--md" role="img" aria-label="Mais 42 pessoas"><span class="uui-avatar__content">+42</span></span>
+          </span>
+          <!-- /uui:avatar-group -->
+        <p class="tur-qv-frase">47 pessoas vão a pelo menos uma data</p>
+        <div class="tur-qv-lista">
+          <figure class="uui-avatar-label-group">
+            <span class="uui-avatar uui-avatar--md uui-avatar--border" aria-hidden="true"><span class="uui-avatar__content">JU<img src="./assets/pessoas/ju.jpg" alt="" width="160" height="160" loading="lazy"></span></span>
+            <figcaption><p class="uui-avatar-label-group__title">Ju</p><p class="uui-avatar-label-group__subtitle">Vai em São Paulo</p></figcaption>
+          </figure>
+          <figure class="uui-avatar-label-group">
+            <span class="uui-avatar uui-avatar--md uui-avatar--border" aria-hidden="true"><span class="uui-avatar__content">CA<img src="./assets/pessoas/caio.jpg" alt="" width="160" height="160" loading="lazy"></span></span>
+            <figcaption><p class="uui-avatar-label-group__title">Caio</p><p class="uui-avatar-label-group__subtitle">Vai em duas datas</p></figcaption>
+          </figure>
+          <figure class="uui-avatar-label-group">
+            <span class="uui-avatar uui-avatar--md uui-avatar--border" aria-hidden="true"><span class="uui-avatar__content">BI<img src="./assets/pessoas/bia.jpg" alt="" width="160" height="160" loading="lazy"></span></span>
+            <figcaption><p class="uui-avatar-label-group__title">Bia</p><p class="uui-avatar-label-group__subtitle">Vai em Ribeirão Preto</p></figcaption>
+          </figure>
+        </div>
+      </div>
+      <div class="card" style="padding: 24px; min-height: 110px"><div class="over">Fotos da turnê</div><div style="font-size: 15px; color: var(--muted); margin-top: 8px">Ainda não temos fotos da turnê.</div></div>
+      <div class="card" style="padding: 24px; min-height: 110px"><div class="over">Caravanas</div><div style="font-size: 15px; color: var(--muted); margin-top: 8px">Ainda não temos caravanas para esta turnê.</div></div>
+    </div>
+  </section>
+</main>
+<details class="proto">
+  <summary>Protótipo · Turnê</summary>
+  <div class="proto-in" role="group" aria-label="Simulação da Turnê">
+    <!-- relógio, conta e «+N novas»: o grupo «Conta e notificações» é um só e vem de menu-conta.js, igual em todas as telas (28/10) -->
+    <p class="proto-agora">{{antecipaTxt}}</p>
+    <div class="over">Situação das paradas</div>
+    <button type="button" class="chip chip-sm" aria-pressed="{{cancelOn}}" onClick="{{toggleCancel}}">Parada cancelada</button>
+    <div class="over">Tamanho da turnê</div>
+    <button type="button" class="chip chip-sm" aria-pressed="{{bigOff}}" onClick="{{pequena}}">4 praças</button>
+    <button type="button" class="chip chip-sm" aria-pressed="{{bigOn}}" onClick="{{grandeTurne}}">30 praças</button>
+  </div>
+</details>
+<!-- tur:fim -->
+<footer class="rp" aria-label="Rodapé">
+  <div class="rp-in">
+    <div class="rp-topo">
+      <a href="Main.dc.html" class="rp-marca" aria-label="Ingresse — início"><img src="./assets/8703fb5f412b57860d569f5abeea2cae.svg" alt="Ingresse"></a>
+      <div class="rp-cols">
+      <nav class="rp-col" aria-labelledby="rp-c0">
+        <h2 class="rp-col__t" id="rp-c0">A Ingresse</h2>
+        <ul class="rp-lista">
+          <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Sobre a Ingresse</a></li>
+          <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Trabalhe conosco</a></li>
+          <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Diversidade e inclusão</a></li>
+          <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Imprensa</a></li>
+        </ul>
+      </nav>
+      <nav class="rp-col" aria-labelledby="rp-c1">
+        <h2 class="rp-col__t" id="rp-c1">Ajuda</h2>
+        <ul class="rp-lista">
+          <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Central de ajuda</a></li>
+          <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Perguntas frequentes</a></li>
+          <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Pedir reembolso</a></li>
+          <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Regras de meia‑entrada</a></li>
+        </ul>
+      </nav>
+      <nav class="rp-col" aria-labelledby="rp-c2">
+        <h2 class="rp-col__t" id="rp-c2">Descubra</h2>
+        <ul class="rp-lista">
+          <li><a class="rp-link" href="Busca.dc.html?escopo=artistas">Artistas</a></li>
+          <li><a class="rp-link" href="Busca.dc.html?escopo=locais">Locais</a></li>
+          <li><a class="rp-link" href="https://revenda.ingresse.com" target="_blank" rel="noopener noreferrer" aria-label="Revenda Oficial, abre em nova aba">Revenda Oficial</a></li>
+          <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Para <span class="rp-nw">produtores<svg class="rp-ico rp-ico--sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M8 7h9v9"/></svg></span></a></li>
+        </ul>
+      </nav>
+      </div>
+    </div>
+    <div class="rp-linha">
+      <div class="rp-apps" role="group" aria-label="Baixe o app">
+        <a class="bs rp-app" href="#" data-toast="O link da App Store entra quando o app novo for publicado" aria-label="Baixar o app da Ingresse para iOS"><svg class="rp-ico" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16.37 12.83c-.02-2.3 1.88-3.4 1.97-3.46-1.07-1.57-2.74-1.78-3.33-1.8-1.42-.14-2.77.83-3.49.83-.72 0-1.83-.81-3.01-.79-1.55.02-2.98.9-3.78 2.29-1.61 2.8-.41 6.94 1.16 9.21.77 1.11 1.68 2.36 2.88 2.31 1.16-.05 1.59-.75 2.99-.75 1.4 0 1.79.75 3.01.72 1.24-.02 2.03-1.13 2.79-2.25.88-1.29 1.24-2.54 1.26-2.6-.03-.01-2.42-.93-2.45-3.71zM14.08 6.07c.64-.77 1.07-1.85.95-2.92-.92.04-2.03.61-2.69 1.38-.59.68-1.11 1.78-.97 2.83 1.02.08 2.07-.52 2.71-1.29z"/></svg><span>iOS</span></a>
+        <a class="bs rp-app" href="#" data-toast="O link do Google Play entra quando o app novo for publicado" aria-label="Baixar o app da Ingresse para Android"><svg class="rp-ico" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 18c0 .55.45 1 1 1h1v3.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5V19h2v3.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5V19h1c.55 0 1-.45 1-1V8H6v10zM3.5 8C2.67 8 2 8.67 2 9.5v7c0 .83.67 1.5 1.5 1.5S5 17.33 5 16.5v-7C5 8.67 4.33 8 3.5 8zm17 0c-.83 0-1.5.67-1.5 1.5v7c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5v-7c0-.83-.67-1.5-1.5-1.5zm-4.97-5.84l1.3-1.3c.2-.2.2-.51 0-.71-.2-.2-.51-.2-.71 0l-1.48 1.48A5.84 5.84 0 0 0 12 1c-.96 0-1.86.23-2.66.63L7.85.15c-.2-.2-.51-.2-.71 0-.2.2-.2.51 0 .71l1.31 1.31A5.98 5.98 0 0 0 6 7h12c0-1.99-.97-3.75-2.47-4.84zM10 5H9V4h1v1zm5 0h-1V4h1v1z"/></svg><span>Android</span></a>
+      </div>
+      <ul class="rp-redes" aria-label="Ingresse nas redes">
+        <li><a class="bs bs-icone rp-rede" href="https://www.instagram.com/ingresse/" target="_blank" rel="noopener noreferrer" aria-label="Ingresse no Instagram (abre em nova aba)"><svg class="rp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><path d="M17.5 6.5h.01"/></svg></a></li>
+        <li><a class="bs bs-icone rp-rede" href="https://www.tiktok.com/@ingresse" target="_blank" rel="noopener noreferrer" aria-label="Ingresse no TikTok (abre em nova aba)"><svg class="rp-ico" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16.6 5.82A4.28 4.28 0 0 1 15.54 3h-3.09v12.4a2.59 2.59 0 0 1-2.59 2.5c-1.42 0-2.6-1.16-2.6-2.6 0-1.72 1.66-3.01 3.37-2.48V9.66c-3.45-.46-6.47 2.22-6.47 5.64 0 3.33 2.76 5.7 5.69 5.7 3.14 0 5.69-2.55 5.69-5.7V9.01a7.35 7.35 0 0 0 4.3 1.38V7.3s-1.88.09-3.24-1.48z"/></svg></a></li>
+        <li><a class="bs bs-icone rp-rede" href="https://www.linkedin.com/company/ingresse/" target="_blank" rel="noopener noreferrer" aria-label="Ingresse no LinkedIn (abre em nova aba)"><svg class="rp-ico" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.45 20.45h-3.56v-5.57c0-1.33-.02-3.04-1.85-3.04-1.85 0-2.14 1.45-2.14 2.94v5.67H9.35V9h3.41v1.56h.05c.48-.9 1.64-1.85 3.37-1.85 3.6 0 4.27 2.37 4.27 5.46v6.28zM5.34 7.43a2.06 2.06 0 1 1 0-4.13 2.06 2.06 0 0 1 0 4.13zM7.12 20.45H3.56V9h3.56v11.45z"/></svg></a></li>
+      </ul>
+    </div>
+    <div class="rp-base">
+      <p class="rp-direitos">© 2026 Ingresse</p>
+      <details class="rp-idioma">
+        <summary class="rp-idioma__b" aria-haspopup="menu"><span class="sr-only">Idioma do site: </span><img class="rp-band" src="./assets/flags/br.svg" alt="" width="24" height="18" data-pv-lang-band><span data-pv-lang-nome>Português (Brasil)</span><svg class="rp-ico rp-ico--sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary>
+        <ul class="rp-idioma__lista" role="menu" aria-label="Idioma do site">
+          <li role="none"><button type="button" class="rp-idioma__op" role="menuitemradio" data-pv-lang="PT" aria-checked="true" tabindex="-1" lang="pt-BR"><img class="rp-band" src="./assets/flags/br.svg" alt="" width="24" height="18">Português (Brasil)</button></li>
+          <li role="none"><button type="button" class="rp-idioma__op" role="menuitemradio" data-pv-lang="PT-PT" aria-checked="false" tabindex="-1" lang="pt-PT"><img class="rp-band" src="./assets/flags/pt.svg" alt="" width="24" height="18">Português (Portugal)</button></li>
+          <li role="none"><button type="button" class="rp-idioma__op" role="menuitemradio" data-pv-lang="ES" aria-checked="false" tabindex="-1" lang="es"><img class="rp-band" src="./assets/flags/es.svg" alt="" width="24" height="18">Español</button></li>
+          <li role="none"><button type="button" class="rp-idioma__op" role="menuitemradio" data-pv-lang="EN" aria-checked="false" tabindex="-1" lang="en"><img class="rp-band" src="./assets/flags/us.svg" alt="" width="24" height="18">English</button></li>
+        </ul>
+      </details>
+      <ul class="rp-legais" aria-label="Termos e políticas">
+        <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Política de privacidade</a></li>
+        <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Termos de uso</a></li>
+        <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Termos de compra</a></li>
+        <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Configurações de cookies</a></li>
+      </ul>
+    </div>
+    <div class="rp-grupo">
+      <h2 class="rp-grupo__t" id="rp-grupo">Empresas do Grupo Ingresse</h2>
+      <ul class="rp-grupo__lista" aria-labelledby="rp-grupo">
+        <li><a class="rp-link" href="https://ingresse.com/" target="_blank" rel="noopener noreferrer" aria-label="Ingresse (ingresse.com, abre em nova aba)">Ingresse</a></li>
+        <li><a class="rp-link" href="https://ticketsports.com.br/" target="_blank" rel="noopener noreferrer" aria-label="TicketSports (ticketsports.com.br, abre em nova aba)">TicketSports</a></li>
+        <li><a class="rp-link" href="https://outgo.com.br/" target="_blank" rel="noopener noreferrer" aria-label="OutGo (outgo.com.br, abre em nova aba)">OutGo</a></li>
+        <li><a class="rp-link" href="https://ingressonacional.com.br/" target="_blank" rel="noopener noreferrer" aria-label="Ingresso Nacional (ingressonacional.com.br, abre em nova aba)">Ingresso Nacional</a></li>
+        <li><a class="rp-link" href="https://ingressolive.com/" target="_blank" rel="noopener noreferrer" aria-label="Ingresso Live (ingressolive.com, abre em nova aba)">Ingresso Live</a></li>
+        <li><a class="rp-link" href="https://blacktag.com.br/" target="_blank" rel="noopener noreferrer" aria-label="Blacktag (blacktag.com.br, abre em nova aba)">Blacktag</a></li>
+        <li><a class="rp-link" href="https://pixelticket.com.br/" target="_blank" rel="noopener noreferrer" aria-label="PixelTicket (pixelticket.com.br, abre em nova aba)">PixelTicket</a></li>
+        <li><a class="rp-link" href="https://meep.com.br/" target="_blank" rel="noopener noreferrer" aria-label="Meep (meep.com.br, abre em nova aba)">Meep</a></li>
+      </ul>
+    </div>
+  </div>
+</footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1700}}'>
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = { uf: 'todas', map: false, big: typeof location !== 'undefined' && /[?&]pracas=30(&|$)/.test(location.search) }; }
+  componentDidMount() {
+    this.turRefaz = () => this.setState({ turT: Date.now() });
+    document.addEventListener('previa:lembretes', this.turRefaz);
+    this.turTic = setInterval(this.turRefaz, 1000);
+  }
+  componentWillUnmount() { document.removeEventListener('previa:lembretes', this.turRefaz); clearInterval(this.turTic); }
+  renderVals() {
+    const REAL={"aadb5221216d146af0adb7ea36952357":"./assets/real/99149.avif","934ed24f841e070877891e43c16b015d":"./assets/real/103645.avif","12f01a407f3e59141bcaea65ff714e26":"./assets/real/108821.avif","0a663dcd296f711f90aac49fb2442c1f":"./assets/real/107033.avif","577ee6362194dca322767e6cf9e27735":"./assets/real/105388.avif","45dee8f0c58ec197decdac7a16380a95":"./assets/real/109870.avif","954d030c60d52efe5dcf0fa8a6c6162e":"./assets/real/107659.avif","d97fce039f22811278a86f9ad25edb3b":"./assets/real/109547.avif","b32ba7b1957e931aba4f52f3814b30be":"./assets/real/108888.avif","b552a01adae792f30966fc41bad8be39":"./assets/real/92947.avif","e3247ee792aa6888ce3ded49878f5e66":"./assets/real/108325.avif","694a7db84a8556f62223a3efe451fdf8":"./assets/real/91221.avif","446c703cd44d165acb669098b67f9882":"./assets/real/94183.avif","0a731fef13a428960ff76173e6802b19":"./assets/real/108825.avif","706bfd3886c596df3c133118d52248b0":"./assets/real/108889.avif","084151755aabb4b020356d6b487553ec":"./assets/real/109546.avif","2e2d11eded0846e77c8204fa0f0e66e7":"./assets/real/108421.avif","5f8eed45a36e139514dbd92e36860660":"./assets/real/99261.avif","639175e2297d42530c16a83b62e78b3d":"./assets/real/106671.avif","339d89d9c33e8323f39b7da5717d55a8":"./assets/real/103653.avif","a12e7d2dd63af8da165f395128c9e672":"./assets/real/108536.avif","2959447541b48ebb1ca4a5422fd36f6c":"./assets/real/104717.avif","a109e7103f83bec95e545e9bc2fddef3":"./assets/real/108826.avif","3fb4fe2f24cb53922c88d5d200521650":"./assets/real/108881.avif","6083b051a648edee2775457b3c8a9710":"./assets/real/105383.avif","7936f484f211e3d92d2756518ec45abf":"./assets/real/93986.avif","b9134955a5526d57ac5fd14e3496463b":"./assets/real/108887.avif","0cc7b430ea7a9dd14644084531874c83":"./assets/real/104600.avif","783be348a514cdedc84e195a749ad926":"./assets/real/104585.avif","139248faaae9af501a30d143077ba9d1":"./assets/real/108882.avif","97209d7e927408a0c567805bd8e4d09f":"./assets/real/108468.avif"}; const B = id => REAL[id] || (['2959447541b48ebb1ca4a5422fd36f6c','446c703cd44d165acb669098b67f9882','6083b051a648edee2775457b3c8a9710','694a7db84a8556f62223a3efe451fdf8','7936f484f211e3d92d2756518ec45abf','97209d7e927408a0c567805bd8e4d09f'].includes(id) ? './assets/' + id + '.avif' : './assets/gen/' + id + '.avif');
+    /* tur:ini */
+    // Dados da turnê. fundo e logo ficam vazios até a arte oficial chegar: com fundo vazio o hero usa o degradê da cor da turnê,
+    // com logo vazio o nome da turnê vira o título em texto. Patrocinadores sem logo aparecem pelo nome.
+    const TURNE = {
+      cor: '#C8341F', fundo: '', logo: '',
+      nomeLogo: 'Turnê Sorriso Eu Gosto no Pagode',
+      patrocinadores: [{ nome: 'Patrocinador Master', logo: '' }, { nome: 'Patrocinador Oficial', logo: '' }]
+    };
+    // Regras da LP "Ensaios da Anitta" (docs/produto/PAGINA-DE-TURNE.md): cada praça é uma data com situação visível; a abertura de venda é um INSTANTE absoluto (abreEm, ISO com fuso),
+    // o cartão mostra o horário ANUNCIADO (anunciadoEm, só quando difere do real) e o botão liga sozinho no horário, pelo relógio (IngresseLembretes, tools/previa/lembretes.js).
+    // situacao: venda | esgotado | nao-aberto | encerrado | cancelado. Datas em ordem; as encerradas descem para o fim da lista.
+    // cancelado (RC-23): a parada segue na lista, com o selo "Cancelado" e o botão "Ver detalhes"; simulação: "Parada cancelada" na engrenagem (cancela Ribeirão Preto).
+    // eventoId = id do evento da praça (AWA tem um evento por cidade; aqui, ids de exemplo); geo [lat, lon] = posição aproximada; lado = de que lado do ponto fica o rótulo no mapa.
+    // Filtro por estado e mapa SEM limite de praças (decisão do Wander, 28/10/2026): mostram todas, com o layout aguentando muitas (chips que rolam no celular; mapa com pinos numerados e legenda).
+    const L = window.IngresseLembretes;
+    const AGORA = L ? L.agora() : Date.parse('2026-10-28T10:00:00-03:00');
+    const EVENTO_TURNE = 'Turnê Sorriso Eu Gosto no Pagode';
+    const cancelada = !!this.state.cancel;
+    const grande = !!this.state.big; // engrenagem: turnê com 30 praças, para ver filtro, mapa e lista com muitas datas
+    const UF_NOME = { AC: 'Acre', AL: 'Alagoas', AP: 'Amapá', AM: 'Amazonas', BA: 'Bahia', CE: 'Ceará', DF: 'Distrito Federal', ES: 'Espírito Santo', GO: 'Goiás', MA: 'Maranhão', MT: 'Mato Grosso', MS: 'Mato Grosso do Sul', MG: 'Minas Gerais', PA: 'Pará', PB: 'Paraíba', PR: 'Paraná', PE: 'Pernambuco', PI: 'Piauí', RJ: 'Rio de Janeiro', RN: 'Rio Grande do Norte', RS: 'Rio Grande do Sul', RO: 'Rondônia', RR: 'Roraima', SC: 'Santa Catarina', SP: 'Estado de São Paulo', SE: 'Sergipe', TO: 'Tocantins' };
+    const base = [
+      { id: 'campinas', eventoId: 'sorriso-2026-campinas', date: 'Sáb 17 out', time: '15h', city: 'Campinas', uf: 'SP', venue: 'Sambódromo de Paulínia', sit: 'encerrado', geo: [-22.91, -47.06], lado: 'e' },
+      { id: 'ribeirao-preto', eventoId: 'sorriso-2026-ribeirao-preto', date: 'Sáb 31 out', time: '15h', city: 'Ribeirão Preto', uf: 'SP', venue: 'Estádio do Comercial', sit: 'esgotado', geo: [-21.18, -47.81], lado: 'd' },
+      { id: 'sao-paulo', eventoId: 'sorriso-2026-sao-paulo', date: 'Dom 8 nov', time: '13h', city: 'São Paulo', uf: 'SP', venue: 'Arena Anhembi', sit: 'venda', geo: [-23.55, -46.63], lado: 'd' },
+      { id: 'belo-horizonte', eventoId: 'sorriso-2026-belo-horizonte', date: 'Sáb 14 nov', time: '15h', city: 'Belo Horizonte', uf: 'MG', venue: 'Mineirinho', sit: 'nao-aberto', abreEm: '2026-10-30T12:00:00-03:00', geo: [-19.92, -43.94], lado: 'e' }
+    ];
+    // praças de exemplo da turnê grande (posição aproximada de cada cidade); situação e data seguem um padrão fixo
+    const MAIS = [['Rio de Janeiro', 'RJ', -22.91, -43.17], ['Niterói', 'RJ', -22.88, -43.10], ['Vitória', 'ES', -20.32, -40.34], ['Salvador', 'BA', -12.97, -38.50], ['Recife', 'PE', -8.05, -34.88], ['Fortaleza', 'CE', -3.73, -38.52], ['Natal', 'RN', -5.79, -35.21], ['João Pessoa', 'PB', -7.12, -34.86], ['Maceió', 'AL', -9.67, -35.74], ['Aracaju', 'SE', -10.91, -37.07], ['São Luís', 'MA', -2.53, -44.30], ['Belém', 'PA', -1.46, -48.50], ['Manaus', 'AM', -3.12, -60.02], ['Brasília', 'DF', -15.79, -47.88], ['Goiânia', 'GO', -16.68, -49.25], ['Cuiabá', 'MT', -15.60, -56.10], ['Campo Grande', 'MS', -20.47, -54.62], ['Curitiba', 'PR', -25.43, -49.27], ['Londrina', 'PR', -23.31, -51.16], ['Florianópolis', 'SC', -27.59, -48.55], ['Joinville', 'SC', -26.30, -48.85], ['Porto Alegre', 'RS', -30.03, -51.23], ['Santos', 'SP', -23.96, -46.33], ['Sorocaba', 'SP', -23.50, -47.46], ['São José dos Campos', 'SP', -23.22, -45.89], ['Uberlândia', 'MG', -18.92, -48.28]];
+    const SEM = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'], MES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+    const slug = t => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    const extra = grande ? MAIS.map(([city, uf, la, lo], i) => {
+      const d = new Date(Date.UTC(2026, 10, 15 + i * 3)); // a cada 3 dias, a partir de 15 nov
+      const sit = i % 6 === 2 ? 'esgotado' : i % 4 === 1 ? 'nao-aberto' : 'venda';
+      return { id: slug(city), eventoId: 'sorriso-2026-' + slug(city), date: SEM[d.getUTCDay()] + ' ' + d.getUTCDate() + ' ' + MES[d.getUTCMonth()], time: '15h', city, uf, venue: 'Arena ' + city, sit, geo: [la, lo], lado: 'd', ...(sit === 'nao-aberto' ? { abreEm: new Date(Date.UTC(2026, 9, 28, 15 + (i % 5) * 2, 0)).toISOString().replace('.000Z', 'Z') } : {}) };
+    }) : [];
+    const all = base.concat(extra).map(s => (cancelada && s.id === 'ribeirao-preto' ? { ...s, sit: 'cancelado' } : s));
+    const ROTULO = { venda: '', esgotado: 'Esgotado', 'nao-aberto': 'Venda não aberta', encerrado: 'Encerrado', cancelado: 'Cancelado' };
+    // estados que existem na turnê (do mais frequente para o menos), sempre todos: sem limite de praças
+    const contUf = {}; all.forEach(s => { contUf[s.uf] = (contUf[s.uf] || 0) + 1; });
+    const ufs = Object.keys(contUf).sort((a, b) => contUf[b] - contUf[a] || (UF_NOME[a] || a).localeCompare(UF_NOME[b] || b, 'pt-BR'));
+    const FILTRA = ufs.length > 1; // com um estado só o filtro não filtra nada
+    const cur = FILTRA && (this.state.uf === 'todas' || contUf[this.state.uf]) ? this.state.uf : 'todas';
+    const filters = [['todas', 'Todas']].concat(ufs.map(u => [u, UF_NOME[u] || u])).map(([id, label]) => {
+      const on = id === cur;
+      return { label, pressed: on ? 'true' : 'false', pick: () => this.setState({ uf: id }) };
+    });
+    const ordem = s => (s.sit === 'encerrado' ? 1 : 0);
+    // capa de cada praça (aparece só no celular, acima do texto): AWA tem um evento por cidade, cada um com o próprio pôster (traz cidade, data e local escritos, então NÃO se reaproveita em outra praça).
+    // Praça sem pôster fica com a placa (fundo da ilha, mesma proporção, sem salto de layout) até a arte chegar.
+    const CAPAS = { campinas: './assets/real/105383.avif', 'sao-paulo': './assets/real/104717.avif', 'ribeirao-preto': './assets/real/91221.avif' };
+    const lista = all.map(s => {
+      // a abertura (bloco .ab) só existe na venda não aberta; com o relógio ela vira "aberta" e o cartão passa a "à venda" sozinho
+      const ab = s.sit === 'nao-aberto'
+        ? (L ? L.abertura({ id: 'colecao-sorriso:' + s.id, evento: EVENTO_TURNE, praca: s.city, abreEm: s.abreEm, anunciadoEm: s.anunciadoEm, href: 'Evento.dc.html' })
+          : { id: 'colecao-sorriso:' + s.id, estado: 'aguardando', aguardando: true, aberto: false, iso: s.abreEm, quando: '', rotulo: 'A venda abre', falta: '', temFalta: false, avisarRotulo: 'Me avisar quando abrir', avisarPressed: 'false', avisarClasse: '', avisarNome: 'Me avisar quando abrir', href: 'Evento.dc.html' })
+        : null;
+      const sitEf = s.sit === 'nao-aberto' && ab.aberto ? 'venda' : s.sit;
+      const partes = s.date.split(' ');
+      return { ...s, ab, sitEf, sem: partes[0], dia: partes[1], mes: partes[2], capa: CAPAS[s.id] || '', temCapa: !!CAPAS[s.id] };
+    });
+    const stops = lista.filter(s => cur === 'todas' || s.uf === cur).map((s, i) => ({ ...s, i }))
+      .sort((a, b) => ordem(a) - ordem(b) || a.i - b.i)
+      .map((s, k) => ({
+        ...s, anchor: '#evento-' + s.id, domId: 'evento-' + s.id, rotulo: ROTULO[s.sitEf], temRotulo: !!ROTULO[s.sitEf], pos: k,
+        isVenda: s.sitEf === 'venda' && !s.ab, isEsgotado: s.sitEf === 'esgotado', isAbrir: !!s.ab, isFim: s.sitEf === 'encerrado', isCancelado: s.sitEf === 'cancelado',
+        label: s.city + ', ' + s.date + ': ' + ROTULO[s.sitEf]
+      }));
+    // praças do topo: as datas que ainda não passaram, na ordem do calendário; cada uma leva à sua data na lista
+    const pracas = stops.filter(s => s.sitEf !== 'encerrado' && s.sitEf !== 'cancelado').map(s => ({ ...s, sit: s.sitEf, dia: s.date.replace(/^[^ ]+ /, '') }));
+    // resumo do topo: quantas praças estão à venda e quando abre a próxima venda (o relógio do protótipo manda)
+    const nVenda = lista.filter(s => s.sitEf === 'venda').length;
+    const proxima = lista.filter(s => s.ab && s.ab.aguardando).sort((a, b) => a.ab.libera - b.ab.libera)[0];
+    const resumo = nVenda + (nVenda === 1 ? ' cidade com ingressos à venda' : ' cidades com ingressos à venda') + (proxima && L ? ' · Próxima abertura: ' + proxima.city + ', ' + proxima.ab.quando : '');
+    // aviso para leitor de tela quando uma venda abre sozinha (nunca na primeira montagem)
+    const abertas = lista.filter(s => s.ab && s.ab.aberto).map(s => s.id);
+    if (this.__abertas) { const novas = lista.filter(s => s.ab && s.ab.aberto && !this.__abertas.includes(s.id)); if (novas.length) this.__anuncio = novas.map(s => s.city).join(' e ') + ': a venda abriu.'; else if (abertas.length < this.__abertas.length) this.__anuncio = ''; }
+    this.__abertas = abertas;
+    // mapa das paradas: pontos nas posições aproximadas das cidades, num quadro que cobre todas as paradas (não muda com o filtro).
+    // Até 8 praças: pino com cidade e data ao lado. Mais que isso: pinos NUMERADOS (a ordem da lista) e uma legenda abaixo, com os pinos afastados entre si
+    // (relaxamento no tamanho de cada layout: celular, tablet e desktop) para nenhum ficar em cima do outro e todos terem alvo de 44 px.
+    const LA = all.map(s => s.geo[0]), LO = all.map(s => s.geo[1]);
+    const la0 = Math.max(...LA) + 0.8, la1 = Math.min(...LA) - 0.8, lo0 = Math.min(...LO) - 1.6, lo1 = Math.max(...LO) + 1.6;
+    const NUM = all.length > 8;
+    const LAYOUTS = { m: [342, Math.min(640, 360 + Math.max(0, all.length - 8) * 14)], t: [720, Math.min(560, 320 + Math.max(0, all.length - 8) * 9)], d: [1200, Math.min(520, 300 + Math.max(0, all.length - 8) * 8)] };
+    const chaveMapa = all.map(s => s.id).join('|');
+    if (NUM && this.__mapaChave !== chaveMapa) {
+      this.__mapaChave = chaveMapa; this.__mapaPos = {};
+      Object.keys(LAYOUTS).forEach(k => {
+        const [W, H] = LAYOUTS[k], PAD = 26, MIN = 46;
+        const P = all.map(s => ({ x: (s.geo[1] - lo0) / (lo1 - lo0) * W, y: (la0 - s.geo[0]) / (la0 - la1) * H }));
+        for (let it = 0; it < 160; it++) {
+          let mexeu = false;
+          for (let i = 0; i < P.length; i++) for (let j = i + 1; j < P.length; j++) {
+            let dx = P[j].x - P[i].x, dy = P[j].y - P[i].y, d = Math.hypot(dx, dy);
+            if (d >= MIN) continue;
+            if (d < 0.01) { dx = (i % 2 ? 1 : -1); dy = (j % 2 ? 1 : -1); d = Math.hypot(dx, dy); }
+            const f = (MIN - d) / 2 / d; P[i].x -= dx * f; P[i].y -= dy * f; P[j].x += dx * f; P[j].y += dy * f; mexeu = true;
+          }
+          P.forEach(p => { p.x = Math.min(W - PAD, Math.max(PAD, p.x)); p.y = Math.min(H - PAD, Math.max(PAD, p.y)); });
+          if (!mexeu) break;
+        }
+        all.forEach((s, i) => { (this.__mapaPos[s.id] = this.__mapaPos[s.id] || {})[k] = '--x' + k + ':' + (P[i].x / W * 100).toFixed(2) + '%;--y' + k + ':' + (P[i].y / H * 100).toFixed(2) + '%'; });
+      });
+    }
+    const pinos = stops.map(s => {
+      const dia = s.date.replace(/^[^ ]+ /, '');
+      const pp = NUM ? this.__mapaPos[s.id] : null;
+      return {
+        city: s.city, dia, num: s.pos + 1, anchor: s.anchor, sit: s.sitEf, lado: s.lado, label: 'Ver ' + s.city + ' na lista: ' + s.date,
+        estilo: NUM ? pp.m + ';' + pp.t + ';' + pp.d : 'left:' + ((s.geo[1] - lo0) / (lo1 - lo0) * 100).toFixed(1) + '%;top:' + ((la0 - s.geo[0]) / (la0 - la1) * 100).toFixed(1) + '%'
+      };
+    });
+    const mapaEstilo = NUM ? '--hm:' + LAYOUTS.m[1] + 'px;--ht:' + LAYOUTS.t[1] + 'px;--hd:' + LAYOUTS.d[1] + 'px' : '';
+    const temMapa = all.length > 0;
+    const m = temMapa && this.state.map;
+    // engrenagem: o relógio do protótipo (vale para todas as telas da aba), a conta e os lembretes
+    const rel = L ? L.relogio : null;
+    const proxLibera = proxima ? proxima.ab.libera : 0; // o instante em que o botão liga (5 min antes do horário anunciado)
+    const comConta = L ? !!L.conta() : true;
+    return {
+      cancelOn: cancelada ? 'true' : 'false', toggleCancel: () => this.setState({ cancel: !cancelada }),
+      bigOn: grande ? 'true' : 'false', bigOff: grande ? 'false' : 'true', pequena: () => this.setState({ big: false, uf: 'todas' }), grandeTurne: () => this.setState({ big: true }),
+      filters, temFiltros: FILTRA, stops, pracas, muitasPracas: pracas.length > 8 ? 'true' : 'false', pinos, temMapa, mapaNum: NUM, mapaNome: !NUM, mapaEstilo, showMap: m, mapPressed: m ? 'true' : 'false', mapLabel: m ? 'Ocultar mapa' : 'Ver no mapa', toggleMap: () => this.setState({ map: !m }),
+      resumo, anuncio: this.__anuncio || '', nPracas: all.length + ' cidades', periodo: grande ? 'out 2026–jan 2027' : 'out–nov 2026',
+      agoraTxt: L ? L.momento(AGORA) : '', relAgora: () => rel && rel.reiniciar(), rel1min: () => rel && rel.avancar(60000),
+      relFaltar: () => { if (rel && proxLibera) rel.ajustarPara(proxLibera - 10000); }, relAbrir: () => { if (rel && proxLibera) rel.ajustarPara(proxLibera + 1000); }, semProx: proxLibera ? 'false' : 'true',
+      antecipaTxt: L ? 'O botão libera ' + Math.round(L.antecipaMs / 60000) + ' min antes do horário anunciado (como na LP). O cartão segue mostrando o horário anunciado.' : '',
+      contaOn: comConta ? 'true' : 'false', contaOff: comConta ? 'false' : 'true', comConta: () => L && L.definirConta(true), semConta: () => L && L.definirConta(false),
+      limparLembretes: () => L && L.limpar(), novas3: () => L && L.simularNovas(3), novas12: () => L && L.simularNovas(12),
+      turStyle: '--tur-cor:' + TURNE.cor + ';--tur-fundo:' + (TURNE.fundo ? 'url(' + TURNE.fundo + ')' : 'none'), hasLogo: !!TURNE.logo, noLogo: !TURNE.logo, turLogo: TURNE.logo, turNomeLogo: TURNE.nomeLogo,
+      temPat: TURNE.patrocinadores.length > 0,
+      patrocinadores: TURNE.patrocinadores.map(p => ({ ...p, hasLogo: !!p.logo, noLogo: !p.logo }))
+    };
+    /* tur:fim */
+  }
+}
+</script>
+</body>
+</html>

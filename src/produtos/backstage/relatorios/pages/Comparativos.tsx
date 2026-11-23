@@ -34,18 +34,13 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import {
-  Dialog as AriaDialog,
-  Modal as AriaModal,
-  ModalOverlay as AriaModalOverlay,
-} from "react-aria-components";
+import { SlideoutMenu } from "@/components/application/slideout-menus/slideout-menu";
 import type { Key } from "react-aria-components";
 import {
   ButtonGroup,
   ButtonGroupItem,
 } from "@/components/base/button-group/button-group";
 import { Button } from "@/components/base/buttons/button";
-import { ButtonUtility } from "@/components/base/buttons/button-utility";
 import { Select } from "@/components/base/select/select";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { cx } from "@/utils/cx";
@@ -60,10 +55,18 @@ import {
 import {
   eventos as EVENTOS_DA_HOME,
   useEventoAtual,
+  useEventosVersao,
+  type Evento as EventoDaLista,
 } from "../../eventos/data/eventos";
+import {
+  useBanco,
+  type Evento as EventoBanco,
+  type HistoricoVendas,
+  type Pedido as PedidoBanco,
+} from "@/plataforma";
 
 /* ------------------------------------------------------------------ */
-/*  Catálogo: os mesmos eventos que a home lista                      */
+/*  Catálogo: os eventos da organização, com as vendas do banco        */
 /* ------------------------------------------------------------------ */
 
 interface DiaSerie {
@@ -78,10 +81,19 @@ interface EventoComparativo {
   curto: string;
   /** Cartaz do evento, o mesmo que a home mostra. */
   cartaz: string;
+  /** Primeiro dia com venda (dd/mm/aaaa). */
   dataAbertura: string;
+  /** Data do evento no banco (dd/mm/aaaa). */
   dataEvento: string;
   capacidade: number;
   janelaDias: number;
+  /**
+   * Índice do dia do evento contado da abertura: o "D-0" do alinhamento pelo
+   * evento. Evento futuro fica depois do fim da série; venda registrada depois
+   * da data do evento (o histórico acompanha o relógio) conta o último dia de
+   * venda como o dia do evento.
+   */
+  diaDoEvento: number;
   taxaPct: number; // taxa retida (bruto → líquido)
   serie: DiaSerie[];
   /** Escada de lotes: preço praticado a partir de cada dia da janela. */
@@ -99,103 +111,19 @@ interface DegrauPreco {
   nome: string;
 }
 
-const ordinalLote = (i: number) => `${i + 1}º lote`;
-
 /**
- * Lotes de um evento. Os degraus ficam mais próximos perto da data, que é
- * quando o produtor costuma virar lote com mais frequência.
- */
-function buildPrecos(
-  janelaDias: number,
-  ticket: number,
-  seed: number,
-): DegrauPreco[] {
-  const rand = mulberry32(seed * 7 + 3);
-  const degraus = 5 + Math.floor(rand() * 4);
-  // Elasticidade realista: o topo costuma ficar entre +70% e +120% do 1º lote.
-  const inicial = Math.round(ticket * 0.72);
-  const topo = Math.round(inicial * (1.7 + rand() * 0.5));
-
-  return Array.from({ length: degraus }, (_, i) => {
-    const t = i / (degraus - 1);
-    return {
-      dia: Math.round(Math.pow(t, 0.75) * (janelaDias - 1)),
-      valor: Math.round(inicial + (topo - inicial) * Math.pow(t, 1.35)),
-      nome: ordinalLote(i),
-    };
-  });
-}
-
-function mulberry32(seed: number) {
-  return function () {
-    seed |= 0;
-    seed = (seed + 0x6d2b79f5) | 0;
-    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-interface Peak {
-  center: number;
-  width: number;
-  height: number;
-}
-
-function buildSerie(
-  janelaDias: number,
-  totalIngressos: number,
-  ticketBase: number,
-  seed: number,
-  peaks: Peak[],
-): DiaSerie[] {
-  const rng = mulberry32(seed);
-  const N = janelaDias;
-  const pesos: number[] = [];
-  for (let d = 0; d < N; d++) {
-    const prox = N === 1 ? 1 : d / (N - 1);
-    let w = Math.exp(-d / 6) * 4.5 + Math.pow(prox, 3) * 4 + 0.8;
-    for (const p of peaks)
-      w +=
-        p.height *
-        Math.exp(-((prox - p.center) ** 2) / (2 * p.width * p.width));
-    if (d === N - 1) w += 7;
-    if (d === N - 2) w += 3;
-    w *= 0.88 + 0.24 * rng();
-    pesos.push(Math.max(0.05, w));
-  }
-  const soma = pesos.reduce((s, x) => s + x, 0) || 1;
-  return pesos.map((w, d) => {
-    const prox = N === 1 ? 1 : d / (N - 1);
-    const ingressos = Math.round((totalIngressos * w) / soma);
-    const ticket = ticketBase * (0.8 + 0.45 * prox);
-    return {
-      vendas: Math.round(ingressos * ticket),
-      ingressos,
-      transacoes: Math.max(
-        ingressos > 0 ? 1 : 0,
-        Math.round(ingressos / (1.2 + 0.5 * rng())),
-      ),
-    };
-  });
-}
-
-/**
- * Cores de série. A ordem importa: as quatro primeiras são as que mais se
- * separam entre si, inclusive para quem não distingue vermelho e verde.
- * A cor é atribuída pela ORDEM DE SELEÇÃO, não pela posição na lista de
- * eventos, para que a comparação mais comum (dois eventos) sempre caia nas
- * duas cores mais distantes.
+ * Cores de série (REL-214): paleta categórica validada pelo validador de dataviz (todas as
+ * duplas, claro e escuro, inclusive para quem não distingue vermelho e verde). Sem as cores de
+ * status (verde = sucesso, amarelo = alerta, vermelho = erro): evento não é estado. São 4 porque
+ * o teto é 4 eventos (MAX_EDICOES). A cor é atribuída pela ORDEM DE SELEÇÃO, não pela posição na
+ * lista de eventos, para que a comparação mais comum (dois eventos) caia nas duas mais distantes.
+ * Texto nunca usa a cor da série: o nome fica em cor de texto, com a marca colorida ao lado.
  */
 const PALETTE = [
   "var(--color-utility-blue-500)",
-  "var(--color-utility-orange-500)",
-  "var(--color-utility-purple-500)",
-  "var(--color-utility-green-500)",
+  "var(--color-utility-orange-600)",
+  "var(--color-utility-indigo-700)",
   "var(--color-utility-pink-500)",
-  "var(--color-utility-indigo-500)",
-  "var(--color-utility-yellow-500)",
-  "var(--color-utility-brand-600)",
 ];
 
 /** Canal redundante à cor (WCAG 1.4.1): cada série tem também um traço próprio. */
@@ -209,119 +137,235 @@ const addDias = (base: string, dias: number) => {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate() + dias);
 };
 
-const dataCurta = (d: Date) =>
-  `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
-
-/** Rótulo curto para eixos, legendas e tabelas: o nome cheio não cabe. */
-const CURTO: Record<string, string> = {
-  "6704": "Mochakk",
-  "2871": "Rave the World",
-  "3390": "In da Club",
-  "5518": "Freak Chic",
-  "4102": "Inception",
-};
-
-/** Perfil de venda por evento. Fixo por id para a página não mudar a cada render. */
-const PERFIL: Record<
-  string,
-  {
-    janelaDias: number;
-    capacidade: number;
-    ingressos: number;
-    ticket: number;
-    taxaPct: number;
-    seed: number;
-    peaks: Peak[];
-  }
-> = {
-  "6704": {
-    janelaDias: 118,
-    capacidade: 9000,
-    ingressos: 7842,
-    ticket: 185,
-    taxaPct: 0.1,
-    seed: 11,
-    peaks: [
-      { center: 0.45, width: 0.05, height: 8 },
-      { center: 0.92, width: 0.04, height: 9 },
-    ],
-  },
-  "2871": {
-    janelaDias: 96,
-    capacidade: 14000,
-    ingressos: 12310,
-    ticket: 240,
-    taxaPct: 0.08,
-    seed: 23,
-    peaks: [
-      { center: 0.38, width: 0.04, height: 11 },
-      { center: 0.86, width: 0.05, height: 7 },
-    ],
-  },
-  "3390": {
-    janelaDias: 74,
-    capacidade: 1800,
-    ingressos: 1544,
-    ticket: 95,
-    taxaPct: 0.1,
-    seed: 37,
-    peaks: [{ center: 0.72, width: 0.06, height: 10 }],
-  },
-  "5518": {
-    janelaDias: 62,
-    capacidade: 2200,
-    ingressos: 1987,
-    ticket: 80,
-    taxaPct: 0.1,
-    seed: 43,
-    peaks: [
-      { center: 0.55, width: 0.05, height: 7 },
-      { center: 0.9, width: 0.04, height: 9 },
-    ],
-  },
-  "4102": {
-    janelaDias: 88,
-    capacidade: 1600,
-    ingressos: 1203,
-    ticket: 110,
-    taxaPct: 0.1,
-    seed: 59,
-    peaks: [{ center: 0.64, width: 0.05, height: 9 }],
-  },
-};
-
 const doisDigitos = (n: number) => String(n).padStart(2, "0");
 const paraBR = (d: Date) =>
   `${doisDigitos(d.getDate())}/${doisDigitos(d.getMonth() + 1)}/${d.getFullYear()}`;
 
-/**
- * O catálogo é o mesmo da home: só os eventos que a organização de fato tem.
- * Todos usam o perfil acima. Puxar os números do evento em contexto da fonte
- * única (src/reports) foi tentado e descartado: aquela base é de um réveillon
- * de dezenas de milhares de ingressos, e colada num clube de 1.600 lugares ela
- * fazia a âncora aparecer centenas de por cento acima de todo o resto.
- */
-function construirCatalogo(): EventoComparativo[] {
-  return EVENTOS_DA_HOME.filter((ev) => PERFIL[ev.id]).map((ev) => {
-    const p = PERFIL[ev.id];
-    const dataEvento = new Date(ev.data);
-    const dataAbertura = new Date(dataEvento);
-    dataAbertura.setDate(dataAbertura.getDate() - (p.janelaDias - 1));
+const DIA_MS = 86_400_000;
+const meiaNoite = (d: Date) =>
+  new Date(d.getFullYear(), d.getMonth(), d.getDate());
+const diasEntre = (de: Date, ate: Date) =>
+  Math.round((meiaNoite(ate).getTime() - meiaNoite(de).getTime()) / DIA_MS);
 
-    return {
-      id: ev.id,
-      nome: ev.nome,
-      curto: CURTO[ev.id] ?? ev.nome,
-      cartaz: ev.cover,
-      dataAbertura: paraBR(dataAbertura),
-      dataEvento: paraBR(dataEvento),
-      capacidade: p.capacidade,
-      janelaDias: p.janelaDias,
-      taxaPct: p.taxaPct,
-      serie: buildSerie(p.janelaDias, p.ingressos, p.ticket, p.seed, p.peaks),
-      precos: buildPrecos(p.janelaDias, p.ticket, p.seed),
-    };
+/**
+ * Rótulo curto para eixos, legendas e tabelas: o nome cheio não cabe. Tira a
+ * casa que apresenta ("X apresenta: Y" vira "Y"), o line-up depois de "pres.",
+ * "w/", "by" e "feat", e corta em 24 caracteres na palavra.
+ */
+function rotuloCurto(nome: string): string {
+  let s = nome.trim();
+  const apresenta = s.match(/\bapresenta:?\s+(.+)$/i);
+  s = apresenta ? apresenta[1] : s.split(/\s+pres\.:?|:/i)[0];
+  s = s.split(/\s+(?:w\/|by|feat\.?|part\.)\s+/i)[0].trim();
+  if (s.length > 24) {
+    const corte = s.slice(0, 24);
+    const espaco = corte.lastIndexOf(" ");
+    s = `${(espaco > 10 ? corte.slice(0, espaco) : corte).trim()}…`;
+  }
+  return s || nome;
+}
+
+/**
+ * Escada de preços do ingresso mais vendido do evento, a partir do catálogo.
+ * O banco não guarda quando cada lote virou: o dia sai das vendas, quando o
+ * acumulado daquele ingresso passa a quantidade dos lotes anteriores.
+ */
+function precosDoCatalogo(
+  ev: EventoBanco,
+  vendidosPorLote: Map<string, number>,
+  serie: DiaSerie[],
+): DegrauPreco[] {
+  const tipos = ev.sessoes.flatMap((s) =>
+    s.grupos.flatMap((g) => g.ingressos.filter((t) => t.lotes.length > 0)),
+  );
+  if (tipos.length === 0) return [];
+  const vendidosDo = (t: (typeof tipos)[number]) =>
+    t.lotes.reduce((n, l) => n + (vendidosPorLote.get(l.id) ?? 0), 0);
+  const principal = [...tipos].sort((a, b) => vendidosDo(b) - vendidosDo(a))[0];
+  const vendidosPrincipal = vendidosDo(principal);
+  const totalIngressos = serie.reduce((n, d) => n + d.ingressos, 0);
+  if (vendidosPrincipal === 0 || totalIngressos === 0)
+    return [{ dia: 0, valor: principal.lotes[0].preco, nome: principal.lotes[0].nome }];
+
+  const fatia = vendidosPrincipal / totalIngressos;
+  const degraus: DegrauPreco[] = [];
+  let antes = 0;
+  // `acumulado` soma os dias antes de `dia`.
+  let acumulado = 0;
+  let dia = 0;
+  for (let i = 0; i < principal.lotes.length; i++) {
+    const lote = principal.lotes[i];
+    if (i > 0) {
+      if ((vendidosPorLote.get(lote.id) ?? 0) === 0) break;
+      // Primeiro dia em que o acumulado do ingresso passa os lotes anteriores.
+      while (
+        dia < serie.length &&
+        acumulado + serie[dia].ingressos * fatia <= antes
+      ) {
+        acumulado += serie[dia].ingressos * fatia;
+        dia++;
+      }
+    }
+    degraus.push({
+      dia: Math.min(dia, serie.length - 1),
+      valor: lote.preco,
+      nome: lote.nome,
+    });
+    antes += lote.quantidade;
+  }
+  return degraus;
+}
+
+/**
+ * Um evento da organização com a série diária do banco: o histórico de vendas
+ * (`historico.serie`, uma linha por dia terminando ontem) mais os pedidos
+ * pagos, no dia do pagamento. Sem venda nenhuma, o evento fica fora.
+ */
+function eventoComparativo(
+  base: EventoDaLista,
+  ev: EventoBanco,
+  historico: HistoricoVendas | undefined,
+  pedidos: PedidoBanco[],
+): EventoComparativo | null {
+  const hoje = meiaNoite(new Date());
+  const linhas = historico?.serie ?? [];
+  const inicioHistorico = new Date(
+    hoje.getFullYear(),
+    hoje.getMonth(),
+    hoje.getDate() - linhas.length,
+  );
+  const ingressosHistorico = Object.values(historico?.porLote ?? {}).reduce(
+    (a, b) => a + b,
+    0,
+  );
+  const pedidosHistorico = (historico?.pagamentos ?? []).reduce(
+    (a, p) => a + p.qtd,
+    0,
+  );
+  // O histórico não guarda pedidos por dia: usa a razão pedidos ÷ ingressos dele.
+  const pedidosPorIngresso = ingressosHistorico
+    ? pedidosHistorico / ingressosHistorico
+    : 0.6;
+
+  const porDia = new Map<number, DiaSerie>();
+  const somar = (dia: Date, d: DiaSerie) => {
+    const chave = meiaNoite(dia).getTime();
+    const atual = porDia.get(chave) ?? { vendas: 0, ingressos: 0, transacoes: 0 };
+    atual.vendas += d.vendas;
+    atual.ingressos += d.ingressos;
+    atual.transacoes += d.transacoes;
+    porDia.set(chave, atual);
+  };
+
+  linhas.forEach(([ingressos, , faturamento], i) =>
+    somar(
+      new Date(
+        inicioHistorico.getFullYear(),
+        inicioHistorico.getMonth(),
+        inicioHistorico.getDate() + i,
+      ),
+      {
+        vendas: faturamento,
+        ingressos,
+        transacoes:
+          ingressos > 0 ? Math.max(1, Math.round(ingressos * pedidosPorIngresso)) : 0,
+      },
+    ),
+  );
+
+  const vendidosPorLote = new Map(Object.entries(historico?.porLote ?? {}));
+  for (const p of pedidos) {
+    if (p.eventoId !== ev.id || p.status !== "pago") continue;
+    let ingressos = 0;
+    let vendas = 0;
+    for (const item of p.itens) {
+      vendas += item.face * item.quantidade;
+      if (item.tipo !== "ingresso") continue;
+      ingressos += item.quantidade;
+      if (item.loteId)
+        vendidosPorLote.set(
+          item.loteId,
+          (vendidosPorLote.get(item.loteId) ?? 0) + item.quantidade,
+        );
+    }
+    somar(new Date(p.pagamento?.pagoEm ?? p.atualizadoEm), {
+      vendas,
+      ingressos,
+      transacoes: 1,
+    });
+  }
+
+  const dias = [...porDia.keys()].sort((a, b) => a - b);
+  if (dias.length === 0) return null;
+  const abertura = new Date(dias[0]);
+  const janelaDias = diasEntre(abertura, new Date(dias[dias.length - 1])) + 1;
+  const serie = Array.from({ length: janelaDias }, (_, i) => {
+    const d = new Date(
+      abertura.getFullYear(),
+      abertura.getMonth(),
+      abertura.getDate() + i,
+    );
+    return porDia.get(d.getTime()) ?? { vendas: 0, ingressos: 0, transacoes: 0 };
   });
+  if (!serie.some((d) => d.ingressos > 0 || d.vendas > 0)) return null;
+
+  const dataEvento = new Date(ev.data);
+  return {
+    id: ev.id,
+    nome: ev.nome,
+    curto: rotuloCurto(ev.nome),
+    cartaz: base.cover || ev.capa || "",
+    dataAbertura: paraBR(abertura),
+    dataEvento: paraBR(dataEvento),
+    capacidade: ev.sessoes.reduce(
+      (n, s) =>
+        n +
+        s.grupos.reduce(
+          (m, g) =>
+            m +
+            g.ingressos.reduce(
+              (k, t) => k + t.lotes.reduce((q, l) => q + l.quantidade, 0),
+              0,
+            ),
+          0,
+        ),
+      0,
+    ),
+    janelaDias,
+    diaDoEvento: Math.max(janelaDias - 1, diasEntre(abertura, dataEvento)),
+    taxaPct: ev.taxaServico ?? 0.1,
+    serie,
+    precos: precosDoCatalogo(ev, vendidosPorLote, serie),
+  };
+}
+
+/**
+ * Os eventos da organização (o mesmo espelho da home) que já venderam,
+ * refeitos quando o banco ou a lista mudam.
+ */
+function useCatalogo(): EventoComparativo[] {
+  const { tabelas } = useBanco();
+  const versao = useEventosVersao();
+  return useMemo(() => {
+    void versao;
+    const pedidosPorEvento = new Map<string, PedidoBanco[]>();
+    for (const p of Object.values(tabelas.pedidos ?? {})) {
+      const lista = pedidosPorEvento.get(p.eventoId) ?? [];
+      lista.push(p);
+      pedidosPorEvento.set(p.eventoId, lista);
+    }
+    return EVENTOS_DA_HOME.map((base) => {
+      const ev = tabelas.eventos?.[base.id];
+      return ev
+        ? eventoComparativo(
+            base,
+            ev,
+            tabelas.historico?.[base.id],
+            pedidosPorEvento.get(base.id) ?? [],
+          )
+        : null;
+    }).filter((e): e is EventoComparativo => e != null);
+  }, [tabelas, versao]);
 }
 
 type Metric = "faturamento" | "ingressos" | "transacoes";
@@ -459,30 +503,42 @@ const JANELA_LABEL = "no período total de vendas";
 /* ------------------------------------------------------------------ */
 
 /**
- * Comparativos só tem séries de exemplo para alguns eventos. Numa organização sem nenhum deles, a
- * tela mostra o vazio em vez de quebrar (REL, Em aberto).
+ * Comparativos lê as vendas do banco: o evento em contexto é a âncora e os
+ * outros eventos da organização com venda são os comparáveis. Sem venda no
+ * evento em contexto, ou sem outro evento com venda, a tela mostra o vazio em
+ * vez de quebrar. No escopo "Todos os eventos" a âncora continua sendo o
+ * evento em contexto.
  */
 export function Comparativos() {
-  const temEventos = useMemo(() => construirCatalogo().length > 0, []);
-  if (!temEventos)
+  const catalogo = useCatalogo();
+  const atualId = useEventoAtual().id;
+  const atual = catalogo.find((e) => e.id === atualId);
+  if (!atual || catalogo.length < 2)
     return (
       <BackstageLayout activeSection="relatorios" activeItem="comparativos">
         <div className="flex min-w-0 flex-1 flex-col gap-6">
           <RelatorioPageHeader title="Comparativos" withFilters={false} />
           <p className="rounded-xl bg-secondary px-6 py-12 text-center text-sm text-tertiary">
-            Ainda não há outros eventos desta organização com vendas para comparar.
+            {atual
+              ? "Ainda não há outros eventos desta organização com vendas para comparar."
+              : "Este evento ainda não tem vendas para comparar."}
           </p>
         </div>
       </BackstageLayout>
     );
-  return <ComparativosConteudo />;
+  // A chave zera a seleção ao trocar o evento em contexto.
+  return <ComparativosConteudo key={atual.id} catalogo={catalogo} atual={atual} />;
 }
 
-function ComparativosConteudo() {
-  // O evento em contexto no Backstage é a âncora: tudo é lido contra ele.
-  const atualId = useEventoAtual().id;
-  const catalogo = useMemo(() => construirCatalogo(), []);
-  const atual = catalogo.find((e) => e.id === atualId) ?? catalogo[0];
+function ComparativosConteudo({
+  catalogo,
+  atual,
+}: {
+  catalogo: EventoComparativo[];
+  /** O evento em contexto no Backstage é a âncora: tudo é lido contra ele. */
+  atual: EventoComparativo;
+}) {
+  const atualId = atual.id;
 
   // Abre já comparando com um evento, em vez de pedir uma decisão antes de
   // mostrar qualquer coisa.
@@ -1040,65 +1096,46 @@ const ComparativoControls = (props: ControlsProps) => {
         Ajustar
       </Button>
 
-      <AriaModalOverlay
+      {/* Painel lateral do DS (REL-225), no lugar do modal feito à mão de 520 px. */}
+      <SlideoutMenu
         isOpen={open}
         onOpenChange={setOpen}
         isDismissable
-        className="fixed inset-0 z-50 flex justify-end outline-hidden"
+        className="z-50 pl-0"
+        dialogClassName="gap-0"
       >
-        <AriaModal
-          className={({ isEntering, isExiting }) =>
-            cx(
-              "h-full w-full max-w-[520px] bg-primary shadow-xl outline-hidden",
-              isEntering &&
-                "duration-300 ease-out animate-in slide-in-from-right",
-              isExiting &&
-                "duration-200 ease-in animate-out slide-out-to-right",
-            )
-          }
-        >
-          <AriaDialog className="flex h-full flex-col outline-hidden">
-            <div className="flex items-center justify-between gap-4 border-b border-secondary px-6 py-5">
-              <h2 className="text-lg font-semibold text-primary">
-                Ajustar comparação
-              </h2>
-              <ButtonUtility
-                size="sm"
-                color="tertiary"
-                icon={XClose}
-                tooltip="Fechar"
-                onClick={() => setOpen(false)}
-              />
-            </div>
-            <div className="flex flex-1 flex-col gap-5 overflow-y-auto px-6 py-6">
-              <Campo label="Medir por">
-                <MetricField
-                  metric={props.metric}
-                  onChange={props.onChangeMetric}
-                  className="w-full"
-                />
-              </Campo>
-              <Campo label="Alinhar">
-                <AlignmentField
-                  alignment={props.alignment}
-                  onChange={props.onChangeAlignment}
-                  className="w-full"
-                />
-                <span className="text-sm text-tertiary">
-                  {props.alignment === "evento"
-                    ? "As curvas terminam juntas no dia do show de cada evento."
-                    : "As curvas começam juntas no dia em que cada venda abriu."}
-                </span>
-              </Campo>
-            </div>
-            <div className="flex items-center justify-end gap-2 border-t border-secondary px-6 py-4">
-              <Button size="sm" color="primary" onClick={() => setOpen(false)}>
-                Ver comparação
-              </Button>
-            </div>
-          </AriaDialog>
-        </AriaModal>
-      </AriaModalOverlay>
+        <SlideoutMenu.Header onClose={() => setOpen(false)} className="pb-4">
+          <h2 className="pr-8 text-lg font-semibold text-primary">
+            Ajustar comparação
+          </h2>
+        </SlideoutMenu.Header>
+        <SlideoutMenu.Content className="border-t border-secondary py-5">
+          <Campo label="Medir por">
+            <MetricField
+              metric={props.metric}
+              onChange={props.onChangeMetric}
+              className="w-full"
+            />
+          </Campo>
+          <Campo label="Alinhar">
+            <AlignmentField
+              alignment={props.alignment}
+              onChange={props.onChangeAlignment}
+              className="w-full"
+            />
+            <span className="text-sm text-tertiary">
+              {props.alignment === "evento"
+                ? "As curvas terminam juntas no dia do show de cada evento."
+                : "As curvas começam juntas no dia em que cada venda abriu."}
+            </span>
+          </Campo>
+        </SlideoutMenu.Content>
+        <SlideoutMenu.Footer className="flex justify-end">
+          <Button size="md" color="primary" onClick={() => setOpen(false)}>
+            Ver comparação
+          </Button>
+        </SlideoutMenu.Footer>
+      </SlideoutMenu>
     </>
   );
 };
@@ -1433,7 +1470,7 @@ const labelTempo = (x: number, alignment: Alignment) => {
 const dataDoPonto = (ev: EventoComparativo, x: number, alignment: Alignment) =>
   alignment === "abertura"
     ? addDias(ev.dataAbertura, x)
-    : addDias(ev.dataEvento, x);
+    : addDias(ev.dataAbertura, x + ev.diaDoEvento);
 
 const ComparativoChart = ({
   events,
@@ -1465,7 +1502,7 @@ const ComparativoChart = ({
         const x =
           alignment === "abertura"
             ? dayFromOpen
-            : dayFromOpen - (ev.janelaDias - 1);
+            : dayFromOpen - ev.diaDoEvento;
         min = Math.min(min, x);
         max = Math.max(max, x);
         const row = rowMap.get(x) ?? { x };
@@ -1810,16 +1847,20 @@ const ComparativoChart = ({
                       p.index === labelAnchors[ev.id] &&
                       p.x != null &&
                       p.y != null ? (
+                        // Rótulo direto em cor de texto (contraste do texto, não da série), com a marca colorida antes.
                         <text
                           x={p.x}
                           y={p.y}
                           dy={-10}
                           className="text-sm"
                           fontWeight={600}
-                          fill={ev.cor}
+                          fill="var(--color-text-secondary)"
                           textAnchor="middle"
                         >
-                          {ev.curto}
+                          <tspan fill={ev.cor} aria-hidden="true">
+                            ●
+                          </tspan>
+                          <tspan dx={4}>{ev.curto}</tspan>
                         </text>
                       ) : null
                     }
@@ -2092,7 +2133,7 @@ const RitmoPorFaixa = ({
         const s = ev.serie[d];
         if (!s) continue;
         total += s[field];
-        const rel = alignment === "abertura" ? d - range[0] : range[1] - d;
+        const rel = alignment === "abertura" ? d - range[0] : ev.diaDoEvento - d;
         const f = FAIXAS.find((f) => rel >= f.lo && rel <= f.hi);
         if (f) {
           values[f.id] = (values[f.id] ?? 0) + s[field];
@@ -2328,7 +2369,7 @@ const PrecoEAmplitude = ({
       const range = windowRange(ev);
       janelas.set(ev.id, range);
       const paraX = (dia: number) =>
-        alignment === "abertura" ? dia : dia - (ev.janelaDias - 1);
+        alignment === "abertura" ? dia : dia - ev.diaDoEvento;
       xs.add(paraX(range[0]));
       xs.add(paraX(range[1]));
       for (const degrau of ev.precos) {
@@ -2342,7 +2383,7 @@ const PrecoEAmplitude = ({
       const row: Record<string, number> = { x };
       for (const ev of events) {
         const range = janelas.get(ev.id)!;
-        const dia = alignment === "abertura" ? x : x + (ev.janelaDias - 1);
+        const dia = alignment === "abertura" ? x : x + ev.diaDoEvento;
         if (dia < range[0] || dia > range[1]) continue;
         const vigente = [...ev.precos]
           .reverse()
@@ -2405,7 +2446,7 @@ const PrecoEAmplitude = ({
         </p>
         <ul className="flex flex-col gap-1">
           {linhas.map(({ ev, entry }) => {
-            const dia = alignment === "abertura" ? x : x + (ev.janelaDias - 1);
+            const dia = alignment === "abertura" ? x : x + ev.diaDoEvento;
             const vigente = [...ev.precos].reverse().find((d) => d.dia <= dia);
             return (
               <li key={ev.id} className="flex items-center gap-2 text-sm">
@@ -2416,7 +2457,7 @@ const PrecoEAmplitude = ({
                 />
                 <span className="text-tooltip-supporting-text">
                   {ev.curto}
-                  {vigente ? ` · ${vigente.nome}` : ""}
+                  {vigente ? ` (${vigente.nome})` : ""}
                 </span>
                 <span className="ml-auto pl-3 font-semibold text-base-white tabular-nums">
                   {currencyFormatter.format(Number(entry!.value))}
@@ -2436,8 +2477,9 @@ const PrecoEAmplitude = ({
           Preço praticado e viradas de lote
         </h3>
         <p className="text-sm text-tertiary">
-          O preço vigente a cada momento da venda. Compare com a curva acima
-          para ver se o ritmo reagiu a cada virada de lote.
+          O preço vigente do ingresso mais vendido de cada evento a cada
+          momento da venda. Compare com a curva acima para ver se o ritmo
+          reagiu a cada virada de lote.
         </p>
       </header>
 
@@ -2498,7 +2540,7 @@ const PrecoEAmplitude = ({
                   const x =
                     alignment === "abertura"
                       ? d.dia
-                      : d.dia - (ev.janelaDias - 1);
+                      : d.dia - ev.diaDoEvento;
                   return x >= xMin && x <= xMax;
                 })
                 .map((d) => (
@@ -2507,7 +2549,7 @@ const PrecoEAmplitude = ({
                     x={
                       alignment === "abertura"
                         ? d.dia
-                        : d.dia - (ev.janelaDias - 1)
+                        : d.dia - ev.diaDoEvento
                     }
                     y={d.valor}
                     r={3.5}
@@ -2670,12 +2712,14 @@ function variacaoDe(linha: LinhaTabela, item: ItemTotais, base: ItemTotais) {
   return {
     positivo,
     comDirecao,
-    texto: `${comDirecao ? (positivo ? "▲ +" : "▼ ") : positivo ? "+" : ""}${numero}`,
+    // A seta leva a cor (marca, ≥ 3:1); o número fica em cor de texto neutra (REL-214).
+    seta: comDirecao ? (positivo ? "▲" : "▼") : "",
+    texto: `${comDirecao ? (positivo ? "+" : "") : positivo ? "+" : ""}${numero}`,
     classe: !comDirecao
       ? "text-tertiary"
       : positivo
-        ? "text-success-primary"
-        : "text-error-primary",
+        ? "text-fg-success-primary"
+        : "text-fg-error-primary",
   };
 }
 
@@ -2688,7 +2732,12 @@ const Variacao = ({
   referencia: string;
 }) =>
   v ? (
-    <span className={cx("text-sm tabular-nums", v.classe)}>
+    <span className="text-sm text-secondary tabular-nums">
+      {v.seta && (
+        <span aria-hidden="true" className={cx("mr-0.5", v.classe)}>
+          {v.seta}
+        </span>
+      )}
       {v.texto}
       <span className="sr-only">
         {v.positivo ? " acima de " : " abaixo de "}

@@ -5,7 +5,7 @@ import { Avatar } from "@/components/base/avatar/avatar";
 import { Button } from "@/components/base/buttons/button";
 import { InputBase } from "@/components/base/input/input";
 import { cx } from "@/utils/cx";
-import { Aviso, CampoMotivo, MOTIVO_INICIAL, Regra, ResumoFinanceiro, SetaParaBaixo, capitalizar, iniciaisDe, formatarCPF, mascararEmail } from "../pos-compra-ui";
+import { Aviso, CampoMotivo, InfoDaCobranca, MOTIVO_INICIAL, Regra, ResumoFinanceiro, SetaParaBaixo, capitalizar, iniciaisDe, formatarCPF } from "../pos-compra-ui";
 import {
     COBRANCA_TROCA_PERGUNTAS,
     buscarContas,
@@ -29,7 +29,7 @@ import {
     type Pergunta,
 } from "../../data/pos-compra-store";
 import { WizardShell } from "./WizardShell";
-import { EditorResposta } from "../respostas-ui";
+import { AvisoDeEstoque, EditorResposta } from "../respostas-ui";
 import { ResumoUnidades, SeletorUnidades, detalheDoItem, identidadeDaLinha } from "./seletor-unidades";
 
 /*
@@ -103,7 +103,7 @@ const IdentidadeConta = ({ conta }: { conta: Conta }) => (
     <>
         <span className="block truncate text-sm text-tertiary">
             {conta.email}
-            {conta.cpf && <span className="hidden md:inline"> · CPF {formatarCPF(conta.cpf)}</span>}
+            {conta.cpf && <span className="hidden md:inline">, CPF {formatarCPF(conta.cpf)}</span>}
         </span>
         {conta.cpf && <span className="block text-sm tabular-nums text-tertiary md:hidden">CPF {formatarCPF(conta.cpf)}</span>}
     </>
@@ -218,9 +218,6 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, onFechar,
     const [busca, setBusca] = useState("");
     const [motivo, setMotivo] = useState<Motivo>(MOTIVO_INICIAL);
     const [selecionada, setSelecionada] = useState<Conta | null>(null);
-    /* Trava a etapa do formulário depois que o fluxo passa por ela: desmarcar a última unidade
-       com formulário encolheria o stepper com a pessoa dentro dele. */
-    const [conferiuFormulario, setConferiuFormulario] = useState(false);
     /* Respostas mexidas nesta transferência, por unidade. Só o que difere do que já estava. */
     const [respostasNovas, setRespostasNovas] = useState<Record<string, Record<string, string>>>({});
     /* Conta clicada que não recebe nada do pedido: não vira destinatário e não avança. Uma frase
@@ -316,16 +313,13 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, onFechar,
     /*  Etapas                                                             */
     /* ------------------------------------------------------------------ */
 
-    /* O formulário não é opcional: a titularidade não altera resposta nenhuma, mas quem recebe
-       herda tudo como está, e isso precisa ser visto antes de a cobrança sair. A etapa é de
-       leitura — editar resposta é a outra operação, e o rodapé da revisão diz como.
-
-       Ela existe quando alguma unidade em transferência tem formulário, e fica fixa depois que o
-       fluxo passa por ela, para o stepper não mudar de tamanho no meio do caminho.
-
-       "Itens" é sempre a primeira etapa: vindo de uma linha, ela já nasce concluída e o fluxo
-       começa no destinatário, mas "Alterar" e "Voltar" levam até ela sem fechar o overlay. */
-    const temEtapaFormulario = conferiuFormulario || comFormulario.length > 0;
+    /* PED-107: o número de etapas é decidido na entrada e não muda mais. A etapa do formulário
+       existe quando alguma unidade TRANSFERÍVEL do pedido tem formulário, escolhida ou não. Antes
+       ela nascia só quando uma unidade com formulário era marcada, e o stepper passava de 3 para 4
+       etapas com a pessoa já dentro dele. Se as unidades escolhidas não têm formulário, a etapa é
+       pulada (fica concluída no stepper) em vez de sumir. */
+    const temEtapaFormulario = linhasDisponiveis.some((linha) => perguntasDaLinha(linha).length > 0);
+    const pularFormulario = temEtapaFormulario && comFormulario.length === 0;
     const etapas: Etapa[] = ["destinatario", "itens", ...(temEtapaFormulario ? (["formulario"] as Etapa[]) : []), "revisao"];
     const etapa = etapas[Math.min(indice, etapas.length - 1)];
 
@@ -422,7 +416,20 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, onFechar,
                 Boolean(selecionada) && linhas.length > 0 && motivoValido(motivo);
 
     const rotuloAvancar =
-        etapa === "destinatario" ? "Escolher o que vai" : etapa === "itens" && temEtapaFormulario ? `Conferir ${vocab.formulario}` : "Revisar transferência";
+        etapa === "destinatario" ? "Escolher o que vai" : etapa === "itens" && !pularFormulario && temEtapaFormulario ? `Conferir ${vocab.formulario}` : "Revisar transferência";
+
+    /* Botão desligado sempre diz por quê, no rodapé, ao lado dele (PED-108). */
+    const bloqueadasPorDestino = bloqueiosPorLinha.length;
+    const falta =
+        etapa === "itens"
+            ? linhas.length === 0
+                ? "Escolha ao menos uma unidade para transferir."
+                : bloqueadasPorDestino > 0 && selecionada
+                  ? `Desmarque ${bloqueadasPorDestino === 1 ? "a unidade que não pode ir" : `as ${bloqueadasPorDestino} unidades que não podem ir`} para ${primeiroNome(selecionada.nome)}.`
+                  : null
+            : etapa === "revisao" && !motivoValido(motivo)
+              ? "Preencha o número do chamado e o motivo para enviar a cobrança."
+              : null;
 
     /* O que a casca pergunta antes de descartar. Ela deduz sozinha, mas aqui dá para ser exato:
        as unidades que já vieram marcadas do kebab não são trabalho de ninguém, e o motivo escrito
@@ -433,10 +440,7 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, onFechar,
        que o pedido registra, como nas três EFs. */
     const fechar = () => onFechar();
 
-    const avancar = () => {
-        if (etapa === "itens" && comFormulario.length > 0) setConferiuFormulario(true);
-        setIndice((i) => i + 1);
-    };
+    const avancar = () => setIndice((i) => i + (etapa === "itens" && pularFormulario ? 2 : 1));
 
     /* Voltar para o destinatário é voltar para escolher outra pessoa: escolher alguém já avança
        sozinho, então não existe outro motivo para estar nesta etapa de novo. Ela volta ao estado
@@ -461,7 +465,8 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, onFechar,
         /* Índice 1 é "itens": recuar dele cai no destinatário. O voltar do navegador passa por
            aqui também, pela casca. */
         if (indice === 1) reiniciarDestinatario();
-        setIndice((i) => i - 1);
+        /* Voltando da revisão sem formulário a conferir, a etapa pulada na ida é pulada na volta. */
+        setIndice((i) => i - (etapa === "revisao" && pularFormulario ? 2 : 1));
     };
     const incluir = (ids: string[]) => setSelecao((atual) => ({ ...atual, ...Object.fromEntries(ids.map((id) => [id, true])) }));
 
@@ -511,12 +516,12 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, onFechar,
         });
         const detalhes = [...porGrupo.values()].map(({ itemId, titular, quantidade }) => {
             const item = getItem(itemId);
-            return [`${quantidade}x ${item?.nome}`, detalheDoItem(item), titularesDeOrigem.length > 1 && `de ${titular}`].filter(Boolean).join(" · ");
+            return [`${quantidade}x ${item?.nome}`, detalheDoItem(item), titularesDeOrigem.length > 1 && `de ${titular}`].filter(Boolean).join(", ");
         });
         /* Uma mudança por unidade, com o portador de origem de cada uma: num pedido com dois
            titulares, dizer "De Fulano" no singular atribuía a saída inteira a um só. */
         const mudancas = linhas.map((l) => ({
-            escopo: [getItem(l.itemId)?.nome, detalheDoItem(getItem(l.itemId))].filter(Boolean).join(" · "),
+            escopo: [getItem(l.itemId)?.nome, detalheDoItem(getItem(l.itemId))].filter(Boolean).join(", "),
             de: titularDaLinha(pedido, l)?.nome ?? "Comprador",
             para: selecionada.nome,
         }));
@@ -558,7 +563,7 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, onFechar,
         <WizardShell
             onClose={fechar}
             titulo="Transferir"
-            subtitulo={`${comprador?.nome ?? "Comprador"} · Pedido ${uuidCurto(pedido.id)}`}
+            subtitulo={`Pedido ${uuidCurto(pedido.id)}, de ${comprador?.nome ?? "comprador sem nome"}`}
             /* A etapa 2 carrega o nome de quem recebe. O subtítulo logo acima é o COMPRADOR, e
                só "Itens" deixava as duas pessoas do fluxo reduzidas a uma. */
             etapas={etapas.map((e) =>
@@ -575,9 +580,19 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, onFechar,
             ultimaEtapa={etapa === "revisao"}
             rotuloConfirmar="Enviar cobrança"
             rotuloContinuar="Continuar transferindo"
+            indiceAnterior={etapa === "revisao" && pularFormulario ? indice - 2 : undefined}
             /* O que custa e para quem fica acima do botão, não dentro dele: a frase inteira
                enchia três linhas de um botão de largura total no telefone. */
-            infoRodape={etapa === "revisao" ? `${formatarMoeda(calculo.total)} para ${mascararEmail(destino)}` : undefined}
+            infoRodape={
+                etapa === "revisao" ? (
+                    <span className="flex flex-col gap-1">
+                        <InfoDaCobranca total={calculo.total} destino={destino} />
+                        {falta && <span className="text-sm text-warning-primary">{falta}</span>}
+                    </span>
+                ) : (
+                    falta ?? undefined
+                )
+            }
             onVoltar={voltar}
             onAvancar={avancar}
             onConfirmar={confirmar}
@@ -664,26 +679,21 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, onFechar,
                                             encaixe.acima ? "bottom-full mb-1" : "top-full mt-1",
                                         )}
                                     >
-                                        {buscando &&
-                                            [0, 1, 2].map((i) => (
-                                                <li key={`esqueleto-${i}`} aria-hidden="true" className="flex items-center gap-3 px-4 py-3">
-                                                    <span className="size-10 shrink-0 animate-pulse rounded-full bg-secondary" />
-                                                    <span className="flex min-w-0 flex-1 flex-col gap-1.5">
-                                                        <span className="h-3.5 w-40 animate-pulse rounded bg-secondary" />
-                                                        <span className="h-3 w-56 animate-pulse rounded bg-secondary" />
-                                                    </span>
-                                                </li>
-                                            ))}
+                                        {/* Buscando: uma linha só, com o termo (PED-109). Antes a lista abria
+                                            com três contas falsas pulsando, que pareciam resultado e
+                                            mudavam de altura quando o resultado chegava. */}
                                         {buscando && (
-                                            <li role="status" className="sr-only">
-                                                Buscando contas
+                                            <li role="status" className="px-4 py-3 text-sm text-tertiary">
+                                                Buscando contas com “{termo}”…
                                             </li>
                                         )}
 
                                         {/* Buscou e não achou: a resposta é uma linha da própria lista. O cartão
                                             grande que dizia isso saiu. */}
                                         {!buscando && encontradas.length === 0 && (
-                                            <li className="px-4 py-3 text-sm text-tertiary">Nenhuma conta encontrada para “{termo}”.</li>
+                                            <li role="status" className="px-4 py-3 text-sm text-tertiary">
+                                                Nenhuma conta com “{termo}”. Confira a grafia ou busque pelo e-mail ou CPF.
+                                            </li>
                                         )}
 
                                         {!buscando &&
@@ -760,6 +770,7 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, onFechar,
                             </p>
                         ) : (
                             <>
+                                <AvisoDeEstoque perguntas={comFormulario.flatMap(perguntasDaLinha)} />
                                 {comFormulario.map((linha) => (
                                     <RespostasDaUnidade
                                         key={linha.id}

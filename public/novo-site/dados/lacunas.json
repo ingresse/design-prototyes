@@ -1,0 +1,141 @@
+{
+  "versao": 1,
+  "atualizado": "2026-11-03",
+  "sobre": "Fonte única da gaveta de lacunas (Shift+C) do protótipo: o que cada página precisa e o BFF de descoberta (ingr-mock, contrato v1) não traz. O gerador copia para previa/dados/lacunas.json. Situação: falta = não existe no BFF; parcial = existe, mas incompleto ou em outro formato; fora = fica fora do BFF de descoberta (AWA, conta). Detalhe e contrato: docs/produto/BFF-LACUNAS.md.",
+  "legenda": {
+    "falta": "Não existe no BFF",
+    "parcial": "Existe, mas incompleto",
+    "fora": "Fora do BFF de descoberta"
+  },
+  "paginas": {
+    "home": {
+      "nome": "Home",
+      "temNoBff": ["Eventos, datas, local, imagem e situação da venda (search)", "Categorias curadas com posição e contagem (categories)", "Cidade com coordenadas (venue.citySlug, venue.geo)"],
+      "itens": [
+        { "titulo": "Folksonomia (ocasião, clima, público)", "onde": "Para que ocasião?, sorteio «O que você curte», filtros", "situacao": "falta", "precisa": "tags[] por evento com faceta (gênero, ocasião, clima, público) e origem (produtor, sistema, curadoria)", "dono": "Serviço de tags (folksonomia)" },
+        { "titulo": "Gênero musical estruturado", "onde": "Que música você quer ouvir ao vivo?", "situacao": "parcial", "precisa": "gênero por evento com id fixo; hoje sai deduzido da categoria (samba-e-pagode, rock…) e artista traz gênero em texto livre", "dono": "Serviço de tags" },
+        { "titulo": "Artistas em alta", "onde": "Carrossel de artistas", "situacao": "falta", "precisa": "ranking (vendas, seguidores ou buscas) e foto com direito de uso; imageUrl do artista vem quase sempre nulo", "dono": "Serviço de artistas + dados" },
+        { "titulo": "Palcos e arenas", "onde": "Carrossel de locais", "situacao": "falta", "precisa": "tipo do local (arena, club, teatro, estádio), foto com direito de uso, contagem de eventos futuros", "dono": "Serviço de locais" },
+        { "titulo": "Ingresse Sports", "onde": "Carrossel de provas", "situacao": "falta", "precisa": "provas com modalidade, distância, kit e situação das inscrições; o BFF não lista provas", "dono": "Ingresse Sports (TicketSports)" },
+        { "titulo": "Preço total com taxas", "onde": "Todos os cartões", "situacao": "parcial", "precisa": "fromPrice já com todas as taxas (regra 7); hoje vem com indicative: true e 10 de 129 eventos sem preço", "dono": "Serviço de preço (ticket-service)" },
+        { "titulo": "Personalização", "onde": "Vitrine, «O que você curte», artistas seguidos", "situacao": "fora", "precisa": "gostos, artistas seguidos e histórico da pessoa logada", "dono": "Conta + recomendação" },
+        { "titulo": "Lineup no catálogo", "onde": "Cartões, busca por artista", "situacao": "parcial", "precisa": "artists[] na resposta de search; hoje só no detalhe (um pedido por evento, 129 no total)", "dono": "BFF" }
+      ]
+    },
+    "busca": {
+      "nome": "Busca",
+      "temNoBff": ["Busca tolerante a acento e erro, com destaque (search?q=)", "Facetas de categoria, cidade, UF, preço e data", "Sugestões em zero resultado e autocompletar (search/suggestions)", "Paginação por cursor"],
+      "itens": [
+        { "titulo": "Filtro por ocasião, clima e público", "onde": "Filtros e chips", "situacao": "falta", "precisa": "faceta de tags (folksonomia) no search, com contagem", "dono": "Serviço de tags" },
+        { "titulo": "Escopo Artistas", "onde": "Aba Artistas", "situacao": "parcial", "precisa": "listagem de artistas com foto, gênero estruturado e número de datas; hoje só artists/{slug} individual", "dono": "Serviço de artistas" },
+        { "titulo": "Escopo Locais", "onde": "Aba Locais", "situacao": "parcial", "precisa": "listagem de locais com tipo, foto e contagem; hoje só venues/{slug} individual", "dono": "Serviço de locais" },
+        { "titulo": "Escopo Ingresse Sports", "onde": "Aba Ingresse Sports", "situacao": "falta", "precisa": "provas no mesmo search (ou endpoint próprio) com modalidade e distância", "dono": "Ingresse Sports" },
+        { "titulo": "Lugar em 5 níveis", "onde": "Seletor de cidade", "situacao": "parcial", "precisa": "região, país e continente do evento; hoje só cidade e UF (o protótipo deduz o resto)", "dono": "Serviço de lugares" },
+        { "titulo": "Eventos no exterior", "onde": "Filtro de lugar", "situacao": "falta", "precisa": "eventos fora do Brasil com país e estado do exterior", "dono": "BFF" }
+      ]
+    },
+    "categoria": {
+      "nome": "Categoria",
+      "temNoBff": ["Eventos de uma categoria (categories/{slug}/events)", "Nome, posição e contagem da categoria"],
+      "itens": [
+        { "titulo": "Vocabulário único de categorias", "onde": "URL, título, trilha", "situacao": "parcial", "precisa": "uma lista só: o BFF tem club, samba-e-pagode, brasilidades, reveillon, nao-fique-de-fora; o protótipo tem baladas, shows + gênero e não tem Réveillon", "dono": "Marcelino + Ju" },
+        { "titulo": "Descrição e ícone da categoria", "onde": "Cabeçalho da categoria", "situacao": "falta", "precisa": "texto curto (nos 4 idiomas) e ícone por categoria", "dono": "Backstage / conteúdo" },
+        { "titulo": "Destaques curados", "onde": "Carrossel do topo (5 eventos)", "situacao": "falta", "precisa": "ordem editorial dos destaques; hoje é por data", "dono": "Curadoria (Backstage)" },
+        { "titulo": "Tags para filtrar dentro da categoria", "onde": "Chips de filtro", "situacao": "falta", "precisa": "tags por evento (folksonomia)", "dono": "Serviço de tags" }
+      ]
+    },
+    "evento": {
+      "nome": "Evento",
+      "temNoBff": ["Título, datas, fuso, sessões (events/{slug})", "Descrição em HTML", "Local com endereço e coordenadas", "Artistas", "Classificação etária", "Situação da venda e preço a partir de", "SEO com JSON-LD"],
+      "itens": [
+        { "titulo": "Instagram do evento", "onde": "Bloco «Siga @perfil»", "situacao": "falta", "precisa": "perfil do Instagram do evento ou do artista, cadastrado pelo produtor", "dono": "Backstage" },
+        { "titulo": "Abertura dos portões", "onde": "Antes de ir, contagem do ingresso", "situacao": "falta", "precisa": "horário dos portões separado do início do show", "dono": "Backstage" },
+        { "titulo": "Quem vai e Quero ir", "onde": "Bloco Quem vai, painel de compra", "situacao": "falta", "precisa": "contagem de interessados, amigos que marcaram e o estado da pessoa logada", "dono": "Serviço novo (social)" },
+        { "titulo": "Chamar a galera", "onde": "Botão de compartilhar", "situacao": "falta", "precisa": "link de convite com rastreio de quem chamou", "dono": "Serviço novo" },
+        { "titulo": "Mesma turnê", "onde": "Lista de outras datas", "situacao": "falta", "precisa": "grupo do evento (turnê, festival, temporada) e as outras datas do grupo", "dono": "Serviço de grupos (GRUPOS-DE-EVENTOS.md)" },
+        { "titulo": "Estados do Evento", "onde": "Selo, aviso e botão", "situacao": "parcial", "precisa": "pré-venda, adiado, cancelado e alterado, com motivo e nova data; o BFF só tem ON_SALE, LAST_TICKETS, SOLD_OUT, NOT_STARTED e ENDED", "dono": "Backstage (ESTADOS-DO-EVENTO.md)" },
+        { "titulo": "Quando a venda abre", "onde": "Contagem «As vendas abrem em…»", "situacao": "falta", "precisa": "data e hora de abertura da venda (e da pré-venda) para NOT_STARTED", "dono": "ticket-service" },
+        { "titulo": "Preço total com taxas por tipo", "onde": "Painel de compra", "situacao": "parcial", "precisa": "fromPrice total com taxas e o número de datas e tipos; hoje indicative: true", "dono": "Serviço de preço" },
+        { "titulo": "Como chegar e como entrar", "onde": "Antes de ir, Local", "situacao": "falta", "precisa": "transporte, estacionamento, entrada acessível, portão; por local ou por evento", "dono": "Serviço de locais + Backstage" },
+        { "titulo": "Foto do local", "onde": "Local · como chegar", "situacao": "falta", "precisa": "foto com direito de uso", "dono": "Serviço de locais" },
+        { "titulo": "O que rola (tags)", "onde": "Chips do evento", "situacao": "parcial", "precisa": "tags do evento; hoje só o que se deduz da categoria", "dono": "Serviço de tags" },
+        { "titulo": "Horário de cada atração", "onde": "Lineup", "situacao": "falta", "precisa": "ordem e horário por artista (festivais)", "dono": "Backstage" },
+        { "titulo": "Meia-entrada e regras", "onde": "Antes de ir, Classificação", "situacao": "falta", "precisa": "regras de meia-entrada e de menores por evento", "dono": "Backstage + Jurídico" },
+        { "titulo": "Textos nos 4 idiomas", "onde": "Título, descrição", "situacao": "falta", "precisa": "pt-BR, pt-PT, es e en; o BFF aceita accept-language mas devolve pt-BR", "dono": "Backstage + tradução" }
+      ]
+    },
+    "evento-futebol": {
+      "nome": "Evento · futebol",
+      "temNoBff": ["Jogo como evento comum: título, data, local, preço a partir de"],
+      "itens": [
+        { "titulo": "Times e competição", "onde": "Confronto, escudos, rodada", "situacao": "falta", "precisa": "mandante, visitante, competição e rodada estruturados; hoje só o título livre («Fortaleza x Atlético-GO»)", "dono": "Serviço de futebol (FUTEBOL-CONFRONTO-DADOS.md)" },
+        { "titulo": "Escudos", "onde": "Cabeçalho do confronto, cartão", "situacao": "falta", "precisa": "escudo de cada time com direito de uso", "dono": "Clubes + jurídico" },
+        { "titulo": "Sócio-torcedor e ondas de venda", "onde": "Abertura por plano", "situacao": "falta", "precisa": "janelas de venda por plano de sócio e a regra de quem compra quando", "dono": "Serviço de futebol" },
+        { "titulo": "Setores e mapa do estádio", "onde": "Escolha de setor", "situacao": "fora", "precisa": "setores, mandante e visitante, PcD e família", "dono": "AWA" },
+        { "titulo": "Biometria facial", "onde": "Jornada de compra", "situacao": "fora", "precisa": "cadastro e situação do rosto por pessoa", "dono": "AWA + clube" },
+        { "titulo": "Produtos ligados ao jogo", "onde": "Estacionamento, camarote", "situacao": "parcial", "precisa": "relação produto → jogo; hoje vêm como eventos soltos («Estacionamento - Fortaleza x Atlético-GO»)", "dono": "BFF" }
+      ]
+    },
+    "evento-esportes": {
+      "nome": "Evento · prova",
+      "temNoBff": [],
+      "itens": [
+        { "titulo": "Provas da Ingresse Sports", "onde": "Toda a página", "situacao": "falta", "precisa": "o BFF não lista provas: modalidade, distâncias, categorias, kit, largada, regulamento", "dono": "Ingresse Sports (INGRESSE-SPORTS-DADOS.md)" },
+        { "titulo": "Lotes e inscrições", "onde": "Painel de inscrição", "situacao": "fora", "precisa": "lotes por distância, vagas, kids, equipes", "dono": "TicketSports / AWA" }
+      ]
+    },
+    "artista": {
+      "nome": "Artista",
+      "temNoBff": ["Nome, bio, gêneros (texto), Spotify (artists/{slug})", "Próximos eventos"],
+      "itens": [
+        { "titulo": "Foto do artista", "onde": "Cabeçalho, cartões", "situacao": "parcial", "precisa": "foto com direito de uso; imageUrl vem quase sempre nulo", "dono": "Serviço de artistas" },
+        { "titulo": "Seguir o artista", "onde": "Botão Seguir, avisos", "situacao": "falta", "precisa": "seguidores e o estado da pessoa logada", "dono": "Serviço novo (social)" },
+        { "titulo": "Turnês", "onde": "Lista de turnês", "situacao": "falta", "precisa": "grupos de eventos do artista", "dono": "Serviço de grupos" },
+        { "titulo": "Gêneros estruturados", "onde": "Chips de gênero", "situacao": "parcial", "precisa": "ids de gênero (hoje texto livre, misturado com categoria: «Festivais»)", "dono": "Serviço de tags" },
+        { "titulo": "Redes do artista", "onde": "Links", "situacao": "falta", "precisa": "Instagram, site", "dono": "Serviço de artistas" }
+      ]
+    },
+    "venue": {
+      "nome": "Local",
+      "temNoBff": ["Nome, endereço, cidade, coordenadas (venues/{slug})", "Próximos eventos"],
+      "itens": [
+        { "titulo": "Tipo e capacidade", "onde": "Cabeçalho do local", "situacao": "falta", "precisa": "tipo (arena, club, teatro, estádio) e capacidade", "dono": "Serviço de locais" },
+        { "titulo": "Foto do local", "onde": "Cabeçalho, cartões", "situacao": "falta", "precisa": "foto com direito de uso", "dono": "Serviço de locais" },
+        { "titulo": "Como chegar e acessibilidade", "onde": "Bloco Como chegar", "situacao": "falta", "precisa": "transporte, estacionamento, entrada acessível", "dono": "Serviço de locais" },
+        { "titulo": "Endereço completo", "onde": "Bloco Local", "situacao": "parcial", "precisa": "endereço em todos os locais; 18 de 129 eventos vêm sem endereço", "dono": "Backstage" }
+      ]
+    },
+    "colecao": {
+      "nome": "Coleção (turnê)",
+      "temNoBff": [],
+      "itens": [
+        { "titulo": "Grupo de eventos", "onde": "Toda a página", "situacao": "falta", "precisa": "turnê, festival ou temporada com nome, capa, descrição e as datas do grupo", "dono": "Serviço de grupos (GRUPOS-DE-EVENTOS.md)" },
+        { "titulo": "Avise-me de novas datas", "onde": "Sino da coleção", "situacao": "falta", "precisa": "inscrição em avisos do grupo", "dono": "Serviço de notificações" }
+      ]
+    },
+    "esportes": {
+      "nome": "Ingresse Sports",
+      "temNoBff": [],
+      "itens": [
+        { "titulo": "Catálogo de provas", "onde": "Toda a página", "situacao": "falta", "precisa": "provas com modalidade, distância, terreno, público e situação das inscrições", "dono": "Ingresse Sports (INGRESSE-SPORTS-DADOS.md)" },
+        { "titulo": "Filtros esportivos", "onde": "Filtros", "situacao": "falta", "precisa": "facetas de modalidade, distância, terreno e data", "dono": "Ingresse Sports" }
+      ]
+    },
+    "ingressos": { "nome": "Ingressos", "temNoBff": [], "itens": [
+      { "titulo": "Tipos, lotes e setores", "onde": "Escolha de ingressos", "situacao": "fora", "precisa": "tipos, lotes, setores, mapa, meia-entrada e taxas", "dono": "AWA (o site descobre, o AWA vende)" },
+      { "titulo": "Produtos", "onde": "Depois dos ingressos", "situacao": "fora", "precisa": "estacionamento, camisetas, combos", "dono": "AWA" }
+    ] },
+    "checkout": { "nome": "Checkout", "temNoBff": [], "itens": [
+      { "titulo": "Compra", "onde": "Toda a página", "situacao": "fora", "precisa": "fora do escopo do MVP: dados de quem vai e perguntas do produtor", "dono": "AWA" }
+    ] },
+    "pagamento": { "nome": "Pagamento", "temNoBff": [], "itens": [
+      { "titulo": "Pagamento", "onde": "Toda a página", "situacao": "fora", "precisa": "fora do escopo do MVP: Pix, cartão, carteiras", "dono": "AWA" }
+    ] },
+    "carteira": { "nome": "Carteira", "temNoBff": [], "itens": [
+      { "titulo": "Ingressos da pessoa", "onde": "Toda a página", "situacao": "fora", "precisa": "fora do escopo do MVP: ingressos, QR, transferência, reembolso", "dono": "AWA + conta" }
+    ] },
+    "login": { "nome": "Entrar", "temNoBff": [], "itens": [
+      { "titulo": "Conta", "onde": "Toda a página", "situacao": "fora", "precisa": "autenticação por código e sessão", "dono": "Serviço de conta" }
+    ] }
+  }
+}

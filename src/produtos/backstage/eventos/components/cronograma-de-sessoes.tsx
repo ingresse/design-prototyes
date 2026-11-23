@@ -163,8 +163,11 @@ function NovaSessao({
         onAdicionar({ id: Date.now(), valor: `${dia}T${comeca}`, fim: termina });
     };
 
+    // Com algo escolhido, clicar fora não fecha: só Cancelar, X ou Esc (EVT-141, T6).
+    const alterada = (!umDia && dia !== null) || comeca !== (horaPadrao || "20:00") || termina !== "";
+
     return (
-        <ModalOverlay isOpen onOpenChange={(aberto) => !aberto && onCancelar()} isDismissable>
+        <ModalOverlay isOpen onOpenChange={(aberto) => !aberto && onCancelar()} isDismissable={!alterada}>
             <Modal className="sm:max-w-[560px]">
                 <Dialog>
                     <div className="relative flex w-full flex-col gap-5 rounded-2xl bg-primary p-6 shadow-xl ring-1 ring-border-secondary">

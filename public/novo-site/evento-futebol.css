@@ -1,0 +1,343 @@
+/* evento-futebol.css (GERADO por tools/previa/evento-futebol.mjs; não edite à mão: tools/previa/futebol/confronto.css + pagina.css) */
+/* ===== confronto.css ===== */
+/* =====================================================================
+   Página de confronto de futebol: os três componentes e a regra do botão (fase 2b; Edu do Udi, 28/10/2026)
+   Documento: docs/design/FUTEBOL-CONFRONTO-COMPONENTES.md. Trechos de marcação: tools/previa/futebol/confronto-componentes.html.
+
+   Convenções
+   - `uui-*`  = classes na anatomia do Untitled UI (badge, avatar, progress-steps, featured icon): mesma estrutura, mesmos nomes de
+                variante, tamanho e estado do componente do UUI, para a passagem a React ser troca e não redesenho.
+   - `cf-*`   = classes do confronto: as peças que o Untitled UI não tem (cabeçalho do confronto, janela de venda, contador, aviso).
+   - Medidas e cor SÓ de tokens (docs/design/tokens-mvp.json v1.3 do Joaquim: color.wave.*, color.match.*, size.match.crest, size.wave.*,
+     space.match-*, space.wave-*, space.countdown-*, font.*match-*, font.*wave-*, font.*countdown*, border.*wave-*). Nada de cor, raio ou sombra soltos.
+   - Raio 8 px (var(--radius-base)); sem sombra e sem desfoque; Elza; alvos de toque de 48 px; nada abaixo de 14 px (14 só em rótulo).
+   - Reaproveita, sem redefinir, o que o site já tem: botão `.bp`/`.bs`, selo de situação `.tag[data-sit]`, campo `.field`, link `.linkbtn`, barra `.mbar`.
+   - Sem arquivo compartilhado editado: este arquivo é carregado depois de identidade-v1.css, só nas telas do futebol.
+   ===================================================================== */
+
+/* ---------- 0. Utilitários ---------- (o ícone `.uui-ico`, 24 px e traço 2, já vem de identidade-componentes.css §6c) */
+.cf-vh { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+
+/* ---------- 1. Selo (Untitled UI `badges`: BadgeWithIcon) ----------
+   UUI: `Badge`, `BadgeWithDot`, `BadgeWithIcon`; type pill-color | badge-color | badge-modern; size sm | md | lg; color gray | brand | …
+   Aqui: type `badge-color` com 8 px de raio; size lg = 32 px (token size.wave.chip, a mesma altura do `.tag`); ícone de 20 px (size.wave.icon), traço 2.
+   Estados da janela por forma, ícone e texto, nunca só pela cor (color.wave.*, border.*wave-*). */
+.uui-badge {
+  --uui-badge-fg: var(--color-wave-scheduled-fg); --uui-badge-bg: var(--color-wave-scheduled-bg); --uui-badge-bd: var(--color-wave-scheduled-border);
+  --uui-badge-bw: var(--border-width-wave-scheduled); --uui-badge-bs: var(--border-style-wave-scheduled);
+  display: inline-flex; align-items: center; gap: var(--space-2); box-sizing: border-box; min-height: var(--size-wave-chip); padding: 0 var(--space-3);
+  margin: 0; border-radius: var(--radius-base);
+  border: var(--uui-badge-bw) var(--uui-badge-bs) var(--uui-badge-bd); background-color: var(--uui-badge-bg); color: var(--uui-badge-fg);
+  font-size: var(--font-size-label); font-weight: var(--font-wt-label); line-height: 1; white-space: nowrap; max-width: 100%;
+}
+.uui-badge > .uui-ico { width: var(--size-wave-icon); height: var(--size-wave-icon); }
+.uui-badge[data-state="scheduled"] { --uui-badge-fg: var(--color-wave-scheduled-fg); --uui-badge-bg: var(--color-wave-scheduled-bg); --uui-badge-bd: var(--color-wave-scheduled-border); --uui-badge-bw: var(--border-width-wave-scheduled); --uui-badge-bs: var(--border-style-wave-scheduled); }
+.uui-badge[data-state="open"]      { --uui-badge-fg: var(--color-wave-open-fg); --uui-badge-bg: var(--color-wave-open-bg); --uui-badge-bd: var(--color-wave-open-border); --uui-badge-bw: var(--border-width-wave-open); --uui-badge-bs: var(--border-style-wave-open); }
+.uui-badge[data-state="soldout"]   { --uui-badge-fg: var(--color-wave-soldout-fg); --uui-badge-bg: var(--color-wave-soldout-bg); --uui-badge-bd: var(--color-wave-soldout-border); --uui-badge-bw: var(--border-width-wave-soldout); --uui-badge-bs: var(--border-style-wave-soldout);
+  background-image: repeating-linear-gradient(135deg, transparent 0 6px, color-mix(in srgb, var(--color-wave-soldout-border) 35%, transparent) 6px 7px); } /* hachura = o «esgotado» do Evento (.tag[data-sit="esgotado"]) */
+.uui-badge[data-state="closed"]    { --uui-badge-fg: var(--color-wave-closed-fg); --uui-badge-bg: var(--color-wave-closed-bg); --uui-badge-bd: var(--color-wave-closed-border); --uui-badge-bw: var(--border-width-wave-closed); --uui-badge-bs: var(--border-style-wave-closed); }
+.uui-badge[data-kind="mine"]       { --uui-badge-fg: var(--color-wave-mine-fg); --uui-badge-bg: var(--color-wave-mine-bg); --uui-badge-bd: var(--color-wave-mine-border); --uui-badge-bw: var(--border-width-strong); --uui-badge-bs: solid; }
+.uui-badge[data-kind="away"]       { --uui-badge-fg: var(--color-wave-away-fg); --uui-badge-bg: var(--color-wave-away-bg); --uui-badge-bd: var(--color-wave-away-border); --uui-badge-bw: var(--border-width-hairline); --uui-badge-bs: solid; }
+.uui-badge > .uui-ico { color: var(--color-wave-scheduled-icon); }
+.uui-badge[data-state="open"] > .uui-ico { color: var(--color-wave-open-icon); }
+.uui-badge[data-state="soldout"] > .uui-ico { color: var(--color-wave-soldout-icon); }
+.uui-badge[data-state="closed"] > .uui-ico { color: var(--color-wave-closed-icon); }
+.uui-badge[data-kind="mine"] > .uui-ico { color: var(--color-wave-mine-icon); }
+.uui-badge[data-kind="away"] > .uui-ico { color: var(--color-wave-away-icon); }
+
+/* ---------- 2. Escudo e monograma (Untitled UI `avatar`: Avatar size 2xl, `initials` de reserva; Figma: Avatar) ----------
+   Anatomia do Avatar (caixa fixa + imagem + iniciais de reserva); forma quadrada de raio 8 (escudo não é pessoa) e medida de size.match.crest (64 x 64).
+   Escudo em `contain`, `alt` vazio (o H1 é texto). Sem escudo: monograma de 3 letras. Escudo sem variante legível no escuro: ladrilho claro (data-fundo="ladrilho"). */
+.uui-avatar--square, .uui-avatar--square .uui-avatar__content { border-radius: var(--radius-base); }
+.cf-escudo { --uui-avatar-size: var(--size-match-crest); width: var(--size-match-crest); height: var(--size-match-crest); flex: 0 0 auto; position: relative; display: inline-flex; }
+.cf-escudo .uui-avatar__content { width: 100%; height: 100%; background: var(--color-match-crest-mono-bg); color: var(--color-match-crest-mono-fg); outline: 0; border: var(--border-width-hairline) solid var(--color-match-crest-mono-border); box-sizing: border-box;
+  font-size: var(--font-size-title-4); font-weight: var(--font-wt-title-4); letter-spacing: var(--font-ls-label); line-height: 1; }
+.cf-escudo--img .uui-avatar__content { background: transparent; border-color: transparent; }
+.cf-escudo[data-fundo="ladrilho"] .uui-avatar__content { background: var(--color-match-crest-tile-bg); border-color: transparent; }
+.cf-escudo__img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; display: block; }
+
+/* ---------- 3. Cabeçalho do confronto ----------
+   Sem equivalente no Untitled UI (busca no MCP e no Figma v8: nenhum cabeçalho de jogo). Composição: Avatar (escudo) + Badge + Page header (título e apoio).
+   Mandante sempre à esquerda; em 390 px os escudos ficam lado a lado com o «x» entre eles e os nomes embaixo (data-layout="pilha" = mandante em cima).
+   Nome sem reticências em até 2 linhas; passo de fonte abaixo só com data-passo="menor" (palavra de 16 letras ou mais). */
+.cf-confronto { container-type: inline-size; container-name: cf-confronto; display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-4); min-width: 0; color: var(--color-match-team); }
+.cf-confronto__selos { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); }
+.cf-confronto__portao { font-size: var(--font-size-small); font-weight: var(--font-wt-label); line-height: var(--font-lh-small); color: var(--color-match-apoio); }
+.cf-confronto__contexto { margin: 0; font-size: var(--font-size-label); font-weight: var(--font-wt-label); line-height: var(--font-lh-label); letter-spacing: var(--font-ls-label); text-transform: uppercase; color: var(--color-match-apoio); }
+.cf-confronto__titulo { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); column-gap: var(--space-match-between); align-items: start; width: 100%; margin: 0;
+  font-size: var(--font-size-match-team); font-weight: var(--font-wt-match-team); line-height: var(--font-lh-match-team); letter-spacing: var(--font-ls-match-team); text-wrap: balance; }
+.cf-time { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-match-crest-name); min-width: 0; }
+.cf-time__texto { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
+.cf-time__nome { display: block; min-width: 0; color: var(--color-match-team); text-wrap: balance; overflow-wrap: anywhere; hyphens: manual; } /* anywhere: último recurso (palavra maior que a coluna depois do passo menor); nunca reticências */
+.cf-time__papel { display: block; font-size: var(--font-size-label); font-weight: var(--font-wt-label); line-height: var(--font-lh-label); letter-spacing: var(--font-ls-label); text-transform: uppercase; color: var(--color-match-apoio); }
+.cf-confronto__x { display: flex; align-items: center; justify-content: center; align-self: start; height: var(--size-match-crest); min-width: var(--space-5);
+  font-size: var(--font-size-match-vs); font-weight: var(--font-wt-match-vs); line-height: var(--font-lh-match-vs); letter-spacing: var(--font-ls-match-vs); color: var(--color-match-vs); }
+.cf-confronto[data-passo="menor"] .cf-time__nome { font-size: var(--font-size-match-team-min); font-weight: var(--font-wt-match-team-min); line-height: var(--font-lh-match-team-min); letter-spacing: var(--font-ls-match-team-min); }
+.cf-confronto__apoio { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-4); margin: var(--space-match-meta-top) 0 0; padding: 0; list-style: none;
+  font-size: var(--font-size-match-meta); font-weight: var(--font-wt-match-meta); line-height: var(--font-lh-match-meta); letter-spacing: var(--font-ls-match-meta); color: var(--color-match-apoio); }
+.cf-confronto__apoio > li { flex: 1 1 100%; min-width: 0; margin: 0; }
+.cf-confronto__quando { font-weight: var(--font-wt-wave-when); color: var(--color-match-team); }
+.cf-confronto__antes { text-decoration: line-through; }
+/* a partir de 640 px de largura do próprio cabeçalho: escudo ao lado do nome, apoio numa linha só */
+@container cf-confronto (min-width: 640px) {
+  .cf-confronto__titulo { grid-template-columns: auto auto auto; justify-content: start; }
+  .cf-time { flex-direction: row; align-items: center; }
+  .cf-confronto__x { height: auto; align-self: center; }
+  .cf-confronto__apoio > li { flex: 0 1 auto; }
+  .cf-confronto__apoio > li + li::before { content: "·"; margin-right: var(--space-4); }
+}
+/* mandante em cima: nomes que não cabem em 2 linhas lado a lado em 390 px */
+.cf-confronto[data-layout="pilha"] .cf-confronto__titulo { grid-template-columns: minmax(0, 1fr); row-gap: var(--space-3); }
+.cf-confronto[data-layout="pilha"] .cf-time { flex-direction: row; align-items: center; gap: var(--space-4); }
+.cf-confronto[data-layout="pilha"] .cf-confronto__x { height: auto; justify-content: flex-start; min-width: var(--size-match-crest); }
+/* cena: foto do estádio com o véu chapado do token (sem gradiente, sem desfoque); o hero é ilha escura nos dois temas */
+.cf-cena { position: relative; isolation: isolate; background-color: var(--color-bg-island); /* use junto de .ilha (ou dentro do .ev-hero): os tokens match.* resolvem no conjunto escuro */ background-size: cover; background-position: center; padding: var(--space-match-pad-y) var(--layout-margin); }
+.cf-cena::before { content: ""; position: absolute; inset: 0; z-index: -1; background: var(--color-match-scrim); }
+
+/* ---------- 4. Linha do tempo de aberturas ----------
+   Untitled UI: `progress-steps` (application; Progress.IconsWithText orientation="vertical", marcador + conector + texto; status incomplete | current | complete)
+   + `activity-feed` (FeedItem com `connector`, `<time>` e rótulos em Badge). Figma v8: "Progress steps / Progress icons with text", "Badge".
+   O UUI tem 3 estados e a janela tem 4 (abre em breve, aberta, esgotada, encerrada): `data-state` estende o `status` do UUI. */
+.cf-aberturas { display: flex; flex-direction: column; gap: var(--space-4); margin: 0; min-width: 0; }
+.cf-aberturas__titulo { margin: 0; font-size: var(--font-size-label); font-weight: var(--font-wt-label); line-height: var(--font-lh-label); letter-spacing: var(--font-ls-label); text-transform: uppercase; color: var(--color-text-secondary); }
+.uui-timeline { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; min-width: 0; }
+.uui-timeline-item { --cf-estado-fg: var(--color-wave-scheduled-fg); display: grid; grid-template-columns: var(--size-icon-md) minmax(0, 1fr); column-gap: var(--space-wave-gap); margin: 0; padding: 0 0 var(--space-wave-stack); min-width: 0; }
+.uui-timeline-item:last-child { padding-bottom: 0; }
+/* marcador (IconOnly do progress-steps, 24 px) em quadrado de raio 8 (a identidade só admite círculo em avatar, rádio e indicador do site; este fica na regra geral) + conector reto e cinza */
+.uui-timeline-item__trilho { display: flex; flex-direction: column; align-items: center; align-self: stretch; padding-top: var(--space-wave-pad); }
+.uui-timeline-item__marcador { box-sizing: border-box; display: block; flex: 0 0 auto; width: var(--space-5); height: var(--space-5); border-radius: var(--radius-base);
+  border: var(--border-width-strong) var(--border-style-wave-scheduled) var(--color-wave-scheduled-border); background: var(--color-bg-page); }
+.uui-timeline-item[data-state="open"] .uui-timeline-item__marcador { border-style: solid; border-color: var(--color-wave-open-border); background: var(--color-wave-open-bg); }
+.uui-timeline-item[data-state="soldout"] .uui-timeline-item__marcador { border-style: solid; border-color: var(--color-wave-soldout-border); background: var(--color-wave-soldout-bg); }
+.uui-timeline-item[data-state="closed"] .uui-timeline-item__marcador { border-style: solid; border-width: var(--border-width-hairline); border-color: var(--color-wave-closed-border); background: var(--color-wave-closed-bg); }
+.uui-timeline-item__trilho::after { content: ""; flex: 1 1 auto; width: 0; margin-top: var(--space-1); border-left: var(--border-width-strong) solid var(--color-border-subtle); border-radius: 0; }
+.uui-timeline-item:last-child .uui-timeline-item__trilho::after { display: none; }
+.cf-janela__card { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-2); box-sizing: border-box; min-width: 0; min-height: var(--size-wave-row-min); padding: var(--space-wave-pad);
+  background: var(--color-wave-row-bg); border: var(--border-width-wave-row) solid var(--color-wave-row-border); border-radius: var(--radius-base); }
+.uui-timeline-item[data-state="open"] .cf-janela__card { border: var(--border-width-wave-row-open) solid var(--color-wave-row-border-open); padding: calc(var(--space-wave-pad) - var(--border-width-strong) + var(--border-width-wave-row)); }
+.uui-timeline-item[data-mine] .cf-janela__card { border-left: var(--size-wave-mine-bar) solid var(--color-wave-mine-bar); padding-left: calc(var(--space-wave-pad) - var(--size-wave-mine-bar) + var(--border-width-wave-row)); }
+.cf-janela__nome { margin: 0; font-size: var(--font-size-wave-name); font-weight: var(--font-wt-title-4); line-height: var(--font-lh-wave-name); letter-spacing: var(--font-ls-wave-name); color: var(--color-text-primary); text-wrap: balance; overflow-wrap: break-word; max-width: 100%; }
+.cf-janela__rotulo { margin: 0; font-size: var(--font-size-small); line-height: var(--font-lh-small); color: var(--color-text-secondary); }
+.cf-janela__quando { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-3);
+  font-size: var(--font-size-wave-when); font-weight: var(--font-wt-wave-when); line-height: var(--font-lh-wave-when); letter-spacing: var(--font-ls-wave-when); color: var(--color-text-primary); font-variant-numeric: var(--font-numeric); }
+.cf-janela__quando time { font-variant-numeric: var(--font-numeric); }
+.cf-janela[data-state="closed"] .cf-janela__quando { color: var(--color-text-secondary); font-weight: var(--font-wt-wave-name); }
+.cf-janela[data-state="soldout"] .cf-janela__quando { color: var(--color-text-secondary); }
+/* «Outras aberturas (N)»: recolhível (Untitled UI: `Disclosure` do React Aria, o de `faq-accordion`; Figma v8: "FAQ section") */
+.cf-outras { display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; }
+.cf-outras__gatilho { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); box-sizing: border-box; width: 100%; min-height: var(--size-wave-action); margin: 0; padding: 0 var(--space-4);
+  border: var(--border-width-hairline) solid var(--color-border-control); border-radius: var(--radius-base); background: transparent; color: var(--color-text-primary);
+  font: inherit; font-size: var(--font-size-small); font-weight: var(--font-wt-button); line-height: var(--font-lh-small); text-align: left; cursor: pointer;
+  transition: background-color var(--motion-duration-fast) var(--motion-ease-move), border-color var(--motion-duration-fast) var(--motion-ease-move); }
+.cf-outras__gatilho:hover { background-color: var(--color-bg-hover); border-color: var(--color-border-strong); }
+.cf-outras__gatilho .uui-ico { transition: transform var(--motion-duration-fast) var(--motion-ease-move); }
+.cf-outras__gatilho[aria-expanded="true"] .uui-ico { transform: rotate(180deg); }
+.cf-outras__painel { display: grid; grid-template-rows: 0fr; visibility: hidden; transition: grid-template-rows var(--motion-duration-base) var(--motion-ease-move), visibility 0s linear var(--motion-duration-base); }
+.cf-outras__painel[data-aberto="true"] { grid-template-rows: 1fr; visibility: visible; transition: grid-template-rows var(--motion-duration-base) var(--motion-ease-move), visibility 0s; }
+.cf-outras__conteudo { min-height: 0; overflow: hidden; }
+@media (prefers-reduced-motion: reduce) {
+  .cf-outras__painel, .cf-outras__painel[data-aberto="true"], .cf-outras__gatilho .uui-ico { transition: none; }
+}
+
+/* ---------- 5. Resposta e contador ----------
+   Sem equivalente no Untitled UI (busca no MCP: «countdown timer…» devolve só seções de métricas de marketing, números em destaque sem lógica de tempo; Figma v8 sem contador).
+   Referência de tipografia: `metrics` (número grande + rótulo). Um por página, com sujeito. role="timer" + aria-live="off" + rótulo estático; só a virada é anunciada, uma vez. */
+.cf-resposta { display: flex; flex-direction: column; gap: var(--space-2); margin: 0; }
+.cf-resposta__titulo { margin: 0; font-size: var(--font-size-title-4); font-weight: var(--font-wt-title-4); line-height: var(--font-lh-title-4); letter-spacing: var(--font-ls-title-4); color: var(--color-text-primary); }
+.cf-resposta__apoio { margin: 0; font-size: var(--font-size-small); line-height: var(--font-lh-small); color: var(--color-text-secondary); }
+.cf-contador { display: flex; flex-direction: column; gap: var(--space-2); box-sizing: border-box; margin: 0; padding: var(--space-countdown-pad); background: var(--color-match-countdown-bg); border: var(--border-width-hairline) solid var(--color-match-countdown-border); border-radius: var(--radius-base); min-width: 0; }
+.cf-contador__sujeito { margin: 0; font-size: var(--font-size-countdown-label); font-weight: var(--font-wt-countdown-label); line-height: var(--font-lh-countdown-label); letter-spacing: var(--font-ls-countdown-label); color: var(--color-match-countdown-label); }
+.cf-contador__clube { display: block; color: var(--color-text-primary); text-wrap: balance; overflow-wrap: break-word; }
+.cf-contador__valor { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-1) var(--space-countdown-gap); margin: 0; }
+.cf-contador__parte { display: inline-flex; align-items: baseline; gap: var(--space-2); white-space: nowrap; }
+.cf-contador__num { display: inline-block; min-width: var(--size-countdown-num-min); font-size: var(--font-size-countdown); font-weight: var(--font-wt-countdown); line-height: var(--font-lh-countdown); letter-spacing: var(--font-ls-countdown); color: var(--color-match-countdown-fg); font-variant-numeric: var(--font-numeric); text-align: right; }
+.cf-contador__un { font-size: var(--font-size-countdown-unit); font-weight: var(--font-wt-countdown-unit); line-height: var(--font-lh-countdown-unit); letter-spacing: var(--font-ls-countdown-unit); color: var(--color-match-countdown-unit); }
+.cf-contador__abrindo { font-size: var(--font-size-countdown); font-weight: var(--font-wt-countdown); line-height: var(--font-lh-countdown); letter-spacing: var(--font-ls-countdown); color: var(--color-match-countdown-fg); }
+.cf-contador__fixo { margin: 0; font-size: var(--font-size-countdown-label); line-height: var(--font-lh-countdown-label); color: var(--color-match-countdown-unit); }
+.cf-contador__fixo time { color: var(--color-match-countdown-fg); font-weight: var(--font-wt-countdown-label); }
+.cf-contador__aviso { margin: 0; font-size: var(--font-size-countdown-label); line-height: var(--font-lh-countdown-label); color: var(--color-match-countdown-label); }
+/* 24 h ou mais (ou servidor sem resposta): só a data e a hora por extenso, sem número grande */
+.cf-contador[data-faixa="data"] .cf-contador__fixo { font-size: var(--font-size-body); line-height: var(--font-lh-body); color: var(--color-match-countdown-fg); }
+.cf-contador[data-faixa="data"] .cf-contador__fixo time { font-weight: var(--font-wt-countdown-label); }
+.cf-contador[data-faixa="aberta"] { display: none; }
+/* barra móvel: versão curta, sem segundos, mesma fonte de dados (aria-hidden na cópia); entra no `.mbar` do Evento no lugar do preço.
+   O rótulo «Me avisar por e-mail» (203 px) deixaria ~120 px ao texto em 390 px: o botão da barra é só o sino (`.bp.bp-icone`, 48 × 48, aria-label com o texto inteiro). */
+.cf-barra { justify-content: space-between; align-items: center; }
+.cf-barra__texto { margin: 0; min-width: 0; font-size: var(--font-size-countdown-compact); font-weight: var(--font-wt-countdown-compact); line-height: var(--font-lh-countdown-compact); letter-spacing: var(--font-ls-countdown-compact); color: var(--color-text-primary); font-variant-numeric: var(--font-numeric); overflow-wrap: break-word; }
+
+/* ---------- 6. Botão principal e aviso por e-mail ----------
+   Botão: o do site (`.bp` primário, `.bs` secundário; Untitled UI `button` color primary | secondary, size xl = 48 px). Um só principal por estado.
+   Aviso: «Me avisar por e-mail» → «Aviso ativado» é o MESMO botão, no mesmo lugar, com a mesma largura e a mesma altura (só troca .bp por .bs e o ícone);
+   Untitled UI: `button` + `toggle` (aria-pressed). Painel de e-mail só para quem não tem conta (campo `.field`, não substitui o botão). */
+.cf-acao { display: flex; flex-direction: column; margin: 0; min-width: 0; }
+.cf-acao > * + * { margin-top: var(--space-3); }
+.cf-acao > :empty { margin-top: 0; } /* região viva vazia (role="status") fica no DOM sem ocupar espaço */
+.cf-acao > .bp, .cf-acao > .bs, .cf-acao > .cf-aviso { width: 100%; }
+.cf-aviso { width: 100%; box-sizing: border-box; min-height: var(--size-touch-default); }
+.cf-aviso[aria-pressed="true"], .cf-aviso[aria-pressed="true"]:hover { background-size: 100% 100%; color: var(--color-button-secondary-fg-hover); } /* ativado = o «selecionado» do site (tinta invertida, como o chip com visto); o hover não muda nada */
+.cf-acao__estado { margin: 0; font-size: var(--font-size-small); line-height: var(--font-lh-small); color: var(--color-text-secondary); }
+.cf-acao__conta { margin: 0; font-size: var(--font-size-small); line-height: var(--font-lh-small); color: var(--color-text-secondary); }
+.cf-acao__conta strong { color: var(--color-text-primary); font-weight: var(--font-wt-label); overflow-wrap: anywhere; }
+.cf-acao__painel { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4); border: var(--border-width-hairline) solid var(--color-border-subtle); border-radius: var(--radius-base); background: var(--color-bg-subtle); }
+.cf-acao__painel[hidden] { display: none; }
+.cf-acao__painel .field { display: flex; flex-direction: column; flex: 0 0 auto; gap: var(--space-2); }
+.cf-acao__ajuda { margin: 0; font-size: var(--font-size-small); line-height: var(--font-lh-small); color: var(--color-text-secondary); }
+.cf-acao__secundario { align-self: flex-start; }
+
+/* coluna de compra: a ordem recomendada (resposta e contador, botão, aberturas) */
+.cf-venda { display: flex; flex-direction: column; gap: var(--space-5); min-width: 0; }
+
+/* ===== pagina.css ===== */
+/* =====================================================================
+   Página de confronto de futebol: a camada da página (Mariana, 28/10/2026). Vem DEPOIS de confronto.css (Edu), no mesmo arquivo gerado (previa/evento-futebol.css).
+   Aqui só o que o parecer 2d do Bessa mudou em relação aos componentes do Edu e a composição da página; só tokens (identidade-v1.css).
+   Parecer: docs/design/FUTEBOL-CONFRONTO-PARECER-2D.md (decisões 1 a 18; condições C1 a C7). Tudo sob #ef-root, .ef-* ou html[data-ef].
+   ===================================================================== */
+
+.ef-crumbs { display: none; } /* a trilha do futebol só aparece com <html data-ef> (regra no <head>, tools/previa/evento-futebol.mjs) */
+.ef-wrap { min-height: 0 !important; }
+.ef-root { display: block; position: relative; background: var(--color-bg-page); color: var(--color-text-primary); } /* position: referência dos fantasmas que se despedem na troca de jogo */
+.ef-in { max-width: calc(var(--layout-content-max) + 2 * var(--layout-margin)); margin-inline: auto; padding-inline: var(--layout-margin); box-sizing: border-box; }
+.ef-fantasma { z-index: 1; }
+.ef-compra, .ef-col-c, .ef-topo, .ef-main { position: relative; } /* referência dos blocos que se despedem (fantasmas) */
+
+/* ---------- hero: ilha escura com a arte do estádio sob o véu chapado (decisão 7); sem pôster, sem cartão-ingresso, sem cymatics em canvas ---------- */
+.ef-hero { position: relative; isolation: isolate; overflow: hidden; background: var(--color-bg-island); color: var(--color-text-primary); }
+.ef-hero__arte { position: absolute; inset: 0; z-index: -2; width: 100%; height: 100%; object-fit: cover; object-position: 50% 58%; border-radius: 0 !important; opacity: .5; } /* A2: a arte mais quieta atrás dos rótulos de 14 px (sem token novo) */
+.ef-hero__veu { position: absolute; inset: 0; z-index: -1; background: var(--color-match-scrim); }
+.ef-hero-in { max-width: calc(var(--layout-content-max) + 2 * var(--layout-margin)); margin-inline: auto; padding: var(--space-match-pad-y) var(--layout-margin); box-sizing: border-box; }
+
+/* ---------- cabeçalho do confronto: centrado, escudos lado a lado, nome sob o escudo, mandante à esquerda (decisões 2, 3, 5, 6, 8, 9) ---------- */
+.ef-cab { align-items: center; text-align: center; gap: var(--space-5); }
+.ef-cab__topo { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: var(--space-2) var(--space-3); }
+.ef-cab .cf-confronto__contexto { font-size: var(--font-size-match-context); line-height: var(--font-lh-match-context); letter-spacing: var(--font-ls-match-context); font-weight: var(--font-wt-match-context); }
+.ef-fase { display: inline-flex; align-items: center; min-height: var(--size-wave-chip); padding: 0 var(--space-3); background: var(--color-bg-inverse); color: var(--color-text-inverse); border-radius: var(--radius-base); font-size: var(--font-size-label); font-weight: var(--font-wt-label); letter-spacing: var(--font-ls-label); text-transform: uppercase; line-height: 1; }
+/* o selo do visitante é um só («Torcida visitante · Portão 12») e, em 390 px, ocupa a linha dele */
+.ef-cab__topo .uui-badge[data-kind="away"] { white-space: normal; text-align: left; }
+@media (max-width: 640px) { .ef-cab__topo .uui-badge[data-kind="away"] { flex: 0 1 auto; } .ef-cab__topo .cf-confronto__contexto { flex: 1 1 100%; } }
+/* A3: o par limitado a 44 rem; o «x» com o corpo de match-vs */
+.ef-cab .cf-confronto__titulo { width: min(100%, 44rem); grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); grid-template-rows: auto auto auto; column-gap: var(--space-match-between); row-gap: 0; justify-content: center; }
+/* A1: os rótulos «Mandante» e «Visitante» ficam à mesma altura mesmo quando um nome quebra em 2 linhas: as duas colunas têm a mesma altura (o grid estica) e o rótulo desce até o fundo
+   (margin-top: auto). Sem `display: contents` nem subgrid: cada coluna é uma caixa de verdade, que a auditoria de vazio mede pelo que ela contém. */
+.ef-cab .cf-time { display: flex; flex-direction: column; grid-row: 1; align-items: center; text-align: center; min-width: 0; }
+.ef-cab .cf-time__texto { flex: 1 1 auto; display: flex; flex-direction: column; align-items: center; min-width: 0; gap: 0; }
+.ef-cab .cf-time__nome { margin-top: var(--space-match-crest-name); text-align: center; }
+.ef-cab .cf-time__papel { margin-top: auto; padding-top: var(--space-1); font-size: var(--font-size-match-context); letter-spacing: 0; text-transform: none; font-weight: var(--font-wt-small); } /* decisão 9: 14 px, caixa normal */
+.ef-cab .cf-confronto__x { grid-row: 1; grid-column: 2; align-self: center; height: var(--size-match-crest); }
+.ef-cab .cf-time[data-papel="mandante"] { grid-column: 1; }
+.ef-cab .cf-time[data-papel="visitante"] { grid-column: 3; }
+.ef-cab .cf-confronto__apoio { justify-content: center; text-align: center; flex-direction: column; align-items: center; gap: var(--space-1); }
+.ef-cab .cf-confronto__apoio > li { flex: 0 0 auto; }
+.ef-cab .cf-confronto__apoio > li + li::before { content: none; }
+.ef-cab .cf-confronto__estado { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: var(--space-2) var(--space-4); font-size: var(--font-size-small); line-height: var(--font-lh-small); color: var(--color-match-apoio); }
+.ef-cab .cf-confronto__linha { max-width: 36rem; }
+.ef-cab .tag { position: relative; }
+@media (min-width: 1024px) { /* decisão 1: 64 px abaixo de 1024 e 96 px a partir de 1024 */
+  .ef-cab .cf-escudo { width: var(--size-match-crest-lg); height: var(--size-match-crest-lg); }
+  .ef-cab .cf-confronto__x { height: var(--size-match-crest-lg); }
+}
+@container cf-confronto (min-width: 640px) { /* o contêiner do Edu põe o escudo ao lado do nome; o parecer manda o nome sob o escudo em todas as larguras */
+  .ef-cab .cf-confronto__titulo { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); justify-content: center; }
+  .ef-cab .cf-time { flex-direction: column; align-items: center; }
+  .ef-cab .cf-confronto__x { height: var(--size-match-crest); align-self: center; }
+  .ef-cab .cf-confronto__apoio > li + li::before { content: none; }
+}
+@container cf-confronto (min-width: 640px) and (min-width: 1024px) { .ef-cab .cf-confronto__x { height: var(--size-match-crest-lg); } }
+.ef-cab[data-estado="postponed"] .cf-confronto__apoio { /* V16: sem o fuso na linha do cabeçalho; ele fica escrito na coluna */ }
+
+/* ---------- corpo: aviso em linha, coluna de compra (à direita no desktop, logo abaixo do hero no celular) e o que há para saber do jogo ---------- */
+.ef-corpo { display: flex; flex-direction: column; gap: var(--space-5); padding-block: var(--space-stack-lg) var(--space-section); }
+.ef-topo { display: flex; flex-direction: column; gap: var(--space-3); }
+.ef-topo:empty { display: none; }
+.ef-body { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-8); align-items: start; }
+@media (min-width: 1024px) { .ef-body { grid-template-columns: minmax(0, 1fr) var(--layout-aside-width); } .ef-aside { order: 2; position: sticky; top: calc(var(--size-header) + var(--space-5)); } }
+@media (max-width: 1023px) { .ef-aside { order: -1; } .ef-corpo { padding-bottom: calc(var(--space-section) + var(--size-touch-default) + var(--space-5)); } }
+.ef-main { display: flex; flex-direction: column; gap: var(--space-stack-xl); min-width: 0; }
+.ef-compra { padding: var(--space-card-pad); }
+.ef-nota, .ef-preco-nota { margin: var(--space-3) 0 0; }
+.ef-mais { margin: 0; }
+
+/* ---------- coluna de compra ---------- */
+.ef-compra .cf-venda { gap: var(--space-5); }
+.ef-compra .cf-resposta { position: relative; }
+.ef-compra .cf-resposta__titulo { text-wrap: balance; }
+.cf-contador { position: relative; }
+.cf-contador__sujeito, .cf-contador__valor, .cf-contador__fixo, .cf-contador__aviso { position: relative; }
+.cf-contador__clube { margin-bottom: var(--space-1); font-size: var(--font-size-body); font-weight: var(--font-wt-title-4); }
+.cf-contador__fixo { margin-top: var(--space-1); }
+.cf-contador__fixo time { color: var(--color-match-countdown-fg); font-weight: var(--font-wt-countdown-label); }
+.cf-acao { position: relative; }
+.cf-aviso, #ef-botao { position: relative; }
+#ef-botao { display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2); width: 100%; box-sizing: border-box; }
+#ef-botao:not(.bp-lg) { min-height: var(--size-touch-default); } /* o .bp-lg já tem 56 px (--size-control-lg); o id não pode baixar para 48 */
+#ef-botao .cf-aviso__ic { display: inline-flex; align-items: center; justify-content: center; }
+#ef-botao .cf-aviso__ic[hidden] { display: none; }
+#ef-botao[aria-disabled="true"] { cursor: default; }
+#ef-botao[aria-disabled="true"]:hover { transform: none; }
+.cf-janela__quando { position: relative; }
+.cf-janela__card { position: relative; }
+.cf-resposta__apoio, .cf-resposta__titulo { position: relative; }
+.ef-compra .cf-aberturas { margin-top: 0; }
+.ef-compra .cf-aberturas__titulo { text-wrap: balance; }
+
+/* ---------- barra móvel (só abaixo de 1024, como o .mbar da Evento): o sino, ou o botão do estado ---------- */
+.ef-root .mbar.cf-barra { display: none; align-items: center; justify-content: space-between; gap: var(--space-4); position: sticky; bottom: 0; }
+@media (max-width: 1023px) { .ef-root .mbar.cf-barra { display: flex !important; } }
+.ef-root .mbar.ef-barra--sem { display: none !important; }
+.cf-barra .bp:not(.bp-icone) { flex: 0 1 auto; min-width: 0; white-space: normal; text-wrap: balance; } /* o rótulo longo («Ver próximo jogo») quebra em vez de passar da caixa a 390 px */
+.cf-barra .btn-ic { width: var(--size-icon-md); height: var(--size-icon-md); }
+
+/* ---------- painel de simulação ---------- */
+.ef-proto__nota { margin: var(--space-3) 0 0; font-size: var(--font-size-small); color: var(--color-text-secondary); }
+.ef-root .mbar.cf-barra { flex-wrap: nowrap !important; }
+.cf-barra__texto { flex: 1 1 0; min-width: 0; }
+.cf-barra .bp.bp-icone, .cf-barra .bs.bs-icone, .mbar.cf-barra .bp:has(.btn-ic).bp-icone { flex: 0 0 var(--size-touch-default) !important; width: var(--size-touch-default); min-width: var(--size-touch-default); padding: 0 !important; }
+.ef-col-a { display: flex; flex-direction: column; gap: var(--space-5); min-width: 0; position: relative; }
+.ef-col-a:empty, .ef-col-c:empty { display: none; }
+.ef-col-b { display: contents; }
+.ef-col-c { min-width: 0; position: relative; }
+.ef-col-a { transition: min-height var(--motion-duration-base) var(--motion-ease-move); }
+.ef-compra .cf-aberturas .cf-aberturas__titulo { margin: 0; font-size: var(--font-size-label) !important; line-height: var(--font-lh-label) !important; font-weight: var(--font-wt-label) !important; letter-spacing: var(--font-ls-label) !important; text-transform: uppercase; color: var(--color-text-secondary); }
+.cf-barra .ef-barra__longo:only-child { flex: 1 1 auto; width: 100%; }
+/* o estrito reprova texto de 14 a 15 px fora da caixa alta: o selo (uui-badge) segue o .tag do site (caixa alta, 14 px) e o rótulo «Mandante»/«Visitante» (decisão 9: caixa normal) sobe para 16 px */
+.uui-badge { text-transform: uppercase; letter-spacing: var(--font-ls-label); }
+.ef-cab .cf-time__papel { font-size: var(--font-size-small); line-height: var(--font-lh-small); }
+html[data-ef] .ef-crumbs { flex-wrap: nowrap; }
+.ef-crumbs .crumb-back, .ef-crumbs .crumb-mid:first-child { flex: none; white-space: nowrap; }
+.ef-main-a { display: flex; flex-direction: column; gap: var(--space-stack-xl); min-width: 0; }
+.ef-main-a:empty { display: none; }
+
+/* o escudo não é Avatar (o auditor de componentes exige role=img e círculo no avatar; o escudo é decorativo, quadrado de raio 8 e passa de 64 para 96 px): as mesmas regras do Edu, sob o nome próprio */
+.cf-escudo, .cf-escudo__content { border-radius: var(--radius-base); }
+.cf-escudo__content { position: relative; display: block; width: 100%; height: 100%; box-sizing: border-box; overflow: hidden; background: var(--color-match-crest-mono-bg); color: var(--color-match-crest-mono-fg); border: var(--border-width-hairline) solid var(--color-match-crest-mono-border);
+  display: flex; align-items: center; justify-content: center; font-size: var(--font-size-title-4); font-weight: var(--font-wt-title-4); letter-spacing: var(--font-ls-label); line-height: 1; }
+.cf-escudo--img .cf-escudo__content { background: transparent; border-color: transparent; }
+.cf-escudo[data-fundo="ladrilho"] .cf-escudo__content { background: var(--color-match-crest-tile-bg); border-color: transparent; }
+
+/* C1 / achado 5: nenhuma linha da arte do estádio cruza «Mandante», «Visitante» nem a meta. A partir de 1024 px a máscara apaga a faixa central (onde ficam os times e a meta) e a arte aparece nas laterais; no celular, onde o texto ocupa a largura toda, a arte fica mais quieta. Sem mudar a arte, sem token novo. */
+@media (min-width: 1024px) {
+  .ef-hero__arte { -webkit-mask-image: linear-gradient(to right, #000 0, #000 14%, transparent 25%, transparent 75%, #000 86%, #000 100%); mask-image: linear-gradient(to right, #000 0, #000 14%, transparent 25%, transparent 75%, #000 86%, #000 100%); }
+}
+@media (max-width: 1023px) { .ef-hero__arte { opacity: .25; } }
+
+
+/* ---------- consistência com a Evento: o mesmo cartão de compra (borda forte, rótulo «Compra», Quero ir e Compartilhar, garantias) e a mesma barra móvel ---------- */
+.ef-compra { border: var(--border-width-strong) solid var(--color-border-strong); }
+.ef-compra__rot { margin-bottom: var(--space-2); }
+.ef-compra .trust { margin: 0; padding-top: var(--space-5); }
+.ef-marca { width: var(--space-6); height: auto; display: block; }
+.cf-barra .bp .ef-marca { display: none; } /* na barra móvel o botão leva só o rótulo, como na Evento */
+.cf-barra__bloco { flex: 1 1 12rem; min-width: 0; }
+.cf-barra__dia { font-size: var(--font-size-body); color: var(--color-text-tertiary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cf-barra__frase { font-size: var(--font-size-body); font-weight: 600; line-height: 1.25; text-wrap: balance; }
+.ef-root .mbar.cf-barra { flex-wrap: wrap; }
+.ef-root .mbar.cf-barra .bp { flex: 1 1 auto; min-width: 0; white-space: normal; text-wrap: balance; } /* o rótulo longo quebra em duas linhas em vez de passar da caixa */
+
+/* DE-43: o «Quem vai ao jogo» ocupa a largura da coluna: quem vai à esquerda e os dois botões à direita (sem metade do cartão vazia) */
+@media (min-width: 1024px) {
+  .ef-main-a .qvai-card { flex-direction: row; align-items: center; justify-content: space-between; gap: var(--space-6); }
+  .ef-main-a .qvai-who { flex: 1 1 auto; }
+  .ef-main-a .qvai-actions { flex: 0 0 auto; grid-template-columns: repeat(2, max-content); }
+}
+.ef-mais .linkbtn { padding-inline: 0; } /* o link começa na mesma margem das seções */
+.ef-corpo-main { display: block; min-width: 0; }

@@ -5,6 +5,8 @@
 > **Versão em uso:** não é a versão em uso. O menu Membros aponta para `membros` (`/backstage/membros`). Esta é uma exploração alternativa (badge "v2 · acesso por grupo") que não substituiu a v1.
 > **Revisado em:** 2026-11-07
 
+> **Desde 21/11/2026 sem rota:** a URL leva para Membros (`/backstage/membros`) (BKS-35). O código fica como histórico.
+
 Este arquivo é a fonte da verdade do comportamento da feature. Mudou uma regra no código, mude
 aqui no mesmo commit. Achou divergência entre código e este arquivo, registre em **Em aberto**
 em vez de escolher um lado em silêncio.

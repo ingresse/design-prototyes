@@ -8,7 +8,6 @@ import { EmptyState } from "@/components/application/empty-state/empty-state";
 import { Dialog, Modal, ModalOverlay } from "@/components/application/modals/modal";
 import { Button } from "@/components/base/buttons/button";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
-import { Checkbox } from "@/components/base/checkbox/checkbox";
 import { Input } from "@/components/base/input/input";
 import { InputNumber } from "@/components/base/input/input-number";
 import { TextArea } from "@/components/base/textarea/textarea";
@@ -25,7 +24,7 @@ import {
     irParaPrimeiroErro,
     CabecalhoDoItem,
 } from "../components/comuns";
-import { BarraDeFiltros, BotaoMostrarMais, LIMIAR_FERRAMENTAS, paraBusca, useMostrarMais, useSelecao } from "../components/escala";
+import { type OpcaoDeLista, SeletorDeLista } from "../components/SeletorDeLista";
 import {
     acharIngresso,
     comboNovo,
@@ -55,7 +54,7 @@ const TEXTOS = {
     desligado: "{nome} pausado. Ele para de vender na hora.",
     desfazer: "Desfazer",
     avisoLigado: "Ligado, mas sem disponibilidade: confira o estoque e os itens do combo.",
-    voltar: "Combos",
+    voltar: "Ingressos e produtos",
     novo: "Novo combo",
     novoDica: "Junte ingressos e produtos num pacote com preço próprio.",
     resumoCabecalho: "{composicao} por {preco}.",
@@ -113,6 +112,7 @@ const TEXTOS = {
     revise: "Revise os campos destacados para salvar o combo.",
     seletor: {
         titulo: "Adicionar itens",
+        dica: "Busque por ingresso, grupo, sessão ou produto.",
         buscar: "Buscar por ingresso, grupo ou produto",
         ingressos: "Ingressos",
         produtos: "Produtos",
@@ -124,7 +124,7 @@ const TEXTOS = {
         dicaIngresso: { zero: "{preco}, esgotado", one: "{preco}, 1 disponível", other: "{preco}, {n} disponíveis" },
         dicaProduto: { zero: "{preco}, sem estoque", one: "{preco}, 1 em estoque", other: "{preco}, {n} em estoque" },
         jaNoCombo: "Já está no combo",
-        nenhum: "Nenhum ingresso ou produto com essa busca ou esses filtros.",
+        nenhum: "O evento ainda não tem ingressos nem produtos.",
         selecionarTodos: "Selecionar todos os {n} do filtro",
         limparSelecao: "Limpar seleção",
         selecionados: { zero: "Nenhum selecionado", one: "1 selecionado", other: "{n} selecionados" },
@@ -545,220 +545,69 @@ function ItensDoCombo({ itens, onChange, erro, onAdicionar }: { itens: ItemDoCom
     );
 }
 
-/* ---------------- seletor de itens (modal) ---------------- */
+/* ---------------- seletor de itens ---------------- */
 
 /**
- * Seletor de itens do evento, com checkbox. O que já está no combo aparece marcado e desabilitado.
+ * Seletor de itens do evento: o mesmo slideout de escolher em lista do catálogo (`SeletorDeLista`, ITM-35),
+ * com os ingressos e depois os produtos. O que já está no combo aparece marcado e desabilitado.
  *
- * Escala de 1 a milhares (UI-LST-001): cada ingresso mostra o setor e, com várias sessões, a data
- * da sessão, para diferenciar os de mesmo nome. Acima do limiar aparecem busca, filtros de sessão e
- * setor, contagem, "Selecionar todos do filtro" e "Mostrar mais" por seção.
+ * Escala de 1 a milhares (UI-LST-001): cada ingresso mostra o grupo e, com várias sessões, a data da
+ * sessão, para diferenciar os de mesmo nome; a busca acha por ingresso, grupo, sessão ou produto, palavra
+ * por palavra ("pista 18 out"), e a lista vem de 50 em 50.
  */
 function SeletorDeItens({ aberto, noCombo, onFechar, onAdicionar }: { aberto: boolean; noCombo: Set<string>; onFechar: () => void; onAdicionar: (itens: ItemDoCombo[]) => void }) {
     const { evento, biblioteca, vendidos } = useCatalogo();
-    const { preco, locale, numero } = useTextosItens();
+    const { preco, locale } = useTextosItens();
     const plural = usePlural();
-    const [busca, setBusca] = useState("");
-    const [sessao, setSessao] = useState("todos");
-    const [setor, setSetor] = useState("todos");
-    const selecao = useSelecao();
     const ctx = useMemo(() => contextoDosIngressos(evento, locale), [evento, locale]);
 
-    /* ---------- todos os itens, com o texto de busca ---------- */
-    const todosIngressos = useMemo(
-        () =>
-            ingressosDo(evento).map(({ tipo, setor, sessao }) => {
-                const contexto = ctx.contexto(setor.nome, sessao.id);
-                const item: ItemDoCombo = { tipo: "ingresso", id: tipo.id, quantidade: 1 };
-                return { item, k: chave(item), tipo, setor: setor.nome, sessao: sessao.id, contexto, busca: paraBusca(`${tipo.nome} ${contexto}`) };
-            }),
-        [evento, ctx],
-    );
-    const todosProdutos = useMemo(
-        () =>
-            produtosDo(evento, biblioteca).map((p) => {
-                const item: ItemDoCombo = { tipo: "produto", id: p.produto.id, quantidade: 1 };
-                return { item, k: chave(item), p, busca: paraBusca(p.produto.nome) };
-            }),
-        [evento, biblioteca],
-    );
-    const total = todosIngressos.length + todosProdutos.length;
-    const comFerramentas = total > LIMIAR_FERRAMENTAS;
+    const { opcoes, porChave } = useMemo(() => {
+        const porChave = new Map<string, ItemDoCombo>();
+        if (!aberto) return { opcoes: [] as OpcaoDeLista[], porChave };
+        const ingressos: OpcaoDeLista[] = ingressosDo(evento).map(({ tipo, setor, sessao }) => {
+            const item: ItemDoCombo = { tipo: "ingresso", id: tipo.id, quantidade: 1 };
+            const k = chave(item);
+            porChave.set(k, item);
+            return {
+                id: k,
+                rotulo: tipo.nome,
+                apoio: ctx.contexto(setor.nome, sessao.id),
+                // Preço e disponíveis só para as linhas na tela: com 300 mil ingressos, calcular todos ao abrir pesa.
+                detalhe: () => plural(TEXTOS.seletor.dicaIngresso, disponivelDoIngresso(tipo, vendidos), { preco: preco(loteAtual(tipo, vendidos)?.preco ?? faixaDePreco(tipo).max) }),
+                fixa: noCombo.has(k) ? TEXTOS.seletor.jaNoCombo : undefined,
+                secao: TEXTOS.seletor.ingressos,
+            };
+        });
+        const produtos: OpcaoDeLista[] = produtosDo(evento, biblioteca).map((p) => {
+            const item: ItemDoCombo = { tipo: "produto", id: p.produto.id, quantidade: 1 };
+            const k = chave(item);
+            porChave.set(k, item);
+            return {
+                id: k,
+                rotulo: p.produto.nome,
+                detalhe: plural(TEXTOS.seletor.dicaProduto, p.noEvento.estoque, { preco: preco(precoDoProduto(p)) }),
+                fixa: noCombo.has(k) ? TEXTOS.seletor.jaNoCombo : undefined,
+                secao: TEXTOS.seletor.produtos,
+            };
+        });
+        return { opcoes: [...ingressos, ...produtos], porChave };
+        // Monta uma vez ao abrir; o que já está no combo só muda com o seletor fechado.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [aberto, evento, biblioteca, vendidos, ctx]);
 
-    /* ---------- filtros ---------- */
-    const termo = paraBusca(busca.trim());
-    // Sessão e setor são do ingresso: com um deles escolhido, os produtos saem da lista.
-    const porIngresso = sessao !== "todos" || setor !== "todos";
-    const ingressos = useMemo(
-        () => todosIngressos.filter((i) => (!termo || i.busca.includes(termo)) && (sessao === "todos" || i.sessao === sessao) && (setor === "todos" || i.setor === setor)),
-        [todosIngressos, termo, sessao, setor],
-    );
-    const produtos = useMemo(() => (porIngresso ? [] : todosProdutos.filter((p) => !termo || p.busca.includes(termo))), [todosProdutos, termo, porIngresso]);
-    const paginaIngressos = useMostrarMais(ingressos);
-    const paginaProdutos = useMostrarMais(produtos);
-    const reiniciar = () => {
-        paginaIngressos.reiniciar();
-        paginaProdutos.reiniciar();
-    };
-
-    // Setores com o mesmo nome em várias sessões viram uma opção só; a sessão escolhida restringe a lista.
-    const nomesDeSetor = useMemo(() => [...new Set(todosIngressos.filter((i) => sessao === "todos" || i.sessao === sessao).map((i) => i.setor))], [todosIngressos, sessao]);
-    const filtros = [
-        ...(ctx.variasSessoes
-            ? [
-                  {
-                      id: "sessao",
-                      rotulo: TEXTOS.seletor.sessao,
-                      valor: sessao,
-                      opcoes: [{ id: "todos", label: TEXTOS.seletor.todasAsSessoes }, ...(evento?.sessoes ?? []).map((s) => ({ id: s.id, label: ctx.rotuloDaSessao(s.id) }))],
-                      onChange: (v: string) => {
-                          setSessao(v);
-                          // O setor escolhido pode não existir na nova sessão.
-                          if (setor !== "todos" && !todosIngressos.some((i) => i.setor === setor && (v === "todos" || i.sessao === v))) setSetor("todos");
-                          reiniciar();
-                      },
-                  },
-              ]
-            : []),
-        ...(nomesDeSetor.length > 1 || setor !== "todos"
-            ? [
-                  {
-                      id: "setor",
-                      rotulo: TEXTOS.seletor.setor,
-                      valor: setor,
-                      opcoes: [{ id: "todos", label: TEXTOS.seletor.todosOsSetores }, ...nomesDeSetor.map((n) => ({ id: n, label: n }))],
-                      onChange: (v: string) => {
-                          setSetor(v);
-                          reiniciar();
-                      },
-                  },
-              ]
-            : []),
-    ];
-
-    /* ---------- seleção ---------- */
-    const porChave = useMemo(() => new Map([...todosIngressos, ...todosProdutos].map((x) => [x.k, x.item])), [todosIngressos, todosProdutos]);
-    const selecionaveis = [...ingressos, ...produtos].filter((x) => !noCombo.has(x.k)).map((x) => x.k);
-    const todosDoFiltroMarcados = selecionaveis.every((k) => selecao.tem(k));
-    const adicionar = () => onAdicionar([...selecao.ids].flatMap((k) => porChave.get(k) ?? []));
-
-    const linha = (k: string, nome: string, contexto: string, dica: string) => {
-        const ja = noCombo.has(k);
-        return (
-            <li key={k} className="py-2">
-                <Checkbox
-                    label={nome}
-                    hint={
-                        contexto ? (
-                            <>
-                                <span className="block">{contexto}</span>
-                                <span className="block">{ja ? TEXTOS.seletor.jaNoCombo : dica}</span>
-                            </>
-                        ) : ja ? (
-                            TEXTOS.seletor.jaNoCombo
-                        ) : (
-                            dica
-                        )
-                    }
-                    isSelected={ja || selecao.tem(k)}
-                    isDisabled={ja}
-                    onChange={(on) => selecao.alternar(k, on)}
-                />
-            </li>
-        );
-    };
-
-    const nada = ingressos.length === 0 && produtos.length === 0;
-
+    if (!aberto) return null;
     return (
-        <ModalOverlay isOpen={aberto} onOpenChange={(v) => !v && onFechar()} isDismissable>
-            <Modal className="sm:max-w-[640px]">
-                <Dialog aria-label={TEXTOS.seletor.titulo}>
-                    <div className="flex max-h-[85dvh] w-full flex-col overflow-hidden rounded-2xl bg-primary shadow-xl ring-1 ring-border-secondary">
-                        <div className="flex flex-col gap-4 border-b border-secondary px-5 pt-5 pb-4 sm:px-6 sm:pt-6">
-                            <h2 className="text-lg font-semibold text-primary">{TEXTOS.seletor.titulo}</h2>
-                            <BarraDeFiltros
-                                total={total}
-                                visiveis={ingressos.length + produtos.length}
-                                busca={busca}
-                                onBusca={(v) => {
-                                    setBusca(v);
-                                    reiniciar();
-                                }}
-                                placeholder={TEXTOS.seletor.buscar}
-                                filtros={filtros}
-                                onLimpar={() => {
-                                    setBusca("");
-                                    setSessao("todos");
-                                    setSetor("todos");
-                                    reiniciar();
-                                }}
-                            />
-                        </div>
-
-                        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4 sm:px-6">
-                            {nada ? (
-                                <p className="py-8 text-center text-sm text-tertiary">{TEXTOS.seletor.nenhum}</p>
-                            ) : (
-                                <div className="flex flex-col gap-6">
-                                    {ingressos.length > 0 && (
-                                        <section className="flex flex-col gap-1">
-                                            <h3 className="text-sm font-semibold text-primary">{TEXTOS.seletor.ingressos}</h3>
-                                            <ul className="flex flex-col">
-                                                {paginaIngressos.visiveis.map((i) => {
-                                                    const atual = loteAtual(i.tipo, vendidos)?.preco ?? faixaDePreco(i.tipo).max;
-                                                    const livre = disponivelDoIngresso(i.tipo, vendidos);
-                                                    return linha(i.k, i.tipo.nome, i.contexto, plural(TEXTOS.seletor.dicaIngresso, livre, { preco: preco(atual) }));
-                                                })}
-                                            </ul>
-                                            <BotaoMostrarMais restantes={paginaIngressos.restantes} onClick={paginaIngressos.mostrarMais} />
-                                        </section>
-                                    )}
-                                    {produtos.length > 0 && (
-                                        <section className="flex flex-col gap-1">
-                                            <h3 className="text-sm font-semibold text-primary">{TEXTOS.seletor.produtos}</h3>
-                                            <ul className="flex flex-col">
-                                                {paginaProdutos.visiveis.map(({ k, p }) =>
-                                                    linha(k, p.produto.nome, "", plural(TEXTOS.seletor.dicaProduto, p.noEvento.estoque, { preco: preco(precoDoProduto(p)) })),
-                                                )}
-                                            </ul>
-                                            <BotaoMostrarMais restantes={paginaProdutos.restantes} onClick={paginaProdutos.mostrarMais} />
-                                        </section>
-                                    )}
-                                    {porIngresso && todosProdutos.length > 0 && <p className="text-sm text-tertiary">{TEXTOS.seletor.soIngressos}</p>}
-                                </div>
-                            )}
-                        </div>
-
-                        <div className="flex flex-col gap-3 border-t border-secondary px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-                            <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-                                <span role="status" className="text-sm text-tertiary">
-                                    {plural(TEXTOS.seletor.selecionados, selecao.tamanho)}
-                                </span>
-                                {comFerramentas && selecionaveis.length > 0 && !todosDoFiltroMarcados && (
-                                    <Button color="link-color" size="sm" onClick={() => selecao.definir([...new Set([...selecao.ids, ...selecionaveis])])}>
-                                        {formatar(TEXTOS.seletor.selecionarTodos, { n: numero(selecionaveis.length) })}
-                                    </Button>
-                                )}
-                                {comFerramentas && selecao.tamanho > 0 && (
-                                    <Button color="link-gray" size="sm" onClick={selecao.limpar}>
-                                        {TEXTOS.seletor.limparSelecao}
-                                    </Button>
-                                )}
-                            </div>
-                            <div className="flex flex-col-reverse gap-3 sm:flex-row">
-                                <Button color="secondary" size="md" onClick={onFechar}>
-                                    {TEXTOS.seletor.cancelar}
-                                </Button>
-                                <Button color="primary" size="md" isDisabled={selecao.tamanho === 0} onClick={adicionar}>
-                                    {TEXTOS.seletor.adicionar}
-                                </Button>
-                            </div>
-                        </div>
-                    </div>
-                </Dialog>
-            </Modal>
-        </ModalOverlay>
+        <SeletorDeLista
+            titulo={TEXTOS.seletor.titulo}
+            descricao={TEXTOS.seletor.dica}
+            opcoes={opcoes}
+            selecionados={[]}
+            vazio={TEXTOS.seletor.nenhum}
+            rotuloConfirmar={TEXTOS.seletor.adicionar}
+            exigeSelecao
+            onConfirmar={(ks) => onAdicionar(ks.flatMap((k) => porChave.get(k) ?? []))}
+            onFechar={onFechar}
+        />
     );
 }
 

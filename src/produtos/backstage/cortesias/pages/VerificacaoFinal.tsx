@@ -1,27 +1,19 @@
-import { useCallback, useMemo, useState, type Key } from "react";
-import { useLocation } from "react-router";
-import {
-    ArrowLeft,
-    CheckCircle,
-    Edit01,
-    SearchLg,
-    ShoppingCart01,
-    Trash01,
-    Users01,
-} from "@untitledui/icons";
+import { useCallback, useEffect, useMemo, useRef, useState, type Key } from "react";
+import { ChevronLeft, Edit01, SearchLg, Send01, Trash01 } from "@untitledui/icons";
 import { Badge } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
 import { Input } from "@/components/base/input/input";
 import { Select } from "@/components/base/select/select";
 import { PaginationCardAdvanced } from "@/components/application/pagination/pagination";
-import { Progress } from "@/components/application/progress-steps/progress-steps";
-import type { ProgressFeaturedIconType } from "@/components/application/progress-steps/progress-types";
 import { useNavegarNoPainel, usePainel } from "../../components/painel";
 import { useEventoAtual } from "../../eventos/data/eventos";
 import { useAcessoNoEvento } from "../../freepass/data/minhas-vendas";
 import { registrarCortesias } from "@/plataforma/comissarios";
 import { BackstageLayout } from "../../components/Backstage";
+import { PainelDePassos } from "../../components/painel-de-passos";
+import { useAvisoAoSair, useRascunhoDaEmissao } from "../data/rascunho-da-emissao";
+import { ETAPAS_DA_EMISSAO, TITULO_DA_EMISSAO } from "./SelecaoItens";
 import {
     ConfirmRemoveEmailModal,
     ConfirmSendCortesiasModal,
@@ -36,34 +28,8 @@ import {
     type TicketItemDetails,
 } from "../data/cortesia-items";
 import { useCortesiasStore } from "../data/cortesias-store";
-import { TITULO_PAGINA } from "@/produtos/backstage/components/titulo-pagina";
+import { idNoCatalogo, useCatalogoDeCortesia } from "../data/plataforma";
 import { cx } from "@/utils/cx";
-
-const steps: ProgressFeaturedIconType[] = [
-    {
-        title: "Itens",
-        description: "Escolha quais ingressos deseja enviar",
-        status: "complete",
-        icon: ShoppingCart01,
-    },
-    {
-        title: "Destinatários",
-        description: "Informe quem vai receber os itens",
-        status: "complete",
-        icon: Users01,
-    },
-    {
-        title: "Verificação final",
-        description: "Confirme se está tudo certo e envie!",
-        status: "current",
-        icon: CheckCircle,
-    },
-];
-
-interface RouteState {
-    itemIds?: string[];
-    emails?: string[];
-}
 
 const DEFAULT_PAGE_SIZE = 10;
 
@@ -74,12 +40,6 @@ const CADASTRO_FILTER_OPTIONS = [
     { id: "com", label: "Apenas cadastrados" },
     { id: "sem", label: "Apenas sem cadastro" },
 ];
-
-const FALLBACK_EMAILS = Array.from(
-    { length: 24 },
-    (_, i) => `convidado${String(i + 1).padStart(3, "0")}@exemplo.com`,
-);
-const FALLBACK_ITEM_IDS = ["tk-1-1", "tk-1-4", "prod-1", "combo-1"];
 
 /** Deterministic hash for stable "tem/sem cadastro" assignment per e-mail. */
 function emailHash(email: string): number {
@@ -98,13 +58,23 @@ function emailHasCadastro(email: string): boolean {
 
 export function VerificacaoFinal() {
     const navigate = useNavegarNoPainel();
-    const location = useLocation();
-    const routeState = (location.state as RouteState | null) ?? {};
+    // Itens e e-mails vêm do rascunho da sessão (COR-53): recarregar, voltar e avançar de novo não perdem.
+    const { rascunho, mudar, descartar, temAlgo } = useRascunhoDaEmissao();
+    useAvisoAoSair(temAlgo);
+    const itemIds = rascunho.itemIds;
+    const emails = rascunho.emails;
+    const setEmails = useCallback((fn: (prev: string[]) => string[]) => mudar((atual) => ({ emails: fn(atual.emails) })), [mudar]);
+    // Catálogo simulado (`?escala`, COR-54): dá para conferir, mas nada é enviado.
+    const { simulado, sessoes, produtos, combos } = useCatalogoDeCortesia();
 
-    const itemIds = routeState.itemIds?.length ? routeState.itemIds : FALLBACK_ITEM_IDS;
-    const incomingEmails = routeState.emails?.length ? routeState.emails : FALLBACK_EMAILS;
-
-    const [emails, setEmails] = useState<string[]>(incomingEmails);
+    // Sem itens ou sem e-mails (aberta direto pela URL), volta ao passo que falta (substitui COR-47).
+    // Depois de enviar, o rascunho some de propósito: aí a tela vai para o relatório, não para o passo 1.
+    const enviado = useRef(false);
+    useEffect(() => {
+        if (enviado.current) return;
+        if (itemIds.length === 0) navigate("/backstage/itens", { replace: true });
+        else if (emails.length === 0) navigate("/backstage/destinatarios", { replace: true });
+    }, [itemIds.length, emails.length, navigate]);
     const [searchQuery, setSearchQuery] = useState("");
     const [page, setPage] = useState(0);
     const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
@@ -126,7 +96,9 @@ export function VerificacaoFinal() {
             else combos.push(details);
         }
         return { tickets, products, combos };
-    }, [itemIds]);
+        // O catálogo chega do banco depois de recarregar: refaz quando ele muda.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [itemIds, sessoes, produtos, combos]);
 
     const itemsPerRecipient = itemIds.length;
 
@@ -189,7 +161,7 @@ export function VerificacaoFinal() {
         if (!removingEmail) return;
         setEmails((prev) => prev.filter((e) => e !== removingEmail));
         setRemovingEmail(null);
-    }, [removingEmail]);
+    }, [removingEmail, setEmails]);
 
     const handleSaveEdit = useCallback((newEmail: string) => {
         setEmails((prev) => {
@@ -206,14 +178,14 @@ export function VerificacaoFinal() {
             return out;
         });
         setEditingEmail(null);
-    }, [editingEmail]);
+    }, [editingEmail, setEmails]);
 
     const { addPedido } = useCortesiasStore();
 
     const handleSubmit = useCallback(() => {
-        if (activeEmails.length === 0 || passouDaCota) return;
+        if (activeEmails.length === 0 || passouDaCota || simulado) return;
         setShowSendConfirm(true);
-    }, [activeEmails, passouDaCota]);
+    }, [activeEmails, passouDaCota, simulado]);
 
     const handleConfirmSend = useCallback(
         ({ orderName }: ConfirmSendCortesiasResult) => {
@@ -234,10 +206,10 @@ export function VerificacaoFinal() {
                             comprador: email,
                             vendedor: acesso.pessoa.nome,
                             ingresso: d.name,
-                            setor: d.kind === "ticket" ? d.groupName : "",
+                            setor: d.kind === "ticket" ? d.groupName : d.kind === "combo" ? "Combo" : "Produto",
                             quantidade: 1,
                             // Soma no uso do canal Cortesia do grupo dele, quando o item está no canal (ECO-81).
-                            itemId: d.id,
+                            itemId: idNoCatalogo(d.id),
                         })),
                     ),
                 );
@@ -251,19 +223,48 @@ export function VerificacaoFinal() {
                 }.`,
             );
             setShowSendConfirm(false);
+            // Enviado: o rascunho acaba (COR-53).
+            enviado.current = true;
+            descartar();
             navigate("/backstage/cortesias");
         },
-        [emails, activeEmails, itemIds, addPedido, navigate, acesso],
+        [emails, activeEmails, itemIds, addPedido, navigate, acesso, descartar],
     );
 
-    const handleBack = useCallback(() => {
-        navigate("/backstage/destinatarios", { state: { itemIds } });
-    }, [itemIds, navigate]);
+    const handleBack = useCallback(() => navigate("/backstage/destinatarios"), [navigate]);
+
+    const enviar = (
+        <Button size="md" color="primary" iconTrailing={Send01} onClick={handleSubmit} isDisabled={passouDaCota || Boolean(simulado) || activeEmails.length === 0}>
+            Enviar cortesias
+        </Button>
+    );
 
     return (
         <BackstageLayout activeSection="cortesias" activeItem="emissao-cortesias">
             <div className="flex min-w-0 flex-1 flex-col gap-6">
-                <PageHeader onBack={handleBack} onSubmit={handleSubmit} isDisabled={passouDaCota} />
+                <PainelDePassos
+                    titulo={TITULO_DA_EMISSAO}
+                    passos={ETAPAS_DA_EMISSAO}
+                    atual={2}
+                    resumoNoCelular={
+                        <p className="text-sm font-semibold text-primary">
+                            {`${totalCortesias} ${totalCortesias === 1 ? "cortesia" : "cortesias"} para ${activeEmails.length} ${activeEmails.length === 1 ? "destinatário" : "destinatários"}`}
+                        </p>
+                    }
+                    rodapeFim={
+                        <>
+                            <Button size="md" color="secondary" iconLeading={ChevronLeft} onClick={handleBack}>
+                                Voltar
+                            </Button>
+                            {enviar}
+                        </>
+                    }
+                >
+                {simulado && (
+                    <p role="status" className="rounded-xl bg-warning-primary px-4 py-3 text-sm text-warning-primary">
+                        Catálogo simulado para testar a escala: dá para conferir, mas as cortesias não são enviadas.
+                    </p>
+                )}
                 {saldo !== null && (
                     <p
                         role="status"
@@ -277,22 +278,7 @@ export function VerificacaoFinal() {
                             : `Este envio usa ${totalCortesias} das ${saldo} cortesias que você ainda pode enviar neste evento.`}
                     </p>
                 )}
-                <main className="flex flex-1 flex-col gap-8">
-                    <Progress.IconsWithText
-                        items={steps}
-                        size="sm"
-                        type="icon"
-                        orientation="horizontal"
-                        className="max-w-[760px] self-center max-md:hidden"
-                    />
-                    <Progress.IconsWithText
-                        items={steps}
-                        size="sm"
-                        type="icon"
-                        orientation="vertical"
-                        className="w-full md:hidden"
-                    />
-
+                <div className="flex flex-col gap-6">
                     <div className="flex flex-col gap-4 -mb-4">
                         <div className="flex flex-wrap items-center justify-between gap-3">
                             <div className="min-w-0 flex-1">
@@ -364,7 +350,8 @@ export function VerificacaoFinal() {
                             />
                         </div>
                     )}
-                </main>
+                </div>
+                </PainelDePassos>
             </div>
 
             <EditEmailModal
@@ -388,30 +375,6 @@ export function VerificacaoFinal() {
         </BackstageLayout>
     );
 }
-
-/* ------------------------------------------------------------------ */
-/*  Page header                                                       */
-/* ------------------------------------------------------------------ */
-
-interface PageHeaderProps {
-    onBack: () => void;
-    onSubmit: () => void;
-    isDisabled?: boolean;
-}
-
-const PageHeader = ({ onBack, onSubmit, isDisabled }: PageHeaderProps) => (
-    <header className="relative flex items-center justify-between gap-3 max-md:flex-wrap">
-        <Button size="sm" color="secondary" iconLeading={ArrowLeft} onClick={onBack}>
-            Destinatários
-        </Button>
-        <h1 className={cx(TITULO_PAGINA, "pointer-events-none md:absolute md:left-1/2 md:-translate-x-1/2 md:whitespace-nowrap max-md:order-last max-md:w-full")}>
-            Enviar cortesias
-        </h1>
-        <Button size="md" color="primary" onClick={onSubmit} isDisabled={isDisabled}>
-            Enviar cortesias
-        </Button>
-    </header>
-);
 
 /* ------------------------------------------------------------------ */
 /*  Recipient card                                                    */
@@ -440,8 +403,9 @@ const RecipientCard = ({
 }: RecipientCardProps) => (
     <div className="rounded-xl bg-secondary ring-1 ring-border-secondary">
         <header className="flex items-center justify-between gap-3 px-4 py-3">
-            <div className="flex min-w-0 items-center gap-2">
-                <span className="truncate text-sm font-medium text-primary">{email}</span>
+            {/* E-mail inteiro, quebrando linha, em vez de cortado (COR-41). */}
+            <div className="flex min-w-0 flex-wrap items-center gap-2">
+                <span className="min-w-0 text-sm font-medium break-all text-primary">{email}</span>
                 <Badge
                     size="sm"
                     type="pill-color"
@@ -456,16 +420,18 @@ const RecipientCard = ({
                         size="xs"
                         color="tertiary"
                         icon={Edit01}
-                        tooltip="Editar"
+                        tooltip={`Editar ${email}`}
                         onClick={onEdit}
+                        className="max-md:size-11"
                     />
                 )}
                 <ButtonUtility
                     size="xs"
                     color="tertiary"
                     icon={Trash01}
-                    tooltip="Remover"
+                    tooltip={`Remover ${email}`}
                     onClick={onRemove}
+                    className="max-md:size-11"
                 />
             </div>
         </header>
@@ -490,7 +456,7 @@ const RecipientCard = ({
 /* ------------------------------------------------------------------ */
 
 const Quantity = ({ value = 1 }: { value?: number }) => (
-    <span className="text-xs text-tertiary">{value}x</span>
+    <span className="text-sm text-tertiary">{value}x</span>
 );
 
 const TicketLine = ({
@@ -504,11 +470,11 @@ const TicketLine = ({
         <div className="flex min-w-0 items-baseline gap-1.5">
             <Quantity value={quantity} />
             <span className="truncate text-sm font-medium text-primary">
-                {item.name} <span className="text-tertiary">- {item.ticketType}</span>
+                {item.name}, <span className="text-tertiary">{item.ticketType}</span>
             </span>
         </div>
-        <span className="truncate pl-5 text-xs text-tertiary">
-            {item.groupName} · {item.sessionDate}
+        <span className="truncate pl-5 text-sm text-tertiary">
+            {item.groupName}, {item.sessionDate}
         </span>
     </div>
 );
@@ -543,6 +509,6 @@ const ComboLine = ({
             <Quantity value={quantity} />
             <span className="truncate text-sm font-medium text-primary">{item.name}</span>
         </div>
-        <span className="truncate pl-5 text-xs text-tertiary">{item.subtitle}</span>
+        <span className="truncate pl-5 text-sm text-tertiary">{item.subtitle}</span>
     </div>
 );

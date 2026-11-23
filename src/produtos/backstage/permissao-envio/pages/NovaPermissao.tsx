@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router";
-import { ArrowLeft, CheckCircle, CornerDownLeft, Minus, Plus, ShoppingCart01, UploadCloud02, User01, Users01, UsersPlus } from "@untitledui/icons";
+import { CheckCircle, CornerDownLeft, Minus, Plus, ShoppingCart01, UploadCloud02, User01, Users01, UsersPlus } from "@untitledui/icons";
 import { toast } from "sonner";
 import { Badge } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
@@ -12,8 +12,8 @@ import type { ProgressFeaturedIconType } from "@/components/application/progress
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
+import { CabecalhoDaPagina } from "../../components/cabecalho-da-pagina";
 import { TICKETS, addPermissao, getPermissao, updatePermissao, type CotaMode, type PermTipo } from "../data/permissoes";
-import { TITULO_PAGINA } from "@/produtos/backstage/components/titulo-pagina";
 
 const brNum = (n: number) => n.toLocaleString("pt-BR");
 const isMac = /Mac|iPhone|iPad|iPod/.test(navigator.platform);
@@ -157,17 +157,15 @@ export function NovaPermissao() {
     return (
         <BackstageLayout activeSection="cortesias" activeItem="permissao-envio">
             <div className="flex min-w-0 flex-1 flex-col gap-6">
-                <header className="relative flex items-center justify-between gap-3 max-md:flex-wrap">
-                    <Button size="sm" color="secondary" iconLeading={ArrowLeft} onClick={voltar}>
-                        {step === 0 ? "Permissões" : "Voltar"}
-                    </Button>
-                    <h1 className={cx(TITULO_PAGINA, "pointer-events-none md:absolute md:left-1/2 md:-translate-x-1/2 md:whitespace-nowrap max-md:order-last max-md:w-full")}>
-                        {editMode ? "Editar permissão" : "Nova permissão de envio"}
-                    </h1>
-                    <Button size="md" color="primary" isDisabled={!podeAvancar} onClick={avancar}>
-                        {step === 3 ? (editMode ? "Salvar alterações" : "Criar permissão") : "Avançar"}
-                    </Button>
-                </header>
+                <CabecalhoDaPagina
+                    voltar={{ rotulo: step === 0 ? "Permissão de envio" : STEP_TITLES[step - 1], onClick: voltar }}
+                    titulo={editMode ? "Editar permissão" : "Nova permissão de envio"}
+                    acoes={
+                        <Button size="md" color="primary" isDisabled={!podeAvancar} onClick={avancar}>
+                            {step === 3 ? (editMode ? "Salvar alterações" : "Criar permissão") : "Avançar"}
+                        </Button>
+                    }
+                />
 
                 <main className="flex flex-1 flex-col items-center gap-8">
                     <Progress.IconsWithText items={steps} size="sm" type="icon" orientation="horizontal" className="max-w-[860px] max-md:hidden" />

@@ -7,7 +7,7 @@ import { Badge } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
 import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
-import { TITULO_PAGINA } from "../../components/titulo-pagina";
+import { CabecalhoDaPagina } from "../../components/cabecalho-da-pagina";
 import { CopiarLink, FaixaDeMetricas, Metrica } from "../components/comuns";
 import { FUNCAO_INFO, useFuncoesDisponiveis, useVisualizacao, type Funcao } from "../data/funcoes";
 import { USUARIO, abrirEventoNoPainel, useMinhasVendas, type Participacao } from "../data/minhas-vendas";
@@ -60,10 +60,7 @@ export function EventosFreepass({ funcao }: { funcao?: Funcao }) {
     return (
         <BackstageLayout activeProducer={funcao ?? "eventos"} showEventContext={false}>
             <div className="flex min-w-0 flex-1 flex-col gap-8">
-                <header className="flex flex-col gap-1">
-                    <h1 className={TITULO_PAGINA}>{titulo}</h1>
-                    <p className="max-w-[65ch] text-md text-tertiary">{descricao}</p>
-                </header>
+                <CabecalhoDaPagina titulo={titulo} subtitulo={<span className="block max-w-[65ch]">{descricao}</span>} />
 
                 {carregando ? (
                     <div role="status" aria-label="Carregando eventos" className="flex flex-col gap-4">

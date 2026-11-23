@@ -144,7 +144,7 @@ const CampoFiltro = ({
     );
 };
 
-/** Seletor de Período — o próprio botão de datas (aplica direto). Usado no Relatório personalizado. */
+/** Seletor de Período: o próprio botão de datas, que aplica direto. É o único controle de período dos relatórios (REL-220). */
 export const RelatorioPeriodoButton = () => {
     const { dateRange, sessao, filters, apply } = useRelatorioFilters();
     return (
@@ -156,10 +156,9 @@ export const RelatorioPeriodoButton = () => {
     );
 };
 
-export const RelatorioFilterSlideout = ({ triggerClassName }: { triggerClassName?: string }) => {
+export const RelatorioFilterSlideout = ({ triggerClassName, placement = "bottom end" }: { triggerClassName?: string; placement?: "bottom start" | "bottom end" }) => {
     const { fields, sessoes, dateRange, sessao, filters, appliedCount, apply, clear } = useRelatorioFilters();
 
-    const [draftRange, setDraftRange] = useState<DateRange>(dateRange);
     const [draftSessao, setDraftSessao] = useState<string>(sessao);
     const [draftFilters, setDraftFilters] = useState<FilterRow[]>(filters);
 
@@ -167,7 +166,6 @@ export const RelatorioFilterSlideout = ({ triggerClassName }: { triggerClassName
     const hasSessoes = sessoes.length > 0;
 
     const seed = () => {
-        setDraftRange(dateRange);
         setDraftSessao(sessao);
         setDraftFilters(filters);
     };
@@ -181,11 +179,12 @@ export const RelatorioFilterSlideout = ({ triggerClassName }: { triggerClassName
             return [...prev, { id: `campo-${fieldId}`, field: fieldId, operator, value }];
         });
 
-    const draftCount = draftFilters.filter((f) => f.field && f.value).length + (draftRange ? 1 : 0) + (draftSessao !== "all" ? 1 : 0);
+    const draftCount = draftFilters.filter((f) => f.field && f.value).length + (draftSessao !== "all" ? 1 : 0);
 
     return (
         <FilterPopover
             onOpenChange={(open) => open && seed()}
+            placement={placement}
             className="w-[420px]"
             trigger={
                 <Button
@@ -205,12 +204,6 @@ export const RelatorioFilterSlideout = ({ triggerClassName }: { triggerClassName
             {(close) => (
                 <div className="flex max-h-[min(70vh,640px)] flex-col">
                     <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
-                        {/* Período */}
-                        <section className="flex flex-col gap-2">
-                            <span className="text-sm font-semibold text-secondary">Período</span>
-                            <DateRangePicker value={draftRange} onChange={setDraftRange} />
-                        </section>
-
                         {/* Sessão */}
                         {hasSessoes && (
                             <section className="flex flex-col gap-2">
@@ -247,7 +240,6 @@ export const RelatorioFilterSlideout = ({ triggerClassName }: { triggerClassName
                             size="sm"
                             color="link-gray"
                             onClick={() => {
-                                setDraftRange(null);
                                 setDraftSessao("all");
                                 setDraftFilters([]);
                                 clear();
@@ -259,7 +251,7 @@ export const RelatorioFilterSlideout = ({ triggerClassName }: { triggerClassName
                             size="sm"
                             color="primary"
                             onClick={() => {
-                                apply({ dateRange: draftRange, sessao: draftSessao, filters: draftFilters });
+                                apply({ dateRange, sessao: draftSessao, filters: draftFilters });
                                 close();
                             }}
                         >

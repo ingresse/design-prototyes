@@ -1,7 +1,7 @@
-import { Fragment, useEffect, useMemo, useRef, useState, type FC, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type FC, type ReactNode } from "react";
 import { useLocation, useNavigate, useParams } from "react-router";
 import { Dialog as AriaDialog, DialogTrigger as AriaDialogTrigger, Popover as AriaPopover } from "react-aria-components";
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { toast } from "sonner";
 import { AlertTriangle, ArrowLeft, Calendar, Check, ChevronDown, ChevronRight, Copy01, Mail01, Phone, Tag01, User01, XClose } from "@untitledui/icons";
 import { Badge } from "@/components/base/badges/badges";
@@ -17,8 +17,10 @@ import { useClipboard } from "@/hooks/use-clipboard";
 import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
 import { CartaoOperacao, idDoCartao } from "../components/CartaoOperacao";
+import { PedidoNaoEncontrado } from "../components/pedido-nao-encontrado";
+import { respostaQueIdentifica } from "../components/wizard/seletor-unidades";
 import {
-    TIPO_OPERACAO_ICONE, FOCO, FOCO_ESCOPO, Miniatura, caminhoDoItem, iniciaisDe, formatarCPF, telefoneParaCopia } from "../components/pos-compra-ui";
+    TIPO_OPERACAO_ICONE, FOCO, Miniatura, caminhoDoItem, iniciaisDe, formatarCPF, telefoneParaCopia } from "../components/pos-compra-ui";
 import {
     SESSOES,
     TIPO_OPERACAO_CURTO,
@@ -47,13 +49,17 @@ import {
     type TipoOperacao,
     type Verbo,
 } from "../data/pos-compra-store";
-import { TITULO_PAGINA } from "@/produtos/backstage/components/titulo-pagina";
+import { CabecalhoDaPagina } from "../../components/cabecalho-da-pagina";
 
 const plural = (n: number, singular: string, varios: string) => `${n} ${n === 1 ? singular : varios}`;
-const tituloDaSessao = (sessao: Sessao) => `${sessao.dataLabel}, ${sessao.horaLabel.replace(":", "h")}`;
+/* Um formato de data em toda a feature (PED-104): "26 nov 2026, 20:00". Antes a sessão saía como
+   "qua, 11 de nov, 06h00", a compra como "02 ago 2026, 10:12" e o histórico só com a hora. */
+const tituloDaSessao = (sessao: Sessao) => `${sessao.dataLabel}, ${sessao.horaLabel}`;
 const horaDe = (instante: number) => new Date(instante).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
-const dataDoLabel = (dataLabel: string) => dataLabel.split(", ")[0];
-const horaDoLabel = (dataLabel: string) => dataLabel.split(", ")[1] ?? "";
+/** "A, B e C". */
+const emFrase = (partes: string[]) => (partes.length < 2 ? partes.join("") : `${partes.slice(0, -1).join(", ")} e ${partes[partes.length - 1]}`);
+/** Como a compra entrou, para a frase "Online em 02 ago 2026, 10:12". */
+const CANAL_DA_COMPRA: Record<Pedido["canal"], string> = { Online: "Online", Bilheteria: "Na bilheteria", Cortesia: "Cortesia emitida" };
 /** "Cartão de crédito (3x)" vira "Cartão de crédito em 3x". */
 const formaDePagamento = (meio: string) => meio.replace(/\s*\((\d+)x\)/, " em $1x");
 
@@ -77,6 +83,7 @@ export function DetalhePedido() {
     /* Sempre abre em Itens e nada troca de aba sozinho: a mesma ação (abrir o pedido) leva sempre
        ao mesmo lugar. O que está em andamento fica acima das abas, visível de qualquer uma. */
     const [aba, setAba] = useState<Aba>("itens");
+    const semMovimento = useReducedMotion();
     /* Voltando de um fluxo, o cartão recém-criado chega pela URL para receber o foco. */
     const [focar, setFocar] = useState<string | null>(() => new URLSearchParams(location.search).get("focar"));
     /* A lista guarda busca e filtros na URL: voltar devolve a lista como estava. */
@@ -108,14 +115,7 @@ export function DetalhePedido() {
     if (!pedido) {
         return (
             <BackstageLayout showEventContext={false} activeProducer="pedidos">
-                <div className="flex min-w-0 flex-1 flex-col gap-4">
-                    <p className="text-sm text-tertiary">Pedido não encontrado.</p>
-                    <div>
-                        <Button size="md" color="secondary" iconLeading={ArrowLeft} onClick={() => navigate(voltarPara)}>
-                            Voltar para pedidos
-                        </Button>
-                    </div>
-                </div>
+                <PedidoNaoEncontrado onVoltar={() => navigate(voltarPara)} />
             </BackstageLayout>
         );
     }
@@ -130,7 +130,9 @@ export function DetalhePedido() {
     return (
         <BackstageLayout showEventContext={false} activeProducer="pedidos">
             <motion.div
-                className={cx("flex min-w-0 flex-1 flex-col gap-4 p-4 md:py-6 md:pr-6 md:pl-0", FOCO_ESCOPO)}
+                /* Sem recuo próprio: a shell já recua o conteúdo, e o recuo a mais punha o título 24 px
+                   à direita e abaixo do das listas (PED-113). */
+                className="flex min-w-0 flex-1 flex-col gap-4"
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.28, ease: "easeOut" }}
@@ -151,29 +153,21 @@ export function DetalhePedido() {
                   volta o tempo todo.
                 */}
                 <div className="flex min-w-0 flex-1 flex-col gap-5">
-                    {/* Título e ações na mesma faixa, depois do trilho, como no detalhe de grupo
-                        da equipe de operação: o voltar e o nome da página abrem a coluna de
-                        trabalho, e o que se pode fazer com o pedido fica no canto, à vista em
-                        qualquer aba. Antes o voltar morava acima das duas colunas e as ações
-                        estavam enterradas no topo da lista de itens, onde só existiam enquanto a
-                        aba Itens estivesse aberta. */}
-                    {/* `flex-wrap`: com os três tipos no nome dos botões eles somam mais de 70
-                        caracteres, e como `shrink-0` espremiam o título até "Pedid...". Agora
-                        descem para a própria linha quando não cabem, e o título fica inteiro. */}
-                    <header className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-center md:justify-between md:gap-4">
-                        {/* Abaixo de md quem identifica o pedido é a barra: repetir voltar e ID
-                            aqui dava dois caminhos de volta e dois IDs na mesma tela. */}
-                        <div className="flex items-center gap-3 max-md:hidden">
-                            <ButtonUtility size="sm" color="tertiary" icon={ArrowLeft} tooltip="Voltar para os pedidos" onClick={() => navigate(voltarPara)} />
-                            {/* Só o id: a palavra "Pedido" repetia o que a aba do navegador, o
-                                caminho de volta e a tela inteira já dizem. Mostra a forma curta,
-                                que é por onde o pedido é chamado, e copia a completa, que é a que
-                                se cola em outro sistema. */}
-                            <h1 className={TITULO_PAGINA}>{uuidCurto(pedido.id)}</h1>
-                            <CopiarIdDoPedido id={pedido.id} />
-                        </div>
-                        <AcoesDoPedido pedido={pedido} onAbrir={abrir} />
-                    </header>
+                    {/* Cabeçalho padrão do Backstage (CabecalhoDaPagina, BKS-100): voltar com o nome do
+                        destino, o ID curto como título e, abaixo dele, à esquerda, as ações (BKS-104,
+                        PED-15). Até 22/11/2026 as ações ficavam à direita do título. Só o id no
+                        título: a palavra "Pedido" repetia o que a aba do navegador e o voltar já
+                        dizem; mostra a forma curta e copia a completa. Abaixo de md quem identifica o
+                        pedido é a barra (voltar e ID), então o cabeçalho some e só as ações ficam,
+                        no mesmo lugar: abaixo da identificação, à esquerda. */}
+                    <CabecalhoDaPagina
+                        className="max-md:hidden"
+                        voltar={{ rotulo: "Pedidos", ariaLabel: "Voltar para os pedidos", onClick: () => navigate(voltarPara) }}
+                        titulo={uuidCurto(pedido.id)}
+                        selo={<CopiarIdDoPedido id={pedido.id} />}
+                        acoes={<AcoesDoPedido pedido={pedido} onAbrir={abrir} />}
+                    />
+                    <AcoesDoPedido pedido={pedido} onAbrir={abrir} className="md:hidden" />
 
                     <RegiaoAlteracoes pedido={pedido} />
 
@@ -196,11 +190,21 @@ export function DetalhePedido() {
                         </Tabs.List>
                     </Tabs>
 
-                    {aba === "itens" ? (
-                        <ListaDeItens pedido={pedido} onAbrir={abrir} />
-                    ) : (
-                        <Historico pedido={pedido} onVerAlteracao={(id) => setFocar(idDoCartao(id))} />
-                    )}
+                    {/* Trocar de aba faz o conteúdo novo entrar com um fade curto (PED-114): antes a
+                        aba nova aparecia seca e a altura da página pulava de uma vez. Sem esperar a
+                        saída da aba anterior: a troca continua imediata ao clique. */}
+                    <motion.div
+                        key={aba}
+                        initial={{ opacity: 0, y: semMovimento ? 0 : 6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: semMovimento ? 0 : 0.18, ease: "easeOut" }}
+                    >
+                        {aba === "itens" ? (
+                            <ListaDeItens pedido={pedido} onAbrir={abrir} />
+                        ) : (
+                            <Historico pedido={pedido} onVerAlteracao={(id) => setFocar(idDoCartao(id))} />
+                        )}
+                    </motion.div>
                     </div>
                 </div>
             </motion.div>
@@ -231,22 +235,21 @@ export function DetalhePedido() {
 const BarraDoPedido = ({ pedido, onVoltar }: { pedido: Pedido; onVoltar: () => void }) => {
     const evento = getEvento(pedido.eventoId);
     return (
-        /* Sangrar custa duas calhas, não uma: os 16px do `p-4` desta página e, acima dela, os
-           8px laterais e 12px de topo do `px-2 py-3` da shell. Daí 24 e 28, e não 16. */
-        <div className="-mx-6 -mt-7 flex items-center gap-2.5 border-b border-secondary bg-primary px-4 py-2 md:hidden">
+        /* Sangra a calha da shell (16 px dos lados e 12 px no topo, no celular) e encosta na barra
+           do Backstage. A página não tem recuo próprio desde 22/11/2026 (PED-113). */
+        <div className="-mx-4 -mt-3 flex items-center gap-2.5 border-b border-secondary bg-primary px-4 py-2 md:hidden">
             {/* `-ml-2.5` tira o alvo de 44px para fora da calha sem tirar o ícone: ele fica na
                 mesma vertical em que a capa do evento começa na faixa da shell. */}
             <ButtonUtility size="sm" color="tertiary" className="-ml-2.5 size-11 shrink-0" icon={ArrowLeft} tooltip="Voltar para os pedidos" onClick={onVoltar} />
             {evento?.capa && <img src={evento.capa} alt="" className="size-9 shrink-0 rounded-md object-cover" />}
-            {/* O ID inteiro, truncado: é o que se cola em outro sistema, e o começo basta para
-                reconhecer de qual pedido se trata. A cópia continua no cartão, atrás de
-                "Detalhes", onde ela já tem o plano B para quando a área de transferência falha. */}
+            {/* O ID curto, o mesmo da lista e do título no desktop (PED-115). A barra mostrava o
+                UUID inteiro, cortado no meio. O completo e a cópia ficam atrás de "Detalhes". */}
             <div className="flex min-w-0 flex-1 flex-col">
-                <span className="truncate text-sm leading-tight font-semibold text-primary">{pedido.id}</span>
+                <span className="truncate text-sm leading-tight font-semibold text-primary">Pedido {uuidCurto(pedido.id)}</span>
                 <span className="truncate text-sm text-tertiary">{evento?.nome}</span>
             </div>
             <AriaDialogTrigger>
-                <Button size="sm" color="link-gray" className="shrink-0 text-utility-blue-600 hover:text-utility-blue-700">
+                <Button size="sm" color="link-gray" className="shrink-0">
                     Detalhes
                 </Button>
                 {/* Folha inferior: sangra as três bordas e arredonda só o topo, então o cartão
@@ -354,7 +357,7 @@ const CartaoDoComprador = ({ pedido, className }: { pedido: Pedido; className?: 
                     <AvatarProfilePhoto size="sm" alt={comprador?.nome ?? "Comprador"} initials={iniciaisDe(comprador?.nome ?? "?")} />
 
                     <div className="min-w-0">
-                        <h1 className="truncate text-md font-bold text-primary">{comprador?.nome ?? `Pedido ${uuidCurto(pedido.id)}`}</h1>
+                        <h2 className="truncate text-md font-bold text-primary">{comprador?.nome ?? `Pedido ${uuidCurto(pedido.id)}`}</h2>
                         <p className="truncate text-sm text-tertiary">{evento?.nome}</p>
                     </div>
 
@@ -468,7 +471,7 @@ const GatilhoDeConferencia = ({ className, children }: { className?: string; chi
         size="sm"
         color="link-gray"
         iconTrailing={<ChevronRight data-icon className="md:hidden" />}
-        className={cx("text-utility-blue-600 hover:text-utility-blue-700 max-md:min-h-11 max-md:w-full max-md:justify-between max-md:gap-3", className)}
+        className={cx("max-md:min-h-11 max-md:w-full max-md:justify-between max-md:gap-3", className)}
     >
         {children}
     </Button>
@@ -579,7 +582,7 @@ const usePagamento = (pedido: Pedido) => {
  * valores de face — o atendente lia um número que o cliente não encontrava no extrato.
  */
 const LinhasPagamento = ({ pedido }: { pedido: Pedido }) => {
-    const { original, desconto, final, taxaServico, protecao, pago, comCupom, cortesia } = usePagamento(pedido);
+    const { original, desconto, final, taxaServico, protecao, juros, pago, comCupom, cortesia } = usePagamento(pedido);
     if (cortesia) return <p className="text-sm text-primary">Cortesia, sem valor pago</p>;
     return (
         <dl className="flex flex-col gap-2">
@@ -587,13 +590,14 @@ const LinhasPagamento = ({ pedido }: { pedido: Pedido }) => {
                 <>
                     <ParValor rotulo="Itens sem desconto" valor={formatarMoeda(original)} />
                     <ParValor rotulo={`Cupom ${pedido.cupom}`} valor={`−${formatarMoeda(desconto)}`} />
-                    <ParValor rotulo="Itens" valor={formatarMoeda(final)} />
+                    <ParValor rotulo="Valor dos itens" valor={formatarMoeda(final)} />
                 </>
             ) : (
-                <ParValor rotulo="Itens" valor={formatarMoeda(final)} />
+                <ParValor rotulo="Valor dos itens" valor={formatarMoeda(final)} />
             )}
             {taxaServico > 0 && <ParValor rotulo="Taxa de serviço" valor={formatarMoeda(taxaServico)} />}
             {protecao > 0 && <ParValor rotulo="Proteção do pedido" valor={formatarMoeda(protecao)} />}
+            {juros > 0 && <ParValor rotulo="Juros do parcelamento" valor={formatarMoeda(juros)} />}
 
             <div className="mt-1 border-t border-secondary pt-2">
                 <ParValor rotulo="Total pago" valor={formatarMoeda(pago)} destaque />
@@ -636,7 +640,7 @@ const RegiaoAlteracoes = ({ pedido }: { pedido: Pedido }) => {
                 <>
                     <h2 className="text-base font-semibold text-primary">
                         Alterações em andamento ({abertas.length})
-                        {precisam > 0 && <span className="text-error-primary"> · {precisam === 1 ? "1 precisa de ação" : `${precisam} precisam de ação`}</span>}
+                        {precisam > 0 && <span className="text-error-primary">. {precisam === 1 ? "1 precisa de ação" : `${precisam} precisam de ação`}</span>}
                     </h2>
                     <AnimatePresence initial={false}>
                         {abertas.map((solicitacao) => (
@@ -657,13 +661,36 @@ const RegiaoAlteracoes = ({ pedido }: { pedido: Pedido }) => {
 /*  Itens                                                              */
 /* ------------------------------------------------------------------ */
 
-/** Uma unidade comprada e o item de catálogo dela. Cópias do mesmo item NÃO se juntam: cada
- *  uma tem respostas próprias de formulário e pode ser editada sozinha, então cada uma é um
- *  cartão. Agregá-las economizava altura e tirava a única porta para a cópia certa. */
+/** Uma unidade comprada e o item de catálogo dela. */
 interface UnidadeDoPedido {
     item: CatalogoItem;
     linha: PedidoItem;
 }
+
+/**
+ * Unidades iguais, juntas num cartão (PED-116): mesmo item, mesmo portador e a mesma alteração
+ * aberta (ou nenhuma). São intercambiáveis para tudo o que o cartão mostra; o que as separa são as
+ * respostas do formulário, e elas ficam na lista que o cartão abre.
+ *
+ * Até 22/11/2026 cada unidade era um cartão: um pedido de assessoria com 60 inscrições virava 60
+ * cartões iguais e 11.905 px de página, e o resto do pedido ficava fora de alcance.
+ */
+interface GrupoDeUnidades {
+    chave: string;
+    item: CatalogoItem;
+    linhas: PedidoItem[];
+}
+
+const agruparUnidades = (pedido: Pedido, unidades: UnidadeDoPedido[]): GrupoDeUnidades[] => {
+    const grupos = new Map<string, GrupoDeUnidades>();
+    for (const { item, linha } of unidades) {
+        const chave = [linha.itemId, linha.titularId ?? pedido.compradorId, solicitacaoDaLinha(pedido, linha.id)?.id ?? ""].join("|");
+        const grupo = grupos.get(chave) ?? { chave, item, linhas: [] };
+        grupo.linhas.push(linha);
+        grupos.set(chave, grupo);
+    }
+    return [...grupos.values()];
+};
 
 interface AcoesDaLista {
     onAbrir: (verbo: Verbo, linhas: string[]) => void;
@@ -677,13 +704,17 @@ interface AcoesDaLista {
 const ListaDeItens = ({ pedido, ...acoes }: { pedido: Pedido } & AcoesDaLista) => {
     const estrutura = useMemo(() => {
         /* Ordem da compra, sem reordenar: linha que troca de lugar faz o próximo clique cair
-           na vizinha. */
+           na vizinha. O grupo fica na posição da primeira unidade dele. */
         const todas = pedido.itens.map((linha) => ({ linha, item: getItem(linha.itemId) })).filter((u): u is UnidadeDoPedido => Boolean(u.item));
         const sessoes = SESSOES.filter((s) => s.eventoId === pedido.eventoId)
             .sort((a, b) => a.inicio - b.inicio)
-            .map((sessao) => ({ sessao, unidades: todas.filter((u) => u.item.tipo === "ingresso" && u.item.sessaoId === sessao.id) }))
-            .filter((s) => s.unidades.length > 0);
-        return { sessoes, produtos: todas.filter((u) => u.item.tipo === "produto"), combos: todas.filter((u) => u.item.tipo === "combo") };
+            .map((sessao) => ({ sessao, grupos: agruparUnidades(pedido, todas.filter((u) => u.item.tipo === "ingresso" && u.item.sessaoId === sessao.id)) }))
+            .filter((s) => s.grupos.length > 0);
+        return {
+            sessoes,
+            produtos: agruparUnidades(pedido, todas.filter((u) => u.item.tipo === "produto")),
+            combos: agruparUnidades(pedido, todas.filter((u) => u.item.tipo === "combo")),
+        };
     }, [pedido]);
 
     /* Uma unidade elegível já basta para o botão existir: ele é a única porta de transferência
@@ -693,7 +724,7 @@ const ListaDeItens = ({ pedido, ...acoes }: { pedido: Pedido } & AcoesDaLista) =
     const motivoGeral =
         nTransferir === 0 ? "Todas as unidades estão em outra alteração ou com outro titular." : pedidoEncerrado(pedido) ? "As sessões deste pedido já aconteceram. Só a transferência continua disponível." : null;
 
-    const renderUnidade = (unidade: UnidadeDoPedido) => <CartaoDaUnidade key={unidade.linha.id} pedido={pedido} {...unidade} {...acoes} />;
+    const renderGrupo = (grupo: GrupoDeUnidades) => <CartaoDoItem key={grupo.chave} pedido={pedido} grupo={grupo} {...acoes} />;
 
     return (
         /* Sem moldura: os itens já estão dentro da coluna de trabalho, que o trilho à esquerda
@@ -711,27 +742,27 @@ const ListaDeItens = ({ pedido, ...acoes }: { pedido: Pedido } & AcoesDaLista) =
                     /* A data fica numa linha própria abaixo de "Ingressos", sempre: com uma
                        sessão ou com várias, é o mesmo nível de informação no mesmo lugar. */
                     <GrupoDeItens titulo={vocabularioDoEvento(pedido.eventoId).ingressos}>
-                        {estrutura.sessoes.map(({ sessao, unidades }) => (
+                        {estrutura.sessoes.map(({ sessao, grupos }) => (
                             <div key={sessao.id} className="flex flex-col gap-2">
                                 <TituloDaSessao sessao={sessao} />
-                                {unidades.map(renderUnidade)}
+                                {grupos.map(renderGrupo)}
                             </div>
                         ))}
                     </GrupoDeItens>
                 )}
-                {estrutura.produtos.length > 0 && <GrupoDeItens titulo="Produtos">{estrutura.produtos.map(renderUnidade)}</GrupoDeItens>}
-                {estrutura.combos.length > 0 && <GrupoDeItens titulo="Combos">{estrutura.combos.map(renderUnidade)}</GrupoDeItens>}
+                {estrutura.produtos.length > 0 && <GrupoDeItens titulo="Produtos">{estrutura.produtos.map(renderGrupo)}</GrupoDeItens>}
+                {estrutura.combos.length > 0 && <GrupoDeItens titulo="Combos">{estrutura.combos.map(renderGrupo)}</GrupoDeItens>}
             </div>
         </section>
     );
 };
 
-/** "Qua, 11 de nov., 06h00" e, quando a sessão já passou, o que isso restringe. */
+/** "11 nov 2026, 06:00" e, quando a sessão já passou, o que isso restringe. */
 const MarcaDaSessao = ({ sessao }: { sessao: Sessao }) => (
     <>
         <Calendar className="size-4 shrink-0 text-fg-quaternary" aria-hidden="true" />
-        <span className="first-letter:uppercase">{tituloDaSessao(sessao)}</span>
-        {sessao.inicio <= Date.now() && <span className="font-normal text-tertiary">· Sessão realizada. Só a transferência continua disponível.</span>}
+        <span>{tituloDaSessao(sessao)}</span>
+        {sessao.inicio <= Date.now() && <span className="basis-full font-normal text-tertiary">Sessão realizada. Só a transferência continua disponível.</span>}
     </>
 );
 
@@ -750,8 +781,6 @@ const TituloDaSessao = ({ sessao }: { sessao: Sessao }) => (
     </h4>
 );
 
-/** Acima disso a lista de unidades nasce recolhida. Até seis, o alternador custa mais linha
- *  do que esconde, e a lista inteira cabe sem rolar. */
 /* Um degrau abaixo do `rounded-2xl` do trilho e do CartaoOperacao: a unidade é conteúdo da
    página, não o objeto mais alto dela. Mesmo anel, raio menor, sem sombra pesada. */
 const CARTAO = "flex flex-col rounded-xl bg-primary shadow-xs ring-1 ring-border-secondary ring-inset";
@@ -762,24 +791,37 @@ const RESTRICAO_DO_ITEM: Record<NonNullable<CatalogoItem["segmentacao"]>, string
     socio: "Exclusivo sócios",
 };
 
+/** O valor do cartão: o da unidade quando é uma só ou quando todas custaram o mesmo; senão a soma. */
+const valorDoGrupo = (linhas: PedidoItem[]) => {
+    const valores = new Set(linhas.map((l) => l.valorPago));
+    if (linhas.length === 1) return formatarMoeda(linhas[0].valorPago);
+    if (valores.size === 1) return `${formatarMoeda(linhas[0].valorPago)} cada`;
+    return `${formatarMoeda(linhas.reduce((soma, l) => soma + l.valorPago, 0))} no total`;
+};
+
 /**
- * Uma unidade comprada, como cartão. Duas cópias do mesmo ingresso dão dois cartões iguais.
+ * Um item do pedido, como cartão, com quantas unidades dele foram compradas (PED-116).
  *
- * Elas não se agregam porque não são a mesma coisa: cada uma tem as respostas de formulário do
- * seu participante, e é por elas que o comprador liga. Agregadas, a única forma de chegar numa
- * cópia específica era um ordinal ("unidade 17 de 40") que não corresponde a nada que o
- * comprador vê, ou uma coluna com a resposta de uma pergunta eleita entre vinte. Repetir o
- * cartão custa altura e resolve as duas: a cópia é o objeto, e o formulário dela é a ação.
+ * Com uma unidade, o cartão é ela: "Editar ficha" no pé. Com várias, o pé abre a lista das
+ * unidades, cada uma com a resposta que a distingue e a própria ação de editar: é por ela que o
+ * comprador liga, e ela continua a um clique sem empilhar sessenta cartões iguais na página.
  */
-const CartaoDaUnidade = ({ pedido, item, linha, onAbrir }: { pedido: Pedido } & UnidadeDoPedido & AcoesDaLista) => {
-    const estado = lerUnidade(pedido, linha);
+const CartaoDoItem = ({ pedido, grupo, onAbrir }: { pedido: Pedido; grupo: GrupoDeUnidades } & AcoesDaLista) => {
+    const { item, linhas } = grupo;
+    const [primeira] = linhas;
+    const quantidade = linhas.length;
+    const estado = lerUnidade(pedido, primeira);
+    const [aberto, setAberto] = useState(false);
+    const semMovimento = useReducedMotion();
+    const v = vocabularioDoEvento(pedido.eventoId);
     /* Só o que está em curso abre um andar próprio. Quem porta a unidade subiu para o
        cabeçalho: é identidade, não acontecimento. */
     const temFatos = Boolean(estado.solicitacao);
-    /* O formulário é desta unidade, com as respostas dela: a porta é o cartão, não um botão de
-       pedido inteiro. Some quando o item não tem formulário ou a unidade está travada. */
-    const podeFormulario = temFormulario(item) && disponivelPara(pedido, linha, "formulario");
+    /* O formulário é de cada unidade, com as respostas dela. Some quando o item não tem
+       formulário ou a unidade está travada. */
+    const editaveis = temFormulario(item) ? linhas.filter((l) => disponivelPara(pedido, l, "formulario")) : [];
     const partesDoCombo = itensDoCombo(item);
+    const idDaLista = `unidades-${grupo.chave.replace(/[^a-zA-Z0-9-]/g, "-")}`;
 
     return (
         <article className={CARTAO}>
@@ -795,16 +837,21 @@ const CartaoDaUnidade = ({ pedido, item, linha, onAbrir }: { pedido: Pedido } & 
                         <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">
                             {/* O único text-md do cartão: é por ele que se varre a coluna. */}
                             <p className="text-md font-semibold text-primary">{item.nome}</p>
+                            {quantidade > 1 && (
+                                <Badge size="md" type="pill-color" color="gray">
+                                    {quantidade} unidades
+                                </Badge>
+                            )}
                             {item.segmentacao && (
                                 <Badge size="md" type="modern" color="gray">
                                     {RESTRICAO_DO_ITEM[item.segmentacao]}
                                 </Badge>
                             )}
                         </div>
-                        <p className="shrink-0 text-sm font-semibold text-primary tabular-nums">{formatarMoeda(linha.valorPago)}</p>
+                        <p className="shrink-0 text-sm font-semibold text-primary tabular-nums">{valorDoGrupo(linhas)}</p>
                     </div>
                     {caminhoDoItem(item) && <p className="text-sm text-tertiary">{caminhoDoItem(item)}</p>}
-                    {item.datasCombo && item.datasCombo.length > 0 && <p className="text-sm text-tertiary">{item.datasCombo.join(" · ")}</p>}
+                    {item.datasCombo && item.datasCombo.length > 0 && <p className="text-sm text-tertiary">{`Datas: ${emFrase(item.datasCombo)}`}</p>}
                     {/* O combo não é a unidade atômica: ele empacota ingressos, cada um com seu
                         grupo e lote, e produtos. Recolhido, o cartão volta a ser varrido pelo nome
                         do pacote; aberto, diz o que tem dentro. A régua à esquerda liga a lista ao
@@ -814,7 +861,12 @@ const CartaoDaUnidade = ({ pedido, item, linha, onAbrir }: { pedido: Pedido } & 
                         e quem atende precisa dos itens, não da frase de venda. */}
                     {partesDoCombo.length > 0 ? (
                         <details className="group">
-                            <summary className="flex w-fit cursor-pointer list-none items-center gap-1 rounded-md text-sm text-tertiary transition duration-100 ease-linear hover:text-tertiary_hover max-md:min-h-11 [&::-webkit-details-marker]:hidden">
+                            <summary
+                                className={cx(
+                                    "flex w-fit cursor-pointer list-none items-center gap-1 rounded-md text-sm text-tertiary transition duration-100 ease-linear hover:text-tertiary_hover max-md:min-h-11 [&::-webkit-details-marker]:hidden",
+                                    FOCO,
+                                )}
+                            >
                                 Detalhes
                                 <ChevronDown className="size-4 text-fg-quaternary transition-transform duration-100 ease-linear group-open:rotate-180" aria-hidden="true" />
                             </summary>
@@ -822,7 +874,7 @@ const CartaoDaUnidade = ({ pedido, item, linha, onAbrir }: { pedido: Pedido } & 
                                 {partesDoCombo.map((parte) => (
                                     <li key={parte.id} className="text-sm text-tertiary">
                                         {parte.nome}
-                                        {caminhoDoItem(parte) && <span className="text-quaternary"> · {caminhoDoItem(parte)}</span>}
+                                        {caminhoDoItem(parte) && <span className="text-quaternary">, {caminhoDoItem(parte)}</span>}
                                     </li>
                                 ))}
                             </ul>
@@ -830,21 +882,88 @@ const CartaoDaUnidade = ({ pedido, item, linha, onAbrir }: { pedido: Pedido } & 
                     ) : (
                         item.descricao && <p className="text-sm text-tertiary">{item.descricao}</p>
                     )}
-                    <PortadorDaUnidade linha={linha} />
+                    <PortadorDaUnidade linha={primeira} />
                 </div>
             </div>
 
             {temFatos && (
                 <div className="flex flex-col gap-0.5 border-t border-secondary px-4 py-3 lg:px-5">
-                    <FatosDaUnidade pedido={pedido} linha={linha} estado={estado} />
+                    <FatosDaUnidade pedido={pedido} linha={primeira} estado={estado} />
                 </div>
             )}
 
-            {podeFormulario && (
+            {/* Uma unidade: a ação dela no pé, como sempre foi. */}
+            {quantidade === 1 && editaveis.length === 1 && (
                 <footer className="flex border-t border-secondary px-4 py-3 lg:px-5">
-                    <Button size="sm" color="secondary" iconLeading={TIPO_OPERACAO_ICONE[TIPO_DO_VERBO.formulario]} className="max-sm:flex-1" onClick={() => onAbrir("formulario", [linha.id])}>
-                        Editar {vocabularioDoEvento(pedido.eventoId).formulario}
+                    <Button
+                        size="sm"
+                        color="secondary"
+                        iconLeading={TIPO_OPERACAO_ICONE[TIPO_DO_VERBO.formulario]}
+                        className="max-sm:min-h-11 max-sm:flex-1"
+                        onClick={() => onAbrir("formulario", [primeira.id])}
+                    >
+                        Editar {v.formulario}
                     </Button>
+                </footer>
+            )}
+
+            {/* Várias: o pé abre a lista delas. Sem ficha para editar, as unidades são idênticas
+                e a lista não diria nada, então ela não existe. */}
+            {quantidade > 1 && editaveis.length > 0 && (
+                <footer className="border-t border-secondary">
+                    <button
+                        type="button"
+                        aria-expanded={aberto}
+                        aria-controls={idDaLista}
+                        onClick={() => setAberto((atual) => !atual)}
+                        className={cx(
+                            "flex w-full items-center gap-1 rounded-b-xl px-4 py-3 text-left text-sm font-semibold text-secondary transition duration-100 ease-linear hover:bg-primary_hover max-md:min-h-11 lg:px-5",
+                            FOCO,
+                        )}
+                    >
+                        {aberto ? "Esconder as unidades" : `Ver as ${quantidade} unidades`}
+                        <ChevronDown
+                            className={cx("ml-auto size-5 shrink-0 text-fg-quaternary transition-transform duration-150 ease-out", aberto && "rotate-180")}
+                            aria-hidden="true"
+                        />
+                    </button>
+                    <AnimatePresence initial={false}>
+                        {aberto && (
+                            <motion.div
+                                id={idDaLista}
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: "auto", opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                transition={{ duration: semMovimento ? 0 : 0.2, ease: "easeOut" }}
+                                className="overflow-hidden"
+                            >
+                                <ol className="flex flex-col divide-y divide-border-secondary border-t border-secondary">
+                                    {linhas.map((linha, indice) => {
+                                        const editavel = editaveis.includes(linha);
+                                        return (
+                                            <li key={linha.id} className="flex items-center gap-3 px-4 py-2.5 lg:px-5">
+                                                <div className="flex min-w-0 flex-1 flex-col">
+                                                    <p className="text-sm font-medium text-primary">Unidade {indice + 1}</p>
+                                                    <p className="truncate text-sm text-tertiary">{respostaQueIdentifica(item, linha)}</p>
+                                                </div>
+                                                {editavel && (
+                                                    <Button
+                                                        size="sm"
+                                                        color="secondary"
+                                                        className="shrink-0 max-sm:min-h-11"
+                                                        aria-label={`Editar ${v.formulario} da unidade ${indice + 1}`}
+                                                        onClick={() => onAbrir("formulario", [linha.id])}
+                                                    >
+                                                        Editar
+                                                    </Button>
+                                                )}
+                                            </li>
+                                        );
+                                    })}
+                                </ol>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
                 </footer>
             )}
         </article>
@@ -926,7 +1045,7 @@ const itensDaCompra = (pedido: Pedido) => {
     });
     return [...porItem.values()].map(({ chave, nome, detalhe, quantidade }) => ({
         chave,
-        rotulo: [quantidade > 1 ? `${quantidade}x ${nome}` : nome, detalhe].filter(Boolean).join(" · "),
+        rotulo: [quantidade > 1 ? `${quantidade}x ${nome}` : nome, detalhe].filter(Boolean).join(", "),
     }));
 };
 
@@ -960,15 +1079,15 @@ const tiposAlcancados = (pedido: Pedido, verbo: Verbo, v: Vocabulario) => {
     return `${nomes.slice(0, -1).join(", ")} e ${nomes[nomes.length - 1]}`;
 };
 
-/** As ações do pedido, no canto do cabeçalho. Um verbo entra quando ao menos uma unidade o
+/** As ações do pedido, abaixo do título (BKS-104). Um verbo entra quando ao menos uma unidade o
  *  aceita: é a única porta de transferência e troca, e exigir duas deixava a maioria dos
  *  pedidos sem ação nenhuma. */
-const AcoesDoPedido = ({ pedido, onAbrir }: { pedido: Pedido; onAbrir: (verbo: Verbo, linhas: string[]) => void }) => {
+const AcoesDoPedido = ({ pedido, onAbrir, className }: { pedido: Pedido; onAbrir: (verbo: Verbo, linhas: string[]) => void; className?: string }) => {
     const v = vocabularioDoEvento(pedido.eventoId);
     const verbos = VERBOS_EM_MASSA.map(({ verbo, rotulo }) => ({ verbo, rotulo, tipos: tiposAlcancados(pedido, verbo, v) })).filter(({ tipos }) => tipos !== "");
     if (verbos.length === 0) return null;
     return (
-        <div className="flex shrink-0 flex-wrap gap-2 max-md:w-full">
+        <div className={cx("flex shrink-0 flex-wrap gap-2 max-md:w-full", className)}>
             {verbos.map(({ verbo, rotulo, tipos }) => (
                 <Button
                     key={verbo}
@@ -1036,10 +1155,7 @@ const PortadorDaUnidade = ({ linha }: { linha: PedidoItem }) => {
             {/* Abaixo de md a linha inteira é o gatilho e o nome entra dentro dele. Solto depois
                 do separador, numa coluna estreita, o "Detalhes" caía sozinho numa linha quebrada
                 com a altura do texto, e é por ele que se confere o CPF de quem porta. */}
-            <span className="max-md:hidden">Portado por {conta.nome}</span>
-            <span className="text-quaternary max-md:hidden" aria-hidden="true">
-                |
-            </span>
+            <span className="max-md:hidden">Portado por {conta.nome}.</span>
             <Conferencia
                 rotulo="Detalhe da titularidade"
                 gatilho={
@@ -1190,13 +1306,13 @@ const Historico = ({ pedido, onVerAlteracao }: { pedido: Pedido; onVerAlteracao:
  */
 const CompraNoHistorico = ({ pedido, compra }: { pedido: Pedido; compra: EntradaHistorico }) => (
     <li className="scroll-mt-24">
-        <div className={cx("rounded-xl bg-primary ring-1 ring-border-secondary", FOCO_ESCOPO)}>
+        <div className="rounded-xl bg-primary ring-1 ring-border-secondary">
             <div className="flex items-start gap-3 p-4">
                 <FeaturedIcon icon={Tag01} color="gray" theme="modern" size="sm" className="mt-0.5 shrink-0" />
                 <div className="flex min-w-0 flex-1 flex-col gap-1">
                     <p className="text-md font-semibold text-primary">Compra</p>
-                    <p className="text-sm text-tertiary">
-                        <span className="tabular-nums">{horaDoLabel(pedido.criadoEmLabel) || pedido.criadoEmLabel}</span> · {pedido.canal}
+                    <p className="text-sm text-tertiary tabular-nums">
+                        {CANAL_DA_COMPRA[pedido.canal]} em {pedido.criadoEmLabel}
                     </p>
                 </div>
                 {typeof compra.valor === "number" && (
@@ -1263,7 +1379,7 @@ const GrupoDoHistorico = ({ pedido, grupo, onVerAlteracao }: { pedido: Pedido; g
                 do cartão, e o `summary` precisa ser o primeiro filho do seu próprio `details`.
                 O que se ganha é um alvo que diz o que faz, em vez de uma linha inteira clicável
                 com um chevron mudo no canto. */}
-            <div className={cx("rounded-xl bg-primary ring-1 ring-border-secondary", FOCO_ESCOPO)}>
+            <div className="rounded-xl bg-primary ring-1 ring-border-secondary">
                 <div className="flex items-start gap-3 p-4">
                     <FeaturedIcon icon={Icone} color="gray" theme="modern" size="sm" className="mt-0.5 shrink-0" />
 
@@ -1287,8 +1403,8 @@ const GrupoDoHistorico = ({ pedido, grupo, onVerAlteracao }: { pedido: Pedido; g
                             </ul>
                         )}
 
-                        <p className="text-sm text-tertiary">
-                            <span className="tabular-nums">{horaDoLabel(abertura.dataLabel) || abertura.dataLabel}</span> · {abertura.responsavel}
+                        <p className="text-sm text-tertiary tabular-nums">
+                            {abertura.dataLabel}, por {abertura.responsavel}
                         </p>
                     </div>
 
@@ -1328,19 +1444,19 @@ const GrupoDoHistorico = ({ pedido, grupo, onVerAlteracao }: { pedido: Pedido; g
                     {/* Abrir mostra o que o cabeçalho não mostra. O A → B saiu daqui: ele já está
                         acima, e repetido logo abaixo de si mesmo lia como duas alterações.
 
-                        A hora vira coluna, e a coluna vira o separador: a linha do tempo tinha três
-                        pontos médios por marco só para emendar hora, fato, descrição e autor. */}
-                    <ol className="grid grid-cols-[4.5rem_1fr] gap-x-3 gap-y-1.5">
+                        Cada marco com data e hora inteiras, no formato da feature (PED-104): a
+                        coluna só com a hora não dizia o dia, e uma alteração pode atravessar dias. */}
+                    <ol className="flex flex-col gap-3">
                         {eventos.map(({ entrada, vezes }) => (
-                            <Fragment key={entrada.id}>
-                                <dt className="text-sm text-tertiary tabular-nums">{horaDoLabel(entrada.dataLabel) || entrada.dataLabel}</dt>
-                                <dd className="min-w-0 text-sm text-secondary">
-                                    <span className="font-medium text-primary">{entrada.titulo}</span>
+                            <li key={entrada.id} className="flex min-w-0 flex-col gap-0.5 text-sm">
+                                <span className="text-tertiary tabular-nums">{entrada.dataLabel}</span>
+                                <span className="font-medium text-primary">
+                                    {entrada.titulo}
                                     {vezes > 1 && ` ${vezes} vezes`}
-                                    {entrada.marco !== "aplicada" && entrada.descricao && <span className="block text-tertiary">{entrada.descricao}</span>}
-                                    <span className="block text-tertiary">{entrada.responsavel}</span>
-                                </dd>
-                            </Fragment>
+                                </span>
+                                {entrada.marco !== "aplicada" && entrada.descricao && <span className="text-tertiary">{entrada.descricao}</span>}
+                                <span className="text-tertiary">Por {entrada.responsavel}</span>
+                            </li>
                         ))}
                     </ol>
 

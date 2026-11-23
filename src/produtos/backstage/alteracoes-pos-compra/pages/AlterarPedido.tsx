@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router";
-import { ArrowLeft } from "@untitledui/icons";
-import { Button } from "@/components/base/buttons/button";
 import { BackstageLayout } from "../../components/Backstage";
 import { idDoCartao } from "../components/CartaoOperacao";
+import { PedidoNaoEncontrado } from "../components/pedido-nao-encontrado";
 import { EditarFormularioWizard } from "../components/wizard/editar-formulario-wizard";
 import { SeletorUnidades } from "../components/wizard/seletor-unidades";
 import { WizardShell } from "../components/wizard/WizardShell";
@@ -37,13 +36,14 @@ export function AlterarPedido({ verbo }: { verbo: Verbo }) {
        acontece aqui, na primeira tela do fluxo. */
     const [escolhida, setEscolhida] = useState<string | null>(null);
     const comprador = pedido ? getConta(pedido.compradorId) : undefined;
-    const subtitulo = pedido ? `${comprador?.nome ?? "Comprador"} · Pedido ${uuidCurto(pedido.id)}` : "";
+    const subtitulo = pedido ? `Pedido ${uuidCurto(pedido.id)}, de ${comprador?.nome ?? "comprador sem nome"}` : "";
     const voltarPara = `/backstage/pedidos/${pedidoId}`;
 
     useEffect(() => {
         if (!pedido) return;
         const anterior = document.title;
-        document.title = `${WIZARD_DO_VERBO[verbo]} · Pedido ${uuidCurto(pedido.id)} · Backstage`;
+        const nome = verbo === "formulario" ? `Editar ${vocabularioDoEvento(pedido.eventoId).formulario}` : WIZARD_DO_VERBO[verbo];
+        document.title = `${nome} · Pedido ${uuidCurto(pedido.id)} · Backstage`;
         return () => {
             document.title = anterior;
         };
@@ -58,14 +58,7 @@ export function AlterarPedido({ verbo }: { verbo: Verbo }) {
     if (!pedido) {
         return (
             <BackstageLayout showEventContext={false} activeProducer="pedidos">
-                <div className="flex min-w-0 flex-1 flex-col gap-4">
-                    <p className="text-sm text-tertiary">Pedido não encontrado.</p>
-                    <div>
-                        <Button size="md" color="secondary" iconLeading={ArrowLeft} onClick={() => navigate("/backstage/pedidos")}>
-                            Voltar para pedidos
-                        </Button>
-                    </div>
-                </div>
+                <PedidoNaoEncontrado onVoltar={() => navigate("/backstage/pedidos")} />
             </BackstageLayout>
         );
     }
@@ -118,7 +111,7 @@ const EscolherUnidade = ({ pedido, subtitulo, onFechar, onEscolher }: { pedido: 
             onVoltar={onFechar}
             onAvancar={() => marcada && onEscolher(marcada)}
             onConfirmar={() => undefined}
-            infoRodape={marcada ? "1 unidade escolhida" : "Escolha a unidade"}
+            infoRodape={marcada ? undefined : `Escolha a unidade para abrir ${vocabularioDoEvento(pedido.eventoId).oFormulario}.`}
         >
             <SeletorUnidades pedido={pedido} verbo="formulario" selecao={selecao} onChange={setSelecao} unica />
         </WizardShell>

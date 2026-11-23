@@ -1,4 +1,5 @@
-import { Fragment, useState } from "react";
+import { useId, useState } from "react";
+import { toast } from "sonner";
 import { ChevronDown, Edit01, HelpCircle } from "@untitledui/icons";
 import { Badge } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
@@ -6,7 +7,8 @@ import { Toggle } from "@/components/base/toggle/toggle";
 import { Tooltip, TooltipTrigger } from "@/components/base/tooltip/tooltip";
 import { Surgir } from "@/components/foundations/transicao";
 import { cx } from "@/utils/cx";
-import { apoioDoItem, estoqueDoItem, INGRESSOS, ITEM_POR_ID, legendaDeSessao, separarPorTipo } from "../data/catalogo-evento";
+import { ModalDeConfirmacao } from "../../components/modal-de-confirmacao";
+import { INGRESSOS, ITEM_POR_ID } from "../data/catalogo-evento";
 import {
     DICA_CANAL,
     geraComissao,
@@ -24,6 +26,7 @@ import {
 import { textoComissao } from "../../comissarios/components/comuns";
 import type { Comissario } from "../data/equipe";
 import { CotaEditavel } from "./cota-editavel";
+import { ItensEUso } from "./itens-e-uso";
 import { BarraUso } from "./ui-cotas";
 
 /** Resumo dos itens do canal: "Todos os ingressos" ou "3 ingressos, 1 produto". */
@@ -44,8 +47,8 @@ function resumoDosItens(itens: string[], todos?: boolean) {
 
 /**
  * Um canal do grupo na aba Configuração (ECO-12 a ECO-19). Sem configuração: o que o canal faz e
- * "Configurar". Configurado: liga e desliga direto, resumo, uso da cota, "Editar" e os itens com o uso
- * e a cota editável no lugar.
+ * "Configurar". Configurado: liga e desliga direto (com Desfazer, ECO-93), resumo, uso da cota, "Editar"
+ * e os itens com o uso e a cota editável no lugar, na árvore sessão › setor › item (ECO-92).
  */
 export function CartaoCanal({ grupo, canal, comissario, onConfigurar }: { grupo: GrupoEquipe; canal: CanalGrupo; comissario?: Comissario; onConfigurar: () => void }) {
     // O cartão do comissário só conta como configurado com um comissário no grupo (ECO-12).
@@ -53,6 +56,8 @@ export function CartaoCanal({ grupo, canal, comissario, onConfigurar }: { grupo:
     const titulo = ROTULO_CANAL[canal];
     const [abertos, setAbertos] = useState(false);
     const [editando, setEditando] = useState<string | null>(null);
+    const [desligando, setDesligando] = useState(false);
+    const idItens = useId();
 
     if (!cfg)
         return (
@@ -68,45 +73,53 @@ export function CartaoCanal({ grupo, canal, comissario, onConfigurar }: { grupo:
         );
 
     const usadas = usadasDoCanal(cfg, itemValido);
-    const limite = limiteDoCanal(cfg, itemValido);
-    const itens = cfg.todos ? INGRESSOS.map((i) => i.id) : itensDoCanal(cfg, itemValido);
-    const comissao = geraComissao(grupo, canal, cfg);
     const tipo = cfg.cota.tipo;
+    // Com "Todos os ingressos" a lista de itens gravada é vazia: a cota por item soma os ingressos de hoje.
+    const limite = cfg.todos && tipo === "por-item" ? INGRESSOS.reduce((s, i) => s + (cfg.cota.porItem[i.id] ?? 0), 0) : limiteDoCanal(cfg, itemValido);
+    // Só a contagem: os itens são montados quando a pessoa abre "Ver itens e uso" (ECO-92).
+    const nItens = cfg.todos ? INGRESSOS.length : itensDoCanal(cfg, itemValido).length;
+    const comissao = geraComissao(grupo, canal, cfg);
     const alterarCota = (fn: (c: typeof cfg.cota) => typeof cfg.cota) => salvarCanal(grupo.id, canal, { ...cfg, cota: fn(cfg.cota) });
+
+    // Liga e desliga gravando na hora, com toast e Desfazer (ECO-93). Desligar canal que gera comissão pergunta antes.
+    const ligar = (ligado: boolean, desfazendo = false) => {
+        salvarCanal(grupo.id, canal, { ...cfg, ligado });
+        toast.success(
+            `${titulo} ${ligado ? "ligado" : "desligado"}.`,
+            desfazendo ? undefined : { action: { label: "Desfazer", onClick: () => ligar(!ligado, true) } },
+        );
+    };
+    const alternar = (ligado: boolean) => (!ligado && comissao ? setDesligando(true) : ligar(ligado));
 
     return (
         <section className="flex flex-col gap-4 rounded-2xl bg-primary p-5 ring-1 ring-secondary">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="flex min-w-0 items-start gap-3">
-                    <Toggle
-                        size="sm"
-                        isSelected={cfg.ligado}
-                        onChange={(ligado) => salvarCanal(grupo.id, canal, { ...cfg, ligado })}
-                        aria-label={cfg.ligado ? `Desligar ${ROTULO_CANAL[canal]}` : `Ligar ${ROTULO_CANAL[canal]}`}
-                    />
-                    <span className="flex min-w-0 flex-col gap-1">
-                        <span className="flex flex-wrap items-center gap-2">
-                            <span className="text-sm font-semibold text-primary">{titulo}</span>
-                            {!cfg.ligado && (
-                                <Badge size="sm" type="pill-color" color="gray">
-                                    Desligado
-                                </Badge>
-                            )}
-                            {grupo.comissarioId && (canal === "pdv" || canal === "bilheteria") && (
-                                <Badge size="sm" type="pill-color" color={comissao ? "brand" : "gray"}>
-                                    {comissao ? "Gera comissão" : "Sem comissão"}
-                                </Badge>
-                            )}
-                        </span>
-                        <span className="text-sm text-tertiary">
-                            {canal === "link" && comissario
-                                ? `Link e cupom ${comissario.codigo}, ${textoComissao(comissario.padrao)}, ${resumoDosItens(cfg.itens, cfg.todos).toLowerCase()}`
-                                : resumoDosItens(cfg.itens, cfg.todos)}
-                            , {ROTULO_COTA[tipo].toLowerCase()}
-                        </span>
+            <div className="flex items-start gap-3">
+                <Toggle size="sm" isSelected={cfg.ligado} onChange={alternar} aria-label={`${titulo} ligado`} className="mt-0.5 shrink-0" />
+                <span className="flex min-w-0 flex-1 flex-col gap-1">
+                    <span className="flex flex-wrap items-center gap-2">
+                        <span className="text-sm font-semibold text-primary">{titulo}</span>
+                        {!cfg.ligado && (
+                            <Badge size="sm" type="pill-color" color="gray">
+                                Desligado
+                            </Badge>
+                        )}
+                        {grupo.comissarioId && (canal === "pdv" || canal === "bilheteria") && (
+                            <Badge size="sm" type="pill-color" color={comissao ? "brand" : "gray"}>
+                                {comissao ? "Gera comissão" : "Sem comissão"}
+                            </Badge>
+                        )}
                     </span>
-                </div>
-                <Button size="sm" color="tertiary" iconLeading={Edit01} onClick={onConfigurar}>
+                    {canal === "link" && comissario && (
+                        <span className="text-sm text-tertiary">
+                            Link e cupom {comissario.codigo}, {textoComissao(comissario.padrao)}.
+                        </span>
+                    )}
+                    <span className="text-sm text-tertiary">
+                        {resumoDosItens(cfg.itens, cfg.todos)}, {ROTULO_COTA[tipo].toLowerCase()}.
+                    </span>
+                </span>
+                {/* "Editar" fica na linha do título também no celular (antes caía solto numa linha própria). */}
+                <Button size="sm" color="tertiary" iconLeading={Edit01} className="shrink-0" onClick={onConfigurar}>
                     Editar
                 </Button>
             </div>
@@ -137,67 +150,53 @@ export function CartaoCanal({ grupo, canal, comissario, onConfigurar }: { grupo:
                     />
                 ) : (
                     <>
-                        <BarraUso usadas={usadas} total={limite} className="w-60 max-w-full" />
+                        <BarraUso usadas={usadas} total={limite} className="w-32 shrink-0 sm:w-60" />
                         <span className="text-sm font-medium text-secondary tabular-nums">
                             {usadas.toLocaleString("pt-BR")} de {limite.toLocaleString("pt-BR")}
                         </span>
                     </>
                 )}
             </div>
+            {cfg.todos && tipo === "por-item" && (
+                <p className="pl-12 text-sm text-tertiary">A cota por item vale para os ingressos de hoje. Ingresso criado depois entra no link sem cota: defina a dele aqui.</p>
+            )}
 
-            {itens.length > 0 && (
+            {nItens > 0 && (
                 <div className="flex flex-col gap-3 border-t border-secondary pt-3">
-                    <Button color="link-gray" size="sm" className="self-start" iconTrailing={<ChevronDown data-icon className={cx("size-4 transition duration-100 ease-linear", abertos && "rotate-180")} />} onClick={() => setAbertos((a) => !a)}>
-                        {abertos ? "Esconder itens" : `Ver itens e uso (${itens.length})`}
+                    <Button
+                        color="link-gray"
+                        size="sm"
+                        className="self-start"
+                        aria-expanded={abertos}
+                        aria-controls={idItens}
+                        iconTrailing={<ChevronDown data-icon className={cx("size-4 transition duration-100 ease-linear", abertos && "rotate-180")} />}
+                        onClick={() => setAbertos((a) => !a)}
+                    >
+                        {abertos ? "Esconder itens" : `Ver itens e uso (${nItens.toLocaleString("pt-BR")})`}
                     </Button>
                     <Surgir visivel={abertos}>
-                        <ul className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-4">
-                            {separarPorTipo(itens.map((id) => ITEM_POR_ID[id]).filter(Boolean)).map(({ tipo: tipoItem, titulo, itens: doTipo }, t) => (
-                                <Fragment key={tipoItem}>
-                                    <li className={cx("col-span-2 text-sm font-semibold text-primary", t > 0 && "border-t border-secondary pt-4")}>
-                                        {titulo} <span className="font-normal text-tertiary">({doTipo.length})</span>
-                                    </li>
-                                    {doTipo.map((item) => {
-                                        const uso = cfg.uso[item.id] ?? 0;
-                                        return (
-                                            <li key={item.id} className="col-span-2 grid grid-cols-subgrid items-center">
-                                                <span className="flex min-w-0 flex-col">
-                                                    <span className="text-sm font-medium text-primary">{item.nome}</span>
-                                                    <span className="text-sm text-tertiary">{apoioDoItem(item)}</span>
-                                                    {legendaDeSessao(item, "curto") && <span className="text-sm text-tertiary">{legendaDeSessao(item, "curto")}</span>}
-                                                </span>
-                                                {tipo === "por-item" ? (
-                                                    <CotaEditavel
-                                                        nome={item.nome}
-                                                        uso={uso}
-                                                        cota={cfg.cota.porItem[item.id] ?? 0}
-                                                        editando={editando === item.id}
-                                                        onEditar={() => setEditando(item.id)}
-                                                        onCancelar={() => setEditando(null)}
-                                                        onSalvar={(n) => {
-                                                            alterarCota((c) => ({ ...c, porItem: { ...c.porItem, [item.id]: n } }));
-                                                            setEditando(null);
-                                                        }}
-                                                    />
-                                                ) : tipo === "sem-limite" ? (
-                                                    <span className="flex min-w-[131px] flex-col gap-2">
-                                                        <span className="text-sm font-medium whitespace-nowrap text-secondary tabular-nums">
-                                                            {uso} de {Math.max(estoqueDoItem(item), uso)} emissões
-                                                        </span>
-                                                        <BarraUso usadas={uso} total={Math.max(estoqueDoItem(item), uso)} />
-                                                    </span>
-                                                ) : (
-                                                    <span className="justify-self-end text-sm font-medium whitespace-nowrap text-secondary tabular-nums">{plural(uso, "emissão", "emissões")}</span>
-                                                )}
-                                            </li>
-                                        );
-                                    })}
-                                </Fragment>
-                            ))}
-                        </ul>
+                        <ItensEUso id={idItens} cfg={cfg} onCota={alterarCota} />
                     </Surgir>
                 </div>
             )}
+
+            <ModalDeConfirmacao
+                aberto={desligando}
+                titulo={`Desligar ${titulo}?`}
+                descricao={
+                    canal === "link"
+                        ? "O link e o cupom do comissário param de vender e de contar comissão. O já vendido e o saldo continuam. Você pode ligar de novo quando quiser."
+                        : `A venda das pessoas do grupo em ${titulo} para de gerar comissão. O já vendido e o saldo continuam. Você pode ligar de novo quando quiser.`
+                }
+                cancelar="Cancelar"
+                confirmar="Desligar"
+                destrutiva
+                onConfirmar={() => {
+                    setDesligando(false);
+                    ligar(false);
+                }}
+                onFechar={() => setDesligando(false)}
+            />
         </section>
     );
 }

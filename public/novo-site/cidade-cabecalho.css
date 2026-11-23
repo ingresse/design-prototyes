@@ -1,0 +1,63 @@
+/* cidade-cabecalho.css: seletor de cidade do cabeçalho (cidade-cabecalho.mjs + cidade-cabecalho.js), pedido do Wander de 27/10/2026.
+   Só tokens da identidade. Raio de 8 px vem da regra global; sem sombra e sem desfoque.
+   O botão é o secundário da identidade (.bs): o pino, o nome e a seta são os mesmos de hoje. Abaixo do corte (540 px; 1023 px com trilha) vira só o pino,
+   em alvo de 48 px, quadrado com a mesma borda (hairline, cor de campo) da lupa ao lado: pino CHEIO = há cidade escolhida, pino SÓ TRAÇO = não há. */
+
+.cid { display: inline-flex; flex: 0 0 auto; min-width: 0; }
+.hdr-row > .cid { margin-left: auto; } /* sem lupa antes (Busca), o seletor é quem empurra o grupo para a direita */
+.hdr-row > .hdr-lupa ~ .cid { margin-left: 0; }
+.hdr .cid-btn.bs { gap: var(--space-2); max-width: 100%; }
+.hdr-row:has(.cid) { flex-wrap: nowrap !important; } /* o cabeçalho nunca quebra em 2 linhas: a trilha é quem encolhe (reticências) */
+.hdr-row:has(.cid) > .crumbs { flex: 1 1 0; }
+/* a trilha encolhe com reticências em vez de cortar o texto ao meio (o link "voltar" e o nome da página atual) */
+.hdr-row:has(.cid) > .crumbs > a { display: block; flex: 0 1 auto; min-width: var(--size-touch-min); text-align: center; /* alvo de toque de 44 px mesmo com rótulo curto («Turnês», «Shows»; auditoria 03/11/2026) */ overflow: hidden; text-overflow: ellipsis; line-height: var(--size-touch-min); }
+.hdr-row:has(.cid) > .crumbs > span:last-child { flex: 0 1 auto; min-width: 0; overflow: hidden; }
+.hdr-row:has(.cid) > .crumbs > span:last-child > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.cid-nome { min-width: 0; max-width: 24ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* o pino: contorno sempre; no estado "marcado" o corpo se enche com a cor do texto (fill: currentColor) e o miolo vira furo */
+.cid-pin { flex: 0 0 auto; width: var(--size-icon-md); height: var(--size-icon-md); transition: color var(--motion-duration-fast) var(--motion-ease-move); } /* a cor do pino acompanha a do texto do botão (mesma duração): sem isso o pino ficava branco antes de o preto cobrir o fundo e «sumia» no hover (15/11/2026) */
+.cid-btn:not([data-marcado="true"]) .cid-pin { color: var(--color-text-secondary); } /* sem cidade escolhida: o pino fica mais quieto (antes era só o traço, sem o miolo cheio) */
+.cid-btn:is(:hover, :active) .cid-pin { color: var(--color-button-secondary-fg-hover); } /* no hover o botão enche de preto: o pino acompanha o texto (branco) */
+.cid-pin-cheio { fill: currentColor; fill-rule: evenodd; stroke: none; opacity: 0; transition: opacity var(--motion-duration-fast) var(--motion-ease-move); }
+.cid-pin-furo { opacity: 1; transition: opacity var(--motion-duration-fast) var(--motion-ease-move); }
+.cid-btn[data-marcado="true"] .cid-pin-cheio { opacity: 1; }
+.cid-btn[data-marcado="true"] .cid-pin-furo { opacity: 0; }
+.cid-chev { transition: transform var(--motion-duration-fast) var(--motion-ease-move); }
+
+/* apresentação PINO (largura estreita). Duas faixas, medidas (docs: relatório da Mariana, 27/10/2026):
+   - cabeçalho sem trilha (Home, Busca): pino até 540 px;
+   - cabeçalho com trilha ou menu (Evento, Coleção, Artista, Venue e Carteira): a trilha e o menu precisam do espaço, então o pino vai até 1023 px */
+@media (max-width: 540px) {
+  .hdr .cid-btn.bs { width: var(--size-touch-default); min-width: var(--size-touch-default); min-height: var(--size-touch-default) !important; padding: 0 !important; border: var(--border-width-hairline) solid var(--color-field-border) !important; }
+  .cid-nome, .cid-chev { display: none; }
+}
+@media (max-width: 1023px) {
+  .hdr .hdr-row:has(> .crumbs, > .mainnav) .cid-btn.bs { width: var(--size-touch-default); min-width: var(--size-touch-default); min-height: var(--size-touch-default) !important; padding: 0 !important; border: var(--border-width-hairline) solid var(--color-field-border) !important; }
+  .hdr-row:has(> .crumbs, > .mainnav) :is(.cid-nome, .cid-chev) { display: none; }
+}
+
+/* ---------- a MODAL de lugar (local-ui.js): combobox de lugares, sugestões, recentes ---------- */
+.loc-aviso { margin: 0 0 var(--space-4); padding: var(--space-3) var(--space-4); border: var(--border-width-hairline) solid var(--color-border-control); background: var(--color-bg-subtle); font-size: var(--font-size-small); line-height: 1.5; }
+.loc-campo { display: flex; flex-direction: column; gap: var(--space-2); flex: 0 0 auto; }
+.loc-campo label { font-size: var(--font-size-small); font-weight: 600; }
+.loc-combo input { width: 100%; box-sizing: border-box; }
+.loc-t { margin: var(--space-5) 0 var(--space-2); font-size: var(--font-size-body); line-height: var(--font-lh-body); font-weight: 600; }
+.loc-t[hidden], .loc-vazio[hidden], .loc-rec[hidden] { display: none; }
+.loc-lista { list-style: none; margin: 0; padding: 0; border: var(--border-width-hairline) solid var(--color-border-control); }
+.loc-lista:empty { display: none; }
+.loc-op { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; grid-template-areas: "nome n ok" "ctx n ok"; column-gap: var(--space-3); align-items: center; min-height: var(--size-touch-default); padding: var(--space-2) var(--space-4); cursor: pointer; border-bottom: var(--border-width-hairline) solid var(--color-border-subtle); font-size: var(--font-size-body); } /* item de lista de opções: 18 px, o mesmo do campo (especificação de componentes; antes 16) */
+.loc-op:last-child { border-bottom: 0; }
+.loc-op:hover, .loc-op[data-ativa="true"] { background: var(--color-bg-hover); }
+.loc-op[data-ativa="true"] { outline: var(--focus-width) solid var(--color-focus-ring); outline-offset: calc(var(--focus-width) * -1); }
+.loc-op[aria-selected="true"] { background: var(--color-bg-subtle); }
+.loc-op__nome { grid-area: nome; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; color: var(--color-text-primary); }
+.loc-op__ctx { grid-area: ctx; font-size: var(--font-size-small); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--color-text-secondary); }
+.loc-op__n { grid-area: n; font-size: var(--font-size-small); text-align: right; color: var(--color-text-tertiary); white-space: nowrap; }
+.loc-ok { grid-area: ok; visibility: hidden; }
+.loc-op[aria-selected="true"] .loc-ok { visibility: visible; }
+.loc-vazio { margin: var(--space-4) 0 0; font-size: var(--font-size-small); line-height: 1.5; color: var(--color-text-secondary); }
+.loc-rec { margin-top: var(--space-4); }
+.loc-rec__chips { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.loc-geo { display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2); align-self: flex-start; }
+@media (max-width: 640px) { .loc-geo { align-self: stretch; } }

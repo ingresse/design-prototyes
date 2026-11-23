@@ -1,26 +1,32 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useLocation, useNavigate } from "react-router";
-import { CheckCircle, ChevronLeft, Expand01, SearchLg, Settings01, XCircle } from "@untitledui/icons";
+import { Navigate, useLocation, useNavigate } from "react-router";
+import { ArrowLeft, CheckCircle, Expand01, SearchLg, Settings01, XCircle } from "@untitledui/icons";
 import { toast } from "sonner";
+import { Tabs } from "@/components/application/tabs/tabs";
 import { Badge, BadgeWithDot } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
+import { ButtonUtility } from "@/components/base/buttons/button-utility";
 import documentoImg from "../components/assets/documento-identificacao.png";
 import grafismo from "../components/assets/grafismo.svg";
 import { Input } from "@/components/base/input/input";
 import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
-import { DecisaoModal, SEGMENTACOES, JUSTIFICATIVAS } from "../components/DecisaoModal";
+import { CabecalhoDaPagina } from "../../components/cabecalho-da-pagina";
+import { SemResultados } from "../../components/tabela";
+import { DecisaoModal, JUSTIFICATIVAS } from "../components/DecisaoModal";
+import { useSegmentacoesDaOrganizacao } from "../../components/segmentacoes-da-organizacao";
 import { AnexoViewerModal } from "../components/AnexoViewerModal";
 import { LaudoView } from "../components/LaudoView";
 import { FormularioParticipacaoModal, type LimiteSolicitacoes } from "../components/FormularioParticipacaoModal";
-import { FORMULARIOS, atualizarFormulario } from "../data/formularios";
+import { salvarFormulario, useFormulariosDaOrganizacao } from "../data/formularios";
 import { showSuccessToast, showNeutralToast } from "../utils/toast";
 import {
-    SOLICITACOES,
     STATUS_META,
+    decidirSolicitacao,
     formatarData,
+    formatarDataHora,
+    useSolicitacoesDoFormulario,
     type Anexo,
-    type Solicitacao,
     type StatusSolicitacao,
 } from "../data/solicitacoes";
 
@@ -50,33 +56,49 @@ function useScrolling() {
     return { scrolling, onScroll };
 }
 
+/** Data e hora da decisão; pedido pendente (ou decidido antes de gravar a hora) mostra só a data do pedido, sem hora inventada (PUB-98, PUB-109). */
+const quandoDaDecisao = (s: { status: StatusSolicitacao; data: string; decididaEm?: string }) =>
+    s.status !== "pendente" && s.decididaEm ? formatarDataHora(s.decididaEm) : formatarData(s.data);
+
 const rotuloDecisao = (s: StatusSolicitacao) =>
-    s === "pendente" ? "Solicitado em" : s === "aprovada" ? "Aprovado em" : "Reprovado em";
+    s === "pendente" ? "Pedido em" : s === "aprovada" ? "Aprovado em" : "Reprovado em";
 
 /** Backstage → Público → Pedidos de participação. */
 export function SolicitacoesParticipacao() {
     const navigate = useNavigate();
     const location = useLocation();
     const formularioId = (location.state as { formularioId?: string } | null)?.formularioId ?? null;
-    const [formulario, setFormulario] = useState(() => FORMULARIOS.find((f) => f.id === formularioId) ?? null);
+    // Sem formulário escolhido (entrada direta), abre o primeiro: o título é sempre o evento do formulário.
+    // Sem nenhum formulário, a tela não tem o que mostrar: volta para a lista, com o "Novo formulário" (PUB-95, PUB-100).
+    const { carregando: carregandoOrganizacao, formularios } = useFormulariosDaOrganizacao();
+    const formulario = formularios.find((f) => f.id === formularioId) ?? formularios[0] ?? null;
+    // Celular: uma coluna por vez (lista ou pedido), como em produção.
+    const [detalheNoCelular, setDetalheNoCelular] = useState(false);
     const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
-    const [solicitacoes, setSolicitacoes] = useState<Solicitacao[]>(SOLICITACOES);
+    // Pedidos deste formulário, gravados no evento; a primeira abertura grava os de exemplo (PUB-96, PUB-97).
+    const { solicitacoes, prontas } = useSolicitacoesDoFormulario(formulario?.id ?? null);
+    // Aprovar inclui o documento da pessoa na segmentação escolhida (SEG-51).
+    const segs = useSegmentacoesDaOrganizacao();
     const [tab, setTab] = useState<StatusSolicitacao>("pendente");
     const [busca, setBusca] = useState("");
-    const [selecionadaId, setSelecionadaId] = useState<string | null>(SOLICITACOES[0]?.id ?? null);
+    const [selecionadaId, setSelecionadaId] = useState<string | null>(null);
     const [decisao, setDecisao] = useState<"aprovar" | "rejeitar" | null>(null);
     const [visualizando, setVisualizando] = useState<Anexo | null>(null);
-    const [carregando, setCarregando] = useState(false);
-    const [carregandoFormulario, setCarregandoFormulario] = useState(true);
     const listaScroll = useScrolling();
     const detalheScroll = useScrolling();
+    const cartaoRef = useRef<HTMLDivElement>(null);
 
-    // Ao entrar/trocar de formulário, exibe um loading de pelo menos 2s antes do conteúdo.
+    // Celular: ao trocar entre lista e pedido, o topo do cartão volta à vista se tiver ficado acima da tela (PUB-101).
     useEffect(() => {
-        setCarregandoFormulario(true);
-        const timer = setTimeout(() => setCarregandoFormulario(false), 1500);
-        return () => clearTimeout(timer);
-    }, [formularioId]);
+        const cartao = cartaoRef.current;
+        if (cartao && cartao.getBoundingClientRect().top < 0) cartao.scrollIntoView({ block: "start" });
+    }, [detalheNoCelular]);
+
+    // Trocar de formulário volta à aba Pendente, sem pedido escolhido.
+    useEffect(() => {
+        setSelecionadaId(null);
+        setTab("pendente");
+    }, [formulario?.id]);
 
     const query = busca.trim().toLowerCase();
 
@@ -91,6 +113,11 @@ export function SolicitacoesParticipacao() {
         [solicitacoes, tab, query],
     );
 
+    // Ao entrar, o primeiro pedido da aba já vem selecionado (PUB-45).
+    useEffect(() => {
+        if (lista.length > 0 && !solicitacoes.some((s) => s.id === selecionadaId)) setSelecionadaId(lista[0].id);
+    }, [lista, solicitacoes, selecionadaId]);
+
     const contagem = useMemo(
         () => ({
             pendente: solicitacoes.filter((s) => s.status === "pendente").length,
@@ -102,34 +129,36 @@ export function SolicitacoesParticipacao() {
 
     const selecionada = solicitacoes.find((s) => s.id === selecionadaId) ?? null;
 
+    // Os pedidos já estão na tela: trocar de pedido mostra o detalhe na hora, sem espera fixa (PUB-102).
     const selecionar = (id: string) => {
-        if (id === selecionadaId) return;
+        setDetalheNoCelular(true);
         setSelecionadaId(id);
-        setCarregando(true);
-        setTimeout(() => setCarregando(false), 1500);
     };
 
+    // A decisão grava no evento e sobrevive a sair da tela (PUB-98).
     const decidir = (id: string, status: StatusSolicitacao, segmento?: string, justificativa?: string) => {
-        setSolicitacoes((prev) => prev.map((s) => (s.id === id ? { ...s, status, segmento, justificativa } : s)));
+        if (formulario) void decidirSolicitacao(formulario.id, id, { status, segmento, justificativa });
     };
 
     /** Confirma a decisão do modal (aprovar/rejeitar) e dispara o toast de feedback. */
     const confirmarDecisao = (opcaoId: string, textoLivre?: string) => {
         if (!selecionada || !decisao) return;
         const nome = selecionada.nome;
-        setCarregando(true);
-        setTimeout(() => setCarregando(false), 1500);
         if (decisao === "aprovar") {
-            const seg = SEGMENTACOES.find((o) => o.id === opcaoId)?.label;
+            const alvo = segs.segmentacoes.find((o) => o.id === opcaoId);
+            const seg = alvo?.nome;
             decidir(selecionada.id, "aprovada", seg);
+            const digitos = selecionada.documento.replace(/\D/g, "");
+            const doc = digitos.length === 11 ? { documento: digitos, tipo: "cpf" as const } : { documento: selecionada.documento.replace(/\s/g, "").toUpperCase(), tipo: "passaporte" as const };
+            if (alvo && !alvo.documentos.some((d) => d.documento === doc.documento))
+                void segs.gravar(segs.segmentacoes.map((x) => (x.id === alvo.id ? { ...x, documentos: [...x.documentos, doc], atualizadoEm: new Date().toISOString() } : x)));
             setTab("aprovada");
-            showSuccessToast("Pedido aprovado", `${nome} foi adicionado(a) ao segmento ${seg}.`);
+            showSuccessToast("Pedido aprovado", `${nome} entrou na segmentação ${seg}.`);
         } else {
             const just = textoLivre || JUSTIFICATIVAS.find((o) => o.id === opcaoId)?.label || "";
             decidir(selecionada.id, "rejeitada", undefined, just);
             setTab("rejeitada");
-            const motivo = just.charAt(0).toLowerCase() + just.slice(1);
-            showNeutralToast("Pedido reprovado", `${nome} foi reprovado com o motivo: ${motivo}.`);
+            showNeutralToast("Pedido reprovado", `Pedido de ${nome} reprovado. Motivo: ${just}.`);
         }
         setDecisao(null);
     };
@@ -137,23 +166,36 @@ export function SolicitacoesParticipacao() {
     /** Salva as configurações (recebimento/limite) do formulário no store compartilhado. */
     const handleSalvarConfiguracao = ({ ativo, limite, quantidade }: { ativo: boolean; limite: LimiteSolicitacoes; quantidade?: number }) => {
         if (!formulario) return;
-        atualizarFormulario(formulario.id, { ativo, limite, quantidadeLimite: quantidade });
-        setFormulario({ ...formulario, ativo, limite, quantidadeLimite: quantidade });
-        toast.success("Tudo certo!", {
-            description: "As mudanças no formulário já estão disponíveis para o público.",
+        void salvarFormulario(formulario.id, { ativo, limite, quantidadeLimite: quantidade });
+        toast.success("Configuração salva", {
+            description: ativo ? "O formulário aceita pedidos." : "O recebimento está desligado: o formulário não aceita pedidos.",
             duration: 2000,
         });
     };
 
-    if (carregandoFormulario) {
+    if (!carregandoOrganizacao && !formulario) return <Navigate to="/backstage/publico/formularios" replace />;
+
+    const cabecalho = (
+        <CabecalhoDaPagina
+            voltar={{ rotulo: "Formulário de participação", onClick: () => navigate("/backstage/publico/formularios") }}
+            titulo={formulario ? formulario.titulo : <span aria-hidden="true" className="block h-9 w-64 max-w-full animate-pulse rounded-lg bg-secondary motion-reduce:animate-none" />}
+            acoes={
+                formulario && (
+                    <Button size="md" color="secondary" iconLeading={Settings01} onClick={() => setIsConfigModalOpen(true)}>
+                        Configurar formulário
+                    </Button>
+                )
+            }
+        />
+    );
+
+    // Carregando (organização ou pedidos): o cabeçalho já aparece; lista e detalhe pulsam no formato final, sem espera fixa (BKS-116, PUB-102).
+    if (!formulario || !prontas) {
         return (
             <BackstageLayout showEventContext={false} showLayoutSwitcher={false} activeProducer="publico">
-                <div className="flex min-w-0 flex-1 items-center justify-center overflow-hidden rounded-xl ring-1 ring-border-secondary md:h-[calc(100dvh-4.5rem)]">
-                    <div
-                        className="size-8 animate-spin rounded-full border-2 border-secondary border-t-fg-brand-primary"
-                        role="status"
-                        aria-label="Carregando"
-                    />
+                <div className="flex min-w-0 flex-1 flex-col gap-6 md:h-[calc(100dvh-4.5rem)]">
+                    {cabecalho}
+                    <EsqueletoDosPedidos />
                 </div>
             </BackstageLayout>
         );
@@ -161,128 +203,94 @@ export function SolicitacoesParticipacao() {
 
     return (
         <BackstageLayout showEventContext={false} showLayoutSwitcher={false} activeProducer="publico">
-            <div className="flex min-w-0 flex-1 overflow-hidden rounded-xl ring-1 ring-border-secondary md:h-[calc(100dvh-4.5rem)]">
+            <div className="flex min-w-0 flex-1 flex-col gap-6 md:h-[calc(100dvh-4.5rem)]">
+            {/* Cabeçalho da página: voltar para a lista de formulários, título = evento do formulário. */}
+            {cabecalho}
+            {/* Desktop: lista e detalhe rolam cada um no seu lugar. Celular: sem altura fixa, rolam com a página (PUB-101);
+                overflow-clip (e não hidden) para o rodapé de decisão poder grudar no pé da tela. */}
+            <div ref={cartaoRef} className="flex min-w-0 scroll-mt-4 overflow-clip rounded-xl ring-1 ring-border-secondary md:min-h-0 md:flex-1 md:overflow-hidden">
                 {/* Lista */}
-                <aside className="flex h-full w-full max-w-[420px] shrink-0 flex-col border-r border-secondary bg-primary">
-                    <div className="flex flex-col gap-6 border-b border-secondary px-6 pt-6">
-                        <div className="flex items-center justify-between gap-3">
-                            <div className="flex items-center gap-3">
-                                <button
-                                    type="button"
-                                    aria-label="Voltar"
-                                    onClick={() => navigate("/backstage/publico/formularios")}
-                                    className="flex size-11 shrink-0 items-center justify-center rounded-[8px] text-fg-secondary ring-1 ring-secondary transition duration-100 ease-linear hover:bg-secondary"
-                                >
-                                    <ChevronLeft className="size-5" aria-hidden="true" />
-                                </button>
-                                <div className="flex flex-col">
-                                    <h1 className="text-lg font-bold text-primary">Formulário de participação</h1>
-                                    {formulario && <span className="text-sm text-tertiary">{formulario.titulo}</span>}
-                                </div>
-                            </div>
-                            <button
-                                type="button"
-                                aria-label="Configurar formulário"
-                                onClick={() => setIsConfigModalOpen(true)}
-                                className="flex size-11 shrink-0 items-center justify-center rounded-[8px] text-fg-secondary transition duration-100 ease-linear hover:bg-secondary"
-                            >
-                                <Settings01 className="size-5" aria-hidden="true" />
-                            </button>
-                        </div>
-                        <Input
-                            size="md"
-                            icon={SearchLg}
-                            aria-label="Buscar pedidos"
-                            placeholder="Buscar por nome ou e-mail"
-                            value={busca}
-                            onChange={setBusca}
-                        />
-                        <div className="flex items-stretch border-b border-secondary">
-                            {TABS.map((t) => {
-                                const ativo = tab === t.id;
-                                const count = contagem[t.id];
-                                return (
-                                    <button
-                                        key={t.id}
-                                        type="button"
-                                        onClick={() => setTab(t.id)}
-                                        className={cx(
-                                            "-mb-px flex flex-1 items-center justify-center gap-1.5 border-b-2 pb-2.5 text-sm font-semibold whitespace-nowrap outline-none transition duration-100 ease-linear",
-                                            ativo
-                                                ? "border-fg-primary text-primary"
-                                                : "border-transparent text-tertiary hover:text-secondary",
-                                        )}
-                                    >
-                                        {t.label}
-                                        {count > 0 && (
-                                            <Badge size="sm" type="pill-color" color={t.id === "pendente" ? STATUS_META[t.id].color : "gray"}>
-                                                {count > 999 ? "999+" : count}
-                                            </Badge>
-                                        )}
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    </div>
-
-                    <div
-                        className={cx("scroll-suave min-h-0 flex-1 overflow-y-auto p-4", listaScroll.scrolling && "is-scrolling")}
-                        onScroll={listaScroll.onScroll}
-                    >
-                        {lista.length === 0 ? (
-                            query ? (
-                                <div className="flex h-full flex-col items-center justify-center gap-4 px-6 text-center">
-                                    <div className="flex size-16 shrink-0 items-center justify-center rounded-xl ring-1 ring-secondary">
-                                        <SearchLg className="size-6 text-fg-secondary" aria-hidden="true" />
-                                    </div>
-                                    <div className="flex flex-col gap-1">
-                                        <span className="text-md font-bold text-primary">Pessoa não encontrada</span>
-                                        <span className="text-sm text-tertiary">
-                                            Verifique o nome ou e-mail inserido e tente novamente.
-                                        </span>
-                                    </div>
-                                    <Button size="sm" color="secondary" onClick={() => setBusca("")}>
-                                        Limpar busca
-                                    </Button>
-                                </div>
-                            ) : (
-                                <div className="flex h-full items-center justify-center px-6 text-center">
-                                    <span className="text-sm text-tertiary">{MENSAGEM_LISTA_VAZIA[tab]}</span>
-                                </div>
-                            )
-                        ) : (
-                            <div className="flex flex-col gap-1">
-                                {lista.map((s) => {
-                                    const ativo = s.id === selecionadaId;
+                <aside className={cx("flex w-full shrink-0 flex-col border-secondary bg-primary md:h-full md:max-w-[420px] md:border-r", detalheNoCelular && "max-md:hidden")}>
+                    <Tabs selectedKey={tab} onSelectionChange={(k) => setTab(k as StatusSolicitacao)} className="md:min-h-0 md:flex-1">
+                        <div className="flex flex-col gap-6 border-b border-secondary px-6 pt-6">
+                            <Input
+                                size="md"
+                                icon={SearchLg}
+                                aria-label="Buscar pedidos"
+                                placeholder="Buscar por nome ou e-mail"
+                                value={busca}
+                                onChange={setBusca}
+                            />
+                            {/* Abas do DS: role tab, aria-selected, setas para navegar e foco visível (PUB-41). */}
+                            <Tabs.List type="underline" size="sm" fullWidth aria-label="Status dos pedidos">
+                                {TABS.map((t) => {
+                                    const count = contagem[t.id];
                                     return (
-                                        <button
-                                            key={s.id}
-                                            type="button"
-                                            onClick={() => selecionar(s.id)}
-                                            className={cx(
-                                                "flex w-full items-start justify-between gap-3 px-4 py-4 text-left outline-none transition duration-100 ease-linear",
-                                                ativo
-                                                    ? "rounded-xl bg-secondary"
-                                                    : "border-b border-secondary hover:rounded-xl hover:border-transparent hover:bg-secondary/40",
+                                        <Tabs.Item key={t.id} id={t.id} className="flex-1">
+                                            {t.label}
+                                            {count > 0 && (
+                                                <Badge size="sm" type="pill-color" color={t.id === "pendente" ? STATUS_META[t.id].color : "gray"} className="-my-px">
+                                                    {count > 999 ? "999+" : count}
+                                                </Badge>
                                             )}
-                                        >
-                                            <div className="flex min-w-px flex-1 flex-col gap-1">
-                                                <span className="truncate text-md font-bold text-primary">{s.nome}</span>
-                                                <span className="truncate text-sm text-tertiary">{s.email}</span>
-                                            </div>
-                                            <span className="shrink-0 text-sm font-medium text-tertiary">
-                                                {formatarData(s.data)}
-                                            </span>
-                                        </button>
+                                        </Tabs.Item>
                                     );
                                 })}
+                            </Tabs.List>
+                        </div>
+
+                        <Tabs.Panel id={tab} className="flex flex-col md:min-h-0 md:flex-1">
+                            <div
+                                className={cx("scroll-suave p-4 md:min-h-0 md:flex-1 md:overflow-y-auto", listaScroll.scrolling && "is-scrolling")}
+                                onScroll={listaScroll.onScroll}
+                            >
+                                {/* Sem resultado e aba vazia: a peça comum, anunciada pelo leitor de tela (BKS-118, BKS-126, PUB-112). */}
+                                {lista.length === 0 ? (
+                                    query ? (
+                                        <SemResultados texto="Nenhum pedido encontrado para essa busca." onLimpar={() => setBusca("")} />
+                                    ) : (
+                                        <SemResultados texto={MENSAGEM_LISTA_VAZIA[tab]} />
+                                    )
+                                ) : (
+                                    <div className="flex flex-col gap-1">
+                                        {lista.map((s) => {
+                                            const ativo = s.id === selecionadaId;
+                                            return (
+                                                <button
+                                                    key={s.id}
+                                                    type="button"
+                                                    onClick={() => selecionar(s.id)}
+                                                    aria-current={ativo ? "true" : undefined}
+                                                    className={cx(
+                                                        "flex w-full items-start justify-between gap-3 px-4 py-4 text-left outline-focus-ring transition duration-100 ease-linear focus-visible:rounded-xl focus-visible:outline-2 focus-visible:-outline-offset-2",
+                                                        ativo
+                                                            ? "rounded-xl bg-secondary"
+                                                            : "border-b border-secondary hover:rounded-xl hover:border-transparent hover:bg-secondary/40",
+                                                    )}
+                                                >
+                                                    <div className="flex min-w-px flex-1 flex-col gap-1">
+                                                        <span className="truncate text-md font-bold text-primary">{s.nome}</span>
+                                                        <span className="truncate text-sm text-tertiary">{s.email}</span>
+                                                    </div>
+                                                    <span className="shrink-0 text-sm font-medium text-tertiary">{formatarData(s.data)}</span>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                )}
                             </div>
-                        )}
-                    </div>
+                        </Tabs.Panel>
+                    </Tabs>
                 </aside>
 
                 {/* Detalhe */}
-                <section className="relative flex h-full min-w-px flex-1 flex-col overflow-hidden bg-secondary dark:bg-[#0a0a0a]">
+                <section className={cx("relative flex min-w-px flex-1 flex-col overflow-clip bg-secondary md:h-full md:overflow-hidden", !detalheNoCelular && "max-md:hidden")}>
+                    {/* Celular: volta para a lista de pedidos. */}
+                    <div className="relative z-10 border-b border-secondary bg-primary px-4 py-2 md:hidden">
+                        <Button color="tertiary" size="md" iconLeading={ArrowLeft} onClick={() => setDetalheNoCelular(false)} className="-ml-3">
+                            Pedidos
+                        </Button>
+                    </div>
                     {/* Grafismo de fundo (decorativo) */}
                     <img
                         src={grafismo}
@@ -291,29 +299,23 @@ export function SolicitacoesParticipacao() {
                         className="pointer-events-none absolute left-1/2 top-1/2 z-0 size-[1238px] max-w-none -translate-x-1/2 -translate-y-1/2 select-none"
                     />
                     {!selecionada ? (
-                        <div className="flex flex-1 items-center justify-center">
-                            <p className="text-sm text-tertiary">Selecione um pedido.</p>
-                        </div>
-                    ) : carregando ? (
-                        <div className="flex flex-1 items-center justify-center">
-                            <div
-                                className="size-8 animate-spin rounded-full border-2 border-secondary border-t-fg-brand-primary"
-                                role="status"
-                                aria-label="Carregando"
-                            />
+                        <div className="relative z-10 flex flex-1 items-center justify-center px-6 text-center">
+                            <p className="text-sm text-tertiary">
+                                {solicitacoes.length === 0 ? "Este formulário ainda não recebeu pedidos." : "Selecione um pedido."}
+                            </p>
                         </div>
                     ) : (
                         <>
                             {/* Conteúdo rolável */}
                             <div
-                                className={cx("scroll-suave relative z-10 min-h-0 flex-1 overflow-y-auto", detalheScroll.scrolling && "is-scrolling")}
+                                className={cx("scroll-suave relative z-10 md:min-h-0 md:flex-1 md:overflow-y-auto", detalheScroll.scrolling && "is-scrolling")}
                                 onScroll={detalheScroll.onScroll}
                             >
-                                <div className="w-full px-6">
-                                    <div className="mx-auto flex w-[600px] flex-col gap-5 py-6">
+                                <div className="w-full px-4 md:px-6">
+                                    <div className="mx-auto flex w-full max-w-[600px] flex-col gap-5 py-6">
                                         {/* Cabeçalho */}
                                         <div className="flex flex-col rounded-xl bg-primary ring-1 ring-secondary">
-                                            <div className="flex items-center justify-between gap-4 p-5">
+                                            <div className="flex flex-col gap-2 p-5 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                                                 <div className="flex min-w-px flex-col gap-1">
                                                     <div className="flex items-center gap-2">
                                                         <h2 className="truncate text-lg font-semibold text-primary">
@@ -330,18 +332,18 @@ export function SolicitacoesParticipacao() {
                                                     <span className="truncate text-sm text-tertiary">{selecionada.email}</span>
                                                 </div>
                                                 <span className="shrink-0 text-sm text-tertiary">
-                                                    {rotuloDecisao(selecionada.status)} {formatarData(selecionada.data)} às 12:00
+                                                    {rotuloDecisao(selecionada.status)} {quandoDaDecisao(selecionada)}
                                                 </span>
                                             </div>
                                             {selecionada.status === "aprovada" && selecionada.segmento && (
-                                                <div className="rounded-b-xl border-t border-secondary bg-[#0A0A0A] px-5 py-4">
+                                                <div className="rounded-b-xl border-t border-secondary bg-secondary_subtle px-5 py-4">
                                                     <span className="text-md text-primary">
                                                         Adicionado em: {selecionada.segmento}
                                                     </span>
                                                 </div>
                                             )}
                                             {selecionada.status === "rejeitada" && selecionada.justificativa && (
-                                                <div className="rounded-b-xl border-t border-secondary bg-[#0A0A0A] px-5 py-4">
+                                                <div className="rounded-b-xl border-t border-secondary bg-secondary_subtle px-5 py-4">
                                                     <span className="text-md text-primary">
                                                         Justificativa: {selecionada.justificativa}
                                                     </span>
@@ -350,7 +352,7 @@ export function SolicitacoesParticipacao() {
                                         </div>
 
                                         {/* Informações do participante */}
-                                        <div className="flex flex-col rounded-xl bg-[#0A0A0A] ring-1 ring-secondary">
+                                        <div className="flex flex-col rounded-xl bg-primary ring-1 ring-secondary">
                                             <div className="border-b border-secondary p-5">
                                                 <h3 className="text-md font-semibold text-primary">Informações do participante</h3>
                                             </div>
@@ -365,12 +367,10 @@ export function SolicitacoesParticipacao() {
                                         </div>
 
                                         {/* Anexos */}
-                                        <div className="flex flex-col rounded-xl bg-[#0A0A0A] ring-1 ring-secondary">
-                                            <div className="flex items-center justify-between gap-4 border-b border-secondary p-5">
+                                        <div className="flex flex-col rounded-xl bg-primary ring-1 ring-secondary">
+                                            {/* O prazo de exclusão dos anexos saiu: não existe exclusão no protótipo (PUB-54 riscada). */}
+                                            <div className="border-b border-secondary p-5">
                                                 <h3 className="text-md font-semibold text-primary">Anexos ({selecionada.anexos.length})</h3>
-                                                <span className="shrink-0 text-sm text-tertiary">
-                                                    Os anexos serão excluídos 15 dias após a validação.
-                                                </span>
                                             </div>
                                             <div className="flex flex-col">
                                                 {selecionada.anexos.map((a, i) => (
@@ -380,19 +380,20 @@ export function SolicitacoesParticipacao() {
                                                     >
                                                         <div className="flex items-center justify-between gap-4">
                                                             <h4 className="text-md font-semibold text-primary">{a.nome}</h4>
-                                                            <button
-                                                                type="button"
-                                                                aria-label="Expandir"
+                                                            <ButtonUtility
+                                                                color="secondary"
+                                                                size="xs"
+                                                                icon={Expand01}
+                                                                tooltip="Expandir"
+                                                                aria-label={`Expandir ${a.nome}`}
                                                                 onClick={() => setVisualizando(a)}
-                                                                className="flex size-8 shrink-0 items-center justify-center rounded-[8px] text-fg-secondary ring-1 ring-secondary transition duration-100 ease-linear hover:bg-secondary"
-                                                            >
-                                                                <Expand01 className="size-4" aria-hidden="true" />
-                                                            </button>
+                                                            />
                                                         </div>
                                                         <button
                                                             type="button"
+                                                            aria-label={`Abrir ${a.nome} em tela cheia`}
                                                             onClick={() => setVisualizando(a)}
-                                                            className="block overflow-hidden rounded-xl text-left outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                                                            className="block overflow-hidden rounded-xl text-left outline-focus-ring focus-visible:outline-2 focus-visible:outline-offset-2"
                                                         >
                                                             {a.tipo === "identificacao" ? (
                                                                 <img
@@ -417,35 +418,26 @@ export function SolicitacoesParticipacao() {
                             {/* Rodapé */}
                             <div
                                 className={cx(
-                                    "relative z-10 flex h-[73px] shrink-0 items-center gap-4 border-t border-secondary bg-[#0A0A0A] px-6",
+                                    // Celular: gruda no pé da tela enquanto o pedido rola com a página (PUB-101).
+                                    "relative z-10 flex shrink-0 items-center gap-4 border-t border-secondary bg-primary px-4 py-4 max-md:sticky max-md:bottom-0 md:px-6",
                                     selecionada.status === "pendente" ? "justify-end" : "justify-center",
                                 )}
                             >
                                 {selecionada.status === "pendente" ? (
                                     <div className="flex shrink-0 items-center gap-3">
-                                        <button
-                                            type="button"
-                                            onClick={() => setDecisao("rejeitar")}
-                                            className="flex items-center gap-1.5 rounded-lg bg-[#0A0A0A] px-4 py-2.5 text-sm font-semibold text-primary ring-1 ring-border-primary outline-none transition duration-100 ease-linear hover:bg-secondary"
-                                        >
-                                            <XCircle className="size-5 text-fg-error-primary" aria-hidden="true" />
-                                            Rejeitar
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => setDecisao("aprovar")}
-                                            className="flex items-center gap-1.5 rounded-lg bg-[#0A0A0A] px-4 py-2.5 text-sm font-semibold text-primary ring-1 ring-border-primary outline-none transition duration-100 ease-linear hover:bg-secondary"
-                                        >
+                                        <Button color="secondary" size="md" iconLeading={XCircle} onClick={() => setDecisao("rejeitar")}>
+                                            Reprovar
+                                        </Button>
+                                        <Button color="primary" size="md" iconLeading={CheckCircle} onClick={() => setDecisao("aprovar")}>
                                             Aprovar
-                                            <CheckCircle className="size-5 text-fg-success-primary" aria-hidden="true" />
-                                        </button>
+                                        </Button>
                                     </div>
                                 ) : (
                                     <div className="flex flex-col items-center gap-1 text-center">
                                         <span className="text-md font-semibold text-primary">
                                             {selecionada.status === "aprovada" ? "Aprovado por" : "Reprovado por"} {USUARIO_ATUAL_EMAIL}
                                         </span>
-                                        <span className="text-sm text-tertiary">{formatarData(selecionada.data)} às 12:00</span>
+                                        <span className="text-sm text-tertiary">{quandoDaDecisao(selecionada)}</span>
                                     </div>
                                 )}
                             </div>
@@ -453,10 +445,12 @@ export function SolicitacoesParticipacao() {
                     )}
                 </section>
             </div>
+            </div>
 
             <DecisaoModal
                 isOpen={decisao !== null}
                 variant={decisao ?? "aprovar"}
+                pessoa={selecionada ? { nome: selecionada.nome, documento: selecionada.documento } : undefined}
                 onClose={() => setDecisao(null)}
                 onConfirmar={confirmarDecisao}
             />
@@ -471,9 +465,50 @@ export function SolicitacoesParticipacao() {
                     limiteInicial={formulario.limite}
                     quantidadeInicial={formulario.quantidadeLimite}
                     solicitacoesRecebidas={formulario.solicitacoesRecebidas}
+                    evento={formulario.titulo}
                 />
             )}
         </BackstageLayout>
+    );
+}
+
+/** Carregando: linhas da lista e cartões do detalhe pulsando no formato final (BKS-116, PUB-102). */
+function EsqueletoDosPedidos() {
+    const bloco = "animate-pulse rounded-lg bg-secondary motion-reduce:animate-none";
+    return (
+        <div role="status" aria-label="Carregando pedidos" className="flex min-w-0 overflow-clip rounded-xl ring-1 ring-border-secondary md:min-h-0 md:flex-1">
+            <div aria-hidden="true" className="flex w-full shrink-0 flex-col bg-primary md:max-w-[420px] md:border-r md:border-secondary">
+                <div className="flex flex-col gap-6 border-b border-secondary px-6 pt-6 pb-3">
+                    <span className={cx(bloco, "h-11 w-full")} />
+                    <span className={cx(bloco, "h-6 w-full")} />
+                </div>
+                <div className="flex flex-col gap-1 p-4">
+                    {Array.from({ length: 5 }, (_, i) => (
+                        <div key={i} className="flex items-start justify-between gap-3 border-b border-secondary px-4 py-4">
+                            <div className="flex flex-1 flex-col gap-2">
+                                <span className={cx(bloco, "h-5 w-2/3")} />
+                                <span className={cx(bloco, "h-4 w-1/2")} />
+                            </div>
+                            <span className={cx(bloco, "h-4 w-20")} />
+                        </div>
+                    ))}
+                </div>
+            </div>
+            <div aria-hidden="true" className="hidden min-w-px flex-1 bg-secondary px-6 md:block">
+                <div className="mx-auto flex w-full max-w-[600px] flex-col gap-5 py-6">
+                    <div className="flex flex-col gap-2 rounded-xl bg-primary p-5 ring-1 ring-secondary">
+                        <span className={cx(bloco, "h-6 w-1/2")} />
+                        <span className={cx(bloco, "h-4 w-1/3")} />
+                    </div>
+                    <div className="grid grid-cols-2 gap-x-8 gap-y-4 rounded-xl bg-primary p-5 ring-1 ring-secondary">
+                        {Array.from({ length: 6 }, (_, i) => (
+                            <span key={i} className={cx(bloco, "h-10")} />
+                        ))}
+                    </div>
+                    <span className="h-64 rounded-xl bg-primary ring-1 ring-secondary" />
+                </div>
+            </div>
+        </div>
     );
 }
 

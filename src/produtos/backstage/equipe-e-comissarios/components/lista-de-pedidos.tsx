@@ -1,15 +1,16 @@
 import { useMemo, useState } from "react";
-import { SearchLg } from "@untitledui/icons";
+import { useSearchParams } from "react-router";
+import { ChevronRight, ShoppingBag01 } from "@untitledui/icons";
 import { Badge } from "@/components/base/badges/badges";
-import { Button } from "@/components/base/buttons/button";
-import { Input } from "@/components/base/input/input";
 import { Select } from "@/components/base/select/select";
 import { cx } from "@/utils/cx";
-import { TD, TH, dataHora, moeda, plural, textoComissao } from "../../comissarios/components/comuns";
-import { BotaoMostrarMais, useMostrarMais } from "../../itens/components/escala";
-import { DetalhesDaLinha, ListaDaTabela, useLinhaAberta } from "../../relatorios/components/TabelaLista";
+import { RodapeDePaginacao, usePaginacao } from "../../components/rodape-de-paginacao";
+import { BarraDaLista, CabecalhoDaTabela, CartaoDaTabela, Celula, LinhaDaTabela, SemResultados, TituloDaLinha, VazioDaTabela } from "../../components/tabela";
+import { dataHora, moeda, textoComissao } from "../../comissarios/components/comuns";
+import { DetalhesDaLinha } from "../../relatorios/components/TabelaLista";
 import { CANAIS_GRUPO, ROTULO_CANAL, comissaoBruta, comissaoDaVenda, type CanalGrupo } from "../data/equipe";
 import type { PedidoDoGrupo } from "../data/pedidos";
+import { CampoDePessoa } from "./campo-de-pessoa";
 
 const COR_CANAL: Record<CanalGrupo, "brand" | "blue" | "indigo" | "gray"> = { link: "brand", pdv: "indigo", bilheteria: "blue", cortesia: "gray" };
 
@@ -27,6 +28,27 @@ function textoDaComissao(p: PedidoDoGrupo) {
     if (p.venda.status === "cancelada") return "Estornada";
     if (p.venda.canal === "cortesia") return "Sem comissão";
     return moeda(comissaoDaVenda(p.venda));
+}
+
+/** Valor do pedido e, em grupo com comissário, a comissão logo abaixo (ECO-74, ECO-75). */
+function ValorDoPedido({ p, comComissao }: { p: PedidoDoGrupo; comComissao: boolean }) {
+    return (
+        <>
+            {p.status === "cancelado" ? (
+                // O Badge do DS é flex (bloco): ml-auto o encosta na borda da coluna, alinhado com os valores (ECO-75).
+                <Badge size="sm" type="pill-color" color="error" className="ml-auto w-max">
+                    Cancelado
+                </Badge>
+            ) : (
+                <span className="block font-medium text-primary">{valorDoPedido(p)}</span>
+            )}
+            {comComissao && (
+                <span className={cx("block whitespace-nowrap text-tertiary", p.venda && p.venda.status !== "cancelada" && p.venda.canal !== "cortesia" && "text-secondary")}>
+                    {p.venda && p.venda.status !== "cancelada" && p.venda.canal !== "cortesia" ? `${textoDaComissao(p)} de comissão` : textoDaComissao(p)}
+                </span>
+            )}
+        </>
+    );
 }
 
 /**
@@ -66,23 +88,41 @@ export function ListaDePedidos({
                 (vendedor === "todos" || p.vendedor === vendedor),
         );
     }, [pedidos, buscaPedido, filtroCanal, vendedor]);
-    const filtrando = !!buscaPedido.trim() || filtroCanal !== "todos" || vendedor !== "todos";
-    const { visiveis, restantes, mostrarMais } = useMostrarMais(filtrados);
-    const { aberta, abrir, fechar } = useLinhaAberta<PedidoDoGrupo>();
+    // Busca, filtro ou tamanho novo voltam à página 1 (BKS-114).
+    const paginacao = usePaginacao(filtrados, [buscaPedido, filtroCanal, vendedor]);
+    // O detalhe tem endereço (`?pedido=<id>`, ECO-97): recarregar mantém o pedido aberto e o Voltar do navegador fecha.
+    const [params, setParams] = useSearchParams();
+    const aberta = pedidos.find((p) => p.id === params.get("pedido")) ?? null;
+    const abrir = (p: PedidoDoGrupo) =>
+        setParams((atual) => {
+            const novo = new URLSearchParams(atual);
+            novo.set("pedido", p.id);
+            return novo;
+        });
+    const fechar = () =>
+        setParams(
+            (atual) => {
+                const novo = new URLSearchParams(atual);
+                novo.delete("pedido");
+                return novo;
+            },
+            { replace: true },
+        );
+    const limpar = () => (setBuscaPedido(""), setFiltroCanal("todos"), setVendedor("todos"));
 
     return (
         <>
-            <section className="flex flex-col overflow-hidden rounded-2xl bg-primary ring-1 ring-secondary">
-                <div className="flex flex-col gap-4 border-b border-secondary px-4 py-4 md:px-5">
-                    <h2 className="text-lg font-semibold text-primary">Pedidos</h2>
-                    {pedidos.length > 0 && (
-                        <div className="flex flex-col gap-3 md:flex-row md:items-end">
-                            <div className="min-w-0 flex-1">
-                                <Input icon={SearchLg} aria-label="Buscar pedido" placeholder="Buscar pelo número do pedido" value={buscaPedido} onChange={setBuscaPedido} />
-                            </div>
+            <section className="flex flex-col gap-4">
+                <h2 className="text-lg font-semibold text-primary">Pedidos</h2>
+                {pedidos.length === 0 ? (
+                    <VazioDaTabela icone={ShoppingBag01} titulo="Nenhum pedido ainda" texto="O que as pessoas do grupo venderem ou emitirem nos canais aparece aqui." />
+                ) : (
+                    <>
+                        <BarraDaLista busca={{ valor: buscaPedido, onChange: setBuscaPedido, placeholder: "Buscar pelo número do pedido", rotulo: "Buscar pedido" }}>
                             {canaisComPedido.length > 1 && (
-                                <div className="md:w-52">
+                                <div className="w-full sm:w-48">
                                     <Select
+                                        size="sm"
                                         aria-label="Canal"
                                         selectedKey={filtroCanal}
                                         onSelectionChange={(k) => k && setFiltroCanal(String(k))}
@@ -93,115 +133,88 @@ export function ListaDePedidos({
                                 </div>
                             )}
                             {variosVendedores && (
-                                <div className="md:w-56">
-                                    <Select
-                                        aria-label="Vendedor"
-                                        selectedKey={vendedor}
-                                        onSelectionChange={(k) => k && setVendedor(String(k))}
-                                        items={[{ id: "todos", label: "Todos os vendedores" }, ...vendedores.map((n) => ({ id: n, label: n }))]}
-                                    >
-                                        {(item) => <Select.Item id={item.id}>{item.label}</Select.Item>}
-                                    </Select>
+                                // Com busca: o grupo pode ter centenas de pessoas (ECO-94).
+                                <div className="w-full sm:w-56">
+                                    <CampoDePessoa
+                                        size="sm"
+                                        rotulo="Vendedor"
+                                        placeholder="Buscar vendedor"
+                                        valor={vendedor}
+                                        onChange={setVendedor}
+                                        opcoes={[{ id: "todos", label: "Todos os vendedores" }, ...vendedores.map((n) => ({ id: n, label: n }))]}
+                                    />
                                 </div>
                             )}
-                        </div>
-                    )}
-                </div>
-                {pedidos.length === 0 ? (
-                    <p className="p-6 text-sm text-tertiary">Nenhum pedido ainda. O que as pessoas do grupo venderem ou emitirem nos canais aparece aqui.</p>
-                ) : filtrados.length === 0 ? (
-                    <div className="flex flex-col items-center gap-3 p-6 text-center">
-                        <p className="text-sm text-tertiary">Nenhum pedido com esses filtros.</p>
-                        <Button color="secondary" size="sm" onClick={() => (setBuscaPedido(""), setFiltroCanal("todos"), setVendedor("todos"))}>
-                            Limpar filtros
-                        </Button>
-                    </div>
-                ) : (
-                    <>
-                        <p className="px-4 pt-3 text-sm text-tertiary md:px-5">
-                            {filtrando ? plural(filtrados.length, "pedido encontrado", "pedidos encontrados") : plural(pedidos.length, "pedido", "pedidos")}
-                        </p>
-                        <div className="hidden overflow-x-auto xl:block">
-                            <table className="w-full">
-                                <thead className="bg-secondary">
-                                    <tr>
-                                        <th className={TH}>Data</th>
-                                        <th className={TH}>Pedido</th>
-                                        <th className={TH}>Item</th>
-                                        <th className={TH}>Canal</th>
-                                        {variosVendedores && <th className={TH}>Vendedor</th>}
-                                        <th className={cx(TH, "text-right")}>Valor</th>
-                                        {comComissao && <th className={cx(TH, "text-right")}>Comissão</th>}
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-secondary">
-                                    {visiveis.map((p) => (
-                                        <tr key={p.id} onClick={() => abrir(p)} className={cx("cursor-pointer transition duration-100 ease-linear hover:bg-primary_hover", p.status === "cancelado" && "text-quaternary")}>
-                                            <td className={cx(TD, "whitespace-nowrap tabular-nums")}>{dataHora(p.data)}</td>
-                                            <td className={TD}>
-                                                <span className="block font-medium text-primary tabular-nums" title={p.pedido}>
-                                                    #{p.pedido.slice(0, 8)}
+                        </BarraDaLista>
+
+                        {/* Tabela-lista (BKS-115): no cartão estreito ficam item, comprador e valor; o toque abre o detalhe com todas as colunas. */}
+                        <CartaoDaTabela>
+                            <CabecalhoDaTabela>
+                                <span className="min-w-0 flex-1">Item</span>
+                                <span className="w-32">Pedido</span>
+                                <span className="w-44">Canal</span>
+                                <span className="w-40 text-right">{comComissao ? "Valor e comissão" : "Valor"}</span>
+                                <span className="w-4" />
+                            </CabecalhoDaTabela>
+                            {filtrados.length === 0 ? (
+                                <SemResultados texto="Nenhum pedido encontrado com esses filtros." onLimpar={limpar} />
+                            ) : (
+                                <ul className="flex flex-col divide-y divide-secondary">
+                                    {paginacao.visiveis.map((p) => (
+                                        <LinhaDaTabela key={p.id} interativa className="group relative items-center">
+                                            <div className="flex min-w-0 flex-1 items-center gap-4">
+                                                <TituloDaLinha
+                                                    titulo={
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => abrir(p)}
+                                                            aria-label={`Pedido #${p.pedido.slice(0, 8)}: ${p.quantidade}× ${p.item}`}
+                                                            className="text-left outline-hidden after:absolute after:inset-0 focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-focus-ring"
+                                                        >
+                                                            {p.quantidade}× {p.item}
+                                                        </button>
+                                                    }
+                                                    apoio={
+                                                        // Cartão estreito: comprador numa linha e canal na outra, sem cortar o nome (antes "Ana Ribeiro, comi…").
+                                                        <>
+                                                            <span className="block truncate">
+                                                                {p.comprador}
+                                                                {p.detalhe && <span className="hidden @min-[44rem]:inline">, {p.detalhe}</span>}
+                                                            </span>
+                                                            <span className="block truncate @min-[44rem]:hidden">
+                                                                {ROTULO_CANAL[p.canal]}
+                                                                {variosVendedores ? `, ${p.vendedor}` : ""}
+                                                            </span>
+                                                        </>
+                                                    }
+                                                />
+                                                <Celula rotulo="Pedido" className="hidden @min-[44rem]:w-32">
+                                                    <span className="block font-medium tabular-nums" title={p.pedido}>
+                                                        #{p.pedido.slice(0, 8)}
+                                                    </span>
+                                                    <span className="block text-tertiary tabular-nums">{dataHora(p.data)}</span>
+                                                </Celula>
+                                                <Celula rotulo="Canal" className="hidden @min-[44rem]:w-44">
+                                                    <span className="flex">
+                                                        <CanalDoPedido canal={p.canal} />
+                                                    </span>
+                                                    {variosVendedores && <span className="block text-tertiary">{p.vendedor}</span>}
+                                                </Celula>
+                                                <Celula rotulo="Valor" numero className="hidden @min-[44rem]:flex @min-[44rem]:w-40 @min-[44rem]:flex-col @min-[44rem]:items-end">
+                                                    <ValorDoPedido p={p} comComissao={comComissao} />
+                                                </Celula>
+                                                {/* Cartão estreito: o valor que importa à direita. */}
+                                                <span className="flex shrink-0 flex-col items-end gap-1 text-right text-sm tabular-nums @min-[44rem]:hidden">
+                                                    <ValorDoPedido p={p} comComissao={comComissao} />
                                                 </span>
-                                                <span>{p.comprador}</span>
-                                            </td>
-                                            <td className={TD}>
-                                                <span className="block text-primary">
-                                                    {p.quantidade}× {p.item}
-                                                </span>
-                                                <span>{p.detalhe}</span>
-                                            </td>
-                                            <td className={TD}>
-                                                <CanalDoPedido canal={p.canal} />
-                                            </td>
-                                            {variosVendedores && <td className={TD}>{p.vendedor}</td>}
-                                            <td className={cx(TD, "text-right tabular-nums")}>
-                                                {p.status === "cancelado" ? (
-                                                    // O Badge do DS é flex (bloco): ml-auto o encosta na borda da coluna, alinhado com os valores (ECO-75).
-                                                    <Badge size="sm" type="pill-color" color="error" className="ml-auto">
-                                                        Cancelado
-                                                    </Badge>
-                                                ) : (
-                                                    <span className="block text-primary">{valorDoPedido(p)}</span>
-                                                )}
-                                                {p.venda && p.venda.desconto > 0 && <span className="block">{moeda(p.venda.desconto * p.quantidade)} de desconto</span>}
-                                                {p.venda && (p.venda.acrescimo ?? 0) > 0 && <span className="block">{moeda((p.venda.acrescimo ?? 0) * p.quantidade)} a mais</span>}
-                                            </td>
-                                            {comComissao && (
-                                                <td className={cx(TD, "text-right tabular-nums")}>
-                                                    <span className={cx(p.venda && p.venda.status !== "cancelada" && p.venda.canal !== "cortesia" && "font-medium text-primary")}>{textoDaComissao(p)}</span>
-                                                </td>
-                                            )}
-                                        </tr>
+                                            </div>
+                                            <ChevronRight aria-hidden="true" className="size-4 shrink-0 text-fg-quaternary transition duration-100 ease-linear group-hover:translate-x-0.5" />
+                                        </LinhaDaTabela>
                                     ))}
-                                </tbody>
-                            </table>
-                        </div>
-                        <ListaDaTabela
-                            className="md:flex xl:hidden"
-                            rotulo="Pedidos do grupo"
-                            itens={visiveis}
-                            chave={(p) => p.id}
-                            titulo={(p) => `${p.quantidade}× ${p.item}`}
-                            apoio={(p) => `${p.comprador}, ${ROTULO_CANAL[p.canal].toLowerCase()}`}
-                            destaque={(p) =>
-                                p.status === "cancelado" ? (
-                                    <Badge size="sm" type="pill-color" color="error">
-                                        Cancelado
-                                    </Badge>
-                                ) : (
-                                    <>
-                                        <span className="font-medium">{valorDoPedido(p)}</span>
-                                        {comComissao && p.venda && p.venda.canal !== "cortesia" && <span className="text-tertiary">{textoDaComissao(p)} de comissão</span>}
-                                    </>
-                                )
-                            }
-                            onAbrir={abrir}
-                        />
-                        {restantes > 0 && (
-                            <div className="border-t border-secondary p-4">
-                                <BotaoMostrarMais restantes={restantes} onClick={mostrarMais} />
-                            </div>
-                        )}
+                                </ul>
+                            )}
+                            <RodapeDePaginacao {...paginacao} />
+                        </CartaoDaTabela>
                     </>
                 )}
             </section>

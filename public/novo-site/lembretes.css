@@ -1,0 +1,139 @@
+/* lembretes.css: o sino do menu, o painel de lembretes (popover no desktop, folha no celular), a folha do e-mail e o bloco de abertura de venda `.ab`
+   (tools/previa/lembretes.mjs + tools/previa/lembretes.js; pedido do Wander, 27/10/2026). Só tokens da identidade. Raio de 8 px vem da regra global; sem sombra e sem desfoque.
+
+   O bloco `.ab` é UM componente: a Coleção (turnê) o usa por data, o Evento usa o mesmo botão, e a página de confronto de futebol (aberturas por janela, EP-17) usa o
+   mesmo bloco por janela. Estados: aguardando (data e hora de abertura, contagem e o botão de aviso) e aberto (o botão de compra, que liga sozinho). */
+
+/* O sino do cabeçalho saiu (28/10/2026): as notificações moram no menu da conta e a contagem de novas é a bolinha do avatar (tools/previa/menu-conta.css). */
+
+/* ---------- camada flutuante: painel do sino e folha do e-mail ---------- */
+.sino-pop, .sino-pop * { font-family: var(--font-family-base) !important; }
+.sino-pop { position: fixed; z-index: var(--zIndex-dropdown); box-sizing: border-box; display: flex; flex-direction: column; width: min(400px, calc(100vw - 2 * var(--space-2))); max-height: min(620px, calc(100vh - 96px)); background: var(--color-bg-surface); color: var(--color-text-primary); border: var(--border-width-strong) solid var(--color-border-strong); line-height: var(--font-lh-body); font-size: var(--font-size-body); }
+.sino-pop:focus { outline: none; }
+.sino-pop[data-modo="folha"] { left: 0; right: 0; bottom: 0; top: auto; width: auto; max-height: 86vh; border-width: var(--border-width-strong) 0 0 0; border-radius: var(--radius-base) var(--radius-base) 0 0 !important; z-index: var(--zIndex-sheet); }
+.sino-contato[data-modo="popover"] { top: 50% !important; left: 50% !important; right: auto; bottom: auto; transform: translate(-50%, -50%); width: min(440px, calc(100vw - 2 * var(--space-4))); z-index: var(--zIndex-sheet); }
+.sino-scrim { position: fixed; inset: 0; z-index: var(--zIndex-overlay); background: color-mix(in srgb, var(--color-bg-island) 62%, transparent); } /* a cortina é sempre escura (a ilha), nos dois temas: com o inverso ela clareava a página no escuro */
+/* movimento da camada: o popover desce e aparece, a folha sobe, a cortina clareia; a saída é o caminho de volta, mais curta (tokens motion.*; movimento reduzido: sem animar) */
+@keyframes sino-entra { from { opacity: 0; transform: translateY(calc(-1 * var(--motion-distance-sm))); } to { opacity: 1; transform: none; } }
+@keyframes sino-sai { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateY(calc(-1 * var(--motion-distance-sm))); } }
+@keyframes sino-folha-entra { from { opacity: 0; transform: translateY(var(--motion-distance-lg)); } to { opacity: 1; transform: none; } }
+@keyframes sino-folha-sai { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateY(var(--motion-distance-lg)); } }
+@keyframes sino-centro-entra { from { opacity: 0; transform: translate(-50%, calc(-50% + var(--motion-distance-sm))); } to { opacity: 1; transform: translate(-50%, -50%); } }
+@keyframes sino-centro-sai { from { opacity: 1; transform: translate(-50%, -50%); } to { opacity: 0; transform: translate(-50%, calc(-50% + var(--motion-distance-sm))); } }
+@keyframes sino-cortina { from { opacity: 0; } to { opacity: 1; } }
+.sino-pop { animation: sino-entra var(--motion-duration-fast) var(--motion-ease-enter) both; } /* popover: entra em 160 ms e sai em 80 ms, igual ao menu da conta e ao popover de cidades */
+.sino-pop[data-modo="folha"] { animation-name: sino-folha-entra; }
+.sino-contato[data-modo="popover"] { animation-name: sino-centro-entra; }
+.sino-scrim { animation: sino-cortina var(--motion-duration-base) var(--motion-ease-enter) both; }
+.sino-pop[data-saindo], .sino-scrim[data-saindo] { pointer-events: none; animation-duration: var(--motion-duration-instant); animation-timing-function: var(--motion-ease-exit); }
+.sino-pop[data-modo="folha"], .sino-contato[data-modo="popover"] { animation-duration: var(--motion-duration-base); }
+.sino-pop[data-saindo][data-modo="folha"], .sino-contato[data-saindo], .sino-scrim[data-saindo] { animation-duration: var(--motion-duration-fast); }
+.sino-pop[data-saindo] { animation-name: sino-sai; }
+.sino-pop[data-saindo][data-modo="folha"] { animation-name: sino-folha-sai; }
+.sino-contato[data-saindo][data-modo="popover"] { animation-name: sino-centro-sai; }
+.sino-scrim[data-saindo] { animation-name: sino-cortina; animation-direction: reverse; }
+@media (prefers-reduced-motion: reduce) { .sino-pop, .sino-scrim, .sino-campo[data-troca] { animation: none !important; transition: none !important; } }
+html[data-motion="reduce"] .sino-pop, html[data-motion="reduce"] .sino-scrim, html[data-motion="reduce"] .sino-campo[data-troca] { animation: none !important; transition: none !important; }
+.sino-h { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-3) var(--space-3) var(--space-5); border-bottom: var(--border-width-hairline) solid var(--color-border-subtle); }
+.sino-t { margin: 0; flex: 1 1 auto; font-size: var(--font-size-title-4); line-height: var(--font-lh-title-4); font-weight: 600; letter-spacing: 0; }
+.sino-cont { display: inline-flex; align-items: center; justify-content: center; min-width: 32px; min-height: 32px; padding: 0 var(--space-2); border: var(--border-width-strong) solid var(--color-border-strong); font-size: var(--font-size-small); font-weight: 600; font-variant-numeric: tabular-nums; }
+.sino-x { flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; width: var(--size-touch-default); height: var(--size-touch-default); padding: 0; background: transparent; border: 0; color: var(--color-text-primary); cursor: pointer; }
+.sino-x:hover { background: var(--color-bg-hover); }
+.sino-x svg { width: var(--size-icon-md); height: var(--size-icon-md); stroke-width: 2; }
+.sino-corpo { overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; }
+.sino-lista { list-style: none; margin: 0; padding: 0; }
+.sino-item { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4) var(--space-5); border-bottom: var(--border-width-hairline) solid var(--color-border-subtle); }
+.sino-item-tx { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
+.sino-item-tx p { margin: 0; }
+.sino-evento { font-weight: 600; }
+.sino-praca { font-size: var(--font-size-small); color: var(--color-text-secondary); }
+.sino-quando { font-size: var(--font-size-small); display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1); }
+.sino-quando time { font-weight: 600; font-variant-numeric: tabular-nums; }
+.sino-falta { color: var(--color-text-secondary); font-variant-numeric: tabular-nums; }
+.sino-via { display: flex; align-items: center; gap: var(--space-2); font-size: var(--font-size-small); color: var(--color-text-secondary); }
+.sino-via-ic { width: var(--size-icon-sm); height: var(--size-icon-sm); flex: 0 0 auto; stroke-width: 2; }
+.sino-tag-ic { width: var(--size-icon-sm); height: var(--size-icon-sm); stroke-width: 2; }
+.sino-item-ac { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.sino-item-ac .bs, .sino-item-ac .bp { min-height: var(--size-touch-default); padding: 0 var(--space-5); }
+.sino-item[data-estado="aberto"] { border-left: var(--space-1) solid var(--color-alert-success-fg); padding-left: calc(var(--space-5) - var(--space-1)); }
+.sino-vazio { padding: var(--space-8) 0; width: auto; margin-inline: var(--space-5); } /* o estado vazio da casa tem 48 px em cima e embaixo e 0 nos lados (auditoria de componentes): o respiro lateral vem da margem */
+.sino-canais { padding: var(--space-4) var(--space-5) var(--space-5); display: flex; flex-direction: column; gap: var(--space-2); background: var(--color-bg-subtle); }
+.sino-canais .over { margin: 0; }
+.sino-canais-l { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.sino-canal { display: flex; align-items: center; gap: var(--space-3); min-height: var(--size-touch-default); padding: var(--space-2) 0; font-size: var(--font-size-small); }
+.sino-canal + .sino-canal { border-top: var(--border-width-hairline) solid var(--color-border-subtle); }
+.sino-canal-ic { flex: 0 0 auto; width: var(--size-icon-md); height: var(--size-icon-md); stroke-width: 2; }
+.sino-canal-tx { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
+.sino-canal-n { font-weight: 600; }
+.sino-canal-sub { color: var(--color-text-secondary); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.sino-canal[data-ativo="false"] .sino-canal-n, .sino-canal[data-ativo="false"] .sino-canal-ic { color: var(--color-text-secondary); }
+.sino-canal-bt { flex: 0 0 auto; min-height: var(--size-touch-default); padding: 0 var(--space-4); }
+.tag-breve { border-style: dashed; }
+/* lista compacta (mais de 4 notificações): uma linha por item, o texto à esquerda e as ações à direita (Comprar e remover em ícone de 48 px); 12 novas passam de ~3,4 mil px a cerca de 70 px por item */
+.sino-lista[data-compacto] .sino-item { flex-direction: row; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-3) var(--space-3) var(--space-5); }
+.sino-lista[data-compacto] .sino-item[data-estado="aberto"] { padding-left: calc(var(--space-5) - var(--space-1)); }
+.sino-lista[data-compacto] .sino-item-tx { flex: 1 1 auto; gap: 0; }
+.sino-lista[data-compacto] .sino-evento { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sino-lista[data-compacto] .sino-praca, .sino-lista[data-compacto] .sino-via { display: none; }
+.sino-lista[data-compacto] .sino-item-ac { flex: 0 0 auto; flex-wrap: nowrap; gap: var(--space-1); }
+.sino-lista[data-compacto] .sino-item-ac .bp { min-height: var(--size-touch-default); padding: 0 var(--space-4); flex: 0 0 auto; }
+.sino-rm-ic { display: inline-flex; align-items: center; justify-content: center; width: var(--size-touch-default); min-width: var(--size-touch-default); padding: 0 !important; flex: 0 0 auto !important; border-color: transparent; }
+.sino-rm-ic svg { width: var(--size-icon-md); height: var(--size-icon-md); stroke-width: 2; }
+@media (max-width: 640px) { .sino-lista[data-compacto] .sino-item-ac .bs, .sino-lista[data-compacto] .sino-item-ac .bp { flex: 0 0 auto; } .sino-lista[data-compacto] .sino-item-ac .bs.sino-rm-ic { width: var(--size-touch-default); } }
+/* folha do aviso (WhatsApp primeiro, e-mail como alternativa) */
+.sino-form { display: flex; flex-direction: column; gap: var(--space-4); padding: var(--space-5); }
+.sino-txt { margin: 0; font-size: var(--font-size-small); color: var(--color-text-secondary); }
+.sino-form .field { display: flex; flex-direction: column; gap: var(--space-2); }
+.sino-form .err[hidden] { display: none; }
+.sino-form .err:not([hidden])::before { display: block; } /* o erro leva o ícone, como nos outros formulários */
+.sino-ajuda { margin: 0; font-size: var(--font-size-small); color: var(--color-text-tertiary); }
+.sino-campo[data-troca="true"] { animation: sino-entra var(--motion-duration-base) var(--motion-ease-enter) both; }
+.sino-alt { align-self: flex-start; min-height: var(--size-touch-default); padding: 0; }
+.tel-box[data-dir="cima"] .tel-list { top: auto; bottom: calc(100% + var(--space-1)); transform: translateY(var(--space-1)); }
+.tel-box[data-dir="cima"][data-open="true"] .tel-list { transform: none; }
+.sino-pop .tel-list { max-height: min(320px, 40vh); }
+html:has(.sino-scrim) .proto { display: none; } /* com a folha aberta a engrenagem do protótipo sai da frente (como nas outras folhas) */
+.sino-form .field input { width: 100%; box-sizing: border-box; min-height: var(--size-touch-default); }
+.sino-acoes { display: flex; flex-wrap: wrap; gap: var(--space-3); }
+.sino-acoes .bp, .sino-acoes .bs { flex: 1 1 160px; justify-content: center; min-height: var(--size-touch-default); }
+@media (max-width: 640px) { .sino-item-ac .bs, .sino-item-ac .bp { flex: 1 1 100%; justify-content: center; } }
+
+/* ---------- bloco de abertura de venda (.ab): data e hora, contagem e o botão de aviso; ao abrir vira o botão de compra ---------- */
+.ab { display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; align-items: flex-start; }
+.ab-quando { margin: 0; display: flex; flex-direction: column; gap: var(--space-1); }
+.ab-rot { font-size: var(--font-size-label); font-weight: 600; letter-spacing: var(--font-ls-label); text-transform: uppercase; color: var(--color-text-secondary); }
+.ab-quando time { font-size: var(--font-size-body); font-weight: 700; font-variant-numeric: tabular-nums; }
+.ab-falta { margin: 0; font-size: var(--font-size-small); color: var(--color-text-secondary); font-variant-numeric: tabular-nums; }
+.ab-avisar { display: inline-flex; align-items: center; gap: var(--space-2); min-height: var(--size-touch-default); }
+/* os dois rótulos ocupam a mesma célula: o botão tem sempre a largura do maior e nunca muda de forma entre "Me avisar quando abrir" e "Aviso ativado" */
+.ab-lbl { display: inline-grid; }
+.ab-lbl > span { grid-area: 1 / 1; text-align: center; }
+.ab-avisar[aria-pressed="false"] .ab-lbl > [data-l="on"], .ab-avisar[aria-pressed="true"] .ab-lbl > [data-l="off"] { visibility: hidden; }
+.ab-ok { display: none; width: var(--size-icon-md); height: var(--size-icon-md); stroke-width: 2; }
+.ab-avisar[aria-pressed="true"] .ab-ok { display: inline-block; }
+.ab-avisar[aria-pressed="true"] .btn-ic { display: none; }
+.ab-comprar { min-height: var(--size-touch-default); }
+@media (max-width: 640px) { .ab { align-items: stretch; width: 100%; } .ab-avisar, .ab-comprar { justify-content: center; width: 100%; box-sizing: border-box; } }
+
+/* Busca: o seletor de cidade empurra o grupo (cidade, sino e conta) para a direita; a conta não leva a segunda margem automática (antes, com as duas, a cidade ficava no meio do cabeçalho) */
+html[data-pagina="busca"] .hdr-row > .avatar-hdr { margin-left: 0; }
+
+/* seletor de país do telefone (de checkout-etapas.mjs, CSS_TELEFONE) */
+/* Telefone internacional: bandeira (só ela) no campo; a lista traz bandeira, DDI e nome do país */
+.tel-box { position: relative; display: block; }
+.field .tel-box > input { width: 100%; padding-left: 84px !important; box-sizing: border-box; }
+.tel-flag { position: absolute; z-index: 1; left: 0; top: 0; bottom: 0; width: 72px; display: flex; align-items: center; justify-content: center; gap: var(--space-2); padding: 0; background: transparent; border: 0; border-right: var(--border-width-hairline) solid var(--color-border-subtle); border-radius: 0 !important; color: var(--color-text-tertiary); cursor: pointer; }
+.tel-flag:hover { color: var(--color-text-primary); background: var(--color-bg-hover); }
+.tel-flag img, .tel-list img { width: 24px; height: 18px; flex: 0 0 auto; object-fit: cover; border: var(--border-width-hairline) solid var(--color-border-subtle); }
+.tel-box[data-open="true"] .tel-flag svg { transform: rotate(180deg); }
+.tel-flag svg { transition: transform var(--motion-duration-fast) var(--motion-ease-move); }
+.tel-list { position: absolute; z-index: 30; left: 0; top: calc(100% + var(--space-1)); width: min(360px, 100%); max-height: 320px; overflow-y: auto; margin: 0; padding: var(--space-1) 0; list-style: none; background: var(--color-bg-surface); border: var(--border-width-strong) solid var(--color-border-strong); border-radius: var(--radius-base); visibility: hidden; opacity: 0; transform: translateY(calc(-1 * var(--space-1))); transition: opacity var(--motion-duration-fast) var(--motion-ease-enter), transform var(--motion-duration-fast) var(--motion-ease-enter), visibility 0s linear var(--motion-duration-fast); }
+.tel-box[data-open="true"] .tel-list { visibility: visible; opacity: 1; transform: none; transition: opacity var(--motion-duration-fast) var(--motion-ease-enter), transform var(--motion-duration-fast) var(--motion-ease-enter), visibility 0s; }
+.tel-list li { display: flex; align-items: center; gap: var(--space-3); min-height: var(--size-touch-default); padding: 0 var(--space-4); font-size: var(--font-size-body); cursor: pointer; color: var(--color-text-primary); }
+.tel-list li:hover, .tel-list li:focus-visible { background: var(--color-bg-hover); }
+.tel-list li[aria-selected="true"] { background: var(--color-bg-subtle); }
+/* item do país na anatomia do SelectItem do Untitled UI: imagem, nome, texto de apoio (+DDI) e ✓ à direita no selecionado */
+.tel-nome { flex: 0 1 auto; min-width: 0; }
+.tel-ddi { flex: 1 1 auto; color: var(--color-text-tertiary); font-variant-numeric: tabular-nums; }
+.tel-ok { visibility: hidden; margin-left: auto; }
+.tel-list li[aria-selected="true"] .tel-ok { visibility: visible; }

@@ -80,6 +80,13 @@ export function CheckoutShell({ isMobile, topo, juros = 0, children }: CheckoutS
                 )}
             </div>
 
+            {/* Cupom do link de compra: o desconto já saiu do total do pedido (CUP-52). */}
+            {pedido?.cupom && (
+                <div className="py-4">
+                    <Linha label={`Desconto (${pedido.cupom.codigo})`} valor={`- ${brl(pedido.cupom.desconto)}`} />
+                </div>
+            )}
+
             {protecao === "com" && (
                 <div className="py-4">
                     <p className="text-lg font-semibold text-primary">Adicionais</p>

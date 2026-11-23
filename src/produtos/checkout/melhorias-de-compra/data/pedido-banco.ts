@@ -54,4 +54,8 @@ export function usePedidoCheckout(): { pedido: Pedido; evento?: Evento; sessao?:
 }
 
 /** Total do pedido atual sem proteção e sem juros, para cálculos fora de componente. */
-export const totalBaseDoPedidoAtual = (): number | null => (atual ? (lerDoc("pedidos", atual)?.total ?? null) : null);
+export const totalBaseDoPedidoAtual = (): number | null => {
+    // O ?pedido= da URL vale antes do efeito que o guarda na aba: sem isso, o primeiro desenho mostrava o total do mock.
+    const id = (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("pedido")) || atual;
+    return id ? (lerDoc("pedidos", id)?.total ?? null) : null;
+};

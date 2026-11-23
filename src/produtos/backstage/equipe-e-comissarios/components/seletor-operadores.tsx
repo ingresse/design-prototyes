@@ -58,7 +58,7 @@ export function SeletorOperadores({ grupos, onGrupos, emails, onEmails, semMoldu
         <div className={cx("flex flex-col gap-5", !semMoldura && "rounded-xl bg-primary p-6 ring-1 ring-border-secondary ring-inset")}>
             <div className="flex flex-col gap-1.5">
                 <span id="rotulo-grupos" className="text-sm font-medium text-secondary">
-                    Selecione grupos de membros
+                    Grupos de Membros
                 </span>
                 <DropdownGrupos valor={grupos} onChange={onGrupos} />
             </div>
@@ -73,13 +73,13 @@ export function SeletorOperadores({ grupos, onGrupos, emails, onEmails, semMoldu
                         initial={reduzir ? { opacity: 0 } : { height: 0, opacity: 0 }}
                         animate={{ height: "auto", opacity: 1 }}
                         exit={reduzir ? { opacity: 0 } : { height: 0, opacity: 0 }}
-                        transition={{ height: { duration: 0.4, ease: EASE }, opacity: { duration: 0.2 } }}
+                        transition={{ height: { duration: 0.2, ease: EASE }, opacity: { duration: 0.2 } }}
                         className="-mt-1 overflow-hidden"
                     >
                         <div className="flex flex-col gap-4 border-t border-secondary pt-5">
                             {/* Total do grupo novo, sem contar duas vezes quem está em mais de um grupo. */}
                             <div className="flex items-center justify-between gap-3">
-                                <span className="text-sm font-semibold text-primary">Operadores</span>
+                                <span className="text-sm font-semibold text-primary">Pessoas do grupo</span>
                                 <span className="flex items-center gap-1.5 text-sm text-tertiary">
                                     <Users01 className="size-4 shrink-0 text-fg-quaternary" aria-hidden="true" />
                                     {operadores.length} {operadores.length === 1 ? "pessoa" : "pessoas"}
@@ -165,7 +165,7 @@ export function SecaoOperadores({
                 <h3 className="flex min-w-0 flex-1 items-center gap-2 text-sm font-medium text-secondary">
                     <Icone className="size-4 shrink-0 text-fg-quaternary" aria-hidden="true" />
                     <span>
-                        {titulo} – {total} {total === 1 ? unidade[0] : unidade[1]}
+                        {titulo}, {total} {total === 1 ? unidade[0] : unidade[1]}
                     </span>
                 </h3>
                 {onRemover && <ButtonUtility size="xs" color="tertiary" icon={Trash01} tooltip={rotuloRemover} onClick={onRemover} />}
@@ -234,7 +234,7 @@ function CampoEmail({ emails, origens, onAdicionar }: { emails: string[]; origen
     return (
         <div className="flex flex-col gap-1.5">
             <span id="rotulo-email" className="text-sm font-medium text-secondary">
-                Adicione pessoas individualmente
+                Pessoas por e-mail
             </span>
             <InputGroup
                 aria-labelledby="rotulo-email"
@@ -252,7 +252,7 @@ function CampoEmail({ emails, origens, onAdicionar }: { emails: string[]; origen
                 }
             >
                 <InputBase
-                    placeholder="E-mail do operador"
+                    placeholder="E-mail da pessoa"
                     onKeyDown={(e) => {
                         if (e.key === "Enter") {
                             e.preventDefault();
@@ -335,7 +335,7 @@ function DropdownGrupos({ valor, onChange }: { valor: string[]; onChange: (ids: 
             >
                 <Users01 className="size-5 shrink-0 text-fg-quaternary" aria-hidden="true" />
                 <span className={cx("min-w-0 flex-1 truncate font-normal", resumo ? "text-primary" : "text-placeholder")}>
-                    {resumo ?? "Selecione um ou mais grupos"}
+                    {resumo ?? "Escolha um ou mais grupos"}
                 </span>
                 <ChevronDown
                     className={cx("size-4 shrink-0 text-fg-quaternary transition-transform duration-200 ease-out", aberto && "rotate-180")}
@@ -359,7 +359,7 @@ function DropdownGrupos({ valor, onChange }: { valor: string[]; onChange: (ids: 
                     )
                 }
             >
-                <AriaDialog aria-label="Grupos de membros" className="flex min-h-0 flex-col outline-hidden" data-lista-grupos>
+                <AriaDialog aria-label="Grupos de Membros" className="flex min-h-0 flex-col outline-hidden" data-lista-grupos>
                     <div className="shrink-0 p-1.5">
                         <Input
                             size="sm"
@@ -383,14 +383,14 @@ function DropdownGrupos({ valor, onChange }: { valor: string[]; onChange: (ids: 
                     ) : (
                         <AriaListBox
                             ref={lista}
-                            aria-label="Grupos de membros"
+                            aria-label="Grupos de Membros"
                             // Múltipla escolha: a lista fica aberta para marcar vários de uma vez.
                             selectionMode="multiple"
                             selectedKeys={valor}
                             onSelectionChange={mudar}
                             items={visiveis}
                             // Barra de rolagem própria: a global some no fundo desta lista. Fina (6px) como a do Figma.
-                            className="max-h-[216px] min-h-0 overflow-y-auto px-1.5 pb-1.5 outline-hidden [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:border-0 [&::-webkit-scrollbar-thumb]:bg-[var(--color-border-primary)] hover:[&::-webkit-scrollbar-thumb]:bg-[var(--color-fg-quaternary)] [&::-webkit-scrollbar-track]:bg-transparent"
+                            className="max-h-[216px] min-h-0 overflow-y-auto px-1.5 pb-1.5 outline-hidden [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:border-0 [&::-webkit-scrollbar-thumb]:bg-border-primary hover:[&::-webkit-scrollbar-thumb]:bg-fg-quaternary [&::-webkit-scrollbar-track]:bg-transparent"
                         >
                             {(g) => (
                                 <AriaListBoxItem

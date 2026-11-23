@@ -1,32 +1,33 @@
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { CalendarPlus01, Copy01, Edit01, Plus, SearchLg, Trash01 } from "@untitledui/icons";
-import { EmptyState } from "@/components/application/empty-state/empty-state";
+import { CalendarPlus01, Copy01, DotsVertical, Edit01, Plus, Trash01 } from "@untitledui/icons";
 import { Dialog, Modal, ModalOverlay } from "@/components/application/modals/modal";
 import { Badge } from "@/components/base/badges/badges";
+import { ButtonGroup, ButtonGroupItem } from "@/components/base/button-group/button-group";
 import { Button } from "@/components/base/buttons/button";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
-import { Input, InputBase } from "@/components/base/input/input";
-import { Surgir } from "@/components/foundations/transicao";
+import { Dropdown } from "@/components/base/dropdown/dropdown";
 import type { AberturaDeVendas, Evento, ItemDaAbertura, ProdutoDaOrganizacao } from "@/plataforma";
 import { itensDaAbertura } from "@/plataforma";
 import { BackstageLayout } from "../../components/Backstage";
-import { EscolhaEmLista, ListaDeEscolhas } from "../../itens/components/comuns";
-import { BotaoMostrarMais, LIMIAR_FERRAMENTAS, paraBusca, useMostrarMais } from "../../itens/components/escala";
-import { SeletorDeLista, type OpcaoDeLista } from "../../itens/components/SeletorDeLista";
-import { SeletorDeIngressos, useResumoDeIngressos } from "../components/SeletorDeIngressos";
+import { RodapeDePaginacao, usePaginacao } from "../../components/rodape-de-paginacao";
+import { BarraDaLista, CabecalhoDaTabela, CarregandoTabela, CartaoDaTabela, Celula, LinhaDaTabela, SemResultados, TituloDaLinha, VazioDaTabela } from "../../components/tabela";
+import { paraBusca } from "../../itens/components/escala";
+import { type OpcaoDeLista } from "../../itens/components/SeletorDeLista";
+import { useResumoDeIngressos } from "../../components/seletor-de-ingressos";
+import { PainelDaAbertura } from "../../components/painel-da-abertura";
 import { novoId, produtosDo, salvarAberturas, useCatalogo } from "../../itens/data/catalogo";
 import { formatar, useTextosItens } from "../../itens/data/textos-itens";
 import { AbasDeItens } from "../../components/abas-de-itens";
-import { CampoData, CampoHora } from "../../components/campos-de-data-e-hora";
 
 /* ------------------------------------------------------------------ */
 /*  Aberturas de vendas (ABV)                                          */
 /*                                                                     */
 /*  Quando os itens do evento vendem. Cada abertura tem nome, início,  */
 /*  fim e os ingressos, produtos e combos incluídos. Lê e grava no     */
-/*  evento (`Evento.aberturas`); cada mudança é uma ação confirmada    */
-/*  (modal ou seletor) e grava na hora.                                */
+/*  evento (`Evento.aberturas`). Criar e editar acontecem num painel   */
+/*  só, com nome, período e itens (ABV-11); duplicar e excluir gravam  */
+/*  na hora.                                                           */
 /* ------------------------------------------------------------------ */
 
 type TipoDeItem = "ingresso" | "produto" | "combo";
@@ -37,14 +38,22 @@ const T = {
     subtitulo: "Quando cada ingresso, produto e combo vende.",
     nova: "Nova abertura",
     buscar: "Buscar abertura",
-    contagem: "{visiveis} de {total}",
-    nada: "Nenhuma abertura com esse nome.",
+    filtro: "Filtrar por estado",
+    todas: "Todas",
+    nada: "Nenhuma abertura encontrada.",
+    colAbertura: "Abertura",
+    colEstado: "Estado",
+    colItens: "Itens",
+    opcoes: "Opções de {nome}",
+    contagemItens: { ingresso: { one: "{n} ingresso", other: "{n} ingressos" }, produto: { one: "{n} produto", other: "{n} produtos" }, combo: { one: "{n} combo", other: "{n} combos" } },
     vazio: "Nenhuma abertura programada",
     vazioDica: "Crie a primeira abertura para os ingressos, produtos e combos começarem a vender.",
     carregando: "Carregando aberturas",
     estados: { aberta: "Aberta agora", agendada: "Agendada", encerrada: "Encerrada" },
     periodo: "De {inicio} até {fim}",
     duplicar: "Duplicar {nome}",
+    duplicarAcao: "Duplicar",
+    excluirAcao: "Excluir",
     editar: "Editar {nome}",
     excluir: "Excluir {nome}",
     duplicada: "{nome} duplicada.",
@@ -52,6 +61,7 @@ const T = {
     salvo: "Alterações salvas.",
     erro: "Tente de novo: não foi possível salvar.",
     semItens: "Escolha os itens: sem eles, esta abertura não vende nada.",
+    abrir: "Abrir {nome}",
     grupos: {
         ingresso: { rotulo: "Ingressos", vazio: "Nenhum ingresso", botao: "Escolher ingressos", seletor: "Ingressos de {nome}", seletorVazio: "" },
         produto: { rotulo: "Produtos", vazio: "Nenhum produto", botao: "Escolher produtos", seletor: "Produtos de {nome}", seletorVazio: "O evento ainda não vende produtos." },
@@ -59,26 +69,6 @@ const T = {
     } satisfies Record<TipoDeItem, { rotulo: string; vazio: string; botao: string; seletor: string; seletorVazio: string }>,
     ingressoApoio: "{setor}, sessão de {sessao}",
     ingressoApoioUnico: "{setor}",
-    modal: {
-        nova: "Nova abertura de vendas",
-        editar: "Editar abertura",
-        nome: "Nome",
-        nomePlaceholder: "Ex.: Venda antecipada",
-        nomeDica: "Aparece para o comprador.",
-        nomeErro: "Dê um nome à abertura.",
-        inicio: "Começa em",
-        fim: "Termina em",
-        inicioHora: "Horário de início",
-        fimHora: "Horário de fim",
-        dataErro: "Escolha a data.",
-        horaErro: "Escolha o horário.",
-        fimErro: "Escolha um fim depois do começo.",
-        evento: "O evento começa em {data}.",
-        cancelar: "Cancelar",
-        criar: "Criar abertura",
-        salvar: "Salvar",
-        criada: "{nome} criada.",
-    },
     confirmar: {
         titulo: "Excluir {nome}?",
         dica: "Os itens dela deixam de vender neste período. Esta ação não pode ser desfeita.",
@@ -113,17 +103,10 @@ function opcoesDeItens(evento: Evento | undefined, biblioteca: ProdutoDaOrganiza
     };
 }
 
-/** Grava só o formato novo (`itens`), sem as configurações antigas. */
-const comItens = (a: AberturaDeVendas, itens: ItemDaAbertura[]): AberturaDeVendas => {
-    const { configuracoes: _antigas, ...resto } = a;
-    return { ...resto, itens };
-};
-
-type Seletor = { aberturaId: string; tipo: TipoDeItem };
 
 export function AberturasDeVendas() {
     const { carregando, evento, biblioteca } = useCatalogo();
-    const { numero, dataCurta, dataLonga } = useTextosItens();
+    const { dataCurta, dataLonga } = useTextosItens();
     const aberturas = useMemo(() => [...(evento?.aberturas ?? [])].sort((a, b) => a.inicio.localeCompare(b.inicio)), [evento?.aberturas]);
     const opcoes = useMemo(() => opcoesDeItens(evento, biblioteca, dataCurta), [evento, biblioteca, dataCurta]);
     const rotuloDe = useMemo(() => {
@@ -133,13 +116,21 @@ export function AberturasDeVendas() {
     /** Setor de cada ingresso, para o resumo "N ingressos em M setores". */
     const setorDoIngresso = useMemo(() => new Map((evento?.sessoes ?? []).flatMap((s) => s.grupos.flatMap((g) => g.ingressos.map((t) => [t.id, g.id] as const)))), [evento?.sessoes]);
 
-    const [modal, setModal] = useState<{ abertura?: AberturaDeVendas } | null>(null);
+    // Painel da abertura (ABV-11): sem abertura, cria uma nova.
+    const [painel, setPainel] = useState<{ abertura?: AberturaDeVendas } | null>(null);
     const [excluir, setExcluir] = useState<AberturaDeVendas | null>(null);
-    const [seletor, setSeletor] = useState<Seletor | null>(null);
     const [busca, setBusca] = useState("");
+    const [filtro, setFiltro] = useState<Estado | "todas">("todas");
     const termo = paraBusca(busca.trim());
-    const filtradas = useMemo(() => (termo ? aberturas.filter((a) => paraBusca(a.nome).includes(termo)) : aberturas), [aberturas, termo]);
-    const { visiveis, restantes, mostrarMais } = useMostrarMais(filtradas);
+    const filtradas = useMemo(
+        () => aberturas.filter((a) => (!termo || paraBusca(a.nome).includes(termo)) && (filtro === "todas" || estadoDa(a) === filtro)),
+        [aberturas, termo, filtro],
+    );
+    // Busca, filtro ou tamanho mudou: volta à página 1 (BKS-114).
+    const paginacao = usePaginacao(filtradas, [termo, filtro]);
+    const limparBusca = () => (setBusca(""), setFiltro("todas"));
+    // Filtro só com os estados que aparecem na lista (e mais de um).
+    const estadosNaLista = (Object.keys(T.estados) as Estado[]).filter((e) => aberturas.some((a) => estadoDa(a) === e));
 
     const gravar = async (lista: AberturaDeVendas[], mensagem = T.salvo) => {
         if (!evento) return false;
@@ -153,105 +144,94 @@ export function AberturasDeVendas() {
         }
     };
 
-    const trocar = (id: string, fn: (a: AberturaDeVendas) => AberturaDeVendas, mensagem?: string) => gravar(aberturas.map((a) => (a.id === id ? fn(a) : a)), mensagem);
-
     const duplicar = (a: AberturaDeVendas) => {
-        const copia = comItens({ ...a, id: novoId("abv"), nome: formatar(T.copia, { nome: a.nome }) }, itensDaAbertura(a));
+        const { configuracoes: _antigas, ...resto } = a;
+        const copia = { ...resto, id: novoId("abv"), nome: formatar(T.copia, { nome: a.nome }), itens: itensDaAbertura(a) };
         void gravar([...aberturas, copia], formatar(T.duplicada, { nome: a.nome }));
     };
-
-    const aberturaDoSeletor = seletor && aberturas.find((a) => a.id === seletor.aberturaId);
 
     return (
         <BackstageLayout activeSection="itens" activeItem="catalogo-aberturas">
             <div className="flex min-w-0 flex-1 flex-col gap-6">
-                <AbasDeItens ativa="aberturas" />
-                {/* Título e subtítulo vêm do topo de Itens (página própria, BKS-17); aqui só a ação. */}
-                {aberturas.length > 0 && (
-                    <div className="flex justify-end">
-                        <Button color="primary" size="md" iconLeading={Plus} onClick={() => setModal({})}>
-                            {T.nova}
-                        </Button>
-                    </div>
-                )}
+                <AbasDeItens
+                    ativa="aberturas"
+                    acoes={
+                        aberturas.length > 0 && (
+                            <Button color="primary" size="md" iconLeading={Plus} onClick={() => setPainel({})}>
+                                {T.nova}
+                            </Button>
+                        )
+                    }
+                />
 
+                {/* Lista do Backstage (BKS-110 a BKS-118): barra, cartão, linhas, paginação e estados. */}
                 {carregando ? (
-                    <div role="status" aria-label={T.carregando} className="flex flex-col gap-3">
-                        {[0, 1].map((i) => (
-                            <span key={i} aria-hidden="true" className="h-20 w-full animate-pulse rounded-2xl bg-secondary motion-reduce:animate-none" />
-                        ))}
-                    </div>
+                    <CarregandoTabela rotulo={T.carregando} linhas={2} />
                 ) : aberturas.length === 0 ? (
-                    <div className="flex items-center justify-center py-16">
-                        <EmptyState size="sm">
-                            <EmptyState.Header>
-                                <EmptyState.FeaturedIcon icon={CalendarPlus01} color="gray" theme="modern" />
-                            </EmptyState.Header>
-                            <EmptyState.Content>
-                                <EmptyState.Title>{T.vazio}</EmptyState.Title>
-                                <EmptyState.Description>{T.vazioDica}</EmptyState.Description>
-                            </EmptyState.Content>
-                            <EmptyState.Footer>
-                                <Button color="primary" size="md" iconLeading={Plus} onClick={() => setModal({})}>
-                                    {T.nova}
-                                </Button>
-                            </EmptyState.Footer>
-                        </EmptyState>
-                    </div>
+                    <VazioDaTabela
+                        icone={CalendarPlus01}
+                        titulo={T.vazio}
+                        texto={T.vazioDica}
+                        acao={
+                            <Button color="primary" size="md" iconLeading={Plus} onClick={() => setPainel({})}>
+                                {T.nova}
+                            </Button>
+                        }
+                    />
                 ) : (
                     <div className="flex flex-col gap-4">
-                        {aberturas.length > LIMIAR_FERRAMENTAS && (
-                            <div className="flex flex-wrap items-center justify-between gap-3">
-                                <InputBase
-                                    size="sm"
-                                    icon={SearchLg}
-                                    aria-label={T.buscar}
-                                    placeholder={T.buscar}
-                                    value={busca}
-                                    onChange={(v: unknown) => setBusca(typeof v === "string" ? v : ((v as { target?: { value?: string } })?.target?.value ?? ""))}
-                                    wrapperClassName="w-full sm:max-w-80"
-                                />
-                                <span role="status" className="text-sm text-tertiary tabular-nums">
-                                    {formatar(T.contagem, { visiveis: numero(filtradas.length), total: numero(aberturas.length) })}
-                                </span>
-                            </div>
-                        )}
-                        <ul className="flex flex-col gap-3">
-                            {visiveis.map((a) => (
-                                <li key={a.id}>
-                                    <CartaoDaAbertura
-                                        abertura={a}
-                                        rotuloDe={rotuloDe}
-                                        setorDoIngresso={setorDoIngresso}
-                                        onEditar={() => setModal({ abertura: a })}
-                                        onDuplicar={() => duplicar(a)}
-                                        onExcluir={() => setExcluir(a)}
-                                        onEscolher={(tipo) => setSeletor({ aberturaId: a.id, tipo })}
-                                    />
-                                </li>
-                            ))}
-                        </ul>
-                        <Surgir visivel={filtradas.length === 0}>
-                            <p className="text-sm text-tertiary">{T.nada}</p>
-                        </Surgir>
-                        <BotaoMostrarMais restantes={restantes} onClick={mostrarMais} />
+                        <BarraDaLista
+                            busca={{ valor: busca, onChange: setBusca, placeholder: T.buscar }}
+                            filtro={
+                                estadosNaLista.length > 1 && (
+                                    <ButtonGroup
+                                        size="sm"
+                                        aria-label={T.filtro}
+                                        selectedKeys={new Set([filtro])}
+                                        onSelectionChange={(k) => setFiltro(([...k][0] as Estado | "todas") ?? "todas")}
+                                        disallowEmptySelection
+                                    >
+                                        <ButtonGroupItem id="todas">{T.todas}</ButtonGroupItem>
+                                        {estadosNaLista.map((e) => (
+                                            <ButtonGroupItem key={e} id={e}>
+                                                {T.estados[e]}
+                                            </ButtonGroupItem>
+                                        ))}
+                                    </ButtonGroup>
+                                )
+                            }
+                        />
+                        <CartaoDaTabela>
+                            <CabecalhoDaTabela>
+                                <span className="min-w-0 flex-1">{T.colAbertura}</span>
+                                <span className="w-32">{T.colEstado}</span>
+                                <span className="w-60">{T.colItens}</span>
+                                <span className="w-17" />
+                            </CabecalhoDaTabela>
+                            {filtradas.length === 0 ? (
+                                <SemResultados texto={T.nada} onLimpar={limparBusca} />
+                            ) : (
+                                <ul className="flex flex-col divide-y divide-secondary">
+                                    {paginacao.visiveis.map((a) => (
+                                        <LinhaDaAbertura
+                                            key={a.id}
+                                            abertura={a}
+                                            rotuloDe={rotuloDe}
+                                            setorDoIngresso={setorDoIngresso}
+                                            onEditar={() => setPainel({ abertura: a })}
+                                            onDuplicar={() => duplicar(a)}
+                                            onExcluir={() => setExcluir(a)}
+                                        />
+                                    ))}
+                                </ul>
+                            )}
+                            <RodapeDePaginacao {...paginacao} />
+                        </CartaoDaTabela>
                     </div>
                 )}
             </div>
 
-            {modal && (
-                <ModalDaAbertura
-                    abertura={modal.abertura}
-                    dataDoEvento={evento?.data ? dataLonga(evento.data) : undefined}
-                    onFechar={() => setModal(null)}
-                    onSalvar={async (dados) => {
-                        const ok = modal.abertura
-                            ? await trocar(modal.abertura.id, (a) => comItens({ ...a, ...dados }, itensDaAbertura(a)))
-                            : await gravar([...aberturas, { id: novoId("abv"), ...dados, itens: [] }], formatar(T.modal.criada, { nome: dados.nome }));
-                        if (ok) setModal(null);
-                    }}
-                />
-            )}
+            {painel && evento && <PainelDaAbertura evento={evento} biblioteca={biblioteca} abertura={painel.abertura} onFechar={() => setPainel(null)} />}
 
             <ModalOverlay isOpen={!!excluir} onOpenChange={(v) => !v && setExcluir(null)} isDismissable>
                 <Modal className="sm:max-w-[400px]">
@@ -281,47 +261,21 @@ export function AberturasDeVendas() {
                 </Modal>
             </ModalOverlay>
 
-            {seletor && aberturaDoSeletor && evento && seletor.tipo === "ingresso" && (
-                <SeletorDeIngressos
-                    titulo={formatar(T.grupos.ingresso.seletor, { nome: aberturaDoSeletor.nome })}
-                    evento={evento}
-                    itens={itensDaAbertura(aberturaDoSeletor).filter((i) => i.tipo === "ingresso")}
-                    onFechar={() => setSeletor(null)}
-                    onConfirmar={(escolhidos) => {
-                        const outros = itensDaAbertura(aberturaDoSeletor).filter((i) => i.tipo !== "ingresso");
-                        void trocar(aberturaDoSeletor.id, (a) => comItens(a, [...outros, ...escolhidos]));
-                        setSeletor(null);
-                    }}
-                />
-            )}
-            {seletor && aberturaDoSeletor && seletor.tipo !== "ingresso" && (
-                <SeletorDeLista
-                    titulo={formatar(T.grupos[seletor.tipo].seletor, { nome: aberturaDoSeletor.nome })}
-                    opcoes={opcoes[seletor.tipo]}
-                    selecionados={itensDaAbertura(aberturaDoSeletor)
-                        .filter((i) => i.tipo === seletor.tipo)
-                        .map((i) => i.id)}
-                    vazio={T.grupos[seletor.tipo].seletorVazio}
-                    onFechar={() => setSeletor(null)}
-                    onConfirmar={(ids) => {
-                        const outros = itensDaAbertura(aberturaDoSeletor).filter((i) => i.tipo !== seletor.tipo);
-                        void trocar(aberturaDoSeletor.id, (a) => comItens(a, [...outros, ...ids.map((id) => ({ tipo: seletor.tipo, id }))]));
-                        setSeletor(null);
-                    }}
-                />
-            )}
         </BackstageLayout>
     );
 }
 
-function CartaoDaAbertura({
+/**
+ * Uma linha por abertura (BKS-113): nome e período, estado, os itens incluídos e as ações. O nome e o
+ * lápis abrem o painel da abertura, com os itens (ABV-11); ⋮ duplica e exclui. Estreito, vira bloco com rótulos.
+ */
+function LinhaDaAbertura({
     abertura,
     rotuloDe,
     setorDoIngresso,
     onEditar,
     onDuplicar,
     onExcluir,
-    onEscolher,
 }: {
     abertura: AberturaDeVendas;
     rotuloDe: Map<string, string>;
@@ -329,175 +283,71 @@ function CartaoDaAbertura({
     onEditar: () => void;
     onDuplicar: () => void;
     onExcluir: () => void;
-    onEscolher: (tipo: TipoDeItem) => void;
 }) {
-    const { quando } = useTextosItens();
+    const { quando, locale, plural } = useTextosItens();
     const resumirIngressos = useResumoDeIngressos();
     const estado = estadoDa(abertura);
     const itens = itensDaAbertura(abertura);
     const ingressos = itens.filter((i) => i.tipo === "ingresso");
-    /** Até 5 nomes; acima disso, contagem ("60 ingressos em 7 setores"), que escala para milhares (UI-LST-002). */
-    const escolhidos = (tipo: TipoDeItem): string[] => {
-        if (tipo === "ingresso" && ingressos.length > 5)
-            return [resumirIngressos(ingressos.length, new Set(ingressos.map((i) => setorDoIngresso.get(i.id) ?? i.id)).size)];
-        return itens.filter((i) => i.tipo === tipo).map((i) => rotuloDe.get(`${tipo}:${i.id}`) ?? i.id);
-    };
+    /**
+     * Resumo dos itens: até 5 nomes; acima disso, a contagem por tipo, com ingressos em setores
+     * ("60 ingressos em 7 setores"), que escala para milhares (UI-LST-002).
+     */
+    const resumo = (() => {
+        if (itens.length === 0) return undefined;
+        const lista = new Intl.ListFormat(locale, { style: "long", type: "conjunction" });
+        if (itens.length <= 5) return lista.format(itens.map((i) => rotuloDe.get(`${i.tipo}:${i.id}`) ?? i.id));
+        return lista.format(
+            TIPOS.flatMap((tipo) => {
+                const n = itens.filter((i) => i.tipo === tipo).length;
+                if (!n) return [];
+                if (tipo === "ingresso") return [resumirIngressos(ingressos.length, new Set(ingressos.map((i) => setorDoIngresso.get(i.id) ?? i.id)).size)];
+                return [plural(T.contagemItens[tipo], n)];
+            }),
+        );
+    })();
     const nome = abertura.nome;
 
     return (
-        <article className="flex flex-col rounded-2xl bg-primary ring-1 ring-secondary">
-            <div className="flex flex-wrap items-start justify-between gap-3 px-5 pt-4 md:px-6">
-                <div className="flex min-w-0 flex-1 flex-col gap-1">
-                    <h2 className="flex flex-wrap items-center gap-2">
-                        <span className="text-md font-semibold text-primary">{nome}</span>
-                        <Badge size="sm" type="pill-color" color={COR[estado]}>
-                            {T.estados[estado]}
-                        </Badge>
-                    </h2>
-                    <p className="text-sm text-tertiary">{formatar(T.periodo, { inicio: quando(abertura.inicio), fim: quando(abertura.fim) })}</p>
-                </div>
-                <div className="flex shrink-0 items-center gap-1">
-                    <ButtonUtility size="sm" color="tertiary" icon={Copy01} tooltip={formatar(T.duplicar, { nome })} onClick={onDuplicar} />
-                    <ButtonUtility size="sm" color="tertiary" icon={Edit01} tooltip={formatar(T.editar, { nome })} onClick={onEditar} />
-                    <ButtonUtility size="sm" color="tertiary" icon={Trash01} tooltip={formatar(T.excluir, { nome })} onClick={onExcluir} />
-                </div>
+        <LinhaDaTabela>
+            <div className="flex min-w-0 flex-1 flex-col gap-2 @min-[44rem]:flex-row @min-[44rem]:items-center @min-[44rem]:gap-4">
+                {/* O nome abre o painel da abertura, onde também se escolhem os itens (ABV-11). */}
+                <button
+                    type="button"
+                    onClick={onEditar}
+                    aria-label={formatar(T.abrir, { nome })}
+                    className="flex min-w-0 flex-1 cursor-pointer rounded-md text-left outline-focus-ring focus-visible:outline-2 focus-visible:outline-offset-2"
+                >
+                    {/* O período quebra linha em vez de cortar no celular (M6). */}
+                    <TituloDaLinha titulo={nome} apoio={<span className="whitespace-normal">{formatar(T.periodo, { inicio: quando(abertura.inicio), fim: quando(abertura.fim) })}</span>} />
+                </button>
+                <Celula rotulo={T.colEstado} className="items-center @min-[44rem]:w-32">
+                    <Badge size="sm" type="pill-color" color={COR[estado]}>
+                        {T.estados[estado]}
+                    </Badge>
+                </Celula>
+                <Celula rotulo={T.colItens} className="@min-[44rem]:w-60">
+                    {resumo ? <span className="break-words">{resumo}</span> : <span className="text-warning-primary">{T.semItens}</span>}
+                </Celula>
             </div>
-            {/* Itens incluídos, uma linha por tipo; a linha abre a escolha. */}
-            <div className="flex flex-col gap-4 px-5 pt-4 pb-5 md:px-6">
-                <ListaDeEscolhas>
-                    {TIPOS.map((tipo) => (
-                        <EscolhaEmLista
-                            key={tipo}
-                            rotulo={T.grupos[tipo].rotulo}
-                            escolhidos={escolhidos(tipo)}
-                            vazio={T.grupos[tipo].vazio}
-                            onEscolher={() => onEscolher(tipo)}
-                        />
-                    ))}
-                </ListaDeEscolhas>
-                <Surgir visivel={itens.length === 0}>
-                    <p className="text-sm text-warning-primary">{T.semItens}</p>
-                </Surgir>
+            <div className="flex shrink-0 gap-1 @min-[44rem]:w-17 @min-[44rem]:justify-end">
+                <ButtonUtility size="sm" color="tertiary" icon={Edit01} tooltip={formatar(T.editar, { nome })} onClick={onEditar} />
+                <Dropdown.Root>
+                    <ButtonUtility size="sm" color="tertiary" icon={DotsVertical} tooltip={formatar(T.opcoes, { nome })} />
+                    <Dropdown.Popover className="w-56" placement="bottom end">
+                        <Dropdown.Menu
+                            aria-label={formatar(T.opcoes, { nome })}
+                            onAction={(k) => {
+                                if (k === "duplicar") onDuplicar();
+                                else if (k === "excluir") onExcluir();
+                            }}
+                        >
+                            <Dropdown.Item id="duplicar" icon={Copy01} label={T.duplicarAcao} />
+                            <Dropdown.Item id="excluir" icon={Trash01} label={T.excluirAcao} />
+                        </Dropdown.Menu>
+                    </Dropdown.Popover>
+                </Dropdown.Root>
             </div>
-        </article>
-    );
-}
-
-function ModalDaAbertura({
-    abertura,
-    dataDoEvento,
-    onFechar,
-    onSalvar,
-}: {
-    abertura?: AberturaDeVendas;
-    dataDoEvento?: string;
-    onFechar: () => void;
-    onSalvar: (dados: Pick<AberturaDeVendas, "nome" | "inicio" | "fim">) => Promise<void>;
-}) {
-    const [nome, setNome] = useState(abertura?.nome ?? "");
-    // Data e hora em campos separados (UI-FRM-008): cada parte tem o seu estado e o ISO sai das duas.
-    const [inicioDia, setInicioDia] = useState(abertura?.inicio.slice(0, 10) ?? "");
-    const [inicioHora, setInicioHora] = useState(abertura?.inicio.slice(11, 16) ?? "");
-    const [fimDia, setFimDia] = useState(abertura?.fim.slice(0, 10) ?? "");
-    const [fimHora, setFimHora] = useState(abertura?.fim.slice(11, 16) ?? "");
-    const inicio = inicioDia && inicioHora ? `${inicioDia}T${inicioHora}` : undefined;
-    const fim = fimDia && fimHora ? `${fimDia}T${fimHora}` : undefined;
-    const [tentou, setTentou] = useState(false);
-    const [salvando, setSalvando] = useState(false);
-    const erros = {
-        nome: !nome.trim() ? T.modal.nomeErro : undefined,
-        inicioDia: !inicioDia ? T.modal.dataErro : undefined,
-        inicioHora: !inicioHora ? T.modal.horaErro : undefined,
-        fimDia: !fimDia ? T.modal.dataErro : undefined,
-        fimHora: !fimHora ? T.modal.horaErro : undefined,
-        fim: inicio && fim && fim <= inicio ? T.modal.fimErro : undefined,
-    };
-
-    const salvar = async () => {
-        setTentou(true);
-        if (erros.nome || erros.fim || !inicio || !fim) return;
-        setSalvando(true);
-        await onSalvar({ nome: nome.trim(), inicio, fim });
-        setSalvando(false);
-    };
-
-    return (
-        <ModalOverlay isOpen onOpenChange={(v) => !v && onFechar()} isDismissable>
-            <Modal className="sm:max-w-[480px]">
-                <Dialog aria-label={abertura ? T.modal.editar : T.modal.nova}>
-                    {/* noValidate: os erros são os da tela, não os balões do navegador. */}
-                    <form
-                        noValidate
-                        className="flex w-full flex-col gap-5 rounded-2xl bg-primary p-6 shadow-xl ring-1 ring-border-secondary"
-                        onSubmit={(e) => {
-                            e.preventDefault();
-                            void salvar();
-                        }}
-                    >
-                        <div className="flex flex-col gap-1">
-                            <h2 className="text-lg font-semibold text-primary">{abertura ? T.modal.editar : T.modal.nova}</h2>
-                            {dataDoEvento && <p className="text-sm text-tertiary">{formatar(T.modal.evento, { data: dataDoEvento })}</p>}
-                        </div>
-                        <Input
-                            label={T.modal.nome}
-                            placeholder={T.modal.nomePlaceholder}
-                            isRequired
-                            value={nome}
-                            onChange={setNome}
-                            isInvalid={tentou && !!erros.nome}
-                            hint={tentou && erros.nome ? erros.nome : T.modal.nomeDica}
-                        />
-                        <div className="grid grid-cols-[minmax(0,1fr)_10rem] items-start gap-3">
-                            <CampoData
-                                label={T.modal.inicio}
-                                isRequired
-                                valor={inicioDia}
-                                onChange={setInicioDia}
-                                isInvalid={tentou && !!erros.inicioDia}
-                                hint={tentou ? erros.inicioDia : undefined}
-                            />
-                            <CampoHora
-                                label={T.modal.inicioHora}
-                                isRequired
-                                valor={inicioHora}
-                                onChange={setInicioHora}
-                                isInvalid={tentou && !!erros.inicioHora}
-                                hint={tentou ? erros.inicioHora : undefined}
-                            />
-                        </div>
-                        <div className="flex flex-col gap-1.5">
-                            <div className="grid grid-cols-[minmax(0,1fr)_10rem] items-start gap-3">
-                                <CampoData
-                                    label={T.modal.fim}
-                                    isRequired
-                                    valor={fimDia}
-                                    onChange={setFimDia}
-                                    minimo={inicioDia || undefined}
-                                    isInvalid={tentou && !!(erros.fimDia || erros.fim)}
-                                    hint={tentou ? erros.fimDia : undefined}
-                                />
-                                <CampoHora
-                                    label={T.modal.fimHora}
-                                    isRequired
-                                    valor={fimHora}
-                                    onChange={setFimHora}
-                                    isInvalid={tentou && !!(erros.fimHora || erros.fim)}
-                                    hint={tentou ? erros.fimHora : undefined}
-                                />
-                            </div>
-                            {tentou && erros.fim && <p className="text-sm text-error-primary">{erros.fim}</p>}
-                        </div>
-                        <div className="flex flex-col-reverse gap-3 pt-1 sm:flex-row sm:justify-end">
-                            <Button color="secondary" size="md" onClick={onFechar}>
-                                {T.modal.cancelar}
-                            </Button>
-                            <Button color="primary" size="md" type="submit" isLoading={salvando}>
-                                {abertura ? T.modal.salvar : T.modal.criar}
-                            </Button>
-                        </div>
-                    </form>
-                </Dialog>
-            </Modal>
-        </ModalOverlay>
+        </LinhaDaTabela>
     );
 }

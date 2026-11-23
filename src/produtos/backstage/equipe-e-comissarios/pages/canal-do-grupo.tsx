@@ -1,10 +1,11 @@
 import { useEffect } from "react";
 import { useNavigate, useParams } from "react-router";
-import { Button } from "@/components/base/buttons/button";
-import { TITULO_PAGINA } from "@/produtos/backstage/components/titulo-pagina";
 import { BackstageLayout } from "../../components/Backstage";
+import { CabecalhoDaPagina } from "../../components/cabecalho-da-pagina";
+import { CarregandoTabela } from "../../components/tabela";
+import { AvisoDeEscala } from "../../itens/components/escala";
 import { CAMINHO_CRIAR_INGRESSOS, FormularioCanal } from "../components/formulario-canal";
-import { CabecalhoCotas, TemaCotas } from "../components/ui-cotas";
+import { TemaCotas } from "../components/ui-cotas";
 import { BASE, CANAIS_GRUPO, codigosEmUso, DICA_CANAL, ROTULO_CANAL, useEquipeDoEvento, type CanalGrupo } from "../data/equipe";
 
 /**
@@ -25,22 +26,26 @@ export function CanalDoGrupo() {
         window.scrollTo({ top: 0 });
     }, [grupoId, canal]);
 
+    // Carregando e "não encontrado" também abrem com o cabeçalho de página (BKS-100).
     if (carregando)
         return (
             <BackstageLayout activeSection="equipe-e-comissarios" activeItem="equipe-e-comissarios">
-                <div role="status" aria-label="Carregando canal" className="h-64 w-full animate-pulse rounded-2xl bg-secondary motion-reduce:animate-none" />
+                <TemaCotas className="gap-6">
+                    <CabecalhoDaPagina voltar={{ rotulo: "Grupo", onClick: voltar }} titulo={valido ? ROTULO_CANAL[canal as CanalGrupo] : "Canal"} />
+                    <CarregandoTabela linhas={4} rotulo="Carregando canal" />
+                </TemaCotas>
             </BackstageLayout>
         );
 
     if (!dados || !valido)
         return (
             <BackstageLayout activeSection="equipe-e-comissarios" activeItem="equipe-e-comissarios">
-                <TemaCotas className="items-start gap-4 py-16">
-                    <h1 className={TITULO_PAGINA}>Canal não encontrado</h1>
-                    <p className="text-md text-tertiary">O grupo não é de {evento.nome} ou o endereço está incompleto.</p>
-                    <Button size="md" color="secondary" onClick={() => navigate(BASE)}>
-                        Ver grupos do evento
-                    </Button>
+                <TemaCotas className="gap-6">
+                    <CabecalhoDaPagina
+                        voltar={dados ? { rotulo: dados.grupo.nome, onClick: voltar } : { rotulo: "Equipe e comissários", onClick: () => navigate(BASE) }}
+                        titulo="Canal não encontrado"
+                        subtitulo={`O grupo não é de ${evento.nome} ou o endereço está incompleto.`}
+                    />
                 </TemaCotas>
             </BackstageLayout>
         );
@@ -60,10 +65,10 @@ export function CanalDoGrupo() {
                     onSair={voltar}
                     onCriarItens={() => navigate(CAMINHO_CRIAR_INGRESSOS)}
                     cabecalho={(sair) => (
-                        <div className="flex flex-col gap-2">
-                            <CabecalhoCotas titulo={ROTULO_CANAL[c]} alinhamento="esquerda" onVoltar={sair} rotuloVoltar={grupo.nome} />
-                            <p className="text-md text-tertiary">{DICA_CANAL[c]}</p>
-                        </div>
+                        <>
+                            <CabecalhoDaPagina voltar={{ rotulo: grupo.nome, onClick: sair }} titulo={ROTULO_CANAL[c]} subtitulo={DICA_CANAL[c]} />
+                            <AvisoDeEscala />
+                        </>
                     )}
                 />
             </TemaCotas>

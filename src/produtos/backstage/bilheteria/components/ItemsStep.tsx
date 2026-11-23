@@ -1,10 +1,12 @@
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
-import { AnimatePresence, motion, type Variants } from "motion/react";
-import { ChevronDown, ChevronLeft, ChevronRight, FaceId, Package, QrCode01, SearchLg, Ticket02 } from "@untitledui/icons";
+import { AnimatePresence, motion, useReducedMotion, type Variants } from "motion/react";
+import { ChevronDown, FaceId, Package, QrCode01, SearchLg, Ticket02 } from "@untitledui/icons";
 import { Tab, TabList, Tabs } from "@/components/application/tabs/tabs";
 import { InputBase } from "@/components/base/input/input";
 import { Badge } from "@/components/base/badges/badges";
-import { ButtonUtility } from "@/components/base/buttons/button-utility";
+import { Button } from "@/components/base/buttons/button";
+import { Select } from "@/components/base/select/select";
+import { Surgir } from "@/components/foundations/transicao";
 import { cx } from "@/utils/cx";
 import { comboCategories, formatBRL, products, sessions, type ComboItem, type TicketItem, type TicketSession } from "../data/catalogo";
 import type { Cart } from "../data/carrinho";
@@ -72,19 +74,31 @@ const emptyMessage = (others: number, here: string, one: string, many: (count: n
 export function ItemsStep({ cart, onQuantityChange, facialBlocked, ingressosRestantes }: ItemsStepProps) {
     const [tab, setTab] = useState<ItemsTab>("ingressos");
     const [term, setTerm] = useState("");
-    const [dayId, setDayId] = useState(dayKey(sessions[0]));
+    // A sessão do primeiro ingresso no carrinho: voltar do passo 3 reabre onde o operador estava.
+    const sessaoDoCarrinho = sessions.find((session) => session.tickets.some((ticket) => cart[ticket.id]));
+    const [dayId, setDayId] = useState(dayKey(sessaoDoCarrinho ?? sessions[0]));
     /* Horário escolhido em cada data: voltar a uma data reabre o horário que estava nela. */
-    const [timeByDay, setTimeByDay] = useState<Record<string, string>>({});
-    const [categoryId, setCategoryId] = useState(comboCategories.find((category) => !category.soldOut)?.id ?? comboCategories[0].id);
+    const [timeByDay, setTimeByDay] = useState<Record<string, string>>(() => (sessaoDoCarrinho ? { [dayKey(sessaoDoCarrinho)]: sessaoDoCarrinho.id } : {}));
+    const [categoryId, setCategoryId] = useState(comboCategories.find((category) => !category.soldOut)?.id ?? comboCategories[0]?.id ?? "");
+    /* Grupos abertos pelo operador (chave sessão + grupo). Com itens no carrinho ou com busca, o grupo já abre. */
+    const [abertos, setAbertos] = useState<Set<string>>(() => new Set());
+    const alternar = (chave: string, aberto: boolean) =>
+        setAbertos((atual) => {
+            const proximo = new Set(atual);
+            if (aberto) proximo.add(chave);
+            else proximo.delete(chave);
+            return proximo;
+        });
     const isFiltering = term.trim().length > 0;
+    // Movimento reduzido: as trocas só esmaecem, sem deslizar (WCAG 2.3.3).
+    const reduzir = useReducedMotion();
+    const desliza = (direcao: number) => (reduzir ? 0 : direcao);
 
     const direction = useDirection(TABS.findIndex((item) => item.id === tab));
 
     /*
-      A busca filtra dentro de cada data, não entre elas: o carrossel continua
-      mostrando a agenda inteira e marca quais datas têm resultado, para o
-      operador não achar que o item sumiu do evento. Os agrupadores de combo
-      seguem a mesma regra.
+      A busca filtra dentro de cada sessão; a escolha de data marca quais datas têm resultado e, quando
+      o resultado está em outro horário, a lista "Também em" leva até ele (BIL-103).
     */
     const filteredSessions = useMemo(
         () =>
@@ -94,7 +108,6 @@ export function ItemsStep({ cart, onQuantityChange, facialBlocked, ingressosRest
             })),
         [term],
     );
-    /* O carrossel mostra cada data uma vez; os horários dela ficam no seletor logo abaixo. */
     const days = useMemo(() => {
         const byDay = new Map<string, typeof filteredSessions>();
         for (const session of filteredSessions) {
@@ -103,6 +116,7 @@ export function ItemsStep({ cart, onQuantityChange, facialBlocked, ingressosRest
         }
         return [...byDay.entries()].map(([id, daySessions]) => ({
             id,
+            label: rotuloDoDia(daySessions[0]),
             weekday: daySessions[0].weekday,
             day: daySessions[0].day,
             month: daySessions[0].month,
@@ -119,7 +133,14 @@ export function ItemsStep({ cart, onQuantityChange, facialBlocked, ingressosRest
     const dayDirection = useDirection(days.findIndex((day) => day.id === selectedDay.id));
     const timeDirection = useDirection(selectedDay.sessions.findIndex((session) => session.id === selectedSession.id));
     const ticketGroups = useMemo(() => groupByName(selectedSession.tickets), [selectedSession]);
-    const otherSessionsWithResults = filteredSessions.filter((session) => session.id !== selectedSession.id && session.tickets.length > 0).length;
+    const outrasComResultado = isFiltering ? filteredSessions.filter((session) => session.id !== selectedSession.id && session.tickets.length > 0) : [];
+    const irParaSessao = (sessionId: string) => {
+        const session = sessions.find((item) => item.id === sessionId);
+        if (!session) return;
+        const dia = dayKey(session);
+        setDayId(dia);
+        setTimeByDay((atual) => ({ ...atual, [dia]: sessionId }));
+    };
 
     const filteredCategories = useMemo(
         () =>
@@ -129,14 +150,15 @@ export function ItemsStep({ cart, onQuantityChange, facialBlocked, ingressosRest
             })),
         [term],
     );
+    /* Evento sem combo à venda: não há agrupador (BIL-35). */
     const selectedCategory = filteredCategories.find((category) => category.id === categoryId) ?? filteredCategories[0];
-    const categoryDirection = useDirection(filteredCategories.findIndex((category) => category.id === selectedCategory.id));
-    const comboGroups = useMemo(() => groupByName(selectedCategory.combos), [selectedCategory]);
-    const otherCategoriesWithResults = filteredCategories.filter(
-        (category) => category.id !== selectedCategory.id && category.combos.length > 0,
-    ).length;
+    const categoryDirection = useDirection(filteredCategories.findIndex((category) => category.id === selectedCategory?.id));
+    const comboGroups = useMemo(() => groupByName(selectedCategory?.combos ?? []), [selectedCategory]);
+    const otherCategoriesWithResults = filteredCategories.filter((category) => category.id !== selectedCategory?.id && category.combos.length > 0).length;
 
     const visibleProducts = useMemo(() => products.filter((product) => matches(term, product.name)), [term]);
+
+    const grupoAberto = (chave: string, quantidade: number) => isFiltering || quantidade > 0 || abertos.has(chave);
 
     return (
         <div className="flex min-w-0 flex-1 flex-col gap-6">
@@ -149,46 +171,28 @@ export function ItemsStep({ cart, onQuantityChange, facialBlocked, ingressosRest
                         value={term}
                         aria-label="Buscar item"
                         onChange={(event) => setTerm(event.target.value)}
-                        placeholder="Busque por nome de grupo, item"
+                        placeholder="Busque por grupo, item ou lote"
                     />
                 </div>
                 <Tabs selectedKey={tab} onSelectionChange={(key) => setTab(key as ItemsTab)} className="md:w-auto md:shrink-0">
                     <TabList type="button-border" size="sm" items={TABS} className="max-md:w-full md:h-full">
-                        {(item) => <Tab {...item} className="max-md:flex-1 md:h-full md:py-0" />}
+                        {(item) => <Tab {...item} className="max-md:min-h-11 max-md:flex-1 md:h-full md:py-0" />}
                     </TabList>
                 </Tabs>
             </div>
 
             <div className="overflow-hidden">
-                <AnimatePresence mode="wait" initial={false} custom={direction}>
-                    <motion.div key={tab} custom={direction} variants={SLIDE_FADE} initial="enter" animate="center" exit="exit" transition={TRANSICAO}>
+                <AnimatePresence mode="wait" initial={false} custom={desliza(direction)}>
+                    <motion.div key={tab} custom={desliza(direction)} variants={SLIDE_FADE} initial="enter" animate="center" exit="exit" transition={TRANSICAO}>
                         {tab === "ingressos" && (
                             <div className="flex flex-col gap-4">
-                                <ChipCarousel
-                                    items={days}
-                                    selectedId={selectedDay.id}
-                                    ariaLabel="Data da sessão"
-                                    previousLabel="Datas anteriores"
-                                    nextLabel="Próximas datas"
-                                    isEmpty={(day) => isFiltering && day.sessions.every((session) => session.tickets.length === 0)}
-                                    onSelect={setDayId}
-                                    chipClassName="w-[87px]"
-                                    renderChip={(day, isSelected) => (
-                                        <>
-                                            <ChipCaption isSelected={isSelected}>{day.weekday}</ChipCaption>
-                                            <span className="text-md font-semibold">
-                                                {day.day} {day.month}
-                                            </span>
-                                            {day.soldOut ? <SoldOutTag /> : <ChipCaption isSelected={isSelected}>{day.year}</ChipCaption>}
-                                        </>
-                                    )}
-                                />
+                                <EscolhaDeData days={days} selectedId={selectedDay.id} isFiltering={isFiltering} onSelect={setDayId} />
 
-                                {/* A data nova traz os horários dela; trocar só o horário desliza apenas a lista. */}
-                                <AnimatePresence mode="wait" initial={false} custom={dayDirection}>
+                                {/* A data nova traz os horários dela; trocar só o horário troca apenas a lista. */}
+                                <AnimatePresence mode="wait" initial={false} custom={desliza(dayDirection)}>
                                     <motion.div
                                         key={selectedDay.id}
-                                        custom={dayDirection}
+                                        custom={desliza(dayDirection)}
                                         variants={SLIDE_FADE}
                                         initial="enter"
                                         animate="center"
@@ -204,10 +208,10 @@ export function ItemsStep({ cart, onQuantityChange, facialBlocked, ingressosRest
                                             onSelect={(id) => setTimeByDay((current) => ({ ...current, [selectedDay.id]: id }))}
                                         />
 
-                                        <AnimatePresence mode="wait" initial={false} custom={timeDirection}>
+                                        <AnimatePresence mode="wait" initial={false} custom={desliza(timeDirection)}>
                                             <motion.div
                                                 key={selectedSession.id}
-                                                custom={timeDirection}
+                                                custom={desliza(timeDirection)}
                                                 variants={SLIDE_FADE}
                                                 initial="enter"
                                                 animate="center"
@@ -215,25 +219,35 @@ export function ItemsStep({ cart, onQuantityChange, facialBlocked, ingressosRest
                                                 transition={TRANSICAO}
                                                 className="flex flex-col gap-3"
                                             >
-                                                {ticketGroups.map((group) => (
-                                                    <GroupAccordion key={group.name} name={group.name}>
-                                                        {group.items.map((ticket) => (
-                                                            <TicketRow
-                                                                key={ticket.id}
-                                                                ticket={ticket}
-                                                                cart={cart}
-                                                                facialBlocked={facialBlocked}
-                                                                ingressosRestantes={ingressosRestantes}
-                                                                onQuantityChange={onQuantityChange}
-                                                            />
-                                                        ))}
-                                                    </GroupAccordion>
-                                                ))}
+                                                {ticketGroups.map((group) => {
+                                                    const chave = `${selectedSession.id}:${group.name}`;
+                                                    const quantidade = group.items.reduce((total, ticket) => total + (cart[ticket.id] ?? 0), 0);
+                                                    return (
+                                                        <GroupAccordion
+                                                            key={group.name}
+                                                            name={group.name}
+                                                            total={group.items.length}
+                                                            noCarrinho={quantidade}
+                                                            isOpen={grupoAberto(chave, quantidade)}
+                                                            onToggle={(aberto) => alternar(chave, aberto)}
+                                                        >
+                                                            {group.items.map((ticket) => (
+                                                                <TicketRow
+                                                                    key={ticket.id}
+                                                                    ticket={ticket}
+                                                                    cart={cart}
+                                                                    facialBlocked={facialBlocked}
+                                                                    ingressosRestantes={ingressosRestantes}
+                                                                    onQuantityChange={onQuantityChange}
+                                                                />
+                                                            ))}
+                                                        </GroupAccordion>
+                                                    );
+                                                })}
                                                 {ticketGroups.length === 0 && (
-                                                    <NoResults
-                                                        message={emptyMessage(otherSessionsWithResults, "neste horário", "outro horário", (count) => `outros ${count} horários`)}
-                                                    />
+                                                    <NoResults message={outrasComResultado.length > 0 ? "Nenhum item neste horário." : "Nenhum item encontrado para a busca."} />
                                                 )}
+                                                {outrasComResultado.length > 0 && <TambemEm sessoes={outrasComResultado} onIr={irParaSessao} />}
                                             </motion.div>
                                         </AnimatePresence>
                                     </motion.div>
@@ -241,30 +255,30 @@ export function ItemsStep({ cart, onQuantityChange, facialBlocked, ingressosRest
                             </div>
                         )}
 
-                        {tab === "combos" && (
-                            <div className="flex flex-col gap-4">
-                                <ChipCarousel
-                                    items={filteredCategories}
-                                    selectedId={selectedCategory.id}
-                                    ariaLabel="Agrupador de combos"
-                                    previousLabel="Agrupadores anteriores"
-                                    nextLabel="Próximos agrupadores"
-                                    isEmpty={(category) => isFiltering && category.combos.length === 0}
-                                    onSelect={setCategoryId}
-                                    /* Nome no lugar da data: o chip cresce com o nome, até duas linhas. */
-                                    chipClassName="min-w-[87px] max-w-[160px] px-3"
-                                    renderChip={(category) => (
-                                        <>
-                                            <span className="line-clamp-2 text-md font-semibold">{category.name}</span>
-                                            {category.soldOut && <SoldOutTag />}
-                                        </>
-                                    )}
-                                />
+                        {tab === "combos" && !selectedCategory && <NoResults message="Nenhum combo à venda neste evento." />}
 
-                                <AnimatePresence mode="wait" initial={false} custom={categoryDirection}>
+                        {tab === "combos" && selectedCategory && (
+                            <div className="flex flex-col gap-4">
+                                {filteredCategories.length > 1 && (
+                                    <ChipsQueQuebram
+                                        items={filteredCategories}
+                                        selectedId={selectedCategory.id}
+                                        ariaLabel="Agrupador de combos"
+                                        isEmpty={(category) => isFiltering && category.combos.length === 0}
+                                        onSelect={setCategoryId}
+                                        renderChip={(category) => (
+                                            <>
+                                                <span className="line-clamp-2 text-md font-semibold">{category.name}</span>
+                                                {category.soldOut && <SoldOutTag />}
+                                            </>
+                                        )}
+                                    />
+                                )}
+
+                                <AnimatePresence mode="wait" initial={false} custom={desliza(categoryDirection)}>
                                     <motion.div
                                         key={selectedCategory.id}
-                                        custom={categoryDirection}
+                                        custom={desliza(categoryDirection)}
                                         variants={SLIDE_FADE}
                                         initial="enter"
                                         animate="center"
@@ -272,13 +286,24 @@ export function ItemsStep({ cart, onQuantityChange, facialBlocked, ingressosRest
                                         transition={TRANSICAO}
                                         className="flex flex-col gap-3"
                                     >
-                                        {comboGroups.map((group) => (
-                                            <GroupAccordion key={group.name} name={group.name}>
-                                                {group.items.map((item) => (
-                                                    <ComboRow key={item.id} combo={item} cart={cart} onQuantityChange={onQuantityChange} />
-                                                ))}
-                                            </GroupAccordion>
-                                        ))}
+                                        {comboGroups.map((group) => {
+                                            const chave = `${selectedCategory.id}:${group.name}`;
+                                            const quantidade = group.items.reduce((total, item) => total + (cart[item.id] ?? 0), 0);
+                                            return (
+                                                <GroupAccordion
+                                                    key={group.name}
+                                                    name={group.name}
+                                                    total={group.items.length}
+                                                    noCarrinho={quantidade}
+                                                    isOpen={grupoAberto(chave, quantidade)}
+                                                    onToggle={(aberto) => alternar(chave, aberto)}
+                                                >
+                                                    {group.items.map((item) => (
+                                                        <ComboRow key={item.id} combo={item} cart={cart} onQuantityChange={onQuantityChange} />
+                                                    ))}
+                                                </GroupAccordion>
+                                            );
+                                        })}
                                         {comboGroups.length === 0 && (
                                             <NoResults
                                                 message={emptyMessage(otherCategoriesWithResults, "neste agrupador", "outro agrupador", (count) => `outros ${count} agrupadores`)}
@@ -297,7 +322,13 @@ export function ItemsStep({ cart, onQuantityChange, facialBlocked, ingressosRest
                                 </div>
                                 {visibleProducts.map((product) => (
                                     <div key={product.id} className="flex items-center gap-3 border-b border-secondary px-4 py-3 last:border-b-0">
-                                        <img src={product.image} alt="" className="size-10 shrink-0 rounded-md object-cover ring-1 ring-border-secondary" />
+                                        {product.image ? (
+                                            <img src={product.image} alt="" className="size-10 shrink-0 rounded-md object-cover ring-1 ring-border-secondary" />
+                                        ) : (
+                                            <span className="flex size-10 shrink-0 items-center justify-center rounded-md bg-secondary ring-1 ring-border-secondary">
+                                                <Package className="size-5 text-fg-quaternary" aria-hidden="true" />
+                                            </span>
+                                        )}
                                         <div className="flex min-w-0 flex-1 flex-col">
                                             <p className="truncate text-sm font-semibold text-primary">{product.name}</p>
                                             <p className="text-sm font-semibold text-primary">{formatBRL(product.price)}</p>
@@ -309,7 +340,7 @@ export function ItemsStep({ cart, onQuantityChange, facialBlocked, ingressosRest
                                         />
                                     </div>
                                 ))}
-                                {visibleProducts.length === 0 && <NoResults />}
+                                {visibleProducts.length === 0 && <NoResults message={products.length === 0 ? "Nenhum produto à venda neste evento." : undefined} />}
                             </div>
                         )}
                     </motion.div>
@@ -318,6 +349,98 @@ export function ItemsStep({ cart, onQuantityChange, facialBlocked, ingressosRest
         </div>
     );
 }
+
+/** "Sex, 2 out 2026": rótulo da data na escolha (sem separador). */
+const rotuloDoDia = (session: TicketSession) => `${session.weekday.slice(0, 3)}, ${Number(session.day)} ${session.month.toLowerCase()} ${session.year}`;
+
+/** Até tantas datas, os chips cabem quebrando linha; acima, a escolha vira um campo com busca. */
+const MAX_CHIPS_DE_DATA = 6;
+
+type Dia = { id: string; label: string; weekday: string; day: string; month: string; year: string; soldOut: boolean; sessions: Array<TicketSession> };
+
+/**
+ * Escolha da data (BIL-103): poucas datas, chips que quebram linha (sem rolagem para o lado,
+ * UI-MOB-004); muitas, o ComboBox do DS com busca, que lista todas e diz quantos horários cada uma tem.
+ */
+const EscolhaDeData = ({ days, selectedId, isFiltering, onSelect }: { days: Dia[]; selectedId: string; isFiltering: boolean; onSelect: (id: string) => void }) => {
+    const semResultado = (day: Dia) => isFiltering && day.sessions.every((session) => session.tickets.length === 0);
+    if (days.length <= MAX_CHIPS_DE_DATA)
+        return (
+            <ChipsQueQuebram
+                items={days}
+                selectedId={selectedId}
+                ariaLabel="Data da sessão"
+                isEmpty={semResultado}
+                onSelect={onSelect}
+                chipClassName="w-[87px]"
+                renderChip={(day, isSelected) => (
+                    <>
+                        <ChipCaption isSelected={isSelected}>{day.weekday}</ChipCaption>
+                        <span className="text-md font-semibold">
+                            {day.day} {day.month}
+                        </span>
+                        {day.soldOut ? <SoldOutTag /> : <ChipCaption isSelected={isSelected}>{day.year}</ChipCaption>}
+                    </>
+                )}
+            />
+        );
+    const itens = days.map((day) => ({
+        id: day.id,
+        label: day.label,
+        isDisabled: day.soldOut,
+        supportingText: day.soldOut
+            ? "Esgotado"
+            : semResultado(day)
+              ? "Sem resultado da busca"
+              : day.sessions.length === 1
+                ? "1 horário"
+                : `${day.sessions.length} horários`,
+    }));
+    return (
+        <Select.ComboBox
+            size="sm"
+            label="Data da sessão"
+            placeholder="Busque a data, ex.: 12 out"
+            shortcut={false}
+            items={itens}
+            selectedKey={selectedId}
+            onSelectionChange={(key) => key && onSelect(String(key))}
+        >
+            {(item) => (
+                <Select.Item id={item.id} supportingText={item.supportingText} isDisabled={item.isDisabled}>
+                    {item.label}
+                </Select.Item>
+            )}
+        </Select.ComboBox>
+    );
+};
+
+/** A busca achou nos outros horários: cada um vira um atalho que leva até lá (BIL-103). */
+const TambemEm = ({ sessoes, onIr }: { sessoes: TicketSession[]; onIr: (id: string) => void }) => {
+    const [todas, setTodas] = useState(false);
+    const visiveis = todas ? sessoes : sessoes.slice(0, 5);
+    return (
+        <div className="flex flex-col gap-2 rounded-xl bg-secondary p-4">
+            <p className="text-sm font-medium text-secondary">
+                {sessoes.length === 1 ? "A busca também encontrou em outro horário:" : `A busca também encontrou em outros ${sessoes.length} horários:`}
+            </p>
+            <ul className="flex flex-col gap-1">
+                {visiveis.map((session) => (
+                    <li key={session.id}>
+                        <Button size="sm" color="link-color" onClick={() => onIr(session.id)} className="min-h-11 md:min-h-0">
+                            {`${session.shortDate}: ${session.tickets.length === 1 ? "1 item" : `${session.tickets.length} itens`}`}
+                        </Button>
+                    </li>
+                ))}
+            </ul>
+            {!todas && sessoes.length > 5 && (
+                <Button size="sm" color="link-gray" onClick={() => setTodas(true)} className="w-fit">
+                    {`Mostrar mais ${sessoes.length - 5}`}
+                </Button>
+            )}
+        </div>
+    );
+};
 
 const TRANSICAO = { duration: 0.18, ease: "easeOut" } as const;
 
@@ -331,29 +454,6 @@ const SLIDE_FADE: Variants = {
     exit: (direction: number) => ({ opacity: 0, x: direction * -24 }),
 };
 
-/*
-  A seta entra deslizando do próprio lado e abre o espaço aos poucos (largura e
-  margem), para o carrossel não pular quando ela aparece ou some. O recorte vale
-  só durante a animação: parada, a seta precisa mostrar o anel de foco inteiro.
-*/
-const SetaAnimada = ({ lado, children }: { lado: -1 | 1; children: ReactNode }) => {
-    const [recortar, setRecortar] = useState(false);
-    const fechada = { opacity: 0, x: lado * 8, width: 0, marginLeft: 0, marginRight: 0 };
-    return (
-        <motion.div
-            initial={fechada}
-            animate={{ opacity: 1, x: 0, width: "auto", marginLeft: lado === 1 ? 8 : 0, marginRight: lado === -1 ? 8 : 0 }}
-            exit={fechada}
-            transition={TRANSICAO}
-            onAnimationStart={() => setRecortar(true)}
-            onAnimationComplete={() => setRecortar(false)}
-            className={cx("shrink-0 max-md:hidden", recortar && "overflow-hidden")}
-        >
-            {children}
-        </motion.div>
-    );
-};
-
 const NoResults = ({ message = "Nenhum item encontrado para a busca." }: { message?: string }) => (
     <p className="rounded-xl bg-primary px-4 py-8 text-center text-sm text-tertiary ring-1 ring-border-secondary">{message}</p>
 );
@@ -364,13 +464,11 @@ const ChipCaption = ({ isSelected, children }: { isSelected: boolean; children: 
 
 const SoldOutTag = () => <span className="rounded-md bg-tertiary px-1.5 text-sm text-secondary">Esgotado</span>;
 
-interface ChipCarouselProps<T extends { id: string; soldOut?: boolean }> {
+interface ChipsProps<T extends { id: string; soldOut?: boolean }> {
     items: T[];
     selectedId: string;
     ariaLabel: string;
-    previousLabel: string;
-    nextLabel: string;
-    /** Com busca ativa, os chips sem resultado ficam sinalizados. */
+    /** Com busca ativa, os chips sem resultado ficam apagados. */
     isEmpty: (item: T) => boolean;
     onSelect: (id: string) => void;
     /** Largura do chip: fixa para datas, flexível para nomes. */
@@ -378,101 +476,40 @@ interface ChipCarouselProps<T extends { id: string; soldOut?: boolean }> {
     renderChip: (item: T, isSelected: boolean) => ReactNode;
 }
 
-/** Carrossel horizontal de chips (datas ou agrupadores) — um por vez, rolagem por toque ou pelas setas. */
-const ChipCarousel = <T extends { id: string; soldOut?: boolean }>({
-    items,
-    selectedId,
-    ariaLabel,
-    previousLabel,
-    nextLabel,
-    isEmpty,
-    onSelect,
-    chipClassName,
-    renderChip,
-}: ChipCarouselProps<T>) => {
-    const trackRef = useRef<HTMLDivElement>(null);
-    /* Seta só aparece quando há chip para aquele lado — sem botão que não leva a lugar nenhum. */
-    const [hasPrevious, setHasPrevious] = useState(false);
-    const [hasNext, setHasNext] = useState(false);
-
-    const syncArrows = () => {
-        const track = trackRef.current;
-        if (!track) return;
-        setHasPrevious(track.scrollLeft > 1);
-        setHasNext(Math.ceil(track.scrollLeft + track.clientWidth) < track.scrollWidth);
-    };
-
-    useEffect(() => {
-        syncArrows();
-        const track = trackRef.current;
-        if (!track) return;
-        const observer = new ResizeObserver(syncArrows);
-        observer.observe(track);
-        return () => observer.disconnect();
-    }, [items.length]);
-
-    const scrollBy = (direction: 1 | -1) => {
-        const track = trackRef.current;
-        if (!track) return;
-        track.scrollBy({ left: direction * Math.max(track.clientWidth * 0.8, 160), behavior: "smooth" });
-    };
-
-    return (
-        <div className="flex items-center">
-            <AnimatePresence initial={false}>
-                {hasPrevious && (
-                    <SetaAnimada key="anteriores" lado={-1}>
-                        <ButtonUtility size="xs" color="tertiary" icon={ChevronLeft} tooltip={previousLabel} onClick={() => scrollBy(-1)} />
-                    </SetaAnimada>
-                )}
-            </AnimatePresence>
-
-            <div
-                ref={trackRef}
-                role="radiogroup"
-                aria-label={ariaLabel}
-                onScroll={syncArrows}
-                className="flex min-w-0 flex-1 snap-x snap-mandatory gap-2 overflow-x-auto scroll-smooth pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-            >
-                {items.map((item) => {
-                    const isSelected = item.id === selectedId;
-
-                    return (
-                        <button
-                            key={item.id}
-                            type="button"
-                            role="radio"
-                            aria-checked={isSelected}
-                            disabled={item.soldOut}
-                            onClick={() => onSelect(item.id)}
-                            className={cx(
-                                "flex h-[72px] shrink-0 snap-start flex-col items-center justify-center gap-0.5 rounded-xl px-2 text-center transition duration-100 ease-linear",
-                                chipClassName,
-                                /*
-                                  O chip escolhido inverte em relação à superfície: os tokens alpha
-                                  viram branco no dark, que é o chip claro do design, e preto no light.
-                                */
-                                isSelected ? "bg-alpha-black text-alpha-white" : "bg-secondary text-primary ring-1 ring-border-secondary",
-                                item.soldOut && "cursor-not-allowed opacity-60",
-                                isEmpty(item) && !isSelected && "opacity-50",
-                            )}
-                        >
-                            {renderChip(item, isSelected)}
-                        </button>
-                    );
-                })}
-            </div>
-
-            <AnimatePresence initial={false}>
-                {hasNext && (
-                    <SetaAnimada key="proximas" lado={1}>
-                        <ButtonUtility size="xs" color="tertiary" icon={ChevronRight} tooltip={nextLabel} onClick={() => scrollBy(1)} />
-                    </SetaAnimada>
-                )}
-            </AnimatePresence>
-        </div>
-    );
-};
+/**
+ * Chips de escolha única (datas ou agrupadores de combo) que quebram linha: nada rola para o lado
+ * (UI-MOB-004). Até 22/11/2026 era um carrossel com setas.
+ */
+const ChipsQueQuebram = <T extends { id: string; soldOut?: boolean }>({ items, selectedId, ariaLabel, isEmpty, onSelect, chipClassName, renderChip }: ChipsProps<T>) => (
+    <div role="radiogroup" aria-label={ariaLabel} className="flex flex-wrap gap-2">
+        {items.map((item) => {
+            const isSelected = item.id === selectedId;
+            return (
+                <button
+                    key={item.id}
+                    type="button"
+                    role="radio"
+                    aria-checked={isSelected}
+                    disabled={item.soldOut}
+                    onClick={() => onSelect(item.id)}
+                    className={cx(
+                        "flex min-h-[72px] min-w-[87px] max-w-[160px] flex-col items-center justify-center gap-0.5 rounded-xl px-3 py-2 text-center outline-focus-ring transition duration-100 ease-linear focus-visible:outline-2 focus-visible:outline-offset-2",
+                        chipClassName,
+                        /*
+                          O chip escolhido inverte em relação à superfície: os tokens alpha
+                          viram branco no dark, que é o chip claro do design, e preto no light.
+                        */
+                        isSelected ? "bg-alpha-black text-alpha-white" : "bg-secondary text-primary ring-1 ring-border-secondary",
+                        item.soldOut && "cursor-not-allowed opacity-50",
+                        isEmpty(item) && !isSelected && "opacity-50",
+                    )}
+                >
+                    {renderChip(item, isSelected)}
+                </button>
+            );
+        })}
+    </div>
+);
 
 interface TimeSelectorProps {
     sessions: TicketSession[];
@@ -496,7 +533,7 @@ const TimeSelector = ({ sessions: daySessions, selectedId, cart, isFiltering, on
             onSelectionChange={(key) => onSelect(String(key))}
             disabledKeys={daySessions.filter((session) => session.soldOut).map((session) => session.id)}
         >
-            <TabList type="underline" size="sm" aria-label="Horário da sessão" className="overflow-x-auto [scrollbar-width:none]">
+            <TabList type="underline" size="sm" aria-label="Horário da sessão" className="flex-wrap">
                 {daySessions.map((session) => {
                     const inCart = session.tickets.reduce((total, ticket) => total + (cart[ticket.id] ?? 0), 0);
                     return (
@@ -504,7 +541,7 @@ const TimeSelector = ({ sessions: daySessions, selectedId, cart, isFiltering, on
                             key={session.id}
                             id={session.id}
                             className={cx(
-                                "px-3",
+                                "px-3 max-md:min-h-11",
                                 session.soldOut && "cursor-not-allowed opacity-50",
                                 isFiltering && session.tickets.length === 0 && session.id !== selectedId && "opacity-50",
                             )}
@@ -524,40 +561,53 @@ const TimeSelector = ({ sessions: daySessions, selectedId, cart, isFiltering, on
     </div>
 );
 
-/** Itens do agrupador escolhido, reunidos sob o nome do grupo. Começa fechado. */
-const GroupAccordion = ({ name, children }: { name: string; children: ReactNode }) => {
-    const [isOpen, setIsOpen] = useState(false);
-
+/**
+ * Itens de um grupo, recolhíveis (composto do DS com o desenho do `accordion`: o Accordion do DS não
+ * deixa a tela abrir um item, e a busca e o carrinho precisam abrir). O cabeçalho diz quantos itens há
+ * e quantos já estão no carrinho; abre e fecha deslizando a altura (`Surgir`, com movimento reduzido só
+ * esmaece). Com item no carrinho ou com busca, nasce aberto (BIL-103).
+ */
+const GroupAccordion = ({
+    name,
+    total,
+    noCarrinho,
+    isOpen,
+    onToggle,
+    children,
+}: {
+    name: string;
+    total: number;
+    noCarrinho: number;
+    isOpen: boolean;
+    onToggle: (aberto: boolean) => void;
+    children: ReactNode;
+}) => {
+    const reduzir = useReducedMotion();
     return (
         <section className="overflow-hidden rounded-xl bg-primary ring-1 ring-border-secondary">
             <button
                 type="button"
-                onClick={() => setIsOpen((open) => !open)}
+                onClick={() => onToggle(!isOpen)}
                 aria-expanded={isOpen}
-                className="flex w-full items-center gap-2 px-4 py-3 text-left transition duration-100 ease-linear hover:bg-primary_hover"
+                className="flex min-h-11 w-full items-center gap-3 px-4 py-3 text-left outline-focus-ring transition duration-100 ease-linear hover:bg-primary_hover focus-visible:outline-2 focus-visible:-outline-offset-2"
             >
-                <span className="flex-1 text-md font-semibold text-primary">{name}</span>
-                <ChevronDown
-                    className={cx("size-5 shrink-0 text-fg-quaternary transition-transform duration-200 ease-out", isOpen && "rotate-180")}
-                    aria-hidden="true"
-                />
+                <span className="flex min-w-0 flex-1 flex-col">
+                    <span className="text-md font-semibold text-primary">{name}</span>
+                    <span className="text-sm text-tertiary">{total === 1 ? "1 item" : `${total} itens`}</span>
+                </span>
+                {noCarrinho > 0 && (
+                    <Badge size="md" type="pill-color" color="gray">
+                        {`${noCarrinho} no carrinho`}
+                    </Badge>
+                )}
+                <motion.span animate={{ rotate: isOpen ? 180 : 0 }} transition={reduzir ? { duration: 0 } : TRANSICAO} className="flex shrink-0">
+                    <ChevronDown className="size-5 text-fg-quaternary" aria-hidden="true" />
+                </motion.span>
             </button>
 
-            {/* Abre e fecha pela altura, com fade; a borda vem junto com o conteúdo, sem piscar no cabeçalho. */}
-            <AnimatePresence initial={false}>
-                {isOpen && (
-                    <motion.div
-                        key="itens"
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: "auto", opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        transition={TRANSICAO}
-                        className="overflow-hidden"
-                    >
-                        <div className="border-t border-secondary">{children}</div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
+            <Surgir visivel={isOpen}>
+                <div className="border-t border-secondary">{children}</div>
+            </Surgir>
         </section>
     );
 };
@@ -579,22 +629,26 @@ const TicketRow = ({ ticket, cart, facialBlocked, ingressosRestantes, onQuantity
     return (
         <div className={cx(ROW, isBlocked && "opacity-50")}>
             <div className="flex flex-wrap items-center gap-2">
-                <AccessIcon className="size-5 shrink-0 text-fg-brand-primary" aria-hidden="true" />
                 <p className="text-md font-semibold text-primary">{ticket.name}</p>
                 {/* Deixa claro na lista por que o item não pode ser vendido. */}
                 {isBlocked && (
-                    <Badge size="sm" type="pill-color" color="gray">
+                    <Badge size="md" type="pill-color" color="gray">
                         Bloqueado
                     </Badge>
                 )}
             </div>
             <p className="text-sm text-tertiary">{ticket.lote}</p>
-            <p className="text-sm text-tertiary">{ticket.description}</p>
+            {/* O tipo de acesso em texto, com o ícone neutro ao lado (WCAG 1.1.1); até 22/11/2026, só o ícone em vermelho. */}
+            <p className="flex items-center gap-1.5 text-sm text-tertiary">
+                <AccessIcon className="size-4 shrink-0 text-fg-quaternary" aria-hidden="true" />
+                {ticket.access === "facial" ? "Acesso por face" : "Acesso por QR code"}
+            </p>
+            {ticket.description && <p className="text-sm text-tertiary">{ticket.description}</p>}
             {isBlocked && <p className="text-sm text-tertiary">Acesso por face: indisponível sem identificação do comprador.</p>}
             <div className="flex items-center justify-between gap-3">
                 <p className="text-md font-semibold text-primary">{formatBRL(ticket.price)}</p>
                 <QuantityStepper
-                    label={ticket.name}
+                    label={`${ticket.name}, ${ticket.group}`}
                     isDisabled={isBlocked}
                     value={isBlocked ? 0 : (cart[ticket.id] ?? 0)}
                     maxValue={ingressosRestantes === undefined ? undefined : (cart[ticket.id] ?? 0) + ingressosRestantes}
@@ -609,7 +663,7 @@ const TicketRow = ({ ticket, cart, facialBlocked, ingressosRestantes, onQuantity
 const ComboRow = ({ combo, cart, onQuantityChange }: { combo: ComboItem; cart: Cart; onQuantityChange: (id: string, quantity: number) => void }) => (
     <div className={ROW}>
         <div className="flex items-center gap-2">
-            <Ticket02 className="size-5 shrink-0 text-fg-brand-primary" aria-hidden="true" />
+            <Ticket02 className="size-5 shrink-0 text-fg-quaternary" aria-hidden="true" />
             <p className="text-md font-semibold text-primary">{combo.name}</p>
         </div>
         <ComboComposition entries={combo.composicao} />
@@ -629,7 +683,8 @@ export const ComboComposition = ({ entries }: { entries: ComboItem["composicao"]
                 <span className="shrink-0 text-tertiary">{entry.quantity}x</span>
                 <span className="flex min-w-0 flex-col">
                     <span className="text-secondary">
-                        {entry.ticketName} <span className="text-tertiary">• {entry.loteName}</span>
+                        {entry.ticketName}
+                        {entry.loteName && <span className="text-tertiary">{`, ${entry.loteName}`}</span>}
                     </span>
                     <span className="text-quaternary">{entry.date}</span>
                 </span>

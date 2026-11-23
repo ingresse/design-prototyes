@@ -1,14 +1,20 @@
 import { useEffect, useMemo } from "react";
-import { semear, useEstadoComissarios } from "@/plataforma/comissarios";
+import { definirBibliotecaPadrao, semear, useEstadoComissarios } from "@/plataforma/comissarios";
+import { bibliotecaDe } from "../../itens/data/catalogo";
 import { setOrganizacaoAtual, useOrganizacaoAtual, useOrganizacoes } from "../../organizacoes/data/organizacao-atual";
 
 /* ------------------------------------------------------------------ */
 /*  Adaptador do Backstage para o store de comissários da plataforma.  */
 /*  O store (tipos, cálculos e ações) mora em @/plataforma/comissarios,*/
 /*  porque o Freepass lê os mesmos dados na jornada do comissário.     */
+/*  O estado mora no banco (`Evento.equipe`); vendas e pedidos são     */
+/*  lidos dos pedidos do evento e completados com exemplos.            */
 /* ------------------------------------------------------------------ */
 
 export * from "@/plataforma/comissarios";
+
+// Pedidos de exemplo com produto: organização que não salvou a biblioteca usa a inicial do Backstage.
+definirBibliotecaPadrao((organizacaoId) => bibliotecaDe(undefined, organizacaoId));
 
 /**
  * Comissários da organização em contexto (semeia na primeira leitura). Com `idDoLink`, um link
@@ -25,7 +31,8 @@ export function useComissariosDaOrganizacao(idDoLink?: string) {
     useEffect(() => {
         if (trocando && dono) setOrganizacaoAtual(dono);
     }, [trocando, dono]);
-    if (org && !e.semeadas.includes(orgId)) queueMicrotask(() => semear(orgId, org.eventos ?? []));
+    // Semeia quando o banco já respondeu (a marca de semente fica na organização gravada).
+    if (org && !e.carregando && !e.semeadas.includes(orgId)) queueMicrotask(() => semear(orgId, org.eventos ?? []));
     const comissarios = useMemo(() => e.comissarios.filter((c) => c.organizacaoId === orgId), [e.comissarios, orgId]);
-    return { carregando: trocando || !org || !e.semeadas.includes(orgId), organizacao: org, comissarios, estado: e };
+    return { carregando: e.carregando || trocando || !org || !e.semeadas.includes(orgId), organizacao: org, comissarios, estado: e };
 }

@@ -1,8 +1,6 @@
 import { useDeferredValue, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { SearchLg } from "@untitledui/icons";
-import { parseDateTime } from "@internationalized/date";
-import { DateTimePicker } from "@/components/application/date-picker/date-time-picker";
 import { SlideoutMenu } from "@/components/application/slideout-menus/slideout-menu";
 import { Badge } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
@@ -10,6 +8,7 @@ import { Checkbox } from "@/components/base/checkbox/checkbox";
 import { InputBase } from "@/components/base/input/input";
 import { Surgir } from "@/components/foundations/transicao";
 import type { EdicaoNaCarteira, Evento, Pergunta } from "@/plataforma";
+import { CampoData, CampoHora } from "../../components/campos-de-data-e-hora";
 import { LIMIAR_FERRAMENTAS, paraBusca } from "../../itens/components/escala";
 import { salvarEdicaoNaCarteira } from "../../itens/data/catalogo";
 import { formatar, useTextosItens } from "../../itens/data/textos-itens";
@@ -39,9 +38,12 @@ const T = {
     slideout: {
         titulo: "Edição na carteira",
         descricao: "Na janela escolhida, quem comprou muda na Carteira as respostas das perguntas marcadas.",
-        inicio: "Começa em",
-        fim: "Termina em",
-        dataErro: "Escolha data e hora.",
+        dataInicio: "Data de início",
+        horaInicio: "Hora de início",
+        dataFim: "Data de término",
+        horaFim: "Hora de término",
+        dataErro: "Escolha a data.",
+        horaErro: "Escolha a hora.",
         fimErro: "Escolha um fim depois do começo.",
         perguntas: "Perguntas que podem mudar",
         semPerguntas: "Marque pelo menos uma pergunta.",
@@ -59,15 +61,6 @@ type Estado = keyof typeof T.estados;
 const COR: Record<Estado, "success" | "blue" | "gray"> = { aberta: "success", agendada: "blue", encerrada: "gray" };
 const estadoDa = (e: EdicaoNaCarteira, agora = new Date()): Estado =>
     new Date(e.inicio) > agora ? "agendada" : new Date(e.fim) < agora ? "encerrada" : "aberta";
-
-const paraData = (v?: string) => {
-    if (!v) return null;
-    try {
-        return parseDateTime(v.slice(0, 16));
-    } catch {
-        return null;
-    }
-};
 
 /** Só as perguntas que ainda existem (excluir uma pergunta a tira daqui). */
 const perguntasValidas = (e: EdicaoNaCarteira, perguntas: Pergunta[]) => e.perguntas.filter((id) => perguntas.some((p) => p.id === id));
@@ -159,8 +152,14 @@ function SlideoutEdicao({
 }) {
     const { plural, numero } = useTextosItens();
     const S = T.slideout;
-    const [inicio, setInicio] = useState(inicial?.inicio);
-    const [fim, setFim] = useState(inicial?.fim);
+    // Data e hora em campos separados (QST-16): escolher dia e hora no mesmo calendário não funcionou (decisão
+    // de 17/11/2026, reafirmada em 23/11/2026). O período gravado junta os dois.
+    const [dataInicio, setDataInicio] = useState(inicial?.inicio.slice(0, 10) ?? "");
+    const [horaInicio, setHoraInicio] = useState(inicial?.inicio.slice(11, 16) ?? "");
+    const [dataFim, setDataFim] = useState(inicial?.fim.slice(0, 10) ?? "");
+    const [horaFim, setHoraFim] = useState(inicial?.fim.slice(11, 16) ?? "");
+    const inicio = dataInicio && horaInicio ? `${dataInicio}T${horaInicio}` : undefined;
+    const fim = dataFim && horaFim ? `${dataFim}T${horaFim}` : undefined;
     const [marcadas, setMarcadas] = useState(() => new Set(inicial ? perguntasValidas(inicial, perguntas) : []));
     const [busca, setBusca] = useState("");
     const [tentou, setTentou] = useState(false);
@@ -169,14 +168,16 @@ function SlideoutEdicao({
     const filtradas = useMemo(() => (termo ? perguntas.filter((p) => paraBusca(p.titulo).includes(termo)) : perguntas), [perguntas, termo]);
 
     const erros = {
-        inicio: !inicio ? S.dataErro : undefined,
-        fim: !fim ? S.dataErro : inicio && fim <= inicio ? S.fimErro : undefined,
+        dataInicio: !dataInicio ? S.dataErro : undefined,
+        horaInicio: !horaInicio ? S.horaErro : undefined,
+        dataFim: !dataFim ? S.dataErro : inicio && fim && fim <= inicio ? S.fimErro : undefined,
+        horaFim: !horaFim ? S.horaErro : undefined,
         perguntas: marcadas.size === 0 ? S.semPerguntas : undefined,
     };
 
     const salvar = async () => {
         setTentou(true);
-        if (erros.inicio || erros.fim || erros.perguntas || !inicio || !fim) return;
+        if (erros.dataInicio || erros.horaInicio || erros.dataFim || erros.horaFim || erros.perguntas || !inicio || !fim) return;
         setSalvando(true);
         // Mantém a ordem do questionário.
         await onSalvar({ inicio, fim, perguntas: perguntas.filter((p) => marcadas.has(p.id)).map((p) => p.id) });
@@ -199,26 +200,44 @@ function SlideoutEdicao({
             </SlideoutMenu.Header>
 
             <SlideoutMenu.Content className="gap-5 pb-4">
-                <DateTimePicker
-                    label={S.inicio}
-                    granularity="minute"
-                    hourCycle={24}
-                    isRequired
-                    value={paraData(inicio)}
-                    onChange={(d) => setInicio(d ? d.toString().slice(0, 16) : undefined)}
-                    isInvalid={tentou && !!erros.inicio}
-                    hint={tentou ? erros.inicio : undefined}
-                />
-                <DateTimePicker
-                    label={S.fim}
-                    granularity="minute"
-                    hourCycle={24}
-                    isRequired
-                    value={paraData(fim)}
-                    onChange={(d) => setFim(d ? d.toString().slice(0, 16) : undefined)}
-                    isInvalid={tentou && !!erros.fim}
-                    hint={tentou ? erros.fim : undefined}
-                />
+                {/* Início e término, cada um com data e hora em campos separados, lado a lado (QST-16). */}
+                <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,9rem)] items-start gap-3">
+                    <CampoData
+                        label={S.dataInicio}
+                        isRequired
+                        valor={dataInicio}
+                        onChange={setDataInicio}
+                        isInvalid={tentou && !!erros.dataInicio}
+                        hint={tentou ? erros.dataInicio : undefined}
+                    />
+                    <CampoHora
+                        label={S.horaInicio}
+                        isRequired
+                        valor={horaInicio}
+                        onChange={setHoraInicio}
+                        isInvalid={tentou && !!erros.horaInicio}
+                        hint={tentou ? erros.horaInicio : undefined}
+                    />
+                </div>
+                <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,9rem)] items-start gap-3">
+                    <CampoData
+                        label={S.dataFim}
+                        isRequired
+                        valor={dataFim}
+                        minimo={dataInicio || undefined}
+                        onChange={setDataFim}
+                        isInvalid={tentou && !!erros.dataFim}
+                        hint={tentou ? erros.dataFim : undefined}
+                    />
+                    <CampoHora
+                        label={S.horaFim}
+                        isRequired
+                        valor={horaFim}
+                        onChange={setHoraFim}
+                        isInvalid={tentou && !!erros.horaFim}
+                        hint={tentou ? erros.horaFim : undefined}
+                    />
+                </div>
 
                 {/* Perguntas dentro do próprio slideout: sem abrir outro overlay por cima (UI-NAV-002). */}
                 <fieldset className="flex flex-col gap-3">

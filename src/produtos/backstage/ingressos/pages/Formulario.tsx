@@ -10,10 +10,10 @@ import { Input } from "@/components/base/input/input";
 import { TextArea } from "@/components/base/textarea/textarea";
 import { Toggle } from "@/components/base/toggle/toggle";
 import { BackstageLayout } from "../../components/Backstage";
+import { CabecalhoDaPagina } from "../../components/cabecalho-da-pagina";
 import { AdicionarPerguntaModal } from "../components/AdicionarPerguntaModal";
 import { PreviewFormularioModal } from "../components/PreviewFormularioModal";
 import { type PerguntaCadastrada } from "../data/formularios";
-import { TITULO_PAGINA } from "@/produtos/backstage/components/titulo-pagina";
 
 interface PerguntaForm extends PerguntaCadastrada {
     /** Identificador único da instância no formulário. */
@@ -69,21 +69,22 @@ export function Formulario() {
                     />
                 ) : (
                     <>
-                        {/* Header */}
-                        <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                            <h1 className={TITULO_PAGINA}>Criar formulário</h1>
-                            <div className="flex items-center gap-3">
-                                <Button size="md" color="secondary" iconLeading={Eye} onClick={() => setIsPreviewOpen(true)}>
-                                    Pré-visualizar
-                                </Button>
-                                <Button size="md" color="secondary" onClick={salvar}>
-                                    Salvar
-                                </Button>
-                                <Button size="md" color="primary" onClick={salvar}>
-                                    Salvar formulário
-                                </Button>
-                            </div>
-                        </header>
+                        <CabecalhoDaPagina
+                            titulo="Criar formulário"
+                            acoes={
+                                <>
+                                    <Button size="md" color="secondary" iconLeading={Eye} onClick={() => setIsPreviewOpen(true)}>
+                                        Pré-visualizar
+                                    </Button>
+                                    <Button size="md" color="secondary" onClick={salvar}>
+                                        Salvar
+                                    </Button>
+                                    <Button size="md" color="primary" onClick={salvar}>
+                                        Salvar formulário
+                                    </Button>
+                                </>
+                            }
+                        />
 
                         <div className="mx-auto mt-6 flex w-full max-w-2xl flex-col gap-5">
                             {/* Nome e descrição do formulário */}

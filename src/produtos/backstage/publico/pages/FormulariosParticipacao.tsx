@@ -1,23 +1,22 @@
 import { useState } from "react";
-import { useNavigate } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { toast } from "sonner";
-import { Calendar, ChevronLeft, ChevronRight, Plus } from "@untitledui/icons";
+import { Calendar, Plus } from "@untitledui/icons";
+import { BadgeWithDot } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
-import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
-import { EVENTOS_DISPONIVEIS, SelecionarEventoModal } from "../components/SelecionarEventoModal";
+import { CabecalhoDaPagina } from "../../components/cabecalho-da-pagina";
+import { SelecionarEventoModal } from "../components/SelecionarEventoModal";
 import { FormularioParticipacaoModal, type LimiteSolicitacoes } from "../components/FormularioParticipacaoModal";
-import { adicionarFormulario, FORMULARIOS, type FormularioParticipacao } from "../data/formularios";
-import { SOLICITACOES } from "../data/solicitacoes";
-import thumbPadrao from "../components/assets/formulario-thumb.png";
-import { TITULO_PAGINA } from "@/produtos/backstage/components/titulo-pagina";
+import { salvarFormulario, useFormulariosDaOrganizacao, type FormularioParticipacao } from "../data/formularios";
+import { CabecalhoDaTabela, CarregandoTabela, CartaoDaTabela, Celula, LinhaDaTabela, TituloDaLinha, VazioDaTabela } from "../../components/tabela";
 
 type StatusFormulario = "inativo" | "disponivel" | "pausado";
 
-const STATUS_META: Record<StatusFormulario, { label: string; dot: string }> = {
-    inativo: { label: "Inativo", dot: "bg-fg-quaternary" },
-    disponivel: { label: "Disponível", dot: "bg-fg-success-secondary" },
-    pausado: { label: "Pausado", dot: "bg-fg-warning-secondary" },
+const STATUS_META: Record<StatusFormulario, { label: string; color: "gray" | "success" | "warning" }> = {
+    inativo: { label: "Inativo", color: "gray" },
+    disponivel: { label: "Disponível", color: "success" },
+    pausado: { label: "Pausado", color: "warning" },
 };
 
 const statusDoFormulario = (f: FormularioParticipacao): StatusFormulario => {
@@ -28,117 +27,155 @@ const statusDoFormulario = (f: FormularioParticipacao): StatusFormulario => {
     return "disponivel";
 };
 
-const DIAS_SEMANA = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
-const MESES = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+const n = (v: number) => v.toLocaleString("pt-BR");
+/** "12 de 500" com limite; "12" sem limite (PUB-14). */
+const pedidosRecebidos = (f: FormularioParticipacao) => (f.limite === "limitado" && f.quantidadeLimite !== undefined ? `${n(f.solicitacoesRecebidas)} de ${n(f.quantidadeLimite)}` : n(f.solicitacoesRecebidas));
 
-/** Gera uma data futura aleatória (entre 30 e 365 dias a partir de hoje), formatada como "Quinta, 31 Dez 2026". */
-const gerarDataFutura = () => {
-    const dias = 30 + Math.floor(Math.random() * 335);
-    const data = new Date();
-    data.setDate(data.getDate() + dias);
-    return `${DIAS_SEMANA[data.getDay()]}, ${String(data.getDate()).padStart(2, "0")} ${MESES[data.getMonth()]} ${data.getFullYear()}`;
-};
+export const ROTA_PEDIDOS = "/backstage/publico/solicitacoes";
 
 /** Backstage → Público → Formulário de participação: lista de formulários por evento. */
 export function FormulariosParticipacao() {
     const navigate = useNavigate();
-    const [formularios, setFormularios] = useState(FORMULARIOS);
+    // Um formulário por evento da organização, gravado no evento (PUB-94).
+    const { carregando, formularios, eventosSemFormulario } = useFormulariosDaOrganizacao();
     const [isSelecionarEventoOpen, setIsSelecionarEventoOpen] = useState(false);
-    const [eventoNovoFormularioId, setEventoNovoFormularioId] = useState<string | null>(null);
+    // Evento escolhido para o formulário novo: fica guardado ao voltar da configuração para a escolha (PUB-106).
+    const [eventoEscolhido, setEventoEscolhido] = useState<string | null>(null);
+    const [configurando, setConfigurando] = useState(false);
+
+    const abrirNovo = () => {
+        setEventoEscolhido(null);
+        setIsSelecionarEventoOpen(true);
+    };
 
     const handleContinuarSelecaoEvento = (eventoId: string) => {
-        setEventoNovoFormularioId(eventoId);
+        setEventoEscolhido(eventoId);
         setIsSelecionarEventoOpen(false);
+        setConfigurando(true);
     };
 
+    // Depois de criar, o toast leva aos pedidos do formulário e diz se ele aceita pedidos (PUB-105).
     const handleSalvarNovoFormulario = ({ ativo, limite, quantidade }: { ativo: boolean; limite: LimiteSolicitacoes; quantidade?: number }) => {
-        const evento = EVENTOS_DISPONIVEIS.find((e) => e.id === eventoNovoFormularioId);
-        adicionarFormulario({
-            id: `${eventoNovoFormularioId}-${FORMULARIOS.length}`,
-            titulo: evento?.titulo ?? "Novo formulário",
-            data: gerarDataFutura(),
-            imagem: thumbPadrao,
-            rascunho: true,
-            ativo,
-            limite,
-            quantidadeLimite: quantidade,
-            solicitacoesRecebidas: SOLICITACOES.length,
+        const eventoId = eventoEscolhido;
+        if (!eventoId) return;
+        void salvarFormulario(eventoId, { ativo, limite, quantidadeLimite: quantidade });
+        toast.success("Formulário criado", {
+            description: ativo ? "Ele já aceita pedidos. Os pedidos aparecem na tela do formulário." : "O recebimento está desligado. Ligue em Configurar formulário quando quiser aceitar pedidos.",
+            duration: 6000,
+            action: { label: "Abrir formulário", onClick: () => navigate(ROTA_PEDIDOS, { state: { formularioId: eventoId } }) },
         });
-        setFormularios([...FORMULARIOS]);
-        toast.success("Formulário criado!", {
-            description: "O novo formulário já está disponível para o público.",
-            duration: 2000,
-        });
+        setEventoEscolhido(null);
     };
+
+    const eventoDoNovo = eventosSemFormulario.find((e) => e.id === eventoEscolhido);
 
     return (
         <BackstageLayout showEventContext={false} showLayoutSwitcher={false} activeProducer="publico">
             <div className="flex min-w-0 flex-1 flex-col gap-6">
-                <div className="flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-3">
-                        <button
-                            type="button"
-                            aria-label="Voltar"
-                            onClick={() => navigate("/backstage/publico")}
-                            className="flex size-11 shrink-0 items-center justify-center rounded-[8px] text-fg-secondary ring-1 ring-secondary transition duration-100 ease-linear hover:bg-secondary"
-                        >
-                            <ChevronLeft className="size-5" aria-hidden="true" />
-                        </button>
-                        <h1 className={TITULO_PAGINA}>Formulário de participação</h1>
-                    </div>
-                    <Button size="md" color="primary" iconLeading={Plus} onClick={() => setIsSelecionarEventoOpen(true)}>
-                        Novo formulário
-                    </Button>
-                </div>
+                <CabecalhoDaPagina
+                    voltar={{ rotulo: "Público", onClick: () => navigate("/backstage/publico") }}
+                    titulo="Formulário de participação"
+                    acoes={
+                        formularios.length > 0 && (
+                            <Button size="md" color="primary" iconLeading={Plus} onClick={abrirNovo}>
+                                Novo formulário
+                            </Button>
+                        )
+                    }
+                />
 
-                <div className="flex flex-col gap-3">
-                    {formularios.map((f) => {
-                        const status = statusDoFormulario(f);
-                        return (
-                            <button
-                                key={f.id}
-                                type="button"
-                                onClick={() => navigate("/backstage/publico/solicitacoes", { state: { formularioId: f.id } })}
-                                className="flex w-full items-center gap-4 rounded-xl bg-primary p-3 text-left ring-1 ring-border-secondary outline-none transition duration-100 ease-linear hover:bg-primary_hover focus-visible:ring-2 focus-visible:ring-brand"
-                            >
-                                <img src={f.imagem} alt="" className="size-16 shrink-0 rounded-lg object-cover" />
-                                <div className="flex min-w-px flex-1 flex-col gap-1.5">
-                                    <span className="text-md font-bold text-primary">{f.titulo}</span>
-                                    <span className="flex items-center gap-1.5 text-sm text-tertiary">
-                                        <Calendar className="size-3.5 text-fg-quaternary" aria-hidden="true" />
-                                        {f.data}
-                                    </span>
-                                </div>
-                                <span className="flex shrink-0 items-center gap-1.5 text-sm text-tertiary">
-                                    <span className={cx("size-2 shrink-0 rounded-full", STATUS_META[status].dot)} aria-hidden="true" />
-                                    <span className="font-semibold text-primary">{STATUS_META[status].label}</span>
-                                    <span>
-                                        ·{" "}
-                                        {f.limite === "limitado" && f.quantidadeLimite !== undefined
-                                            ? `${f.solicitacoesRecebidas.toLocaleString("pt-BR")} de ${f.quantidadeLimite.toLocaleString("pt-BR")} solicitações recebidas`
-                                            : `${f.solicitacoesRecebidas.toLocaleString("pt-BR")} solicitaç${f.solicitacoesRecebidas === 1 ? "ão" : "ões"} recebida${f.solicitacoesRecebidas === 1 ? "" : "s"}`}
-                                    </span>
-                                </span>
-                                <ChevronRight className="size-5 shrink-0 text-fg-quaternary" aria-hidden="true" />
-                            </button>
-                        );
-                    })}
-                </div>
+                {carregando && <CarregandoTabela />}
+
+                {/* Nenhum evento da organização tem formulário ainda (PUB-95). */}
+                {!carregando && formularios.length === 0 && (
+                    <VazioDaTabela
+                        icone={Calendar}
+                        titulo="Comece a receber pedidos de participação"
+                        texto="Escolha um evento para criar o formulário. Quem precisa de um acesso especial, como pessoas com deficiência, pede pelo formulário e você aprova cada pedido por aqui."
+                        acao={
+                            <Button size="md" color="primary" iconLeading={Plus} onClick={abrirNovo}>
+                                Novo formulário
+                            </Button>
+                        }
+                    />
+                )}
+
+                {!carregando && formularios.length > 0 && (
+                    // Lista no cartão comum (BKS-110, PUB-104): abaixo de 704 px de cartão, cada formulário vira um bloco.
+                    <CartaoDaTabela>
+                        <CabecalhoDaTabela>
+                            <span className="min-w-0 flex-1">Evento</span>
+                            <span className="w-32">Situação</span>
+                            <span className="w-36 text-right">Pedidos recebidos</span>
+                        </CabecalhoDaTabela>
+                        <ul className="flex flex-col divide-y divide-secondary">
+                            {formularios.map((f) => {
+                                const status = STATUS_META[statusDoFormulario(f)];
+                                return (
+                                    <LinhaDaTabela key={f.id} interativa className="relative outline-focus-ring -outline-offset-2 has-[a:focus-visible]:outline-2">
+                                        <div className="flex min-w-0 flex-1 flex-col gap-2 @min-[44rem]:flex-row @min-[44rem]:items-center @min-[44rem]:gap-4">
+                                            <div className="flex min-w-0 flex-1 items-center gap-3">
+                                                {f.imagem ? (
+                                                    <img src={f.imagem} alt="" className="size-10 shrink-0 rounded-lg object-cover" />
+                                                ) : (
+                                                    <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-secondary">
+                                                        <Calendar className="size-5 text-fg-quaternary" aria-hidden="true" />
+                                                    </span>
+                                                )}
+                                                {/* O nome é o link e cobre a linha (BKS-113). */}
+                                                <TituloDaLinha
+                                                    titulo={
+                                                        <Link to={ROTA_PEDIDOS} state={{ formularioId: f.id }} className="outline-hidden after:absolute after:inset-0">
+                                                            {f.titulo}
+                                                        </Link>
+                                                    }
+                                                    apoio={f.data}
+                                                />
+                                            </div>
+                                            <Celula rotulo="Situação" className="@min-[44rem]:w-32">
+                                                <BadgeWithDot size="sm" type="pill-color" color={status.color} className="inline-flex align-middle">
+                                                    {status.label}
+                                                </BadgeWithDot>
+                                            </Celula>
+                                            <Celula rotulo="Pedidos recebidos" numero className="@min-[44rem]:w-36">
+                                                {pedidosRecebidos(f)}
+                                            </Celula>
+                                        </div>
+                                    </LinhaDaTabela>
+                                );
+                            })}
+                        </ul>
+                    </CartaoDaTabela>
+                )}
             </div>
 
             <SelecionarEventoModal
                 isOpen={isSelecionarEventoOpen}
-                onClose={() => setIsSelecionarEventoOpen(false)}
+                onClose={() => {
+                    setIsSelecionarEventoOpen(false);
+                    setEventoEscolhido(null);
+                }}
                 onContinuar={handleContinuarSelecaoEvento}
+                eventos={eventosSemFormulario}
+                eventoInicial={eventoEscolhido}
             />
 
             <FormularioParticipacaoModal
-                isOpen={eventoNovoFormularioId !== null}
-                onClose={() => setEventoNovoFormularioId(null)}
+                isOpen={configurando}
+                onClose={() => {
+                    setConfigurando(false);
+                    setEventoEscolhido(null);
+                }}
+                onVoltar={() => {
+                    setConfigurando(false);
+                    setIsSelecionarEventoOpen(true);
+                }}
                 onSalvar={handleSalvarNovoFormulario}
+                evento={eventoDoNovo ? [eventoDoNovo.titulo, eventoDoNovo.data].filter(Boolean).join(", ") : undefined}
                 ativoInicial={true}
                 limiteInicial="ilimitado"
-                solicitacoesRecebidas={SOLICITACOES.length}
+                // Formulário novo nasce sem pedidos (PUB-26).
+                solicitacoesRecebidas={0}
             />
         </BackstageLayout>
     );

@@ -11,7 +11,7 @@ export type BuyerSearch =
     | { status: "searching" }
     | { status: "invalid-email" }
     | { status: "found"; buyer: Buyer }
-    | { status: "multiple"; buyers: Buyer[]; selectedId?: string }
+    | { status: "multiple"; buyers: Buyer[]; selectedId?: string; porNome?: boolean }
     | { status: "email-not-found"; email: string }
     | { status: "document-not-found" };
 
@@ -25,10 +25,12 @@ interface BuyerStepProps {
     onSelectBuyer: (buyerId: string) => void;
     /** Ação primária do passo — fica ao lado de "Pular identificação", junto do resultado da busca. */
     advanceButton?: React.ReactNode;
+    /** Com as ações no rodapé do painel de passos (BIL-80), o passo não mostra "Pular" nem "Avançar". */
+    semAcoes?: boolean;
 }
 
 /** Passo 1 — identifica o comprador por documento ou e-mail. */
-export function BuyerStep({ term, onTermChange, search, onSearch, onSkip, onSelectBuyer, advanceButton }: BuyerStepProps) {
+export function BuyerStep({ term, onTermChange, search, onSearch, onSkip, onSelectBuyer, advanceButton, semAcoes = false }: BuyerStepProps) {
     const isSearching = search.status === "searching";
     const isInvalid = search.status === "invalid-email";
 
@@ -58,7 +60,7 @@ export function BuyerStep({ term, onTermChange, search, onSearch, onSkip, onSele
                                     onSearch();
                                 }
                             }}
-                            placeholder="Digite o documento ou e-mail do comprador"
+                            placeholder="Digite o e-mail, o nome ou o documento do comprador"
                         />
                         {isInvalid && (
                             <p className="flex items-center gap-1.5 text-sm text-error-primary">
@@ -87,7 +89,7 @@ export function BuyerStep({ term, onTermChange, search, onSearch, onSkip, onSele
             )}
 
             {search.status === "multiple" && (
-                <ContasEncontradas buyers={search.buyers} selectedId={search.selectedId} onSelect={onSelectBuyer} />
+                <ContasEncontradas buyers={search.buyers} selectedId={search.selectedId} onSelect={onSelectBuyer} porNome={search.porNome} />
             )}
 
             {search.status === "email-not-found" && (
@@ -132,12 +134,14 @@ export function BuyerStep({ term, onTermChange, search, onSearch, onSkip, onSele
             </p>
 
             {/* Ação principal junto do resultado — "Pular" é saída secundária, não concorre com ela. */}
-            <div className="flex flex-col-reverse items-stretch gap-3 md:flex-row md:items-center md:justify-end">
-                <Button size="md" color="secondary" onClick={onSkip} isDisabled={EVENTO.identificacaoObrigatoria}>
-                    Pular identificação
-                </Button>
-                {advanceButton}
-            </div>
+            {!semAcoes && (
+                <div className="flex flex-col-reverse items-stretch gap-3 md:flex-row md:items-center md:justify-end">
+                    <Button size="md" color="secondary" onClick={onSkip} isDisabled={EVENTO.identificacaoObrigatoria}>
+                        Pular identificação
+                    </Button>
+                    {advanceButton}
+                </div>
+            )}
         </div>
     );
 }
@@ -160,15 +164,8 @@ export const BuyerIdentity = ({ buyer }: { buyer: Buyer }) => (
               E-mail primeiro: é ele que identifica a conta e para onde os ingressos
               vão. O documento vem depois, como confirmação, na mesma linha.
             */}
-            <p className="truncate text-sm text-tertiary">
-                {buyer.email}
-                {buyer.maskedDocument && (
-                    <>
-                        <span aria-hidden="true"> • </span>
-                        {buyer.maskedDocument}
-                    </>
-                )}
-            </p>
+            <p className="text-sm break-all text-tertiary">{buyer.email}</p>
+            {buyer.maskedDocument && <p className="truncate text-sm text-tertiary">{buyer.maskedDocument}</p>}
         </div>
     </div>
 );
@@ -192,10 +189,13 @@ const ContasEncontradas = ({
     buyers,
     selectedId,
     onSelect,
+    porNome = false,
 }: {
     buyers: Buyer[];
     selectedId?: string;
     onSelect: (buyerId: string) => void;
+    /** Busca por nome: várias contas não "usam o e-mail", só batem com o nome. */
+    porNome?: boolean;
 }) => {
     const varias = buyers.length > 1;
 
@@ -203,7 +203,7 @@ const ContasEncontradas = ({
         <div className="flex flex-col gap-4 rounded-xl bg-primary p-4 ring-1 ring-border-secondary md:p-5">
             <div className="flex flex-col gap-0.5">
                 <h2 className="text-md font-semibold text-primary">
-                    {varias ? `${buyers.length} contas usam esse e-mail` : "Conta encontrada"}
+                    {varias ? (porNome ? `${buyers.length} contas com esse nome` : `${buyers.length} contas usam esse e-mail`) : "Conta encontrada"}
                 </h2>
                 <p className="text-sm text-tertiary">
                     {varias ? "Escolha para qual delas os ingressos vão." : "Confira os dados antes de continuar."}

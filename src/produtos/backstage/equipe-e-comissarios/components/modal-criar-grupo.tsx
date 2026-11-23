@@ -1,9 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
-import { XClose } from "@untitledui/icons";
-import { Dialog, Modal, ModalOverlay } from "@/components/application/modals/modal";
 import { Button } from "@/components/base/buttons/button";
 import { Input } from "@/components/base/input/input";
+import { CascaDoModalDeMembros } from "../../components/CriarMembroModal";
 import { gruposDeExemplo } from "../data/grupos-exemplo";
 import { BASE, criarGrupo, NOME_MAX, operadoresDe, type GrupoEquipe } from "../data/equipe";
 import { SeletorOperadores } from "./seletor-operadores";
@@ -63,55 +62,46 @@ export function ModalCriarGrupo({
             gruposDeExemplo(eventoId, organizacaoId),
         );
         fechar();
-        navigate(`${BASE}/${novo.id}`, { state: { criado: true } });
+        // Na simulação de escala nada é gravado e o grupo não nasce (ECO-100).
+        if (novo) navigate(`${BASE}/${novo.id}`, { state: { criado: true } });
     };
 
+    const alterado = !!nome.trim() || gruposMembros.length > 0 || emails.length > 0;
+
     return (
-        <ModalOverlay isOpen={aberto} onOpenChange={(abrir) => !abrir && fechar()} isDismissable className="bg-black/40 backdrop-blur-[16px]">
-            <Modal className="max-w-[720px]">
-                <Dialog aria-label="Criar grupo">
-                    <div className="relative flex max-h-[calc(100dvh-96px)] w-full flex-col overflow-hidden rounded-2xl bg-primary shadow-xl ring-1 ring-border-secondary ring-inset">
-                        <button
-                            type="button"
-                            onClick={fechar}
-                            aria-label="Fechar"
-                            className="absolute top-4 right-4 flex size-9 items-center justify-center rounded-lg text-fg-quaternary transition duration-100 ease-linear hover:bg-primary_hover hover:text-fg-quaternary_hover"
-                        >
-                            <XClose className="size-5" aria-hidden="true" />
-                        </button>
-                        <div className="flex shrink-0 flex-col gap-0.5 px-6 pt-6 pr-14">
-                            <h2 className="text-md font-semibold text-primary">Criar grupo</h2>
-                            <p className="text-sm text-tertiary">Depois de criar, você configura os canais do grupo e, se houver, o comissário.</p>
-                        </div>
-
-                        <div className="flex min-h-0 flex-col gap-5 overflow-y-auto px-6 pt-5">
-                            <Input
-                                label="Nome do grupo"
-                                isRequired
-                                placeholder="Ex.: Equipe de portaria"
-                                value={nome}
-                                onChange={setNome}
-                                isInvalid={(tentou && !!erros.nome) || repetido || longo}
-                                hint={(tentou || repetido || longo) && erros.nome ? erros.nome : undefined}
-                            />
-                            <div className="flex flex-col gap-3 border-t border-secondary pt-5">
-                                <h3 className="text-sm font-semibold text-primary">Pessoas</h3>
-                                <SeletorOperadores grupos={gruposMembros} onGrupos={setGruposMembros} emails={emails} onEmails={setEmails} semMoldura />
-                                {tentou && erros.pessoas && <p className="text-sm text-error-primary">{erros.pessoas}</p>}
-                            </div>
-                        </div>
-
-                        <div className="mt-6 flex shrink-0 gap-3 border-t border-secondary p-6">
-                            <Button size="md" color="secondary" className="flex-1" onClick={fechar}>
-                                Cancelar
-                            </Button>
-                            <Button size="md" color="primary" className="flex-1" onClick={criar}>
-                                Criar grupo
-                            </Button>
-                        </div>
-                    </div>
-                </Dialog>
-            </Modal>
-        </ModalOverlay>
+        // Casca dos modais de Membros (MEM-75): tela cheia no celular e confirmação ao descartar (ECO-99).
+        <CascaDoModalDeMembros
+            isOpen={aberto}
+            titulo="Criar grupo"
+            alterado={alterado}
+            onFechar={fechar}
+            largura="sm:max-w-[640px]"
+            rodape={(pedirParaFechar) => (
+                <>
+                    <Button size="lg" color="secondary" onClick={pedirParaFechar}>
+                        Cancelar
+                    </Button>
+                    <Button size="lg" color="primary" onClick={criar}>
+                        Criar grupo
+                    </Button>
+                </>
+            )}
+        >
+            <p className="-mt-3 text-sm text-tertiary">Depois de criar, você configura os canais do grupo e, se houver, o comissário.</p>
+            <Input
+                label="Nome do grupo"
+                isRequired
+                placeholder="Ex.: Equipe de portaria"
+                value={nome}
+                onChange={setNome}
+                isInvalid={(tentou && !!erros.nome) || repetido || longo}
+                hint={(tentou || repetido || longo) && erros.nome ? erros.nome : undefined}
+            />
+            <div className="flex flex-col gap-3 border-t border-secondary pt-5">
+                <h3 className="text-sm font-semibold text-primary">Pessoas</h3>
+                <SeletorOperadores grupos={gruposMembros} onGrupos={setGruposMembros} emails={emails} onEmails={setEmails} semMoldura />
+                {tentou && erros.pessoas && <p className="text-sm text-error-primary">{erros.pessoas}</p>}
+            </div>
+        </CascaDoModalDeMembros>
     );
 }

@@ -1,0 +1,566 @@
+/* jornada-futebol.css: a jornada de compra de futebol (Mariana Teixeira, 29/10/2026; módulo M2).
+   Fonte: tools/previa/jornada-futebol/jornada-futebol.css; o gerador (tools/previa/jornada-futebol.mjs) copia para previa/jornada-futebol.css e liga o <link> nas telas Ingressos, Checkout,
+   Pagamento e Carteira, depois da identidade. Só vale com ?jogo=<id>: as classes jf-* só existem no markup do futebol; o fluxo de shows não é tocado.
+   Só tokens da identidade: Elza, --space-*, --color-*, --size-*, raio 8 px, sem sombra, sem desfoque, estado por texto e ícone (nunca só cor).
+   Componentes reutilizados (nenhum se reescreve): .card .over .h1 .seg .chip .tag[data-sit] .st .qtd .acd .uui-alert .bp .bs .bs-sm .linkbtn .field .fac .hold .cbar .sum-row .uui-modal.
+   Os componentes novos (mapa do estádio, folha de rosto, cartão de pessoa) são dos módulos M1 e M3 (mapa-estadio.css, rosto.css). */
+
+/* a identidade põe raio de 8 px em tudo: linhas com filete (borda só em cima) ficam retas */
+.jf-fatos li, .jf-recap-lista, .jf-recap-lista li, .jf-ing-pad, .jf-agora-lista li, .jf-grade > div, .jf-ing-pe, .jf-resumo__linhas, .jf-resumo__soma, .jf-resumo__total { border-radius: 0 !important; }
+
+
+/* ícones que variam por estado (o motor de templates não liga `d` de <path>): máscara de CSS pela cor do texto, escolhida por data-ic */
+.jf-ic { display: inline-block; flex: 0 0 auto; width: var(--size-icon-md); height: var(--size-icon-md); background: currentColor; -webkit-mask: var(--jf-ic) center / contain no-repeat; mask: var(--jf-ic) center / contain no-repeat; }
+.jf-ic--16 { width: 16px; height: 16px; }
+.tag .jf-ic { width: var(--size-icon-sm); height: var(--size-icon-sm); } /* ícone do selo único: 20 px */
+.jf-ic[data-ic="ok"] { --jf-ic: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m7.5 12 3 3 6-6m5.5 3c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10Z'/%3E%3C/svg%3E"); }
+.jf-ic[data-ic="info"] { --jf-ic: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 16v-4m0-4h.01M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10Z'/%3E%3C/svg%3E"); }
+.jf-ic[data-ic="erro"] { --jf-ic: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 8v4m0 4h.01M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10Z'/%3E%3C/svg%3E"); }
+.jf-ic[data-ic="atencao"] { --jf-ic: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 9v4m0 4h.01M10.615 3.892 2.39 18.098c-.456.788-.684 1.182-.65 1.506a1 1 0 0 0 .406.705c.263.191.718.191 1.629.191h16.45c.91 0 1.365 0 1.628-.191a1 1 0 0 0 .407-.705c.034-.324-.195-.718-.65-1.506L13.383 3.892c-.454-.785-.681-1.178-.978-1.31a1 1 0 0 0-.813 0c-.296.132-.523.525-.978 1.31Z'/%3E%3C/svg%3E"); }
+.jf-ic[data-ic="relogio"] { --jf-ic: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 6v6l4 2m6-2c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10Z'/%3E%3C/svg%3E"); }
+.jf-ic[data-ic="rosto"] { --jf-ic: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 15.5c-2.9 0-5.4 1.4-6.8 3.5M12 15.5c2.9 0 5.4 1.4 6.8 3.5M16 9a4 4 0 1 1-8 0 4 4 0 0 1 8 0Z'/%3E%3C/svg%3E"); }
+.jf-ic[data-ic="qr"] { --jf-ic: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 9V6.2c0-1.12 0-1.68.218-2.108a2 2 0 0 1 .874-.874C4.52 3 5.08 3 6.2 3H9M3 15v2.8c0 1.12 0 1.68.218 2.108a2 2 0 0 0 .874.874C4.52 21 5.08 21 6.2 21H9m6-18h2.8c1.12 0 1.68 0 2.108.218a2 2 0 0 1 .874.874C21 4.52 21 5.08 21 6.2V9m0 6v2.8c0 1.12 0 1.68-.218 2.108a2 2 0 0 1-.874.874C19.48 21 18.92 21 17.8 21H15M9 12h6'/%3E%3C/svg%3E"); }
+.jf-ic[data-ic="flag"] { --jf-ic: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1v19'/%3E%3C/svg%3E"); }
+.jf-ic[data-ic="bloqueio"] { --jf-ic: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m4.93 4.93 14.14 14.14M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10Z'/%3E%3C/svg%3E"); }
+
+/* ---------------------------------------------------------------------------------------------------------------
+   1. Estrutura (etapa 1; as etapas 2 e 3 usam o contêiner da tela comum e só trocam o <main>)
+   --------------------------------------------------------------------------------------------------------------- */
+.jf-pagina { max-width: calc(var(--layout-content-max) + 2 * var(--layout-margin)); margin: 0 auto; padding: var(--space-7) var(--layout-margin) var(--space-10); display: flex; flex-wrap: wrap; gap: var(--space-7); align-items: flex-start; box-sizing: border-box; }
+.jf-main { flex: 999 1 620px; min-width: 0; display: flex; flex-direction: column; gap: var(--space-5); }
+.jf-aside { flex: 1 1 340px; min-width: 0; max-width: var(--layout-aside-width); position: sticky; top: calc(var(--size-header) + var(--space-4)); scroll-margin-top: var(--space-9); }
+.jf-topo { display: flex; flex-direction: column; gap: var(--space-2); }
+.jf-lead { margin: var(--space-2) 0 0; max-width: var(--measure-body); font-size: var(--font-size-body); line-height: var(--font-lh-body); color: var(--color-text-secondary); text-wrap: balance; }
+.jf-sec { display: flex; flex-direction: column; gap: var(--space-4); scroll-margin-top: var(--space-9); }
+.jf-sec-cab { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-3) var(--space-4); }
+.jf-sec-ferr { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); }
+.jf-avisos { display: contents; }   /* os avisos são itens da coluna (a auditoria de simetria mede a borda do cartão, não o texto dentro dele) */
+.jf-avisos .uui-alert { flex: 0 0 auto; }
+.jf-vazio, .jf-ajuda { margin: 0; font-size: var(--font-size-small); line-height: 1.5; color: var(--color-text-secondary); }
+.jf-vivo { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.jf-orienta { margin: 0; font-size: var(--font-size-small); color: var(--color-text-tertiary); }
+.jf-selo-rosto { display: inline-flex; align-self: flex-start; }
+@media (max-width: 640px) { .jf-pagina { padding-top: var(--space-5); padding-inline: var(--layout-margin); gap: var(--space-5); } }
+
+/* ---------------------------------------------------------------------------------------------------------------
+   2. Cabeçalho do jogo (um só nas quatro telas): seta, os dois escudos, «Mandante x Visitante» e as etapas
+   --------------------------------------------------------------------------------------------------------------- */
+.jf-hdr .jf-hdr-in { display: flex; align-items: center; justify-content: space-between; margin: 0 auto; padding-block: var(--space-2) !important; }
+.jf-hdr-esq { display: flex; align-items: center; gap: var(--space-4); min-width: 0; flex: 1 1 auto; }
+.jf-voltar { flex: 0 0 auto; width: var(--size-touch-default); height: var(--size-touch-default); display: inline-flex; align-items: center; justify-content: center; border: var(--border-width-hairline) solid var(--color-border-control); color: var(--color-text-primary); }
+.jf-voltar:hover { border-color: var(--color-border-strong); }
+.jf-escudos { flex: 0 0 auto; display: inline-flex; align-items: center; gap: var(--space-2); }
+.jf-esc { display: inline-flex; width: var(--size-match-crest-compact); height: var(--size-match-crest-compact); flex: 0 0 auto; }
+.jf-esc__i { width: 100%; height: 100%; object-fit: contain; display: block; border-radius: 0; }
+.jf-esc__i--escuro { display: none; }
+html[data-theme="dark"] .jf-esc__i--claro { display: none; }
+html[data-theme="dark"] .jf-esc__i--escuro { display: block; }
+.jf-evt { display: flex; flex-direction: column; min-width: 0; padding-left: var(--space-4); border-left: var(--border-width-hairline) solid var(--color-border-subtle); }
+.jf-evt strong { font-size: var(--font-size-small); font-weight: 600; line-height: 1.3; overflow-wrap: anywhere; }
+.jf-evt span { font-size: var(--font-size-small); line-height: 1.35; color: var(--color-text-tertiary); overflow-wrap: anywhere; text-wrap: balance; }
+.jf-setor:not([data-so-painel="true"]) .jf-painel__sub { display: none; }
+.jf-fluxo { flex: 0 0 auto; display: flex; flex-direction: column; gap: var(--space-2); align-items: stretch; }
+.jf-steps { display: flex; gap: var(--space-2); list-style: none; margin: 0; padding: 0; font-size: var(--font-size-small); font-weight: 600; }
+.jf-steps .stp { flex: 1 1 0; justify-content: center; white-space: nowrap; }
+.jf-mob { display: none; margin: 0; font-size: var(--font-size-small); font-weight: 600; color: var(--color-text-primary); }
+.jf-prog { display: none; position: relative; height: var(--border-width-accent); background: var(--color-border-subtle); }
+.jf-prog::after { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 25%; background: var(--color-button-primary-bg); transition: width var(--motion-duration-base) var(--motion-ease-move); }
+.jf-hdr[data-passo="2"] .jf-prog::after { width: 50%; }
+.jf-hdr[data-passo="3"] .jf-prog::after { width: 75%; }
+.jf-hdr[data-passo="4"] .jf-prog::after { width: 100%; }
+@media (max-width: 1100px) { .jf-steps .stp:not([aria-current="step"]) .st-l { display: none; } .jf-evt span { display: none; } }
+@media (max-width: 640px) {
+  .jf-hdr .jf-hdr-in { flex-wrap: wrap; row-gap: var(--space-2); padding-block: var(--space-2) var(--space-3) !important; }
+  .jf-hdr-esq { flex: 1 1 100%; display: grid; grid-template-columns: auto auto minmax(0, 1fr); column-gap: var(--space-3); row-gap: var(--space-1); align-items: center; }
+  .jf-voltar { width: var(--size-touch-min); height: var(--size-touch-min); }
+  .jf-evt { display: contents; }
+  .jf-evt strong { grid-column: 3; grid-row: 1; }
+  .jf-evt span { display: block; grid-column: 1 / -1; grid-row: 2; }
+  .jf-fluxo { flex: 1 1 100%; }
+  .jf-steps { display: none; }
+  .jf-mob { display: block; }
+  .jf-prog { display: block; }
+}
+@media (max-width: 359px) { .jf-esc { width: 32px; height: 32px; } }
+@media (prefers-reduced-motion: reduce) { .jf-prog::after { transition: none; } }
+
+/* ---------------------------------------------------------------------------------------------------------------
+   3. Etapa 1: setores (lista, cartão e painel), tipos de ingresso, lugares
+   --------------------------------------------------------------------------------------------------------------- */
+.jf-mapa-bloco { display: flex; flex-direction: column; gap: var(--space-3); }
+.jf-mapa-quadro { min-height: var(--space-9); }
+/* a imagem do mapa (31/10/2026): ocupa a largura do quadro, proporção da própria imagem; o sistema de mapas vai trocá-la pelo mapa embutido */
+.jf-mapa-img { display: block; width: 100%; height: auto; border-radius: var(--radius-base); }
+.jf-setores { display: grid; grid-template-columns: 1fr; gap: var(--space-3); align-items: start; }
+@media (min-width: 1024px) { .jf-setores { grid-template-columns: repeat(2, minmax(0, 1fr)); } .jf-setor[data-so-painel="true"] { grid-column: 1 / -1; } }
+.jf-setor { display: flex; flex-direction: column; min-width: 0; background: var(--color-bg-surface); border: var(--border-width-hairline) solid var(--color-border-control); scroll-margin-top: var(--space-9); }
+.jf-setor[data-so-painel="true"] { border: 0; background: transparent; }
+.jf-setor[data-sel="true"] { border: var(--border-width-strong) solid var(--color-border-strong); }
+.jf-setor[data-k="poucos"] { background-image: repeating-linear-gradient(135deg, transparent 0 var(--space-2), var(--color-bg-subtle) var(--space-2) calc(var(--space-2) + var(--border-width-strong))); }
+.jf-setor[data-k="esgotado"], .jf-setor[data-k="visitante"] { background: var(--color-bg-subtle); }
+.jf-setor[data-k="visitante"] { background: var(--color-wave-away-bg); border-color: var(--color-wave-away-border); }
+.jf-setor[data-k="plano"], .jf-setor[data-k="direito"] { border-style: var(--border-style-wave-scheduled); border-width: var(--border-width-strong); border-color: var(--color-border-control); }
+.jf-setor__bt { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; column-gap: var(--space-3); row-gap: var(--space-1); width: 100%; min-height: calc(var(--size-touch-default) + var(--space-3)); padding: var(--space-3) var(--space-4); background: transparent; border: 0; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.jf-setor__bt:hover { background: var(--color-bg-hover); }
+.jf-setor__bt[aria-disabled="true"] { cursor: default; }
+.jf-setor__bt[aria-disabled="true"]:hover { background: transparent; }
+.jf-setor__t { display: contents; }
+.jf-setor__t strong { grid-column: 1; grid-row: 1; min-width: 0; font-size: var(--font-size-body); font-weight: 600; line-height: 1.3; overflow-wrap: anywhere; }
+.jf-setor__t span { grid-column: 1 / -1; grid-row: 2; font-size: var(--font-size-small); line-height: 1.4; color: var(--color-text-secondary); font-variant-numeric: tabular-nums lining-nums; }
+.jf-setor[data-k="esgotado"] .jf-setor__t strong { color: var(--color-text-tertiary); }
+.jf-setor__selo { grid-column: 2; grid-row: 1; justify-self: end; }   /* o selo é o `.tag` da identidade (gap 8 px, ícone 20 px): aqui só a posição */
+.jf-setor__seta { grid-column: 3; grid-row: 1; transition: transform var(--motion-duration-base) var(--motion-ease-move); }
+.jf-setor[data-k="esgotado"] .jf-setor__seta, .jf-setor[data-k="plano"] .jf-setor__seta, .jf-setor[data-k="direito"] .jf-setor__seta, .jf-setor[data-k="visitante"] .jf-setor__seta { visibility: hidden; }
+.jf-setor__bt[aria-expanded="true"] .jf-setor__seta { transform: rotate(180deg); }
+.jf-setor__motivo { margin: 0; padding: 0 var(--space-4) var(--space-3); font-size: var(--font-size-small); line-height: 1.5; color: var(--color-text-secondary); }
+.jf-setor__motivo:empty { display: none; }
+.jf-setor[data-so-painel="true"] .jf-setor__motivo { display: none; }
+.jf-painel__pad { display: flex; flex-direction: column; gap: var(--space-4); padding: var(--space-4); border-top: var(--border-width-hairline) solid var(--color-border-subtle); border-radius: 0 !important; }
+.jf-setor[data-so-painel="true"] .jf-painel__pad { border-radius: var(--radius-md) !important; border: var(--border-width-strong) solid var(--color-border-strong); background: var(--color-bg-surface); }
+.jf-painel__cab { display: flex; flex-direction: column; gap: var(--space-1); }
+.jf-painel__t { margin: 0; font-size: var(--font-size-title-4); font-weight: 600; line-height: var(--font-lh-title-4); outline: none; }
+.jf-painel__sub { font-size: var(--font-size-small); color: var(--color-text-secondary); }
+.jf-fatos { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-1); font-size: var(--font-size-small); line-height: 1.5; color: var(--color-text-secondary); }
+.jf-tipos { display: flex; flex-direction: column; border-top: var(--border-width-hairline) solid var(--color-border-subtle); border-radius: 0 !important; }
+.jf-tipo { display: grid; grid-template-columns: 1fr auto auto; gap: var(--space-2) var(--space-4); align-items: center; padding: var(--space-3) 0; border-bottom: var(--border-width-hairline) solid var(--color-border-subtle); border-radius: 0 !important; }
+.jf-tipo__info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.jf-tipo__info strong { font-size: var(--font-size-body); font-weight: 600; }
+.jf-tipo__info span { font-size: var(--font-size-small); line-height: 1.45; color: var(--color-text-tertiary); }
+.jf-tipo__info .jf-tipo__motivo { color: var(--color-text-secondary); }
+.jf-tipo__info .jf-tipo__motivo:empty { display: none; }
+.jf-tipo__preco { font-size: var(--font-size-body); font-weight: 600; font-variant-numeric: tabular-nums lining-nums; white-space: nowrap; }
+.jf-tipo[data-off="true"] .jf-tipo__info strong, .jf-tipo[data-off="true"] .jf-tipo__preco { color: var(--color-text-tertiary); }
+.jf-tipos__nota { margin: 0; padding-top: var(--space-3); font-size: var(--font-size-small); color: var(--color-text-tertiary); }
+.jf-assentos-bloco { display: flex; flex-direction: column; gap: var(--space-3); }
+.jf-encontrar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3) var(--space-4); }
+.jf-resultado { margin: 0; padding: var(--space-3) var(--space-4); background: var(--color-bg-subtle); font-size: var(--font-size-small); line-height: 1.5; color: var(--color-text-secondary); }
+.jf-assentos-quadro:empty { display: none; }
+.jf-lugares { display: flex; flex-direction: column; gap: var(--space-3); }
+.jf-lugar { display: grid; grid-template-columns: 1fr minmax(180px, auto) auto; gap: var(--space-2) var(--space-4); align-items: end; padding: var(--space-3) 0; border-top: var(--border-width-hairline) solid var(--color-border-subtle); border-radius: 0 !important; }
+.jf-lugar__t { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.jf-lugar__t strong { font-size: var(--font-size-body); font-weight: 600; }
+.jf-lugar__t span { font-size: var(--font-size-small); color: var(--color-text-tertiary); }
+.jf-lugar__tipo { min-width: 0; }
+@media (max-width: 640px) {
+  .jf-tipo { grid-template-columns: 1fr auto; }
+  .jf-tipo__info { grid-column: 1 / -1; }
+  .jf-tipo .qtd { justify-self: end; }
+  .jf-lugar { grid-template-columns: 1fr auto; }
+  .jf-lugar__tipo { grid-column: 1 / -1; order: 3; }
+  .jf-setor__selo { grid-column: 1 / -1; grid-row: 2; justify-self: start; }
+  .jf-setor__t span { grid-row: 3; }
+  .jf-setor__seta { grid-column: 2; }
+}
+
+/* resumo (o mesmo aside das outras jornadas; aqui só o miolo da etapa 1) */
+.jf-resumo { padding: var(--space-card-pad); }
+.jf-resumo__t { margin-bottom: var(--space-4); }
+.jf-resumo__linhas { display: flex; flex-direction: column; gap: var(--space-2); padding-bottom: var(--space-4); border-bottom: var(--border-width-hairline) solid var(--color-border-subtle); }
+.jf-resumo__linha { display: flex; justify-content: space-between; gap: var(--space-3); font-size: var(--font-size-small); }
+.jf-resumo__linha span { color: var(--color-text-secondary); min-width: 0; overflow-wrap: anywhere; }
+.jf-resumo__linha strong { white-space: nowrap; font-variant-numeric: tabular-nums lining-nums; }
+.jf-resumo__soma { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-4) 0; border-bottom: var(--border-width-hairline) solid var(--color-border-subtle); font-size: var(--font-size-small); }
+.jf-resumo__total { display: flex; justify-content: space-between; align-items: baseline; padding: var(--space-4) 0 var(--space-1); font-weight: 600; }
+.jf-resumo__pessoas { margin: 0 0 var(--space-4); text-align: right; font-size: var(--font-size-small); color: var(--color-text-tertiary); }
+.jf-resumo__vazio { margin: 0 0 var(--space-1); font-size: var(--font-size-small); font-weight: 600; }
+.jf-resumo__dica { margin: 0 0 var(--space-4); font-size: var(--font-size-small); color: var(--color-text-secondary); }
+.jf-resumo__bt { width: 100%; box-sizing: border-box; }
+
+/* ---------------------------------------------------------------------------------------------------------------
+   4. Etapa 2 · Quem vai: um cartão por ingresso (acordeão), titular, dependente, outra pessoa, estado do rosto
+   --------------------------------------------------------------------------------------------------------------- */
+.jf-quem { gap: var(--space-5); }
+.jf-conta { padding: var(--space-4) var(--space-5); display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); }
+.jf-conta-t { flex: 1 1 200px; display: flex; flex-direction: column; min-width: 0; }
+.jf-conta-t strong { font-size: var(--font-size-body); font-weight: 600; }
+.jf-conta-t span { font-size: var(--font-size-small); color: var(--color-text-tertiary); }
+@media (max-width: 640px) {
+}
+
+/* ---------------------------------------------------------------------------------------------------------------
+   5. Etapa 3 · recapitulação por pessoa
+   --------------------------------------------------------------------------------------------------------------- */
+.jf-recap { padding: var(--space-5) var(--space-card-pad); display: flex; flex-direction: column; gap: var(--space-2); }
+.jf-recap-cab { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: var(--space-2); }
+.jf-recap-t { margin: 0; font-size: var(--font-size-title-4); font-weight: 600; }
+.jf-recap-jogo { margin: 0; font-size: var(--font-size-small); color: var(--color-text-secondary); text-wrap: balance; }
+.jf-recap-lista { list-style: none; margin: 0; padding: 0; }
+.jf-recap-lista li { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: var(--space-2) var(--space-4); padding: var(--space-3) 0; border-top: var(--border-width-hairline) solid var(--color-border-subtle); }
+.jf-recap-pessoa { flex: 1 1 220px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.jf-recap-pessoa small { font-size: var(--font-size-small); color: var(--color-text-secondary); overflow-wrap: anywhere; }
+.jf-recap-dir { display: inline-flex; align-items: center; gap: var(--space-3); }
+.jf-recap-preco { font-variant-numeric: tabular-nums lining-nums; white-space: nowrap; }
+.jf-recap-edit { display: flex; }
+.jf-recap-p { margin: 0; font-size: var(--font-size-small); color: var(--color-text-secondary); }
+.jf-recap .uui-alert { flex: 0 0 auto; margin-top: var(--space-2); }
+
+/* ---------------------------------------------------------------------------------------------------------------
+   6. Cartão de ingresso (UM componente, no Pronto e na Carteira): pessoa, fatos, método de entrada, pendência, ações
+   --------------------------------------------------------------------------------------------------------------- */
+.jf-ingressos { display: grid; grid-template-columns: 1fr; gap: var(--space-5); }
+@media (min-width: 1024px) { .jf-ingressos--carteira { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.jf-ingresso { position: relative; padding: var(--space-card-pad); display: flex; flex-direction: column; gap: var(--space-4); overflow: hidden; min-width: 0; }
+.jf-ingresso[data-pend="true"] { border-style: dashed; }
+.jf-ingresso__faixa { position: absolute; left: 0; right: 0; top: 0; height: var(--border-width-accent); background: var(--color-button-primary-bg); }
+.jf-ingresso__cab { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-1); }
+.jf-ingresso__t { margin: 0; font-size: var(--font-size-title-3); font-weight: 600; line-height: var(--font-lh-title-3); overflow-wrap: anywhere; }
+.jf-ingresso__jogo, .jf-ingresso__papel { margin: 0; font-size: var(--font-size-small); line-height: 1.45; color: var(--color-text-secondary); text-wrap: balance; }
+.jf-grade { margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3) var(--space-4); }
+.jf-grade dt { font-size: var(--font-size-label); font-weight: 600; text-transform: uppercase; letter-spacing: var(--font-ls-label); color: var(--color-text-tertiary); }
+.jf-grade dd { margin: var(--space-1) 0 0; font-size: var(--font-size-body); font-weight: 600; font-variant-numeric: tabular-nums lining-nums; overflow-wrap: anywhere; }
+.jf-entrada { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-4); background: var(--color-bg-subtle); }
+.jf-entrada__t { margin: 0; display: flex; align-items: center; gap: var(--space-2); font-size: var(--font-size-body); font-weight: 600; }
+.jf-entrada__p { margin: 0; font-size: var(--font-size-small); line-height: 1.5; color: var(--color-text-secondary); text-wrap: balance; }
+.jf-qr { display: flex; flex-direction: column; gap: var(--space-2); align-items: flex-start; }
+.jf-qr__box { display: inline-block; padding: var(--space-3); background: var(--color-bg-surface); border: var(--border-width-strong) solid var(--color-border-strong); }
+.jf-qr__img { display: block; width: 168px; height: 168px; border-radius: 0; }
+.jf-qr__grande { display: block; width: min(100%, 360px); margin: 0 auto; border-radius: 0; }
+.jf-qr__p { margin: 0; font-size: var(--font-size-small); color: var(--color-text-tertiary); }
+.jf-pend { display: flex; flex-direction: column; gap: var(--space-3); }
+.jf-pend__acoes { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.jf-pend__slot:empty { display: none; }
+.jf-ingresso__nota { margin: 0; font-size: var(--font-size-small); line-height: 1.5; color: var(--color-text-secondary); text-wrap: balance; }
+.jf-ingresso__acoes { display: flex; flex-wrap: wrap; gap: var(--space-3); }
+@media (max-width: 640px) { .jf-ingresso { padding: var(--space-4); } .jf-ingresso__acoes .bs { flex: 1 1 100%; } }
+
+/* ---------------------------------------------------------------------------------------------------------------
+   7. Etapa 4 · Pronto («Você está no jogo») e Carteira
+   --------------------------------------------------------------------------------------------------------------- */
+.jf-done { max-width: 760px; margin: 0 auto; padding: var(--space-8) var(--layout-margin) var(--space-10); display: flex; flex-direction: column; gap: var(--space-6); box-sizing: border-box; }
+.jf-done-topo { display: flex; flex-direction: column; align-items: center; text-align: center; gap: var(--space-3); }
+.jf-done-t { margin: 0; font-size: clamp(2rem, 6vw, 3.25rem); }
+.jf-done-frase { margin: 0; max-width: var(--measure-body); font-size: var(--font-size-title-4); font-weight: 600; line-height: var(--font-lh-title-4); text-wrap: balance; }
+.jf-done-msg { margin: 0; max-width: var(--measure-body); font-size: var(--font-size-body); line-height: var(--font-lh-body); color: var(--color-text-secondary); text-wrap: balance; }
+.jf-done-ok { margin: 0; display: flex; align-items: center; justify-content: center; gap: var(--space-2); font-size: var(--font-size-small); font-weight: 600; color: var(--color-alert-success-fg); }
+.jf-agora { padding: var(--space-5) var(--space-card-pad); }
+.jf-agora-t { margin: 0 0 var(--space-2); font-size: var(--font-size-title-4); font-weight: 600; }
+.jf-agora-lista { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; }
+.jf-agora-lista li { padding: var(--space-3) 0; border-top: var(--border-width-hairline) solid var(--color-border-subtle); font-size: var(--font-size-body); line-height: var(--font-lh-body); color: var(--color-text-secondary); }
+.jf-agora-lista li:first-child { border-top: 0; }
+.jf-done-acoes { display: flex; flex-wrap: wrap; gap: var(--space-3); justify-content: center; }
+@media (max-width: 640px) { .jf-done { padding-top: var(--space-6); } }
+.jf-cw { max-width: calc(var(--layout-content-max) + 2 * var(--layout-margin)); margin: 0 auto; padding: var(--space-8) var(--layout-margin) var(--space-10); box-sizing: border-box; display: flex; flex-direction: column; gap: var(--space-5); }
+.jf-lead--balanceado { text-wrap: balance; }
+
+/* ---------------------------------------------------------------------------------------------------------------
+   8. Folhas e modais da jornada (sobre .uui-modal): rosto, dependente, pagamento, transferir
+   --------------------------------------------------------------------------------------------------------------- */
+.jf-folha__texto { margin: 0 0 var(--space-4); font-size: var(--font-size-body); line-height: var(--font-lh-body); color: var(--color-text-secondary); }
+.jf-folha__passos { margin: 0 0 var(--space-4); padding-left: var(--space-5); display: flex; flex-direction: column; gap: var(--space-2); font-size: var(--font-size-small); color: var(--color-text-secondary); }
+.jf-folha .uui-modal__rodape { flex-direction: column-reverse; }
+@media (min-width: 640px) { .jf-folha .uui-modal__rodape { flex-direction: row-reverse; justify-content: flex-start; } }
+
+.jf-quem-slot { min-width: 0; }
+.jf-banner-rosto { display: contents; }
+
+/* mapa-estadio.css: mapa do estádio, grade de assentos e lista de setores (M1 da jornada de futebol; Isadora Nogueira e Edu do Udi, 29/10/2026).
+   Item 70 de docs/design/COMPATIBILIDADE-UNTITLED-UI.md. SÓ TOKENS da identidade (previa/identidade-v1.css): nenhuma cor, medida ou fonte solta, sem sombra e sem desfoque, raio 8 px.
+   Aliases de estado do mapa (T1 do pedido ao Joaquim; enquanto os nomes `map.sector.*` não existem, valem estes aliases, só de tokens que já existem):
+     available   = --color-status-presale-bg + --color-border-strong        com lugares: contorno de tinta
+     few         = available + hachura de --color-text-tertiary             poucos lugares
+     soldout     = --color-seat-sold + --color-border-subtle + risco        esgotado
+     unavailable = --color-border-control tracejado + cadeado               plano ou direito
+     visitor     = --color-wave-away-* + pontos                             torcida visitante
+     selected    = --color-seat-selected + --color-seat-selected-fg         escolhido (o único vermelho do mapa; nunca é preço)
+   Estado nunca é só cor: forma (contorno, hachura, risco, tracejado, pontos), ícone e texto. Movimento: só transform e opacity (e a troca de cor, em --motion-duration-fast);
+   com movimento reduzido as durações valem 0 (identidade-v1.css). Texto de 14 px ou mais na tela, inclusive dentro do SVG (o componente conta a escala). */
+
+/* o `hidden` do HTML perde para um display: flex; sem isto o quadro some e o aviso do mapa lento não aparece direito */
+.jf-mapa [hidden], .jf-assentos [hidden], .jf-lista-wrap [hidden] { display: none !important; }
+
+.jf-ico { width: var(--size-icon-md); height: var(--size-icon-md); flex: 0 0 auto; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+/* ====================================================================== mapa */
+.jf-mapa { container: jf-mapa / inline-size; display: flex; flex-direction: column; gap: var(--space-3); width: 100%; max-width: var(--size-map-max); margin-inline: auto; font-family: var(--font-family-base); color: var(--color-text-primary); }
+.jf-mapa__barra { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2) var(--space-4); }
+.jf-mapa__dica { margin: 0; flex: 1 1 14rem; min-width: 0; font-size: var(--font-size-small); line-height: var(--font-lh-small); color: var(--color-text-secondary); }
+.jf-mapa__zoom { display: flex; gap: var(--space-2); flex: 0 0 auto; margin-inline-start: auto; }
+.jf-mapa__btn[disabled] { cursor: not-allowed; }
+
+.jf-mapa__quadro { position: relative; overflow: hidden; border: var(--border-width-hairline) solid var(--color-border-subtle); border-radius: var(--radius-base); background: var(--color-bg-subtle); touch-action: pan-y; user-select: none; -webkit-user-select: none; }
+.jf-mapa__quadro[data-zoom-ativo="sim"] { touch-action: none; cursor: grab; }
+.jf-mapa__quadro[data-arrastando="sim"] { cursor: grabbing; }
+.jf-mapa__svg:focus { outline: none; }
+.jf-mapa__svg { display: block; width: 100%; height: auto; max-height: min(70dvh, var(--size-map-height-mobile-max)); }
+
+/* campo: gramado em duas faixas de cinza e linhas de 1 px; nada de verde (o mapa não usa cor de matiz) */
+.jf-mapa__gramado { fill: var(--color-bg-hover); stroke: none; }
+.jf-mapa__faixa { fill: var(--color-bg-subtle); stroke: none; }
+.jf-mapa__linhas { fill: none; stroke: var(--color-border-control); stroke-width: var(--border-width-hairline); stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+
+/* setor */
+.jf-mapa__setor { cursor: pointer; outline: none; transform-box: fill-box; transform-origin: center; transition: transform var(--motion-duration-fast) var(--motion-ease-move), opacity var(--motion-duration-base) var(--motion-ease-move); -webkit-tap-highlight-color: transparent; }
+.jf-mapa__setor[aria-disabled="true"] { cursor: not-allowed; }
+.jf-mapa__setor[data-destaque="nao"], .jf-mapa__rotulo[data-destaque="nao"] { opacity: var(--motion-opacity-dim); }
+.jf-mapa__rotulo { pointer-events: none; transition: opacity var(--motion-duration-base) var(--motion-ease-move); }
+.jf-mapa__setor:focus-visible { outline: var(--focus-width) solid var(--color-focus-ring); outline-offset: var(--focus-offset); }
+@media (hover: hover) { .jf-mapa__setor:not([aria-disabled="true"]):not(.jf-mapa__setor--amostra):hover { transform: scale(var(--motion-scale-hover)); } }
+.jf-mapa__corpo, .jf-mapa__onda { vector-effect: non-scaling-stroke; stroke-width: var(--border-width-strong); stroke-linejoin: round; transition: fill var(--motion-duration-fast) var(--motion-ease-move), stroke var(--motion-duration-fast) var(--motion-ease-move); }
+.jf-mapa__tex { stroke: none; pointer-events: none; }
+.jf-mapa__onda { fill: none; stroke: var(--color-seat-selected); opacity: 0; pointer-events: none; transform-box: fill-box; transform-origin: center; }
+.jf-mapa__risco { display: none; fill: none; stroke: var(--color-text-muted); stroke-width: var(--border-width-strong); stroke-linecap: round; vector-effect: non-scaling-stroke; pointer-events: none; }
+.jf-mapa__placa { display: none; fill: var(--color-bg-page); stroke: none; pointer-events: none; }
+.jf-mapa__setor[data-estado="poucos"] .jf-mapa__placa, .jf-mapa__setor[data-estado="visitante"] .jf-mapa__placa { display: inline; }
+.jf-mapa__pat-linha { stroke: var(--color-text-tertiary); }
+.jf-mapa__pat-ponto { fill: var(--color-text-tertiary); }
+
+/* texto e ícone dentro do setor */
+.jf-mapa__sigla, .jf-mapa__nome, .jf-mapa__preco { font-family: var(--font-family-base); font-weight: var(--font-weight-semibold); fill: currentColor; pointer-events: none; font-variant-numeric: tabular-nums lining-nums; letter-spacing: 0; }
+.jf-mapa__ico { color: inherit; pointer-events: none; transition: opacity var(--motion-duration-base) var(--motion-ease-enter); }
+.jf-mapa__ico-g path { fill: none; stroke: currentColor; stroke-width: var(--border-width-strong); stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.jf-mapa__ico-g circle { fill: currentColor; stroke: none; }
+.jf-mapa__selo circle { fill: var(--color-bg-inverse); stroke: var(--color-bg-page); stroke-width: var(--border-width-strong); }
+.jf-mapa__selo text { fill: var(--color-text-inverse); font-family: var(--font-family-base); font-weight: var(--font-weight-semibold); }
+
+/* 1. com lugares: contorno de tinta sobre o fundo da página */
+.jf-mapa__setor, .jf-mapa__rotulo { color: var(--color-text-primary); }
+.jf-mapa__corpo { fill: var(--color-status-presale-bg); stroke: var(--color-border-strong); }
+/* 2. poucos lugares: o mesmo contorno, com hachura (a trama é de 8 px e traço de 2 px na tela) */
+.jf-mapa__setor[data-estado="poucos"] .jf-mapa__corpo { fill: var(--color-status-presale-bg); }
+/* 3. esgotado: cheio neutro, contorno claro e um risco */
+.jf-mapa__setor[data-estado="esgotado"], .jf-mapa__rotulo[data-estado="esgotado"] { color: var(--color-text-tertiary); }
+.jf-mapa__setor[data-estado="esgotado"] .jf-mapa__corpo { fill: var(--color-seat-sold); stroke: var(--color-border-subtle); }
+.jf-mapa__setor[data-estado="esgotado"] .jf-mapa__risco { display: inline; }
+/* 4 e 5. não vale para o plano, exige direito validado: tracejado (border.style.wave-scheduled) com cadeado */
+.jf-mapa__setor[data-estado="plano"], .jf-mapa__setor[data-estado="direito"], .jf-mapa__rotulo[data-estado="plano"], .jf-mapa__rotulo[data-estado="direito"] { color: var(--color-text-tertiary); }
+.jf-mapa__setor[data-estado="plano"] .jf-mapa__corpo, .jf-mapa__setor[data-estado="direito"] .jf-mapa__corpo { fill: var(--color-bg-page); stroke: var(--color-border-control); stroke-dasharray: var(--space-2) var(--space-1); stroke-width: var(--border-width-strong); }
+/* 6. torcida visitante: cinza (wave.away) com pontos */
+.jf-mapa__setor[data-estado="visitante"], .jf-mapa__rotulo[data-estado="visitante"] { color: var(--color-wave-away-fg); }
+.jf-mapa__setor[data-estado="visitante"] .jf-mapa__corpo { fill: var(--color-wave-away-bg); stroke: var(--color-wave-away-border); }
+/* 7. escolhido: seat.selected com visto; o único vermelho do mapa */
+.jf-mapa__setor[data-estado="escolhido"], .jf-mapa__rotulo[data-estado="escolhido"] { color: var(--color-seat-selected-fg); }
+.jf-mapa__setor[data-estado="escolhido"] .jf-mapa__corpo { fill: var(--color-seat-selected); stroke: var(--color-seat-selected); }
+.jf-mapa__setor[data-estado="escolhido"] .jf-mapa__ico, .jf-mapa__rotulo[data-estado="escolhido"] .jf-mapa__ico, .jf-mapa__rotulo[data-estado="escolhido"] text { animation: jf-mapa-entra var(--motion-duration-base) var(--motion-ease-enter) both; }
+.jf-mapa__setor[data-estado="escolhido"] .jf-mapa__onda { animation: jf-mapa-onda var(--motion-duration-slow) var(--motion-ease-enter) both; }
+.jf-mapa__rotulo[data-estado="escolhido"] .jf-mapa__selo text { fill: var(--color-text-inverse); }
+@keyframes jf-mapa-entra { from { opacity: 0; } to { opacity: 1; } }
+@keyframes jf-mapa-onda { from { opacity: 1; transform: scale(1); } to { opacity: 0; transform: scale(calc(var(--motion-scale-hover) * 1.04)); } }
+
+.jf-mapa__detalhe { margin: 0; min-height: calc(var(--font-size-small) * var(--font-lh-small)); font-size: var(--font-size-small); line-height: var(--font-lh-small); color: var(--color-text-secondary); }
+.jf-mapa__detalhe[data-estado="escolhido"] { color: var(--color-text-primary); font-weight: var(--font-weight-semibold); }
+
+/* legenda: o mesmo desenho do setor em miniatura, com ícone e texto */
+.jf-mapa__legendas { display: flex; flex-direction: column; gap: var(--space-3); }
+.jf-mapa__legenda-grupo { display: flex; flex-direction: column; gap: var(--space-3); }
+.jf-mapa__legenda { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-5); margin: 0; padding: 0; list-style: none; }
+.jf-mapa__legenda-item { display: inline-flex; align-items: center; gap: var(--space-2); font-size: var(--font-size-small); line-height: var(--font-lh-small); color: var(--color-text-secondary); }
+.jf-mapa__amostra { flex: 0 0 auto; display: block; }
+.jf-mapa__amostra .jf-mapa__setor { cursor: default; }
+.jf-mapa__amostra .jf-mapa__ico-g path { stroke-width: var(--border-width-strong); }
+.jf-mapa__amostra--tipo { color: var(--color-text-primary); }
+.jf-mapa__defs-legenda { position: absolute; width: 0; height: 0; overflow: hidden; }
+
+.jf-mapa__aviso { display: flex; }
+
+/* quadro estreito (celular): a legenda em duas colunas; os botões de zoom ficam no canto, com a dica abaixo */
+@container jf-mapa (max-width: 560px) {
+  .jf-mapa__legenda { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .jf-mapa__barra { flex-direction: row-reverse; justify-content: space-between; }
+}
+/* tela cheia */
+.jf-mapa-modal .uui-modal__dialog { width: min(1100px, 100%); }
+.jf-mapa-modal__corpo { min-width: 0; }
+.jf-mapa-modal .jf-mapa__svg { max-height: min(70dvh, 720px); }
+
+/* ====================================================================== grade de assentos */
+.jf-assentos { container: jf-assentos / inline-size; display: flex; flex-direction: column; gap: var(--space-4); width: 100%; font-family: var(--font-family-base); color: var(--color-text-primary); }
+.jf-assentos__topo { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--space-4) var(--space-6); }
+.jf-assentos__encontrar { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--space-3) var(--space-4); }
+.jf-assentos__quantos { display: flex; flex-direction: column; gap: var(--space-2); }
+.jf-assentos__fileira { min-width: 12rem; }
+.jf-assentos__fileira select { min-height: var(--size-control-md); }
+.jf-assentos__quadro { position: relative; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; padding: var(--space-2) var(--space-3) var(--space-3); border: var(--border-width-hairline) solid var(--color-border-subtle); border-radius: var(--radius-base); background: var(--color-bg-subtle); scrollbar-width: thin; }
+.jf-assentos__quadro:focus-visible { outline: var(--focus-width) solid var(--color-focus-ring); outline-offset: var(--focus-offset); }
+.jf-assentos__campo { position: sticky; left: 0; box-sizing: border-box; width: 100%; margin-bottom: var(--space-2); padding: var(--space-2) 0; background: linear-gradient(var(--color-border-control), var(--color-border-control)) bottom / 100% var(--border-width-strong) no-repeat; text-align: center; font-size: var(--font-size-label); font-weight: var(--font-weight-semibold); letter-spacing: var(--font-ls-label); text-transform: uppercase; color: var(--color-text-tertiary); }
+.jf-assentos__grade { display: inline-flex; flex-direction: column; min-width: max-content; }
+.jf-assentos__linha { display: flex; align-items: center; }
+.jf-assentos__rot { position: sticky; left: 0; z-index: 1; flex: 0 0 var(--size-touch-min); box-sizing: border-box; width: var(--size-touch-min); padding-right: var(--space-2); background: var(--color-bg-subtle); text-align: center; font-size: var(--font-size-small); font-weight: var(--font-weight-semibold); color: var(--color-text-tertiary); }
+.jf-assentos__num { flex: 0 0 var(--size-touch-min); width: var(--size-touch-min); text-align: center; font-size: var(--font-size-small); font-weight: var(--font-weight-semibold); color: var(--color-text-tertiary); font-variant-numeric: tabular-nums lining-nums; }
+.jf-assentos__cel { flex: 0 0 var(--size-touch-min); }
+.jf-assentos__num[data-corredor="sim"], .jf-assentos__cel[data-corredor="sim"] { margin-inline-start: var(--space-5); }
+
+/* assento: célula de 44 px (touch.min), desenho de 32 px (size.seat) */
+.jf-assento { all: unset; box-sizing: border-box; display: grid; place-items: center; width: var(--size-touch-min); height: var(--size-touch-min); cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.jf-assento:focus-visible { outline: var(--focus-width) solid var(--color-focus-ring); outline-offset: calc(var(--focus-width) * -1); border-radius: var(--radius-base); }
+.jf-assento__forma { box-sizing: border-box; display: grid; place-items: center; width: var(--size-seat); height: var(--size-seat); border: var(--border-width-strong) solid var(--color-border-control); border-radius: var(--radius-base) var(--radius-base) var(--radius-inner) var(--radius-inner); background: var(--color-bg-page); color: var(--color-text-primary); font-size: var(--font-size-small); font-weight: var(--font-weight-semibold); line-height: 1; font-variant-numeric: tabular-nums lining-nums; transition: background-color var(--motion-duration-fast) var(--motion-ease-move), border-color var(--motion-duration-fast) var(--motion-ease-move), color var(--motion-duration-fast) var(--motion-ease-move), transform var(--motion-duration-fast) var(--motion-ease-move); }
+.jf-assento__forma .jf-ico { width: var(--size-icon-sm); height: var(--size-icon-sm); }
+@media (hover: hover) { .jf-assento[data-estado="livre"]:hover .jf-assento__forma { border-color: var(--color-border-strong); transform: scale(var(--motion-scale-hover)); } }
+.jf-assento[data-papel="acessivel"] .jf-assento__forma, .jf-assento[data-papel="acompanhante"] .jf-assento__forma { border-radius: var(--radius-inner); }
+.jf-assento[data-papel="acompanhante"] .jf-assento__forma { border-style: dashed; }
+.jf-assento[data-estado="escolhido"] .jf-assento__forma { background: var(--color-seat-selected); border-color: var(--color-seat-selected); color: var(--color-seat-selected-fg); }
+.jf-assento[data-estado="escolhido"] .jf-assento__forma .jf-ico { animation: jf-mapa-entra var(--motion-duration-fast) var(--motion-ease-enter) both; }
+.jf-assento[data-estado="indisponivel"] { cursor: not-allowed; }
+.jf-assento[data-estado="indisponivel"] .jf-assento__forma { background-color: var(--color-seat-sold); border-color: var(--color-seat-sold); color: var(--color-text-tertiary); background-image: linear-gradient(to top right, transparent calc(50% - var(--border-width-hairline)), var(--color-text-muted) calc(50% - var(--border-width-hairline)), var(--color-text-muted) calc(50% + var(--border-width-hairline)), transparent calc(50% + var(--border-width-hairline))); }
+.jf-assento[data-vizinho="sim"]:not([data-estado="indisponivel"]) .jf-assento__forma { border-color: var(--color-border-strong); border-style: dashed; }
+
+.jf-assentos__aviso { display: flex; }
+.jf-assentos__legenda { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-5); margin: 0; padding: 0; list-style: none; }
+.jf-assentos__legenda-item { display: inline-flex; align-items: center; gap: var(--space-2); font-size: var(--font-size-small); color: var(--color-text-secondary); }
+.jf-assento__forma--amostra { width: var(--size-icon-md); height: var(--size-icon-md); border-radius: var(--radius-inner); }
+.jf-assento__forma--amostra[data-estado="escolhido"] { background: var(--color-seat-selected); border-color: var(--color-seat-selected); color: var(--color-seat-selected-fg); }
+.jf-assento__forma--amostra[data-estado="indisponivel"] { background-color: var(--color-seat-sold); border-color: var(--color-seat-sold); background-image: linear-gradient(to top right, transparent calc(50% - var(--border-width-hairline)), var(--color-text-muted) calc(50% - var(--border-width-hairline)), var(--color-text-muted) calc(50% + var(--border-width-hairline)), transparent calc(50% + var(--border-width-hairline))); }
+.jf-assento__forma--amostra .jf-ico { width: var(--size-icon-sm); height: var(--size-icon-sm); }
+
+/* ====================================================================== lista de setores (a alternativa acessível ao mapa) */
+.jf-lista-wrap { container: jf-lista / inline-size; width: 100%; font-family: var(--font-family-base); color: var(--color-text-primary); }
+.jf-lista { display: flex; flex-direction: column; border: var(--border-width-hairline) solid var(--color-border-subtle); border-radius: var(--radius-base); background: var(--color-bg-page); overflow: hidden; }
+.jf-lista__cab, .jf-lista__linha { display: grid; grid-template-columns: minmax(0, 2.6fr) minmax(0, 1.9fr) minmax(0, 1fr) minmax(0, 0.8fr) minmax(0, 1.2fr); align-items: center; gap: var(--space-3) var(--space-4); padding: var(--space-2) var(--space-4); }
+.jf-lista__cab { background: var(--color-bg-subtle); border-bottom: var(--border-width-hairline) solid var(--color-border-subtle); }
+.jf-lista__col { font-size: var(--font-size-label); font-weight: var(--font-weight-semibold); letter-spacing: var(--font-ls-label); text-transform: uppercase; color: var(--color-text-tertiary); }
+.jf-lista__corpo { display: flex; flex-direction: column; }
+.jf-lista__linha { border-top: var(--border-width-hairline) solid var(--color-border-subtle); font-size: var(--font-size-small); transition: background-color var(--motion-duration-fast) var(--motion-ease-move); }
+.jf-lista__linha:first-child { border-top: 0; }
+@media (hover: hover) { .jf-lista__linha:hover { background: var(--color-bg-hover); } }
+.jf-lista__linha[data-estado="escolhido"] { background: var(--color-bg-subtle); box-shadow: none; outline: var(--border-width-strong) solid var(--color-border-strong); outline-offset: calc(var(--border-width-strong) * -1); }
+.jf-lista__cel { min-width: 0; font-variant-numeric: tabular-nums lining-nums; }
+.jf-lista__cel--setor { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-1); }
+.jf-lista__ver { all: unset; box-sizing: border-box; display: inline-flex; align-items: center; min-height: var(--size-touch-default); max-width: 100%; font-size: var(--font-size-body); font-weight: var(--font-weight-semibold); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; color: var(--color-text-primary); }
+.jf-lista__ver[aria-disabled="true"] { cursor: not-allowed; color: var(--color-text-tertiary); text-decoration: none; }
+.jf-lista__ver:focus-visible { outline: var(--focus-width) solid var(--color-focus-ring); outline-offset: var(--focus-offset); border-radius: var(--radius-inner); }
+.jf-lista__nome { min-width: 0; }
+.jf-lista__motivo { font-size: var(--font-size-small); line-height: var(--font-lh-small); color: var(--color-text-secondary); }
+.jf-lista__motivo:empty { display: none; }
+.jf-lista .tag { white-space: normal; }
+@container jf-lista (max-width: 640px) {
+  .jf-lista__cab { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+  .jf-lista__linha { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); padding: var(--space-3) var(--space-4); }
+  .jf-lista__cel--setor { grid-column: 1 / -1; }
+  .jf-lista__cel--situacao { grid-column: 1 / -1; }
+  .jf-lista__cel[data-rotulo]:not(.jf-lista__cel--situacao)::before { content: attr(data-rotulo); display: block; font-size: var(--font-size-label); font-weight: var(--font-weight-semibold); letter-spacing: var(--font-ls-label); text-transform: uppercase; color: var(--color-text-tertiary); }
+  .jf-lista__cel--portao, .jf-lista__cel--lugares { grid-column: auto; }
+}
+
+/* rosto.css: M3 da jornada de compra de futebol (folha de cadastro de rosto, cartão de pessoa, cartão de estado do rosto, etapa «Quem vai»).
+   Itens 71, 72 e 73 de docs/design/COMPATIBILIDADE-UNTITLED-UI.md (§2.9). Só tokens da identidade (nenhum token novo, nenhuma cor nova); raio 8 px; sem sombra e sem desfoque.
+   Reutiliza, sem reescrever: `.card`, `.fac` (rádio), `.pay` e `.pay-dot` (cartão-rádio), `.tag[data-sit]` (selo único; chaves `rosto-*` em identidade-componentes.css), `.bp`, `.bs`, `.bs-sm`,
+   `.linkbtn`, `.uui-alert`, `.uui-avatar`, `.acd` (acordeão), `.field`, `.err`, `.spin`, `uui-modal` (IngresseModal: entrada e saída da camada de movimento, não daqui).
+   Ordem: folha · cartão de estado · cartão de pessoa · etapa «Quem vai». */
+
+/* ---------- 71. Folha de cadastro de rosto (o corpo de um uui-modal) ---------- */
+.jf-folha__corpo { display: flex; flex-direction: column; gap: var(--space-5); }
+.jf-folha__estado { display: flex; flex-direction: column; gap: var(--space-5); min-width: 0; }
+.jf-folha__estado[data-troca] { animation: jf-estado-entra var(--motion-duration-base) var(--motion-ease-enter) both; } /* só na troca de estado; a abertura é da camada de movimento (uma animação só) */
+@keyframes jf-estado-entra { from { opacity: 0; transform: translateY(var(--motion-distance-sm)); } to { opacity: 1; transform: none; } }
+@keyframes jf-estado-fade { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .jf-folha__estado[data-troca] { animation: jf-estado-fade var(--motion-duration-reduced-fade) linear both; } } /* movimento reduzido: só opacidade, 120 ms */
+.jf-folha__rodape[hidden] { display: none; }
+.jf-folha__rodape { gap: var(--space-3); flex-wrap: wrap; justify-content: flex-start; }
+.jf-folha__rodape > .bp, .jf-folha__rodape > .bs { width: 100%; }
+@media (min-width: 641px) {
+  .jf-folha__rodape { flex-direction: row-reverse; justify-content: flex-start; }
+  .jf-folha__rodape > .bp, .jf-folha__rodape > .bs { width: auto; }
+}
+.jf-passos { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-3); }
+.jf-passos li { display: flex; align-items: center; gap: var(--space-3); min-height: var(--size-touch-min); font-size: var(--font-size-body); line-height: var(--font-lh-body); }
+.jf-passos .uui-ico { color: var(--color-text-primary); }
+.jf-dica, .jf-apoio { margin: 0; max-width: var(--measure-body); font-size: var(--font-size-small); line-height: 1.5; color: var(--color-text-secondary); }
+.jf-apoio--causa { font-size: var(--font-size-body); font-weight: 600; color: var(--color-text-primary); }
+.jf-folha__links { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-5); }
+.jf-folha-qr { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-5); padding: var(--space-4); border: var(--border-width-hairline) solid var(--color-border-control); background: var(--color-bg-subtle); }
+.jf-folha-qr__txt { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; flex: 1 1 auto; font-size: var(--font-size-small); line-height: 1.4; color: var(--color-text-secondary); }
+.jf-folha-qr__txt strong { font-size: var(--font-size-body); color: var(--color-text-primary); }
+.jf-folha-qr__img { flex: 0 0 auto; width: var(--space-13); height: var(--space-13); background: var(--color-primitive-neutral-0); border: var(--border-width-hairline) solid var(--color-border-control); } /* o QR só lê com fundo claro, nos dois temas (qr-ingresse.js) */
+@media (max-width: 640px) { .jf-folha-qr { display: none; } } /* no celular a pessoa já está no aparelho que cadastra */
+.jf-espera { display: flex; flex-direction: column; align-items: center; gap: var(--space-4); padding: var(--space-5) 0; text-align: center; }
+.jf-espera p { margin: 0; max-width: var(--measure-body); font-size: var(--font-size-body); line-height: var(--font-lh-body); text-wrap: balance; }
+.jf-feito { display: flex; flex-direction: column; align-items: center; gap: var(--space-4); padding: var(--space-5) 0; text-align: center; }
+.jf-feito p { margin: 0; max-width: var(--measure-body); font-size: var(--font-size-body); line-height: var(--font-lh-body); text-wrap: balance; }
+.jf-feito__selo { display: inline-flex; width: var(--size-avatar-2xl); height: var(--size-avatar-2xl); }
+.jf-feito__selo svg { width: 100%; height: 100%; overflow: visible; }
+.jf-feito__fundo { fill: var(--color-status-onsale-bg); stroke: var(--color-status-onsale-border); stroke-width: 2; }
+.jf-feito__v { fill: none; stroke: var(--color-status-onsale-fg); stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; transform-box: fill-box; transform-origin: center; }
+.jf-feito__anel { fill: none; stroke: var(--color-status-onsale-border); stroke-width: 2; opacity: 0; transform-box: fill-box; transform-origin: center; }
+/* gesto de recompensa, um só e discreto: o visto cresce até o tamanho e um anel sai do selo e some. Só transform e opacity. Movimento reduzido: durações dos tokens vão a 0 e o selo já nasce pronto. */
+.jf-feito:not(.jf-feito--ja) .jf-feito__v { animation: jf-visto var(--motion-duration-base) var(--motion-ease-enter) both; }
+.jf-feito:not(.jf-feito--ja) .jf-feito__anel { animation: jf-anel var(--motion-duration-slow) var(--motion-ease-enter) both; }
+@keyframes jf-visto { from { transform: scale(0.6); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes jf-anel { from { transform: scale(1); opacity: 0.7; } to { transform: scale(1.35); opacity: 0; } }
+.jf-camera { position: relative; width: 100%; max-width: calc(var(--space-13) * 2); margin-inline: auto; aspect-ratio: 3 / 4; max-height: min(60dvh, calc(var(--space-13) * 2.5)); overflow: hidden; background: var(--color-bg-inverse); color: var(--color-text-inverse); }
+.jf-camera__video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); } /* espelhada, como o espelho; o quadro nunca sai do <video> */
+.jf-camera__guia { position: absolute; inset: 0; width: 100%; height: 100%; }
+.jf-camera__aro, .jf-camera__aro-fundo { fill: none; vector-effect: non-scaling-stroke; }
+.jf-camera__aro-fundo { stroke: var(--color-bg-inverse); stroke-width: 6; }
+.jf-camera__aro { stroke: var(--color-text-inverse); stroke-width: 2; stroke-dasharray: 8 6; }
+.jf-camera[data-fase="pedindo"] { aspect-ratio: auto; min-height: var(--space-12); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-3); padding: var(--space-5); text-align: center; font-size: var(--font-size-small); }
+.jf-banner { margin: 0; }
+.jf-banner--ok { display: flex; }
+.jf-form { display: flex; flex-direction: column; gap: var(--space-4); }
+.jf-form .field { flex: 0 0 auto; }
+.jf-form__geral { padding-top: var(--space-1); }
+.jf-deps-lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-3); }
+.jf-deps-lista li { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
+.jf-deps-lista .jf-pessoa--estatico { flex: 1 1 14rem; min-width: 0; }
+
+/* ---------- 73. Cartão de estado do rosto: selo + frase + ação ---------- */
+.jf-rosto { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3) var(--space-4); padding: var(--space-3) var(--space-4); background: var(--color-bg-subtle); border: var(--border-width-hairline) solid var(--color-border-subtle); }
+.jf-rosto__t { flex: 1 1 12rem; min-width: 0; margin: 0; font-size: var(--font-size-small); line-height: 1.5; color: var(--color-text-secondary); }
+.jf-rosto__acao { flex: 0 0 auto; }
+.jf-selo { flex: 0 0 auto; }
+
+/* ---------- 72. Cartão de pessoa: avatar, nome, linha de apoio, selo do rosto (e, na lista, o rádio) ---------- */
+.jf-pessoa { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-3) var(--space-4); width: 100%; min-width: 0; text-align: left; cursor: pointer; font: inherit; box-sizing: border-box; }
+.jf-pessoa .pay-dot { flex: 0 0 auto; }
+/* uma medida só nos dois estados: a seleção troca cor, fundo e indicador, nunca o espaço (borda de 2 px e padding fixos; o `.pay` troca a borda de 1 para 2 px e compensa o padding) */
+.jf-pessoa, .jf-pessoa[aria-checked="true"] { border: var(--border-width-strong) solid var(--color-field-border); padding: calc(var(--space-4) - 1px) calc(var(--space-5) - 1px); }
+.jf-pessoa[aria-checked="true"] { border-color: var(--color-border-strong); }
+.jf-pessoa[aria-disabled="true"], .jf-pessoa[aria-disabled="true"]:hover { border-color: var(--color-field-border); }
+.jf-pessoa__t { flex: 1 1 10rem; min-width: 0; display: flex; flex-direction: column; gap: var(--border-width-strong); } /* 2 px: o token de traço fino faz o vão título/apoio sem criar token novo */
+.jf-pessoa__t strong { overflow-wrap: anywhere; }
+.jf-pessoa__motivo { color: var(--color-text-secondary); font-size: var(--font-size-small); }
+.jf-pessoa--estatico { cursor: default; padding: var(--space-4); background: var(--color-bg-surface); border: var(--border-width-hairline) solid var(--color-border-subtle); }
+.jf-pessoa--estatico .jf-pessoa__t strong { font-size: var(--font-size-body); font-weight: 600; }
+.jf-pessoa--estatico .jf-pessoa__t small { font-size: var(--font-size-small); color: var(--color-text-tertiary); }
+.jf-pessoa[aria-disabled="true"] { background: var(--color-bg-subtle); cursor: not-allowed; }
+.jf-pessoa[aria-disabled="true"]:hover { border-color: var(--color-field-border); }
+.jf-pessoa[aria-disabled="true"] .jf-pessoa__t strong { color: var(--color-text-tertiary); }
+.jf-pessoa:focus-visible, .jf-qvi__cab:focus-visible, .jf-op input:focus-visible { outline: var(--focus-width) solid var(--color-focus-ring) !important; outline-offset: var(--focus-offset) !important; }
+@media (max-width: 560px) { .jf-pessoa:not(.jf-pessoa--estatico) .jf-selo { margin-left: calc(var(--space-5) + var(--space-4)); } }
+
+/* ---------- Etapa «Quem vai»: um cartão por ingresso ---------- */
+.jf-qv, .jf-qv__area, .jf-qv-ingressos { display: flex; flex-direction: column; gap: var(--space-4); min-width: 0; }
+.jf-contagem { margin: 0; font-size: var(--font-size-small); color: var(--color-text-tertiary); }
+.jf-qvi { padding: 0; }
+.jf-qvi__h { margin: 0; font-size: inherit; font-weight: inherit; }
+.jf-qvi__cab { width: 100%; min-height: calc(var(--size-touch-default) + var(--space-5)); display: flex; align-items: center; gap: var(--space-4); padding: var(--space-4) var(--space-card-pad); background: transparent; border: 0; color: inherit; font: inherit; text-align: left; cursor: pointer; transition: background-color var(--motion-duration-fast) var(--motion-ease-move); }
+.jf-qvi__cab:hover { background: var(--color-bg-hover); }
+.jf-qvi__t { flex: 1 1 12rem; min-width: 0; font-size: var(--font-size-body); font-weight: 600; line-height: 1.3; overflow-wrap: anywhere; }
+.jf-qvi__seta { flex: 0 0 auto; transition: transform var(--motion-duration-base) var(--motion-ease-move); }
+.jf-qvi[data-aberto="true"] .jf-qvi__seta { transform: rotate(180deg); }
+.jf-qvi__corpo { display: flex; flex-direction: column; gap: var(--space-5); padding: var(--space-5) var(--space-card-pad) var(--space-card-pad); border-top: var(--border-width-hairline) solid var(--color-border-subtle); }
+.jf-titular { margin: 0; padding: 0; border: 0; min-width: 0; }
+.jf-titular legend { padding: 0; margin-bottom: var(--space-2); font-size: var(--font-size-small); font-weight: 600; line-height: 1.3; color: var(--color-text-primary); }
+.jf-titular__ops { display: flex; flex-direction: column; gap: var(--space-1); }
+.jf-op { display: flex; flex-wrap: wrap; align-items: center; cursor: pointer; } /* `.fac` não traz o `display` (cada tela define o seu); a linha do rádio é daqui */
+.jf-op[data-desabilitado="true"] { cursor: not-allowed; }
+.jf-op[data-desabilitado="true"] span { color: var(--color-text-tertiary) !important; }
+.jf-op__motivo { flex: 1 1 100%; padding-left: calc(var(--space-5) + var(--space-3)); font-size: var(--font-size-small); line-height: 1.4; color: var(--color-text-secondary); }
+.jf-qv-painel { display: flex; flex-direction: column; gap: var(--space-4); min-width: 0; }
+.jf-pessoas-bloco { display: flex; flex-direction: column; gap: var(--space-3); }
+.jf-sub { margin: 0; font-size: var(--font-size-small); font-weight: 600; line-height: 1.3; color: var(--color-text-primary); }
+.jf-pessoas { display: flex; flex-direction: column; gap: var(--space-3); }
+.jf-links { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-5); }
+.jf-busca-campo { flex: 0 0 auto; }
+.jf-busca { display: flex; gap: var(--space-3); align-items: stretch; }
+.jf-busca input { flex: 1 1 auto; min-width: 0; width: auto; }
+.jf-busca .bs { flex: 0 0 auto; }
+.jf-qv-ajuda { font-size: var(--font-size-small); line-height: 1.4; color: var(--color-text-tertiary); }
+.jf-qv-resultado { display: flex; flex-direction: column; gap: var(--space-3); }
+.jf-qv-resultado > .linkbtn { align-self: flex-start; }
+.jf-linkbox { display: flex; flex-direction: column; gap: var(--space-2); }
+.jf-linkbox label { font-size: var(--font-size-small); font-weight: 600; }
+.jf-link { width: 100%; min-height: var(--size-control-sm); padding: 0 var(--space-4); font-size: var(--font-size-small); }
+@media (max-width: 640px) {
+  .jf-qvi__cab { flex-wrap: wrap; padding: var(--space-4); }
+  .jf-qvi__t { order: 1; flex: 1 1 calc(100% - var(--size-icon-md) - var(--space-4)); }
+  .jf-qvi__seta { order: 2; }
+  .jf-qvi__cab .jf-selo { order: 3; }
+  .jf-qvi__corpo { padding: var(--space-4); padding-top: var(--space-5); }
+}
+
+/* a mesma folha dentro da página (espécime e teste): sem véu, em fluxo normal, com a borda do modal */
+.uui-modal__dialog.jf-folha-embutida { width: 100%; height: auto; max-height: none; border: var(--border-width-strong) solid var(--color-border-strong); border-radius: var(--radius-base); }
+.jf-folha-embutida .uui-modal__corpo { overflow: visible; }
+.jf-folha-embutida .jf-folha__rodape { flex-direction: column; }
+.jf-folha-embutida .jf-folha__rodape > .bp, .jf-folha-embutida .jf-folha__rodape > .bs { width: 100%; }
+/* linhas de separação (borda só em cima): retas, sem ponta que afina no canto (regra do site, igual a `.je-at-pad` e `.ce-sub`); uma lista só para todas as da folha e da etapa */
+.jf-qvi__corpo, .jf-qvi__cab, .jf-passos li, .jf-deps-lista li, .jf-folha__rodape { border-radius: 0 !important; }

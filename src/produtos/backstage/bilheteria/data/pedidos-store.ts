@@ -1,107 +1,121 @@
-import { useMemo, useSyncExternalStore } from "react";
-import { useColecao } from "@/plataforma";
+import { useMemo } from "react";
+import { anotarPedidoDaBilheteria, lerColecao, lerDoc, useColecao, useDoc, type Evento, type Pedido as PedidoBanco } from "@/plataforma";
 import { useEventoAtual } from "../../eventos/data/eventos";
 import { cartLines, cartTotal, type Cart } from "./carrinho";
-import type { Buyer } from "./catalogo";
+import { formatarDataHora, type Buyer } from "./catalogo";
 import type { Pedido, PedidoItem, PedidoTipo } from "./pedidos";
-import { cancelarNoBanco, statusDoBanco } from "./plataforma";
+import { cancelarNoBanco, linkDePagamento, statusDoBanco } from "./plataforma";
 
 /**
- * Pedidos da bilheteria.
- *
- * A venda é gravada no banco unificado (pedido no canal bilheteria, ver data/plataforma.ts).
- * Aqui fica só o que é da tela de gestão e o banco não guarda: tipo de cobrança, quem emitiu,
- * link, reenvios. O status vem do banco: pagar pelo link aprova, cancelar devolve o estoque.
- * "Expirado" ainda é só local (o banco não expira link).
+ * Pedidos da bilheteria (BIL), lidos do banco unificado: os pedidos do canal bilheteria do evento
+ * em contexto. O que a gestão mostra além do pedido (tipo de cobrança, quem emitiu, link vencido,
+ * reenvios) fica gravado no próprio pedido (`Pedido.bilheteria`). Assim a venda feita em outro
+ * navegador ou aparelho aparece aqui também.
  */
 
-const STORAGE_KEY = "bilheteria-pedidos:v2";
-const EMPTY: Pedido[] = [];
-
-let cache: Pedido[] | null = null;
-const listeners = new Set<() => void>();
-
-function read(): Pedido[] {
-    if (cache) return cache;
-    if (typeof window === "undefined") return EMPTY;
+/** Antes de 21/11/2026 esses dados ficavam no navegador: lidos só para completar pedidos antigos. */
+const LEGADO_KEY = "bilheteria-pedidos:v2";
+let legado: Map<string, Pedido> | null = null;
+function lerLegado(): Map<string, Pedido> {
+    if (legado) return legado;
+    legado = new Map();
+    if (typeof window === "undefined") return legado;
     try {
-        const raw = window.localStorage.getItem(STORAGE_KEY);
-        cache = raw ? (JSON.parse(raw) as Pedido[]) : EMPTY;
+        const lista = JSON.parse(window.localStorage.getItem(LEGADO_KEY) ?? "[]") as Pedido[];
+        for (const p of lista) legado.set(p.id, p);
     } catch {
-        cache = EMPTY;
+        /* sem legado */
     }
-    return cache;
+    return legado;
 }
 
-function write(next: Pedido[]) {
-    cache = next;
-    try {
-        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-    } catch {
-        /* storage indisponível — mantém apenas em memória */
-    }
-    listeners.forEach((listener) => listener());
-}
+const pad = (value: number) => value.toString().padStart(2, "0");
+const rotuloDaSessao = (inicio: string) => {
+    const d = new Date(inicio);
+    return formatarDataHora(d);
+};
 
-function subscribe(listener: () => void) {
-    listeners.add(listener);
-    return () => {
-        listeners.delete(listener);
+/** Pedido do banco como a gestão da bilheteria mostra. */
+function paraTela(p: PedidoBanco, evento: Evento | undefined, antigo: Pedido | undefined): Pedido {
+    const meta = p.bilheteria;
+    const criado = new Date(p.criadoEm);
+    const itens: PedidoItem[] = p.itens.map((it, i) => {
+        const sessao = it.sessaoId ? evento?.sessoes.find((s) => s.id === it.sessaoId) : undefined;
+        const grupo = sessao?.grupos.find((g) => g.id === it.grupoId);
+        const data = sessao ? rotuloDaSessao(sessao.inicio) : undefined;
+        return {
+            id: `${p.id}-${i}`,
+            quantity: it.quantidade,
+            name: it.nome,
+            subtitle: it.tipo === "ingresso" ? [grupo?.nome, data].filter(Boolean).join(", ") || undefined : it.detalhe,
+            data,
+            lote: it.tipo === "ingresso" ? it.detalhe : undefined,
+            unitPrice: it.face,
+            access: it.tipo === "ingresso" ? "qrcode" : undefined,
+        };
+    });
+    const datas = [...new Set(itens.filter((it) => it.lote).map((it) => it.data).filter(Boolean))] as string[];
+    const expirado = (meta?.expirado ?? antigo?.status === "expirado") && p.status === "aguardando-pagamento";
+    return {
+        id: p.id,
+        eventoId: p.eventoId,
+        status: expirado ? "expirado" : statusDoBanco(p)!,
+        tipo: meta?.tipo ?? antigo?.tipo ?? (p.pagamento?.metodo === "saldo" ? "saldo" : "link"),
+        title: itens[0]?.name ?? "Venda na bilheteria",
+        sessions: datas.join(" | ") || "—",
+        sessionShort: datas[0] ?? "—",
+        emissor: meta?.emissor ?? antigo?.emissor ?? "Bilheteria",
+        destinatario: p.comprador.id === "u_bilheteria" ? "Sem identificação" : p.comprador.email,
+        dataVenda: p.criadoEm,
+        dataVendaLabel: formatarDataHora(criado),
+        valor: p.total,
+        paymentLink: linkDePagamento(p.id),
+        itens,
+        resentAt: meta?.reenviadoEm ?? antigo?.resentAt,
+        contaPendente: meta?.contaPendente ?? antigo?.contaPendente,
+        envios: meta?.envios ?? antigo?.envios,
     };
 }
 
-/** Pedidos do evento em contexto, do mais recente para o mais antigo, com o status do banco. */
+/** Pedidos da bilheteria no evento em contexto, do mais recente para o mais antigo. */
 export function usePedidos(): Pedido[] {
-    const locais = useSyncExternalStore(subscribe, read, () => EMPTY);
-    const evento = useEventoAtual();
+    const ctx = useEventoAtual();
+    const evento = useDoc("eventos", ctx.id);
     const doBanco = useColecao("pedidos");
     return useMemo(() => {
-        const porId = new Map(doBanco.map((p) => [p.id, p]));
-        return locais
-            .filter((p) => p.eventoId === evento.id)
-            .map((p) => {
-                const banco = porId.get(p.id);
-                const status = statusDoBanco(banco);
-                // Expirado só existe aqui; o banco manda nos demais.
-                return status && p.status !== "expirado" ? { ...p, status, valor: banco!.total } : p;
-            });
-    }, [locais, evento.id, doBanco]);
+        const antigos = lerLegado();
+        return doBanco
+            .filter((p) => p.canal === "bilheteria" && p.eventoId === ctx.id)
+            .sort((a, b) => b.criadoEm.localeCompare(a.criadoEm))
+            .map((p) => paraTela(p, evento, antigos.get(p.id)));
+    }, [doBanco, evento, ctx.id]);
 }
 
+/** Grava no pedido do banco o que a gestão precisa da venda que acabou de sair. */
 export function addPedido(pedido: Pedido) {
-    write([pedido, ...read()]);
+    void anotarPedidoDaBilheteria(pedido.id, {
+        tipo: pedido.tipo,
+        emissor: pedido.emissor,
+        contaPendente: pedido.contaPendente,
+        expirado: pedido.status === "expirado" || undefined,
+    });
 }
 
 export function cancelPedidos(ids: string[]) {
     void cancelarNoBanco(ids);
-    const target = new Set(ids);
-    write(read().map((pedido) => (target.has(pedido.id) ? { ...pedido, status: "cancelado" } : pedido)));
 }
 
 export function registerResend(id: string, at: string, canal?: "email" | "whatsapp", destino?: string) {
-    write(
-        read().map((pedido) =>
-            pedido.id === id
-                ? {
-                      ...pedido,
-                      resentAt: at,
-                      envios: canal && destino ? [...(pedido.envios ?? []), { canal, destino, at }] : pedido.envios,
-                  }
-                : pedido,
-        ),
-    );
+    const antigo = lerLegado().get(id);
+    const envios = lerDoc("pedidos", id)?.bilheteria?.envios ?? antigo?.envios ?? [];
+    void anotarPedidoDaBilheteria(id, { reenviadoEm: at, envios: canal && destino ? [...envios, { canal, destino, at }] : envios });
 }
 
 /* ------------------------------------------------------------------ */
 /*  Criação de um pedido a partir da venda concluída                   */
 /* ------------------------------------------------------------------ */
 
-const pad = (value: number) => value.toString().padStart(2, "0");
-
-export const formatDateTime = (date: Date) =>
-    `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear()} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
-
-const formatDate = (date: Date) => `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear()}`;
+export const formatDateTime = (date: Date) => formatarDataHora(date);
 
 const isoDate = (date: Date) => `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 
@@ -137,7 +151,7 @@ export function createPedido({ id, eventoId, cart, buyer, fallbackEmail, tipo, e
         id: line.id,
         quantity: line.quantity,
         name: line.name,
-        subtitle: [line.meta, line.date].filter(Boolean).join(" • ") || undefined,
+        subtitle: [line.meta, line.date].filter(Boolean).join(", ") || undefined,
         lote: line.lote,
         unitPrice: line.unitPrice,
         access: line.access,
@@ -160,7 +174,7 @@ export function createPedido({ id, eventoId, cart, buyer, fallbackEmail, tipo, e
         emissor,
         destinatario,
         dataVenda: isoDate(now),
-        dataVendaLabel: formatDate(now),
+        dataVendaLabel: formatarDataHora(now),
         valor: tipo === "saldo" ? 0 : subtotal * (1 + SERVICE_FEE_RATE),
         paymentLink,
         itens,
@@ -172,29 +186,24 @@ export function createPedido({ id, eventoId, cart, buyer, fallbackEmail, tipo, e
 /* ------------------------------------------------------------------ */
 /*  Atalhos de teste                                                   */
 /*                                                                     */
-/*  O fluxo de venda só produz pedido pendente ou aprovado. Expirado e  */
-/*  cancelado acontecem depois, fora da tela — e sem um jeito de forçar */
-/*  não dá para testar a gestão desses estados. Só em dev, sem UI.      */
+/*  O fluxo de venda só produz pedido pendente ou aprovado. Expirado    */
+/*  acontece depois, fora da tela: sem um jeito de forçar não dá para   */
+/*  testar a gestão desse estado. Só em dev, sem UI.                    */
 /* ------------------------------------------------------------------ */
 
 if (import.meta.env.DEV && typeof window !== "undefined") {
-    const mudarStatus = (status: Pedido["status"], id?: string) => {
-        const lista = read();
-        const alvo = id ? lista.find((p) => p.id === id) : lista.find((p) => p.status === "pendente" && p.tipo === "link");
-        if (!alvo) return `Nenhum pedido ${id ? `com id ${id}` : "pendente com link"} para alterar.`;
-        write(lista.map((p) => (p.id === alvo.id ? { ...p, status } : p)));
-        return `Pedido ${alvo.id} agora é ${status}.`;
+    const marcar = async (expirado: boolean, id?: string) => {
+        const lista = lerColecao("pedidos").filter((p) => p.canal === "bilheteria");
+        const alvo = id ? lista.find((p) => p.id === id) : lista.find((p) => p.status === "aguardando-pagamento" && !!p.bilheteria?.expirado !== expirado);
+        if (!alvo) return `Nenhum pedido ${id ? `com id ${id}` : "pendente"} para alterar.`;
+        await anotarPedidoDaBilheteria(alvo.id, { expirado });
+        return `Pedido ${alvo.id} agora é ${expirado ? "expirado" : "pendente"}.`;
     };
 
     (window as unknown as Record<string, unknown>).bilheteria = {
-        /** Expira o primeiro pendente com link, ou o pedido do id informado. */
-        expirar: (id?: string) => mudarStatus("expirado", id),
-        /** Devolve um pedido para pendente, para repetir o teste. */
-        reabrir: (id?: string) => mudarStatus("pendente", id),
-        /** Volta ao histórico de exemplo. */
-        limpar: () => {
-            window.localStorage.removeItem(STORAGE_KEY);
-            window.location.reload();
-        },
+        /** Expira o primeiro pendente, ou o pedido do id informado. */
+        expirar: (id?: string) => marcar(true, id),
+        /** Devolve um pedido expirado para pendente, para repetir o teste. */
+        reabrir: (id?: string) => marcar(false, id),
     };
 }

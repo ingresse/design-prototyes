@@ -1,0 +1,57 @@
+/* Cabeçalho do Ingresse Sports (Mariana, 28/10/2026; pedido do Wander). Fonte única: tools/previa/esportes/cabecalho.css; o gerador copia para previa/esportes-cabecalho.css
+   e a Home/agregadoras (Esportes.dc.html) e a página de evento esportivo (Evento.dc.html?esporte=, montada por evento.js) a carregam.
+   REGRAS: uma logo só (a do Ingresse Sports; nunca a da Ingresse ao lado); a navegação da vertical (Modalidades, Distâncias, Calendário, Circuitos, Grupos, Aprenda) é a
+   navegação PRINCIPAL, na barra de cima; a volta à Ingresse é sutil (texto secundário com seta, sem peso) e fica na ponta esquerda no desktop e como primeiro item da linha de
+   navegação no celular. A lupa leva à busca já no segmento «Ingresse Sports» (Busca.dc.html?escopo=esportes). Funil de compra (Ingressos, Checkout, Pagamento): sem navegação, só a logo.
+   Só tokens da identidade; alvos de 48 px; sem sombra. */
+.esp-logo { display: block; height: var(--size-icon-md); width: calc(var(--size-icon-md) * 586.5 / 73); background-color: currentColor; -webkit-mask: url("./assets/brand/ingresse-sports.svg") left center / contain no-repeat; mask: url("./assets/brand/ingresse-sports.svg") left center / contain no-repeat; }
+.esp-hlogo { display: inline-flex; align-items: center; flex: 0 0 auto; min-height: var(--size-touch-default); color: var(--color-text-primary); text-decoration: none; }
+.esp-hlogo::before { content: none !important; }
+
+/* volta à Ingresse: texto secundário com seta, numa linha de divisão reta e cinza */
+.esp-volta { display: inline-flex; align-items: center; gap: var(--space-1); flex: 0 0 auto; min-height: var(--size-touch-default); padding-right: var(--space-4); border-right: var(--border-width-hairline) solid var(--color-border-subtle); border-radius: 0 !important; color: var(--color-text-secondary); font-size: var(--font-size-small); line-height: 1; font-weight: 400; text-decoration: none; white-space: nowrap; transition: color var(--motion-duration-fast) var(--motion-ease-move); }
+.esp-volta:hover { color: var(--color-text-primary); }
+.esp-volta .ico { stroke: currentColor; transition: transform var(--motion-duration-fast) var(--motion-ease-move); }
+.esp-volta:hover .ico { transform: translateX(calc(var(--space-1) * -1)); }
+.esp-volta-li { display: none !important; }
+
+/* navegação do Ingresse Sports */
+.esp-nav { position: relative; flex: 1 1 0; min-width: 0; }
+/* as 11 modalidades não cabem juntas no desktop: rolagem horizontal com esmaecer nas pontas (só aparece do lado em que ainda há o que rolar); sem barra de rolagem */
+.esp-nav[data-ini="true"] .esp-sub-links { -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 var(--space-6)); mask-image: linear-gradient(90deg, transparent 0, #000 var(--space-6)); }
+.esp-nav[data-fim="true"] .esp-sub-links { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - var(--space-6)), transparent 100%); mask-image: linear-gradient(90deg, #000 calc(100% - var(--space-6)), transparent 100%); }
+.esp-nav[data-ini="true"][data-fim="true"] .esp-sub-links { -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 var(--space-6), #000 calc(100% - var(--space-6)), transparent 100%); mask-image: linear-gradient(90deg, transparent 0, #000 var(--space-6), #000 calc(100% - var(--space-6)), transparent 100%); }
+@media (prefers-reduced-motion: no-preference) { .esp-sub-links { scroll-behavior: smooth; } }
+.esp-sub-links { display: flex; align-items: stretch; gap: var(--space-1); list-style: none; margin: 0; padding: 0; min-width: 0; overflow-x: auto; scrollbar-width: none; scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch; }
+.esp-sub-links::-webkit-scrollbar { display: none; }
+.esp-sub-links li { flex: 0 0 auto; display: flex; scroll-snap-align: start; }
+.esp-sub-a { display: inline-flex; align-items: center; gap: var(--space-1); min-height: var(--size-touch-default); padding: 0 var(--space-3); box-sizing: border-box; font-size: var(--font-size-small); line-height: 1; font-weight: 600; color: var(--color-text-secondary); text-decoration: none; position: relative; white-space: nowrap; transition: color var(--motion-duration-fast) var(--motion-ease-move), background-color var(--motion-duration-fast) var(--motion-ease-move); }
+.esp-sub-a::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: var(--border-width-accent); background: transparent; transition: background-color var(--motion-duration-fast) var(--motion-ease-move); }
+.esp-sub-a:hover { color: var(--color-text-primary); background: var(--color-bg-hover); }
+.esp-sub-a[aria-current] { color: var(--color-text-primary); }
+.esp-sub-a[aria-current]::after { background: var(--color-fg-brand); }
+.esp-sub-links, .esp-sub-links li, .esp-nav { border-radius: 0 !important; }
+
+/* desktop: logo, navegação e utilitários na mesma linha */
+@media (min-width: 1024px) {
+  html[data-marca="esportes"] .esp-hdr-row { flex-wrap: nowrap !important; gap: var(--space-4) !important; }
+  html[data-marca="esportes"] .esp-hdr-row .esp-hlogo { width: auto !important; overflow: visible !important; flex: 0 0 auto !important; }
+}
+
+/* celular e tablet: logo e utilitários em cima; embaixo a cidade e a navegação (a volta à Ingresse é o primeiro item) */
+@media (max-width: 1023px) {
+  html[data-marca="esportes"] .esp-hdr-row { display: grid !important; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; column-gap: var(--space-2) !important; row-gap: 0 !important; }
+  html[data-marca="esportes"] .esp-hdr-row .esp-volta { display: none; }
+  html[data-marca="esportes"] .esp-hdr-row .esp-hlogo { grid-column: 1 / 3; grid-row: 1; width: auto !important; overflow: visible !important; flex: none !important; }
+  html[data-marca="esportes"] .esp-hdr-row .esp-hlogo { display: flex; min-width: 0; justify-self: stretch; }
+  html[data-marca="esportes"] .esp-hdr-row .esp-logo { height: auto; aspect-ratio: 586.5 / 73; width: calc((var(--space-5) - var(--space-1)) * 586.5 / 73); max-width: 100%; } /* 20 px de altura; encolhe se a coluna for mais estreita */
+  html[data-marca="esportes"] .esp-hdr-row .hdr-lupa { grid-column: 3; grid-row: 1; }
+  html[data-marca="esportes"] .esp-hdr-row .avatar-hdr { grid-column: 4; grid-row: 1; } /* o sino saiu do cabeçalho (28/10): lupa, avatar (menu da conta, menu-conta.js) */
+  html[data-marca="esportes"] .esp-hdr-row .cid { grid-column: 1; grid-row: 2; }
+  html[data-marca="esportes"] .esp-hdr-row .esp-nav { grid-column: 2 / -1; grid-row: 2; }
+  html[data-marca="esportes"] .esp-hdr-row .esp-volta-li { display: flex !important; }
+  .esp-volta-m { color: var(--color-text-tertiary); font-weight: 400; padding-right: var(--space-3); margin-right: var(--space-1); border-right: var(--border-width-hairline) solid var(--color-border-subtle); border-radius: 0 !important; }
+}
+
+/* página de evento esportivo: a trilha antiga do cabeçalho (ee-crumbs) sai; o caminho até a prova está no hero */
+html[data-ee] .esp-hdr-row .ee-crumbs, html[data-ee] .esp-hdr-row nav.crumbs { display: none !important; }

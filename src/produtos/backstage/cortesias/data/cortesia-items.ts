@@ -5,6 +5,8 @@ export interface TicketEntry {
 }
 
 export interface GroupSection {
+    /** Id do grupo no catálogo; a chave do grupo recolhível (COR-55). */
+    id?: string;
     name: string;
     tickets: TicketEntry[];
 }
@@ -133,9 +135,17 @@ export function definirSessoes(novas: SessionSection[]) {
     registry = null;
 }
 
-export const PRODUCTS: ProductEntry[] = [];
+/** Produtos e combos do evento em contexto, vindos do banco (ver data/plataforma.ts). Mesmo esquema de `SESSIONS`. */
+export let PRODUCTS: ProductEntry[] = [];
 
-export const COMBOS: ComboEntry[] = [];
+export let COMBOS: ComboEntry[] = [];
+
+export function definirProdutosECombos(produtos: ProductEntry[], combos: ComboEntry[]) {
+    if (produtos === PRODUCTS && combos === COMBOS) return;
+    PRODUCTS = produtos;
+    COMBOS = combos;
+    registry = null;
+}
 
 /* ------------------------------------------------------------------ */
 /*  Resolver: id → typed details                                      */
@@ -218,8 +228,8 @@ export function getItemSummary(id: string): { label: string; sublabel: string } 
     if (!details) return undefined;
     if (details.kind === "ticket") {
         return {
-            label: `${details.name} • ${details.groupName}`,
-            sublabel: `${details.ticketType} · ${details.sessionDate}`,
+            label: `${details.name}, ${details.groupName}`,
+            sublabel: `${details.ticketType}, ${details.sessionDate}`,
         };
     }
     if (details.kind === "product") {

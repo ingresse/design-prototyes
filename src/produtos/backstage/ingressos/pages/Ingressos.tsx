@@ -13,11 +13,11 @@ import { cx } from "@/utils/cx";
 import { EmptyState } from "@/components/application/empty-state/empty-state";
 import { salvarCatalogo, useDoc, useVendidos } from "@/plataforma";
 import { BackstageLayout } from "../../components/Backstage";
+import { CabecalhoDaPagina } from "../../components/cabecalho-da-pagina";
 import { useEventoAtual } from "../../eventos/data/eventos";
 import { CriarIngressoModal } from "../components/CriarIngressoModal";
 import { adicionarIngresso, paraBanco, paraView } from "../data/catalogo-banco";
 import { type Grupo, type Ingresso, type Sessao } from "../data/ingressos";
-import { TITULO_PAGINA } from "@/produtos/backstage/components/titulo-pagina";
 
 /** Handle de arraste com 2 colunas de pontos (padrão Jira/Gmail). */
 function GripVertical({ className }: { className?: string }) {
@@ -262,23 +262,25 @@ export function Ingressos() {
         <BackstageLayout activeSection="itens" activeItem="catalogo-ingressos">
             <div className="flex min-w-0 flex-1 flex-col">
                 {/* Header da página */}
-                <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                    <h1 className={TITULO_PAGINA}>Ingressos</h1>
-                    <div className="flex flex-wrap items-center gap-3">
-                        <Button size="md" color="secondary" iconLeading={Calendar}>
-                            Filtrar por data
-                        </Button>
-                        <Button size="md" color="secondary">
-                            Ajustar abertura de vendas
-                        </Button>
-                        <Button size="md" color="secondary" onClick={() => navigate("/backstage/catalogo/ingressos/editar-grupos")}>
-                            Editar grupos
-                        </Button>
-                        <Button size="md" color="primary" iconLeading={Plus} onClick={() => setCriarOpen(true)} isDisabled={!evento}>
-                            Criar ingresso
-                        </Button>
-                    </div>
-                </header>
+                <CabecalhoDaPagina
+                    titulo="Ingressos"
+                    acoes={
+                        <>
+                            <Button size="md" color="secondary" iconLeading={Calendar}>
+                                Filtrar por data
+                            </Button>
+                            <Button size="md" color="secondary">
+                                Ajustar abertura de vendas
+                            </Button>
+                            <Button size="md" color="secondary" onClick={() => navigate("/backstage/catalogo/ingressos/editar-grupos")}>
+                                Editar grupos
+                            </Button>
+                            <Button size="md" color="primary" iconLeading={Plus} onClick={() => setCriarOpen(true)} isDisabled={!evento}>
+                                Criar ingresso
+                            </Button>
+                        </>
+                    }
+                />
 
                 {evento && sessoes.every((s) => s.grupos.length === 0) && (
                     <div className="mt-6 rounded-2xl bg-primary py-12 ring-1 ring-border-secondary">

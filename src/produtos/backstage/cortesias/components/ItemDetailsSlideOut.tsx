@@ -12,13 +12,13 @@ import {
     Modal as AriaModal,
     ModalOverlay as AriaModalOverlay,
 } from "react-aria-components";
-import { BadgeWithDot } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
 import { Progress } from "@/components/application/progress-steps/progress-steps";
 import type { ProgressFeaturedIconType } from "@/components/application/progress-steps/progress-types";
 import { cx } from "@/utils/cx";
-import { ITEM_STATUS_META, type CortesiaItem } from "../data/item-types";
+import { ITEM_STATUS_SELO, type CortesiaItem } from "../data/item-types";
+import { SeloDeStatus } from "../../components/estado-de-pedido";
 import { CancelConfirmModal } from "./CancelConfirmModal";
 
 /* ------------------------------------------------------------------ */
@@ -57,7 +57,7 @@ function formatTicketDateTime(seed: number) {
     const month = MONTHS_PT[seed % 12];
     const hour = 18 + (seed % 5);
     const minute = (seed * 7) % 60;
-    return `${pad2(day)} de ${month} • ${pad2(hour)}:${pad2(minute)}`;
+    return `${day} ${month.toLowerCase()}, ${pad2(hour)}:${pad2(minute)}`;
 }
 
 function formatHistoryDate(seed: number) {
@@ -82,7 +82,7 @@ function pickErrorMessage(seed: number): string {
 function ticketSubtitle(seed: number) {
     const groups = ["Pista", "Camarote", "VIP", "Backstage", "Mezanino"];
     const types = ["Inteira", "Meia", "Cortesia", "Estudante"];
-    return `${groups[seed % groups.length]} - ${types[(seed >> 3) % types.length]}`;
+    return `${groups[seed % groups.length]}, ${types[(seed >> 3) % types.length]}`;
 }
 
 interface ComboSubItem {
@@ -180,7 +180,6 @@ export function ItemDetailsSlideOut({
 }: ItemDetailsSlideOutProps) {
     const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
-    const statusMeta = item ? ITEM_STATUS_META[item.status] : null;
     const isCancelled = item?.status === "cancelado";
     const isErro = item?.status === "erro";
 
@@ -258,15 +257,7 @@ export function ItemDetailsSlideOut({
 
                                     <dl className="grid grid-cols-1 gap-x-6 gap-y-2 sm:grid-cols-2">
                                         <DetailRow label="Status:">
-                                            {statusMeta && (
-                                                <BadgeWithDot
-                                                    size="sm"
-                                                    type="modern"
-                                                    color={statusMeta.color}
-                                                >
-                                                    {statusMeta.label}
-                                                </BadgeWithDot>
-                                            )}
+                                            {item && <SeloDeStatus status={ITEM_STATUS_SELO[item.status]} />}
                                         </DetailRow>
                                         <DetailRow label="Emissor responsável:">
                                             <span className="text-sm text-secondary">
@@ -293,14 +284,7 @@ export function ItemDetailsSlideOut({
                             {isErro && errorMessage ? (
                                 <div className="px-6 pb-4">
                                     <div className="flex flex-col gap-2 rounded-lg bg-primary p-3 ring-1 ring-border-secondary">
-                                        <BadgeWithDot
-                                            size="md"
-                                            color="error"
-                                            type="modern"
-                                            className="self-start"
-                                        >
-                                            Erro
-                                        </BadgeWithDot>
+                                        <SeloDeStatus status="erro" className="self-start" />
                                         <p className="text-sm break-words text-secondary">
                                             {errorMessage}
                                         </p>
@@ -356,9 +340,9 @@ export function ItemDetailsSlideOut({
                                                     </span>
                                                     <div className="flex flex-col">
                                                         <span className="text-sm font-medium text-primary">
-                                                            {sub.name} - {sub.type}
+                                                            {sub.name}, {sub.type}
                                                         </span>
-                                                        <span className="text-xs text-tertiary">
+                                                        <span className="text-sm text-tertiary">
                                                             {sub.dateTime}
                                                         </span>
                                                     </div>

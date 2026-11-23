@@ -1,26 +1,33 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useNavigate } from "react-router";
-import { ChevronDown, CurrencyDollarCircle, DotsVertical, Plus, SearchLg, ShoppingBag01, Ticket01 } from "@untitledui/icons";
+import { ChevronDown, CurrencyDollarCircle, DotsVertical, Plus, ShoppingBag01, Ticket01 } from "@untitledui/icons";
+import { AlertFloating } from "@/components/application/alerts/alerts";
 import { EmptyState } from "@/components/application/empty-state/empty-state";
 import { Badge } from "@/components/base/badges/badges";
+import { ButtonGroup, ButtonGroupItem } from "@/components/base/button-group/button-group";
 import { Button } from "@/components/base/buttons/button";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
 import { Dropdown } from "@/components/base/dropdown/dropdown";
-import { InputBase } from "@/components/base/input/input";
 import { Select } from "@/components/base/select/select";
 import { DURACAO_TRANSICAO, Surgir } from "@/components/foundations/transicao";
 import { useBanco } from "@/plataforma";
 import { BackstageLayout } from "../../components/Backstage";
-import { CartaoMetrica } from "../components/CartaoMetrica";
+import { CabecalhoDaPagina } from "../../components/cabecalho-da-pagina";
+import { RodapeDePaginacao, usePaginacao } from "../../components/rodape-de-paginacao";
+import { BarraDaLista, CartaoDaTabela, SemResultados } from "../../components/tabela";
+import { CartaoMetrica, EsqueletoDaMetrica } from "../components/CartaoMetrica";
 import { EVENTO_STATUS_BADGE_COLOR, setEventoAtual, useEventosVersao, vendasHabilitadas, type Evento } from "../data/eventos";
 import { TIPOS_DE_EVENTO } from "../data/tipos-evento";
 import { formatar, useFormatos, useTextosEventos } from "../data/textos-eventos";
 import { ritmoDaOrganizacao, useResumos, type ResumoEvento, type RitmoOrganizacao } from "../data/vendas";
-import { TITULO_PAGINA } from "@/produtos/backstage/components/titulo-pagina";
 
 type Ordem = "data" | "ocupacao" | "faturamento" | "ritmo";
 const ORDENS: Ordem[] = ["data", "ocupacao", "faturamento", "ritmo"];
+type Filtro = "todos" | "ativos" | "rascunho" | "encerrado";
+const FILTROS: Filtro[] = ["todos", "ativos", "rascunho", "encerrado"];
+const passaNoFiltro = (r: ResumoEvento, filtro: Filtro) =>
+    filtro === "todos" ? true : filtro === "ativos" ? vendasHabilitadas(r.evento.status) : r.evento.status === filtro;
 type Metrica = "faturamento" | "produtos" | "ingressos";
 const METRICAS: Metrica[] = ["faturamento", "produtos", "ingressos"];
 
@@ -34,6 +41,7 @@ export function Eventos() {
     const carregando = modo === "carregando";
     const [term, setTerm] = useState("");
     const [ordem, setOrdem] = useState<Ordem>("data");
+    const [filtro, setFiltro] = useState<Filtro>("todos");
 
     /* Toda mudança de status vem do modal global (aberto por evento na sidebar ou por
        aqui, sempre depois de setEventoAtual) — a listagem precisa recalcular ao vivo em
@@ -43,20 +51,32 @@ export function Eventos() {
 
     const ativos = todos.filter((r) => vendasHabilitadas(r.evento.status));
 
-
     const ritmo = useMemo(() => ritmoDaOrganizacao(ativos), [ativos]);
 
     const visiveis = useMemo(() => {
         const query = term.trim().toLowerCase();
-        const porBusca = query ? todos.filter((r) => `${r.evento.nome} ${r.evento.produtor} ${r.evento.local}`.toLowerCase().includes(query)) : todos;
+        const porStatus = todos.filter((r) => passaNoFiltro(r, filtro));
+        const porBusca = query ? porStatus.filter((r) => `${r.evento.nome} ${r.evento.produtor} ${r.evento.local}`.toLowerCase().includes(query)) : porStatus;
+        // Data do evento: o mais próximo de hoje primeiro. Os próximos, do mais perto ao mais longe; depois os que
+        // já aconteceram, do mais recente ao mais antigo (EVT-05). Antes, a ordem era a data absoluta, e o
+        // evento mais próximo de hoje ficava no fim da lista.
+        const hoje = new Date().setHours(0, 0, 0, 0);
+        const quando = (r: ResumoEvento) => new Date(r.evento.data).getTime();
 
         return [...porBusca].sort((a, b) => {
             if (ordem === "ocupacao") return b.ocupacao - a.ocupacao;
             if (ordem === "faturamento") return b.faturamento - a.faturamento;
             if (ordem === "ritmo") return b.ritmo7 - a.ritmo7;
-            return new Date(a.evento.data).getTime() - new Date(b.evento.data).getTime();
+            const ta = quando(a);
+            const tb = quando(b);
+            const aVem = ta >= hoje;
+            const bVem = tb >= hoje;
+            if (aVem !== bVem) return aVem ? -1 : 1;
+            return aVem ? ta - tb : tb - ta;
         });
-    }, [todos, term, ordem]);
+    }, [todos, term, ordem, filtro]);
+    // Paginação comum das listas (BKS-114): aparece com mais de 10 eventos; busca, filtro e ordem voltam à página 1.
+    const paginacao = usePaginacao(visiveis, [term, filtro, ordem]);
 
     // Entrar no evento abre Itens › Ingressos (EVT-07).
     const abrir = (evento: Evento, href = "/backstage/catalogo/ingressos") => {
@@ -75,19 +95,18 @@ export function Eventos() {
     return (
         <BackstageLayout activeProducer="eventos" showEventContext={false}>
             <div className="flex min-w-0 flex-1 flex-col gap-6">
-                <header className="flex flex-wrap items-center justify-between gap-3">
-                    <div className="flex flex-col gap-0.5">
-                        <h1 className={TITULO_PAGINA}>{t.titulo}</h1>
-                        <Subtitulo carregando={carregando} ativos={ativos.length} />
-                    </div>
-                    {!semEventos && <CriarEventoMenu />}
-                </header>
+                <CabecalhoDaPagina
+                    titulo={t.titulo}
+                    subtitulo={<Subtitulo carregando={carregando} ativos={ativos.length} />}
+                    acoes={!semEventos && <CriarEventoMenu />}
+                />
 
                 {/* Sincronização falhou depois de carregar: os dados ficam, com o aviso (UI-EST-007). */}
                 <Surgir visivel={!carregando && !!erro}>
-                    <p role="status" className="rounded-xl bg-warning-primary px-4 py-3 text-sm text-warning-primary ring-1 ring-border-secondary">
-                        {t.semConexao}
-                    </p>
+                    {/* Alert do DS, não um aviso feito à mão (UI-DS-001); o role="status" faz o leitor de tela anunciar. */}
+                    <div role="status">
+                        <AlertFloating color="warning" title={t.semConexao} description={t.semConexaoDica} confirmLabel="" />
+                    </div>
                 </Surgir>
 
                 <Surgir visivel={!semEventos} gap={24}>
@@ -99,30 +118,41 @@ export function Eventos() {
                         {t.listaDeEventos}
                     </h2>
                     <Surgir visivel={!semEventos} gap={16}>
-                    <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                        {/* Largura em que o placeholder cabe inteiro. */}
-                        <div className="md:w-80">
-                            <InputBase
-                                size="sm"
-                                icon={SearchLg}
-                                value={term}
-                                aria-label={t.buscar}
-                                onChange={(event) => setTerm(event.target.value)}
-                                placeholder={t.buscarPlaceholder}
-                            />
-                        </div>
-                        <div className="md:w-[190px]">
-                            <Select
-                                aria-label={t.ordenarPor}
-                                size="sm"
-                                selectedKey={ordem}
-                                onSelectionChange={(key) => setOrdem(String(key) as Ordem)}
-                                items={ORDENS.map((id) => ({ id, label: t.ordens[id] }))}
-                            >
-                                {(item) => <Select.Item id={item.id}>{item.label}</Select.Item>}
-                            </Select>
-                        </div>
-                    </div>
+                        {/* Busca à esquerda; filtro de status e ordenação à direita, na barra comum das listas (BKS-111). */}
+                        <BarraDaLista
+                            busca={{ valor: term, onChange: setTerm, placeholder: t.buscarPlaceholder, rotulo: t.buscar }}
+                            filtro={
+                                <ButtonGroup
+                                    size="sm"
+                                    aria-label={t.filtroDeStatus}
+                                    disallowEmptySelection
+                                    selectedKeys={[filtro]}
+                                    onSelectionChange={(keys) => {
+                                        const [k] = [...keys];
+                                        if (k !== undefined) setFiltro(String(k) as Filtro);
+                                    }}
+                                    className="w-full sm:w-max"
+                                >
+                                    {FILTROS.map((id) => (
+                                        <ButtonGroupItem key={id} id={id} className="flex-1 justify-center sm:flex-none">
+                                            {t.filtros[id]}
+                                        </ButtonGroupItem>
+                                    ))}
+                                </ButtonGroup>
+                            }
+                        >
+                            <div className="w-full sm:w-[190px]">
+                                <Select
+                                    aria-label={t.ordenarPor}
+                                    size="sm"
+                                    selectedKey={ordem}
+                                    onSelectionChange={(key) => setOrdem(String(key) as Ordem)}
+                                    items={ORDENS.map((id) => ({ id, label: t.ordens[id] }))}
+                                >
+                                    {(item) => <Select.Item id={item.id}>{item.label}</Select.Item>}
+                                </Select>
+                            </div>
+                        </BarraDaLista>
                     </Surgir>
 
                     {/* Listagem. Buscar e reordenar fazem os cartões deslizarem até o novo lugar; o vazio
@@ -130,8 +160,8 @@ export function Eventos() {
                     {/* Dois vazios diferentes: busca sem resultado orienta a mudar o termo; organização sem
                         evento oferece criar o primeiro (UI-EST-006). */}
                     <Surgir visivel={!carregando && visiveis.length === 0}>
-                        <div className="flex items-center justify-center py-16">
-                            {todos.length === 0 ? (
+                        {todos.length === 0 ? (
+                            <div className="flex items-center justify-center py-16">
                                 <EmptyState size="sm">
                                     <EmptyState.Header>
                                         <EmptyState.FeaturedIcon icon={Ticket01} color="gray" theme="modern" />
@@ -144,23 +174,29 @@ export function Eventos() {
                                         <CriarEventoMenu posicao="bottom" />
                                     </EmptyState.Footer>
                                 </EmptyState>
-                            ) : (
-                                <EmptyState size="sm">
-                                    <EmptyState.Header>
-                                        <EmptyState.FeaturedIcon icon={SearchLg} color="gray" theme="modern" />
-                                    </EmptyState.Header>
-                                    <EmptyState.Content>
-                                        <EmptyState.Title>{t.nenhumEvento}</EmptyState.Title>
-                                        <EmptyState.Description>{t.nenhumEventoDica}</EmptyState.Description>
-                                    </EmptyState.Content>
-                                </EmptyState>
-                            )}
-                        </div>
+                            </div>
+                        ) : (
+                            // Busca sem resultado: no cartão, com "Limpar busca", que apaga o termo e volta o filtro a Todos (BKS-118).
+                            // Só o filtro sem evento: diz que não há evento nesse status; o filtro está logo acima.
+                            <CartaoDaTabela>
+                                {term.trim() ? (
+                                    <SemResultados
+                                        texto={`${t.nenhumEvento}. ${t.nenhumEventoDica}`}
+                                        onLimpar={() => {
+                                            setTerm("");
+                                            setFiltro("todos");
+                                        }}
+                                    />
+                                ) : (
+                                    <SemResultados texto={t.nenhumComFiltro} />
+                                )}
+                            </CartaoDaTabela>
+                        )}
                     </Surgir>
                     {carregando && <EsqueletoDaLista />}
                     <div hidden={carregando} className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
                         <AnimatePresence initial={false} mode="popLayout">
-                            {visiveis.map((resumo) => (
+                            {paginacao.visiveis.map((resumo) => (
                                 <motion.div
                                     key={resumo.evento.id}
                                     layout={!reduzir}
@@ -174,6 +210,7 @@ export function Eventos() {
                             ))}
                         </AnimatePresence>
                     </div>
+                    {!carregando && <RodapeDePaginacao {...paginacao} />}
                 </section>
             </div>
         </BackstageLayout>
@@ -237,8 +274,9 @@ const EventoCard = ({ resumo, onOpen, onEditar }: { resumo: ResumoEvento; onOpen
 /** Subtítulo da página: conta os eventos ativos; carregando, uma linha de esqueleto. */
 function Subtitulo({ carregando, ativos }: { carregando: boolean; ativos: number }) {
     const { t, plural } = useTextosEventos();
-    if (carregando) return <span aria-hidden="true" className="mt-1 h-4 w-28 animate-pulse rounded bg-secondary motion-reduce:animate-none" />;
-    return <p className="text-sm text-tertiary">{plural(t.eventosAtivos, ativos)}</p>;
+    // Vai dentro do <p> do subtítulo do cabeçalho: só texto ou um bloco de carregamento.
+    if (carregando) return <span aria-hidden="true" className="mt-1 block h-4 w-28 animate-pulse rounded bg-secondary motion-reduce:animate-none" />;
+    return <>{plural(t.eventosAtivos, ativos)}</>;
 }
 
 /** "Criar evento" com o menu de tipos (EVT-50): no cabeçalho e no vazio da organização. */
@@ -308,8 +346,6 @@ function ResumoDaOrganizacao({ ritmo, carregando }: { ritmo: RitmoOrganizacao; c
         ),
     };
 
-    const esqueleto = <div aria-hidden="true" className="h-[22rem] animate-pulse rounded-xl bg-primary ring-1 ring-border-secondary motion-reduce:animate-none" />;
-
     return (
         <section aria-labelledby="titulo-resumo" className="flex flex-col gap-3">
             <h2 id="titulo-resumo" className="sr-only">
@@ -317,7 +353,8 @@ function ResumoDaOrganizacao({ ritmo, carregando }: { ritmo: RitmoOrganizacao; c
             </h2>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                 {METRICAS.map((m) => (
-                    <div key={m}>{carregando ? esqueleto : cartoes[m]}</div>
+                    // Carregando, o esqueleto tem os blocos do cartão real, na mesma altura: a tela não pula (UI-EST-007).
+                    <div key={m}>{carregando ? <EsqueletoDaMetrica /> : cartoes[m]}</div>
                 ))}
             </div>
         </section>

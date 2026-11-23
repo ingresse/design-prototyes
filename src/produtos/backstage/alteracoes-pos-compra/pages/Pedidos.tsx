@@ -1,42 +1,50 @@
 import { useMemo } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router";
 import { motion } from "motion/react";
-import { ArrowLeft, ArrowRight, Eye, SearchLg } from "@untitledui/icons";
-import { Button } from "@/components/base/buttons/button";
-import { ButtonUtility } from "@/components/base/buttons/button-utility";
-import { Input } from "@/components/base/input/input";
+import { ShoppingBag01 } from "@untitledui/icons";
 import { Select } from "@/components/base/select/select";
-import { EmptyState } from "@/components/application/empty-state/empty-state";
 import { cx } from "@/utils/cx";
-import { lerDoc } from "@/plataforma";
 import { BackstageLayout } from "../../components/Backstage";
-import { eventos as eventosDaOrganizacao, useEventosVersao } from "../../eventos/data/eventos";
+import { eventos as eventosDaOrganizacao, semEventosNaOrganizacao, useEventosVersao } from "../../eventos/data/eventos";
 import { FaixaAtencaoPedidos } from "../components/FaixaAtencaoPedidos";
-import { FOCO, FOCO_ESCOPO } from "../components/pos-compra-ui";
+import { FOCO } from "../components/pos-compra-ui";
 import {
     EVENTOS,
     formatarMoeda,
     getConta,
     getEvento,
+    totaisDoPedido,
     usePedidos,
     uuidCurto,
     type Pedido,
 } from "../data/pos-compra-store";
-import { TITULO_PAGINA } from "@/produtos/backstage/components/titulo-pagina";
+import { CabecalhoDaPagina } from "../../components/cabecalho-da-pagina";
+import { RodapeDePaginacao } from "../../components/rodape-de-paginacao";
+import { BarraDaLista, CabecalhoDaTabela, CartaoDaTabela, Celula, LinhaDaTabela, SemResultados, TituloDaLinha, VazioDaTabela } from "../../components/tabela";
 
-const totalPago = (pedido: Pedido) => pedido.itens.reduce((soma, linha) => soma + linha.valorPago, 0);
+/* PED-100: o total cobrado (itens, taxa de serviço, proteção e juros), o mesmo número do cartão do
+   pedido e da compra no histórico. Somar só os itens dava um valor que o cliente não acha no extrato. */
+const totalPago = (pedido: Pedido) => totaisDoPedido(pedido).pago;
 
 const TODOS = "todos";
+
+/* Larguras das colunas no modo tabela (cartão com 44rem ou mais, BKS-115); no modo lista cada valor vira uma linha com rótulo. */
+const COLUNA = {
+    pedido: "@min-[44rem]:w-24 @min-[44rem]:shrink-0",
+    evento: "min-w-0 @min-[44rem]:w-56 @min-[44rem]:shrink-0",
+    total: "@min-[44rem]:w-28 @min-[44rem]:shrink-0",
+};
 
 export function Pedidos() {
     const navigate = useNavigate();
     const todosPedidos = usePedidos();
     const versaoEventos = useEventosVersao();
-    /* PED-92: só pedidos de eventos da organização em contexto. Eventos de demonstração (fora do
-       banco) aparecem em qualquer organização. */
+    /* PED-92: só pedidos de eventos da organização em contexto (BKS-14). Os eventos de demonstração
+       (fora do banco) não são de organização nenhuma e saíram da lista e do filtro. */
     const daOrganizacao = useMemo(() => {
-        const ids = new Set(eventosDaOrganizacao.map((e) => e.id));
-        return (eventoId: string) => ids.has(eventoId) || !lerDoc("eventos", eventoId);
+        // Organização sem evento: a lista de eventos guarda a da anterior, então nada é dela.
+        const ids = new Set(semEventosNaOrganizacao() ? [] : eventosDaOrganizacao.map((e) => e.id));
+        return (eventoId: string) => ids.has(eventoId);
     }, [versaoEventos]);
     const pedidos = useMemo(() => todosPedidos.filter((p) => daOrganizacao(p.eventoId)), [todosPedidos, daOrganizacao]);
     const location = useLocation();
@@ -87,293 +95,127 @@ export function Pedidos() {
     const visiveis = filtrados.slice(inicio, inicio + porPagina);
     /* Uma escrita só na URL: duas seguidas (filtro e página) fariam a segunda apagar a primeira. */
     const aoFiltrar = (chave: "busca" | "evento") => (valor: string) => definir({ [chave]: valor, pagina: 1 });
+    /* A paginação do DS (BKS-114) com o estado da URL: mesma forma de `usePaginacao`, mas página e
+       tamanho moram no endereço (PED-04) e mudar o tamanho volta à página 1 (PED-05). */
+    const paginacao = {
+        pagina: paginaAtual,
+        paginas: totalPaginas,
+        tamanho: porPagina,
+        total: filtrados.length,
+        inicio,
+        visiveis,
+        setPagina: (valor: number) => setPagina(Math.min(Math.max(1, Math.round(valor) || 1), totalPaginas)),
+        setTamanho: (valor: number) => definir({ porPagina: valor, pagina: 1 }),
+    };
 
     return (
         <BackstageLayout showEventContext={false} activeProducer="pedidos">
             <motion.div
-                className={cx("flex min-w-0 flex-1 flex-col gap-5", FOCO_ESCOPO)}
+                className="flex min-w-0 flex-1 flex-col gap-5"
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.28, ease: "easeOut" }}
             >
-                <header className="flex flex-col gap-1">
-                    <h1 className={TITULO_PAGINA}>Pedidos</h1>
-                    <p className="text-sm text-tertiary">
-Troca de item, troca de titularidade e edição de respostas do formulário.
-                    </p>
-                </header>
+                {/* O subtítulo diz o que se faz aqui, na voz de quem atende (PED-119). Era a lista das
+                    três operações com o nome interno delas. */}
+                <CabecalhoDaPagina titulo="Pedidos" subtitulo="Encontre o pedido do cliente para transferir, trocar itens ou corrigir respostas." />
 
                 <FaixaAtencaoPedidos pedidos={pedidos} onAbrir={abrirPedido} />
 
-                <section className="rounded-2xl bg-primary ring-1 ring-border-secondary">
-                    <div className="flex flex-col gap-3 border-b border-secondary p-4 md:flex-row md:items-end">
-                        <div className="md:max-w-sm md:flex-1">
-                            <Input
-                                icon={SearchLg}
-                                label="Buscar"
-                                placeholder="ID do pedido, participante ou evento"
-                                value={busca}
-                                onChange={aoFiltrar("busca")}
-                            />
-                        </div>
-                        <div className="md:w-64">
-                            <Select
-                                label="Evento"
-                                selectedKey={eventoId}
-                                onSelectionChange={(key) => aoFiltrar("evento")(String(key))}
-                                items={eventosFiltro}
-                            >
-                                {(evento) => <Select.Item id={evento.id}>{evento.label}</Select.Item>}
-                            </Select>
-                        </div>
-                    </div>
-
-                    {filtrados.length === 0 ? (
-                        <div className="p-8">
-                            <EmptyState size="sm">
-                                <EmptyState.Header>
-                                    <EmptyState.FeaturedIcon icon={SearchLg} color="gray" theme="modern" />
-                                </EmptyState.Header>
-                                <EmptyState.Content>
-                                    <EmptyState.Title>Nenhum pedido encontrado</EmptyState.Title>
-                                    <EmptyState.Description>Revise a busca ou volte o filtro para todos os eventos.</EmptyState.Description>
-                                </EmptyState.Content>
-                            </EmptyState>
-                        </div>
-                    ) : (
-                        <>
-                        {/* No celular, tabela vira lista: sem rolagem lateral para ler valor e situação.
-                            Duas linhas no lugar de cinco: o cartão de 164px fazia 25 pedidos virarem
-                            5,5 telas de rolagem, com dois cabendo na primeira. Agora cabem seis. */}
-                        <ul className="flex flex-col divide-y divide-border-secondary md:hidden">
-                            {visiveis.map((pedido) => {
-                                const comprador = getConta(pedido.compradorId);
-                                return (
-                                    <li key={pedido.id}>
-                                        <button
-                                            type="button"
-                                            onClick={() => abrirPedido(pedido.id)}
-                                            className={cx(
-                                                "flex w-full flex-col gap-1 px-4 py-4 text-left transition duration-100 ease-linear hover:bg-secondary",
-                                                FOCO,
-                                            )}
-                                        >
-                                            {/* O UUID inteiro liderava o cartão, em mono e semibold: 36
-                                                caracteres tomavam a largura útil e o leitor de tela soletrava
-                                                o hash antes de dizer de quem era o pedido. O atendente tem o
-                                                nome na mão, e é por ele que a busca casa. */}
-                                            <span className="flex w-full items-baseline justify-between gap-3">
-                                                <span className="truncate text-sm font-medium text-primary">{comprador?.nome}</span>
-                                                <span className="shrink-0 text-sm font-medium text-primary tabular-nums">
-                                                    {formatarMoeda(totalPago(pedido))}
-                                                </span>
-                                            </span>
-                                            <span className="flex w-full items-baseline gap-1 text-sm text-tertiary">
-                                                <span className="truncate">{getEvento(pedido.eventoId)?.nome}</span>
-                                                <span className="shrink-0 whitespace-nowrap text-quaternary tabular-nums">
-                                                    · {pedido.itens.length} {pedido.itens.length === 1 ? "item" : "itens"}
-                                                </span>
-                                                {/* A forma curta que o resto do produto já usa nos títulos. O ID
-                                                    inteiro continua no detalhe, com o botão de copiar. */}
-                                                <span className="shrink-0 font-mono text-quaternary">· {uuidCurto(pedido.id)}</span>
-                                            </span>
-                                        </button>
-                                    </li>
-                                );
-                            })}
-                        </ul>
-
-                        <div className="hidden overflow-x-auto md:block">
-                            <table className="w-full border-collapse">
-                                <thead>
-                                    <tr className="border-b border-secondary text-left">
-                                        <Th>Pedido</Th>
-                                        <Th>Comprador</Th>
-                                        <Th>Evento</Th>
-                                        {/* A contagem de itens saiu: era um número solto que não
-                                            respondia nada sozinho — dois itens podem ser dois
-                                            ingressos ou um ingresso e uma camiseta. Quem precisa
-                                            saber o quê abre o pedido, onde a lista diz. O que
-                                            decide a triagem na lista é quanto saiu do bolso. */}
-                                        <Th>Total pago</Th>
-                                        <th className="w-16 px-4 py-3" />
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-border-secondary">
+                {pedidos.length === 0 ? (
+                    /* Organização sem pedido nenhum: vazio, não "sem resultado" (BKS-117, PED-98). Sem ação:
+                       pedido nasce da compra, não daqui. */
+                    <VazioDaTabela
+                        icone={ShoppingBag01}
+                        titulo="Nenhum pedido ainda"
+                        texto="Os pedidos dos eventos desta organização aparecem aqui assim que forem pagos."
+                    />
+                ) : (
+                    <div className="flex flex-col gap-4">
+                        {/* Busca à esquerda; o filtro aqui é de evento, não de status (BKS-111): eventos são
+                            muitos e mudam por organização, então ficam num seletor, não em botões. */}
+                        <BarraDaLista
+                            busca={{ valor: busca, onChange: aoFiltrar("busca"), placeholder: "ID do pedido, participante ou evento", rotulo: "Buscar pedido" }}
+                            filtro={
+                                <Select
+                                    aria-label="Evento"
+                                    size="sm"
+                                    selectedKey={eventoId}
+                                    onSelectionChange={(key) => aoFiltrar("evento")(String(key))}
+                                    items={eventosFiltro}
+                                    className="w-full sm:w-64"
+                                >
+                                    {(evento) => <Select.Item id={evento.id}>{evento.label}</Select.Item>}
+                                </Select>
+                            }
+                        />
+                        <CartaoDaTabela>
+                            <CabecalhoDaTabela>
+                                <span className="min-w-0 flex-1">Comprador</span>
+                                <span className={COLUNA.pedido}>Pedido</span>
+                                <span className={COLUNA.evento}>Evento</span>
+                                {/* A contagem de itens saiu: era um número solto que não respondia nada
+                                    sozinho. O que decide a triagem na lista é quanto saiu do bolso. */}
+                                <span className={cx(COLUNA.total, "text-right")}>Total pago</span>
+                            </CabecalhoDaTabela>
+                            {filtrados.length === 0 ? (
+                                /* Texto de gente, com o que fazer (PED-120): era "Nenhum pedido encontrado para essa busca." */
+                                <SemResultados
+                                    texto={
+                                        busca.trim()
+                                            ? `Nenhum pedido com “${busca.trim()}”. Confira a grafia ou busque pelo ID do pedido.`
+                                            : "Nenhum pedido neste evento ainda. Escolha outro evento ou veja todos."
+                                    }
+                                    onLimpar={() => definir({ busca: "", evento: TODOS, pagina: 1 })}
+                                />
+                            ) : (
+                                <ul className="flex flex-col divide-y divide-secondary">
                                     {visiveis.map((pedido) => {
                                         const comprador = getConta(pedido.compradorId);
                                         return (
-                                            <tr
-                                                key={pedido.id}
-                                                onClick={() => abrirPedido(pedido.id)}
-                                                className="cursor-pointer transition duration-100 ease-linear hover:bg-secondary"
-                                            >
-                                                <td className="px-4 py-4">
-                                                    <span className="font-mono text-sm font-semibold whitespace-nowrap text-primary">{pedido.id}</span>
-                                                </td>
-                                                <td className="px-4 py-4">
-                                                    <p className="text-sm font-medium text-primary">{comprador?.nome}</p>
-                                                    <p className="text-sm text-tertiary">{comprador?.email}</p>
-                                                </td>
-                                                <td className="px-4 py-4 text-sm text-tertiary">{getEvento(pedido.eventoId)?.nome}</td>
-                                                <td className="px-4 py-4 text-sm whitespace-nowrap text-primary tabular-nums">
-                                                    {formatarMoeda(totalPago(pedido))}
-                                                </td>
-                                                <td className="px-4 py-4 text-right">
-                                                    {/*
-                                                      Olho, como nas outras listagens de pedido do Backstage
-                                                      (bilheteria e cortesias). `stopPropagation` porque a linha
-                                                      inteira também abre o pedido: sem ele o clique no botão
-                                                      dispara navegação duas vezes.
-                                                    */}
-                                                    <ButtonUtility
-                                                        size="xs"
-                                                        color="tertiary"
-                                                        icon={Eye}
-                                                        tooltip="Detalhes"
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            abrirPedido(pedido.id);
-                                                        }}
+                                            <LinhaDaTabela key={pedido.id} interativa className="relative">
+                                                <div className="flex min-w-0 flex-1 flex-col gap-1 @min-[44rem]:flex-row @min-[44rem]:items-center @min-[44rem]:gap-4">
+                                                    {/* O nome lidera: o atendente tem o nome na mão, e é por ele que a busca casa.
+                                                        O botão cobre a linha inteira (after:inset-0): tocar em qualquer ponto abre o pedido. */}
+                                                    <TituloDaLinha
+                                                        titulo={
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => abrirPedido(pedido.id)}
+                                                                className={cx("text-left after:absolute after:inset-0 after:content-['']", FOCO)}
+                                                            >
+                                                                {comprador?.nome ?? "Comprador sem nome"}
+                                                            </button>
+                                                        }
+                                                        apoio={comprador?.email}
                                                     />
-                                                </td>
-                                            </tr>
+                                                    {/* A forma curta que o resto do produto já usa nos títulos; o ID inteiro fica no
+                                                        detalhe, com o botão de copiar, e continua valendo na busca. */}
+                                                    <Celula rotulo="Pedido" className={COLUNA.pedido}>
+                                                        <span className="font-mono">{uuidCurto(pedido.id)}</span>
+                                                    </Celula>
+                                                    {/* Quebra linha em vez de cortar (PED-119): truncado, o nome do evento
+                                                        sumia no meio e não havia onde ler o resto. */}
+                                                    <Celula rotulo="Evento" className={COLUNA.evento}>
+                                                        <span className="break-words">{getEvento(pedido.eventoId)?.nome}</span>
+                                                    </Celula>
+                                                    <Celula rotulo="Total pago" numero className={COLUNA.total}>
+                                                        {formatarMoeda(totalPago(pedido))}
+                                                    </Celula>
+                                                </div>
+                                                {/* Sem o olho "Detalhes": a linha inteira já abre o pedido (PED-07), e o
+                                                    olho era um segundo alvo para a mesma ação. */}
+                                            </LinhaDaTabela>
                                         );
                                     })}
-                                </tbody>
-                            </table>
-                        </div>
-
-                        <RodapeTabela
-                            inicio={inicio + 1}
-                            fim={Math.min(inicio + porPagina, filtrados.length)}
-                            total={filtrados.length}
-                            pagina={paginaAtual}
-                            totalPaginas={totalPaginas}
-                            porPagina={porPagina}
-                            onPorPagina={(valor) => {
-                                definir({ porPagina: valor, pagina: 1 });
-                            }}
-                            onPagina={setPagina}
-                        />
-                        </>
-                    )}
-                </section>
-
+                                </ul>
+                            )}
+                            {/* Paginação do DS (BKS-114), com página e tamanho na URL (PED-04). */}
+                            <RodapeDePaginacao {...paginacao} />
+                        </CartaoDaTabela>
+                    </div>
+                )}
             </motion.div>
         </BackstageLayout>
     );
 }
-
-/* ------------------------------------------------------------------ */
-/*  Rodapé da tabela                                                   */
-/* ------------------------------------------------------------------ */
-
-const POR_PAGINA = [10, 25, 50, 100].map((n) => ({ id: String(n), label: String(n) }));
-
-/** Sequência de páginas com elipse, para 110 pedidos não virarem 5 páginas de botões. */
-const paginasVisiveis = (atual: number, total: number): Array<number | "..."> => {
-    if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
-    const paginas: Array<number | "..."> = [1];
-    const de = Math.max(2, atual - 1);
-    const ate = Math.min(total - 1, atual + 1);
-    if (de > 2) paginas.push("...");
-    for (let p = de; p <= ate; p++) paginas.push(p);
-    if (ate < total - 1) paginas.push("...");
-    paginas.push(total);
-    return paginas;
-};
-
-interface RodapeTabelaProps {
-    inicio: number;
-    fim: number;
-    total: number;
-    pagina: number;
-    totalPaginas: number;
-    porPagina: number;
-    onPorPagina: (valor: number) => void;
-    onPagina: (valor: number) => void;
-}
-
-const RodapeTabela = ({ inicio, fim, total, pagina, totalPaginas, porPagina, onPorPagina, onPagina }: RodapeTabelaProps) => (
-    <div className="flex flex-col gap-3 border-t border-secondary px-4 py-3 md:flex-row md:items-center md:justify-between">
-        <div className="flex items-center gap-2">
-            {/* Trocar o tamanho da página não é a tarefa de quem procura um pedido no telefone, e
-                o seletor era mais um alvo de 36px numa fileira que já não cabia. A contagem fica. */}
-            <span className="hidden text-sm whitespace-nowrap text-tertiary md:inline">Itens por página</span>
-            <div className="hidden w-20 md:block">
-                <Select
-                    aria-label="Itens por página"
-                    size="sm"
-                    selectedKey={String(porPagina)}
-                    onSelectionChange={(key) => onPorPagina(Number(key))}
-                    items={POR_PAGINA}
-                >
-                    {(opcao) => <Select.Item id={opcao.id}>{opcao.label}</Select.Item>}
-                </Select>
-            </div>
-            <span className="text-sm whitespace-nowrap text-tertiary tabular-nums">
-                {inicio}–{fim} de {total}
-            </span>
-        </div>
-
-        <nav className="flex items-center justify-between gap-1 md:justify-end" aria-label="Paginação">
-            <Button
-                size="sm"
-                color="secondary"
-                iconLeading={ArrowLeft}
-                isDisabled={pagina <= 1}
-                onClick={() => onPagina(pagina - 1)}
-                className="max-md:py-3"
-            >
-                Anterior
-            </Button>
-
-            {/* Os cinco números somavam 188px e empurravam Próxima 59px para fora da tela: para
-                alcançar a página seguinte o atendente arrastava a lista inteira de lado. No
-                telefone eles viram a posição atual e a navegação fica nos dois botões. */}
-            <span className="text-sm whitespace-nowrap text-tertiary tabular-nums md:hidden">
-                Página {pagina} de {totalPaginas}
-            </span>
-
-            <div className="hidden items-center gap-0.5 md:flex">
-                {paginasVisiveis(pagina, totalPaginas).map((p, indice) =>
-                    p === "..." ? (
-                        <span key={`elipse-${indice}`} className="px-1 text-sm text-quaternary" aria-hidden="true">
-                            …
-                        </span>
-                    ) : (
-                        <button
-                            key={p}
-                            type="button"
-                            aria-current={p === pagina ? "page" : undefined}
-                            onClick={() => onPagina(p)}
-                            className={cx(
-                                "flex size-9 items-center justify-center rounded-lg text-sm font-medium tabular-nums transition duration-100 ease-linear",
-                                p === pagina ? "bg-secondary text-primary" : "text-tertiary hover:bg-secondary",
-                                FOCO,
-                            )}
-                        >
-                            {p}
-                        </button>
-                    ),
-                )}
-            </div>
-
-            <Button
-                size="sm"
-                color="secondary"
-                iconTrailing={ArrowRight}
-                isDisabled={pagina >= totalPaginas}
-                onClick={() => onPagina(pagina + 1)}
-                className="max-md:py-3"
-            >
-                Próxima
-            </Button>
-        </nav>
-    </div>
-);
-
-const Th = ({ children }: { children: React.ReactNode }) => (
-    <th className="px-4 py-3 text-sm font-medium whitespace-nowrap text-tertiary">{children}</th>
-);

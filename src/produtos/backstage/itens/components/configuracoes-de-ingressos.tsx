@@ -31,9 +31,11 @@ const Linha = ({ titulo, descricao, children }: { titulo: string; descricao?: st
     </div>
 );
 
+// No celular as opções dividem a largura e o texto quebra linha: nada de rolagem lateral (UI-MOB-005).
 const Escolha = ({ rotulo, valor, opcoes, onChange }: { rotulo: string; valor: string; opcoes: Opcao[]; onChange: (v: string) => void }) => (
     <ButtonGroup
         size="sm"
+        className="w-full md:w-max"
         aria-label={rotulo}
         selectedKeys={new Set([valor])}
         onSelectionChange={(keys) => {
@@ -43,14 +45,18 @@ const Escolha = ({ rotulo, valor, opcoes, onChange }: { rotulo: string; valor: s
         disallowEmptySelection
     >
         {opcoes.map((o) => (
-            <ButtonGroupItem key={o.id} id={o.id}>
+            <ButtonGroupItem key={o.id} id={o.id} className="min-w-0 flex-1 justify-center text-center whitespace-normal md:flex-none md:whitespace-nowrap">
                 {o.label}
             </ButtonGroupItem>
         ))}
     </ButtonGroup>
 );
 
-const Lista = ({ rotulo, valor, opcoes, carregando, onChange }: { rotulo: string; valor: string; opcoes: Opcao[]; carregando: boolean; onChange: (v: string) => void }) => (
+const Lista = ({ rotulo, valor, opcoes, carregando, onChange }: { rotulo: string; valor: string; opcoes: Opcao[]; carregando: boolean; onChange: (v: string) => void }) =>
+    // Carregando: esqueleto no lugar do campo, não o texto "Carregando…" dentro dele (UI-EST-007).
+    carregando ? (
+        <span role="status" aria-label={`Carregando ${rotulo}`} className="block h-9 w-full animate-pulse rounded-lg bg-secondary motion-reduce:animate-none md:w-72" />
+    ) : (
     <Select
         aria-label={rotulo}
         size="sm"
@@ -63,7 +69,7 @@ const Lista = ({ rotulo, valor, opcoes, carregando, onChange }: { rotulo: string
     >
         {(o) => <Select.Item id={o.id}>{o.label}</Select.Item>}
     </Select>
-);
+    );
 
 export function ConfiguracoesDeIngressos({ evento }: { evento: Evento }) {
     const opcoes = useOpcoesEvento();
@@ -96,7 +102,8 @@ export function ConfiguracoesDeIngressos({ evento }: { evento: Evento }) {
     return (
         <div className="flex flex-col gap-6">
         <section aria-labelledby="regras-de-compra" className="flex flex-col gap-5 rounded-2xl bg-primary p-5 ring-1 ring-secondary md:p-6">
-        <h2 id="regras-de-compra" className="text-lg font-semibold text-primary">Compra e acesso</h2>
+        {/* O cartão não repete o título da página ("Regras de compra e acesso", UI-VIS-014). */}
+        <h2 id="regras-de-compra" className="text-lg font-semibold text-primary">Pedido e entrada</h2>
         <div className="flex flex-col divide-y divide-secondary">
             <Linha titulo="Compras em diferentes grupos de ingressos" descricao="Um mesmo pedido pode ter ingressos de grupos diferentes.">
                 <Escolha

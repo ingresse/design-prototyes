@@ -1,15 +1,16 @@
 import { useMemo, useState, type FC, type Key } from "react";
 import { Award01, Clapperboard, Disc02, FaceHappy, Flag01, GraduationHat01, HeartHand, Microphone02, Plus, ShoppingBag02, Tag01, Trophy01 } from "@untitledui/icons";
-import { EmptyState } from "@/components/application/empty-state/empty-state";
 import { Tabs } from "@/components/application/tabs/tabs";
 import { Badge } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
 import { Select } from "@/components/base/select/select";
 import { useBanco, useColecao, type Categoria, type Evento } from "@/plataforma";
 import { categoriaDoEvento, doMapa, GRUPOS_DE_TAG, TAG_POR_ID, TAGS, tagsDoEvento } from "@/plataforma/categorias";
-import { TITULO_PAGINA } from "@/produtos/backstage/components/titulo-pagina";
 import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
+import { CabecalhoDaPagina } from "../../components/cabecalho-da-pagina";
+import { RodapeDePaginacao, usePaginacao } from "../../components/rodape-de-paginacao";
+import { BarraDaLista, CabecalhoDaTabela, CarregandoTabela, CartaoDaTabela, Celula, LinhaDaTabela, SemResultados, TituloDaLinha, VazioDaTabela } from "../../components/tabela";
 
 /* ------------------------------------------------------------------ */
 /*  Categorias e tags de evento (CAT-01 a CAT-41)                      */
@@ -74,12 +75,14 @@ export function Categorias() {
     return (
         <BackstageLayout activeProducer="eventos" showEventContext={false}>
             <div className="flex min-w-0 flex-1 flex-col gap-6">
-                <header className="flex flex-col gap-1">
-                    <h1 className={TITULO_PAGINA}>Categorias</h1>
-                    <p className="max-w-[72ch] text-md text-tertiary">
-                        Cada evento tem uma categoria, escolhida por quem cria, e tags, lidas do que a pessoa escreve, do nome, da descrição e do banner.
-                    </p>
-                </header>
+                <CabecalhoDaPagina
+                    titulo="Categorias"
+                    subtitulo={
+                        <span className="block max-w-[72ch]">
+                            Cada evento tem uma categoria, escolhida por quem cria, e tags, lidas do que a pessoa escreve, do nome, da descrição e do banner.
+                        </span>
+                    }
+                />
 
                 <Tabs selectedKey={aba} onSelectionChange={(k: Key) => setAba(k as Aba)}>
                     <Tabs.List type="underline" size="sm">
@@ -93,7 +96,7 @@ export function Categorias() {
                         {carregando ? <Esqueleto /> : <AbaCategorias categorias={doGrupo} porCategoria={porCategoria} porTag={porTag} onVerEventos={verEventosDa} />}
                     </Tabs.Panel>
                     <Tabs.Panel id="eventos" className="pt-6">
-                        {carregando ? <Esqueleto /> : <AbaEventos classificados={classificados} categorias={doGrupo} filtro={filtro} onFiltro={setFiltro} />}
+                        {carregando ? <CarregandoTabela rotulo="Carregando eventos..." /> : <AbaEventos classificados={classificados} categorias={doGrupo} filtro={filtro} onFiltro={setFiltro} />}
                     </Tabs.Panel>
                 </Tabs>
             </div>
@@ -135,7 +138,7 @@ function AbaCategorias({
                     <h2 id="titulo-categorias" className="text-lg font-semibold text-primary">
                         Categorias
                     </h2>
-                    <p className="max-w-[72ch] text-md text-tertiary">Uma por evento. Futebol e evento esportivo já nascem com a sua; show ou festa escolhe entre as outras.</p>
+                    <p className="max-w-[72ch] text-md text-tertiary">Uma por evento. Futebol e evento esportivo já nascem com a sua; entretenimento escolhe entre as outras.</p>
                 </div>
                 <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
                     {categorias.map((c) => {
@@ -195,49 +198,63 @@ function AbaCategorias({
 /* ---------------- aba Eventos ---------------- */
 
 function AbaEventos({ classificados, categorias, filtro, onFiltro }: { classificados: EventoClassificado[]; categorias: Categoria[]; filtro: string; onFiltro: (v: string) => void }) {
-    const visiveis = filtro === TODAS ? classificados : classificados.filter((c) => c.categoria?.id === filtro);
+    const [busca, setBusca] = useState("");
+    const termo = busca.trim().toLocaleLowerCase("pt-BR");
+    const visiveis = useMemo(
+        () =>
+            classificados.filter(
+                (c) =>
+                    (filtro === TODAS || c.categoria?.id === filtro) &&
+                    (!termo || [c.evento.nome, c.evento.local, c.evento.cidade].filter(Boolean).join(" ").toLocaleLowerCase("pt-BR").includes(termo)),
+            ),
+        [classificados, filtro, termo],
+    );
+    const paginacao = usePaginacao(visiveis, [filtro, termo]);
     const opcoes = [{ id: TODAS, label: "Todas as categorias" }, ...categorias.map((c) => ({ id: c.id, label: c.nome }))];
 
     if (classificados.length === 0)
         return (
-            <div className="flex items-center justify-center py-16">
-                <EmptyState size="sm">
-                    <EmptyState.Header>
-                        <EmptyState.FeaturedIcon icon={Tag01} color="gray" theme="modern" />
-                    </EmptyState.Header>
-                    <EmptyState.Content>
-                        <EmptyState.Title>Nenhum evento ainda</EmptyState.Title>
-                        <EmptyState.Description>Os eventos aparecem aqui com a categoria e as tags de cada um.</EmptyState.Description>
-                    </EmptyState.Content>
-                    <EmptyState.Footer>
-                        <Button size="md" iconLeading={Plus} href="/backstage/eventos/novo?tipo=show">
-                            Criar show ou festa
-                        </Button>
-                    </EmptyState.Footer>
-                </EmptyState>
-            </div>
+            <VazioDaTabela
+                icone={Tag01}
+                titulo="Nenhum evento ainda"
+                texto="Os eventos aparecem aqui com a categoria e as tags de cada um."
+                acao={
+                    <Button size="md" iconLeading={Plus} href="/backstage/eventos/novo?tipo=show">
+                        Criar evento de entretenimento
+                    </Button>
+                }
+            />
         );
 
     return (
         <div className="flex flex-col gap-4">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div className="w-full sm:max-w-xs">
-                    <Select aria-label="Categoria" items={opcoes} selectedKey={filtro} onSelectionChange={(k) => k != null && onFiltro(String(k))}>
+            {/* Busca à esquerda; à direita, a contagem e a categoria (BKS-111). */}
+            <BarraDaLista busca={{ valor: busca, onChange: setBusca, placeholder: "Buscar por nome, local ou cidade", rotulo: "Buscar eventos" }}>
+                <p className="text-sm text-tertiary">{plural(visiveis.length, "evento", "eventos")}</p>
+                <div className="w-full sm:w-56">
+                    <Select aria-label="Categoria" size="sm" items={opcoes} selectedKey={filtro} onSelectionChange={(k) => k != null && onFiltro(String(k))}>
                         {(item) => <Select.Item id={item.id}>{item.label}</Select.Item>}
                     </Select>
                 </div>
-                <p className="text-sm text-tertiary">{plural(visiveis.length, "evento", "eventos")}</p>
-            </div>
+            </BarraDaLista>
 
-            {visiveis.length === 0 ? (
-                <p className="py-8 text-center text-md text-tertiary">Nenhum evento nesta categoria.</p>
-            ) : (
-                <ul className="divide-y divide-border-secondary rounded-xl bg-primary ring-1 ring-border-secondary">
-                    {visiveis.map((c) => (
-                        <LinhaDoEvento key={c.evento.id} {...c} />
-                    ))}
-                </ul>
-            )}
+            <CartaoDaTabela>
+                <CabecalhoDaTabela>
+                    <span className="min-w-0 flex-[2]">Evento</span>
+                    <span className="w-44">Categoria</span>
+                    <span className="min-w-0 flex-[2]">Tags</span>
+                </CabecalhoDaTabela>
+                {visiveis.length === 0 ? (
+                    <SemResultados texto="Nenhum evento encontrado para essa busca ou categoria." onLimpar={() => (setBusca(""), onFiltro(TODAS))} />
+                ) : (
+                    <ul className="flex flex-col divide-y divide-secondary">
+                        {paginacao.visiveis.map((c) => (
+                            <LinhaDoEvento key={c.evento.id} {...c} />
+                        ))}
+                    </ul>
+                )}
+                <RodapeDePaginacao {...paginacao} />
+            </CartaoDaTabela>
         </div>
     );
 }
@@ -245,31 +262,34 @@ function AbaEventos({ classificados, categorias, filtro, onFiltro }: { classific
 function LinhaDoEvento({ evento: e, categoria, tags }: EventoClassificado) {
     const Icone = categoria ? (ICONES[categoria.id] ?? Tag01) : Tag01;
     return (
-        <li className="flex flex-col gap-3 px-5 py-4 lg:grid lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,2fr)] lg:items-start lg:gap-6">
-            <div className="flex min-w-0 flex-col gap-0.5">
-                <p className="text-md font-medium text-primary">{e.nome}</p>
-                <p className="text-sm text-tertiary">
-                    {[e.local, e.cidade].filter(Boolean).join(", ")}, {data(e.data)}
-                </p>
-                {e.categoriaTexto && <p className="text-sm text-tertiary">“{e.categoriaTexto}”</p>}
+        <LinhaDaTabela>
+            <div className="flex min-w-0 flex-1 flex-col gap-2 @min-[44rem]:flex-row @min-[44rem]:items-center @min-[44rem]:gap-4">
+                <div className="flex min-w-0 flex-col @min-[44rem]:flex-[2]">
+                    <TituloDaLinha titulo={e.nome} apoio={`${[e.local, e.cidade].filter(Boolean).join(", ")}, ${data(e.data)}`} />
+                    {e.categoriaTexto && <span className="truncate text-sm text-tertiary">“{e.categoriaTexto}”</span>}
+                </div>
+                <Celula rotulo="Categoria" className={cx("@min-[44rem]:w-44", categoria ? "font-medium text-secondary" : "text-tertiary")}>
+                    <span className="inline-flex items-center gap-2">
+                        <Icone className="size-5 shrink-0 text-fg-quaternary" aria-hidden="true" />
+                        {categoria?.nome ?? "Sem categoria"}
+                    </span>
+                </Celula>
+                <Celula rotulo="Tags" className="min-w-0 @min-[44rem]:flex-[2]">
+                    {tags.length > 0 ? (
+                        <ul className="inline-flex flex-wrap gap-1.5" aria-label="Tags">
+                            {tags.map((id) => (
+                                <li key={id}>
+                                    <Badge size="md" color="gray" type="modern">
+                                        {TAG_POR_ID.get(id)?.nome ?? id}
+                                    </Badge>
+                                </li>
+                            ))}
+                        </ul>
+                    ) : (
+                        <span className="text-tertiary">Sem tags</span>
+                    )}
+                </Celula>
             </div>
-            <p className={cx("flex items-center gap-2 text-sm", categoria ? "font-medium text-secondary" : "text-tertiary")}>
-                <Icone className="size-5 shrink-0 text-fg-quaternary" aria-hidden="true" />
-                {categoria?.nome ?? "Sem categoria"}
-            </p>
-            {tags.length > 0 ? (
-                <ul className="flex flex-wrap gap-1.5" aria-label="Tags">
-                    {tags.map((id) => (
-                        <li key={id}>
-                            <Badge size="md" color="gray" type="modern">
-                                {TAG_POR_ID.get(id)?.nome ?? id}
-                            </Badge>
-                        </li>
-                    ))}
-                </ul>
-            ) : (
-                <p className="text-sm text-tertiary">Sem tags</p>
-            )}
-        </li>
+        </LinhaDaTabela>
     );
 }

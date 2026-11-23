@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence, MotionConfig, motion } from "motion/react";
 import { AlertCircle, InfoCircle } from "@untitledui/icons";
 import { BadgeIcon } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
@@ -109,10 +109,14 @@ export interface EmailListValidity {
 
 interface EmailListManagerProps {
     onValidityChange?: (state: EmailListValidity) => void;
+    /** E-mails do rascunho da emissão, para recarregar ou voltar sem perder (COR-53). */
+    valorInicial?: string[];
+    /** A lista inteira, inclusive os inválidos, a cada mudança (o rascunho guarda). */
+    onEmailsChange?: (emails: string[]) => void;
 }
 
-export function EmailListManager({ onValidityChange }: EmailListManagerProps) {
-    const [draftEmails, setDraftEmails] = useState<string[]>([]);
+export function EmailListManager({ onValidityChange, valorInicial, onEmailsChange }: EmailListManagerProps) {
+    const [draftEmails, setDraftEmails] = useState<string[]>(() => valorInicial ?? []);
     const [isDragging, setIsDragging] = useState(false);
     const [confirmingClear, setConfirmingClear] = useState(false);
     const [importModalOpen, setImportModalOpen] = useState(false);
@@ -139,6 +143,10 @@ export function EmailListManager({ onValidityChange }: EmailListManagerProps) {
     useEffect(() => {
         if (count === 0 && confirmingClear) setConfirmingClear(false);
     }, [count, confirmingClear]);
+
+    useEffect(() => {
+        onEmailsChange?.(draftEmails);
+    }, [draftEmails, onEmailsChange]);
 
     type ProcessMode = "validate" | "commit";
 
@@ -250,6 +258,8 @@ export function EmailListManager({ onValidityChange }: EmailListManagerProps) {
     };
 
     return (
+        // Movimento reduzido: só esmaece, sem deslizar (UI-VIS-008).
+        <MotionConfig reducedMotion="user">
         <div className="flex w-full flex-col items-center gap-6">
 
             <div className="flex w-full flex-col gap-3">
@@ -275,7 +285,7 @@ export function EmailListManager({ onValidityChange }: EmailListManagerProps) {
                                     transition={{ duration: 0.12 }}
                                     className="flex items-center gap-2"
                                 >
-                                    <span className="text-xs text-tertiary">Limpar todos?</span>
+                                    <span className="text-sm text-tertiary">Excluir todos os e-mails?</span>
                                     <Button
                                         size="xs"
                                         color="secondary"
@@ -288,7 +298,7 @@ export function EmailListManager({ onValidityChange }: EmailListManagerProps) {
                                         color="primary-destructive"
                                         onClick={handleClearAll}
                                     >
-                                        Sim, limpar
+                                        Sim, excluir
                                     </Button>
                                 </motion.div>
                             ) : (
@@ -358,27 +368,23 @@ export function EmailListManager({ onValidityChange }: EmailListManagerProps) {
 
                 {/* Summary rows below the input */}
                 <div className="flex flex-col gap-2">
-                    <div className="flex items-start justify-between gap-4">
+                    <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
+                        {/* Só com repetido na lista (COR-33); antes aparecia sempre. */}
                         <div className="flex min-w-0 flex-1 items-start gap-2 text-sm text-primary">
-                            <BadgeIcon
-                                type="color"
-                                size="sm"
-                                color="sky"
-                                icon={InfoCircle}
-                            />
-                            <span>
-                                E-mails repetidos receberão cortesias para cada ocorrência na
-                                lista
-                            </span>
+                            {dupeInfo.labels.size > 0 && (
+                                <>
+                                    <BadgeIcon type="color" size="sm" color="sky" icon={InfoCircle} />
+                                    <span role="status">E-mails repetidos recebem cortesias para cada vez que aparecem na lista.</span>
+                                </>
+                            )}
                         </div>
                         <p
                             className={cx(
-                                "shrink-0 whitespace-nowrap text-xs",
+                                "shrink-0 whitespace-nowrap text-sm",
                                 reachedLimit ? "text-warning-primary" : "text-tertiary",
                             )}
                         >
-                            {count} de {MAX_EMAILS} e-mails adicionados
-                            {reachedLimit && " — limite atingido"}
+                            {reachedLimit ? `${count} de ${MAX_EMAILS} e-mails adicionados, limite atingido` : `${count} de ${MAX_EMAILS} e-mails adicionados`}
                         </p>
                     </div>
 
@@ -399,11 +405,9 @@ export function EmailListManager({ onValidityChange }: EmailListManagerProps) {
                                     icon={AlertCircle}
                                 />
                                 <span>
-                                    {errorIndices.size}{" "}
                                     {errorIndices.size === 1
-                                        ? "e-mail inválido"
-                                        : "e-mails inválidos"}
-                                    , corrija para poder avançar
+                                        ? "Corrija o e-mail inválido para avançar."
+                                        : `Corrija os ${errorIndices.size} e-mails inválidos para avançar.`}
                                 </span>
                             </motion.div>
                         )}
@@ -418,6 +422,7 @@ export function EmailListManager({ onValidityChange }: EmailListManagerProps) {
                 onImport={handleModalImport}
             />
         </div>
+        </MotionConfig>
     );
 }
 

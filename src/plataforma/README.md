@@ -37,7 +37,9 @@ Backstage (cria evento, ingressos, publica)
 A coleção `historico` dá aos eventos da seed um passado de vendas sem gravar milhares de pedidos:
 vendidos por lote (entram no estoque), divisão por canal, pagamentos e a série diária. A série
 termina sempre ontem, para o protótipo não envelhecer. Métricas e relatórios do Backstage somam
-histórico e pedidos pagos.
+histórico e pedidos pagos. Têm histórico 6704, 2871, 3390, 5518 e, desde a seed 2026-11-23.1, o
+INCEPTION (4102), que também passou a ser publicado. Banco já gravado ganha o histórico novo ao trocar
+de versão (a seed completa o que falta), e o INCEPTION, se ainda estiver em rascunho, passa a publicado (`PUBLICADOS_PELA_SEED`, só no banco local; um status escolhido depois é respeitado).
 
 ## Organizações
 
@@ -72,11 +74,13 @@ quando a produtora paga só a taxa) e `cortesia` (sem cobrança, método `cortes
 | Backstage › Eventos e Visão geral | lista, evento em contexto, métricas (histórico + pedidos) | criar evento, status |
 | Backstage › Ingressos | catálogo do evento, emissões | criar ingresso, ordem, ativar, copiar |
 | Backstage › Informações do evento | link de compra | — |
-| Backstage › Bilheteria | catálogo e lote atual | pedido (link ou só a taxa), cancelamento |
+| Backstage › Bilheteria | catálogo e lote atual; pedidos do canal bilheteria | pedido (link ou só a taxa) com tipo, emissor e reenvios (`Pedido.bilheteria`), cancelamento |
 | Backstage › Cortesias | catálogo e lote atual | pedido por destinatário, cancelamento |
 | Backstage › Pedidos | pedidos pagos, ingressos, usuários | transferência de titularidade |
 | Backstage › Relatórios › Vendas e Borderô | histórico + pedidos pagos | — |
-| Novo site | home, busca, categorias, artistas, detalhe | — |
+| Backstage › Marketing › Passkey | Passkeys e catálogo do evento | Passkeys (`Evento.passkeys`) e vínculos em `chaves` de ingresso, lote, combo e produto |
+| Backstage › Membros | membros, grupos e cargos da organização (exemplos por organização enquanto ela não grava) | membros, grupos e cargos, no documento da organização |
+| Novo site (`public/novo-site`, cópia estática; `ponte-backstage.js`) | eventos publicados no catálogo da home e da busca, nas categorias e na página do evento (`Evento.dc.html?ev=<id>`), com a compra indo para `/comprar/<id>` | — |
 | Seleção e atribuição (`/comprar/:id`, `/e/:slug`) | catálogo e lote atual | pedido |
 | Checkout (melhorias de compra) | pedido | pagamento (Pix simulado e cartão), emissão |
 | Carteira web e carteira do app | ingressos do e-mail logado | — |

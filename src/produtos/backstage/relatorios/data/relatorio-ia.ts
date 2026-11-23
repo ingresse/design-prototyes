@@ -1,18 +1,27 @@
 /* ------------------------------------------------------------------ */
 /*  Relatório personalizado por IA (OpenRouter).                       */
-/*  A fonte de dados é `src/reports` (dataset local do evento, pronto   */
-/*  para ser trocado pela API de produção). A IA recebe a CAMADA         */
-/*  SEMÂNTICA + o resumo agregado do período e devolve uma "visão"       */
-/*  (blocos) escolhendo features e funções estatísticas.                 */
+/*  A fonte de dados é o evento em contexto (ou todos os eventos da     */
+/*  organização, BKS-27), lido do banco por `useDatasetDoEvento`        */
+/*  (vendas-banco.ts) e entregue às consultas por `useFonteDoRelatorio`.*/
+/*  A IA recebe a CAMADA SEMÂNTICA + o resumo agregado do período e     */
+/*  devolve uma "visão" (blocos) escolhendo features e funções           */
+/*  estatísticas.                                                        */
 /* ------------------------------------------------------------------ */
 
-import { CATALOGO, executarChamada, type Chamada } from "./relatorio-features";
+import { useMemo } from "react";
+import type { CalendarDate } from "@internationalized/date";
+import { organizacaoDoEvento, useBanco, type Evento, type HistoricoVendas, type Pedido, type Repasse } from "@/plataforma";
+import { CATALOGO, EXTRAS_VAZIOS, executarChamada, type Chamada, type ExtrasDoRelatorio } from "./relatorio-features";
 import { executarConsulta, type Consulta } from "./relatorio-query";
 import { CAMADA_SEMANTICA } from "@/reports/semantic";
-import { consultarPeriodo, linhasDoPeriodo } from "@/reports/event-dataset";
-import type { Dataset, FatoVenda, PeriodoSelecionado } from "@/reports/event-dataset";
+import { COMPRADORES as AMOSTRA_DE_IDADES } from "@/reports/event-dataset";
+import type { Comprador, Dataset, FatoVenda, PeriodoSelecionado } from "@/reports/event-dataset";
+import { useDatasetDoEvento } from "./vendas-banco";
+import { useEventoDosRelatorios } from "./event";
+import { TAXA_DE_RESPOSTA, fracoesDoQuestionario } from "./questionarios";
+import { eventos as eventosDaOrganizacao, useEventoAtual, useEventosVersao } from "../../eventos/data/eventos";
+import { useTodosOsEventos } from "../../components/escopo-dos-relatorios";
 
-export { consultarPeriodo, PERIODO_PADRAO, EVENTO } from "@/reports/event-dataset";
 export type { Dataset, PeriodoSelecionado } from "@/reports/event-dataset";
 export type { Consulta } from "./relatorio-query";
 
@@ -42,6 +51,254 @@ export interface Mensagem {
     texto: string;
 }
 
+/* ------------------------- Fonte de dados ------------------------- */
+
+/** Dados do evento em contexto para as consultas e features do relatório. */
+export interface FonteDoRelatorio {
+    /** Nome do evento (ou "Todos os eventos"). */
+    nome: string;
+    todos: boolean;
+    /** Janela completa de vendas: período inicial do filtro. */
+    periodoPadrao: { start: CalendarDate; end: CalendarDate };
+    /** Sem nenhuma venda no escopo. */
+    vazio: boolean;
+    /** Resumo agregado do período (mesmo formato do dataset estático de `src/reports`). */
+    consultar: (periodo: PeriodoSelecionado) => Dataset;
+    /** Linhas dia × setor do período, para o motor de consulta genérico. */
+    linhas: (periodo: PeriodoSelecionado) => FatoVenda[];
+    extras: ExtrasDoRelatorio;
+}
+
+const p2 = (n: number) => String(n).padStart(2, "0");
+const br = (d: Date) => `${p2(d.getDate())}/${p2(d.getMonth() + 1)}/${d.getFullYear()}`;
+const hash = (s: string) => [...s].reduce((h, c) => (Math.imul(h, 31) + c.charCodeAt(0)) >>> 0, 7);
+function makeRng(seed: number) {
+    let a = seed >>> 0;
+    return () => {
+        a = (a + 0x6d2b79f5) | 0;
+        let t = Math.imul(a ^ (a >>> 15), 1 | a);
+        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+}
+
+const NOME_DO_MEIO: Record<string, string> = { pix: "Pix", credito: "Cartão de crédito", debito: "Cartão de débito", dinheiro: "Dinheiro", saldo: "Saldo da produtora", cortesia: "Cortesia" };
+const NOME_DO_CANAL: Record<string, string> = { online: "Online", site: "Online", link: "Online", app: "Online", bilheteria: "Bilheteria", cortesia: "Cortesia" };
+
+interface Escopo {
+    eventos: Evento[];
+    historicos: Record<string, HistoricoVendas | undefined>;
+    /** Pedidos pagos dos eventos do escopo. */
+    pagos: Pedido[];
+    todos: boolean;
+}
+
+/** Proporções (meios, canais) somando o histórico e os pedidos pagos do escopo. */
+function proporcoes(escopo: Escopo) {
+    const meios = new Map<string, number>();
+    const canais = new Map<string, number>();
+    const somar = (m: Map<string, number>, k: string, v: number) => v > 0 && m.set(k, (m.get(k) ?? 0) + v);
+    for (const e of escopo.eventos) {
+        const h = escopo.historicos[e.id];
+        if (!h) continue;
+        for (const p of h.pagamentos ?? []) somar(meios, p.tipo.charAt(0).toUpperCase() + p.tipo.slice(1).toLowerCase(), p.qtd);
+        for (const [c, v] of Object.entries(h.porCanal ?? {})) somar(canais, NOME_DO_CANAL[c] ?? c, v);
+    }
+    for (const p of escopo.pagos) {
+        if (p.pagamento) somar(meios, NOME_DO_MEIO[p.pagamento.metodo] ?? p.pagamento.metodo, 1);
+        somar(canais, NOME_DO_CANAL[p.canal] ?? p.canal, p.itens.reduce((n, i) => n + i.quantidade, 0));
+    }
+    const total = (m: Map<string, number>) => [...m.values()].reduce((s, v) => s + v, 0);
+    return { meios, totalMeios: total(meios), canais, totalCanais: total(canais) };
+}
+
+/**
+ * Ajusta ao escopo o que `agregar` ainda tira do dataset estático: questionário (perguntas do
+ * próprio evento, coerente com Respostas do questionário), meios de pagamento e canais (histórico
+ * + pedidos pagos) e demografia (proporções da amostra estática, escaladas às vendas do período).
+ */
+function ajustarAoEscopo(d: Dataset, escopo: Escopo, prop: ReturnType<typeof proporcoes>): Dataset {
+    const vendido = d.ocupacao.vendido;
+
+    // Questionário: cada evento pesa pela sua parte dos ingressos vendidos (histórico por lote).
+    const vendidosDe = (e: Evento) => Object.values(escopo.historicos[e.id]?.porLote ?? {}).reduce((s, v) => s + v, 0);
+    const somaVendidos = escopo.eventos.reduce((s, e) => s + vendidosDe(e), 0);
+    let respondentes = 0;
+    const porPergunta: { pergunta: string; respostas: number }[] = [];
+    for (const e of escopo.eventos) {
+        if (!e.perguntas?.length) continue;
+        const peso = somaVendidos ? vendidosDe(e) / somaVendidos : 1 / escopo.eventos.length;
+        const f = fracoesDoQuestionario(e, escopo.historicos[e.id]);
+        respondentes += vendido * peso * TAXA_DE_RESPOSTA * f.fracaoComPergunta;
+        for (const q of f.perguntas)
+            porPergunta.push({ pergunta: escopo.todos ? `${q.titulo} (${e.nome})` : q.titulo, respostas: Math.round(vendido * peso * TAXA_DE_RESPOSTA * q.fracao * q.taxa) });
+    }
+    respondentes = Math.round(respondentes);
+
+    const ordens = d.transacoes.porStatus.reduce((s, x) => s + x.quantidade, 0);
+    const escalar = <T extends { itens: number; faturamento: number }>(arr: T[]) => {
+        const si = arr.reduce((s, x) => s + x.itens, 0) || 1;
+        const sf = arr.reduce((s, x) => s + x.faturamento, 0) || 1;
+        return arr.map((x) => ({ ...x, itens: Math.round((x.itens / si) * d.totais.itensVendidos), faturamento: Math.round((x.faturamento / sf) * d.totais.valorTotalBruto) }));
+    };
+
+    return {
+        ...d,
+        meiosDePagamento: prop.totalMeios ? [...prop.meios.entries()].sort((a, b) => b[1] - a[1]).map(([meio, v]) => ({ meio, pct: Math.round((v / prop.totalMeios) * 100) })) : [],
+        transacoes: {
+            ...d.transacoes,
+            porCanal: prop.totalCanais ? [...prop.canais.entries()].sort((a, b) => b[1] - a[1]).map(([canal, v]) => ({ canal, quantidade: Math.round((v / prop.totalCanais) * ordens) })) : [],
+        },
+        questionarios: {
+            respondentes,
+            enviados: vendido,
+            taxaRespostaPct: vendido ? Math.round((respondentes / vendido) * 100) : 0,
+            porPergunta,
+        },
+        demografia: { porFaixa: escalar(d.demografia.porFaixa), porUf: escalar(d.demografia.porUf).filter((u) => u.itens > 0) },
+    };
+}
+
+/**
+ * Linhas dia × setor do período, refeitas do agregado: o dia a dia é dividido entre os setores
+ * (e as categorias sem setor) pela participação de cada um no período. Somam exatamente os totais
+ * por dia, por setor e por categoria, que é o que o motor de consulta cruza (uma dimensão por vez).
+ */
+function linhasDoAgregado(d: Dataset): FatoVenda[] {
+    const partes: { categoria: string; grupo: string; itens: number; valor: number }[] = d.ingressosPorGrupo.map((g) => ({ categoria: "Ingressos", grupo: g.grupo, itens: g.vendido, valor: g.valor }));
+    for (const m of d.mixDeReceita) {
+        const jaContado = partes.filter((x) => x.categoria === m.grupo);
+        const itens = m.quantidade - jaContado.reduce((s, x) => s + x.itens, 0);
+        const valor = m.valor - jaContado.reduce((s, x) => s + x.valor, 0);
+        if (itens > 0 || valor > 0) partes.push({ categoria: m.grupo, grupo: m.grupo === "Ingressos" ? "Outros ingressos" : m.grupo, itens: Math.max(0, itens), valor: Math.max(0, valor) });
+    }
+    const totalItens = partes.reduce((s, x) => s + x.itens, 0) || 1;
+    const totalValor = partes.reduce((s, x) => s + x.valor, 0) || 1;
+    const liquidoPorBruto = d.totais.valorTotalBruto ? d.totais.valorTotalComDesconto / d.totais.valorTotalBruto : 1;
+    return d.vendasDiarias.flatMap((dia, i) =>
+        partes.map((x) => {
+            const receitaBruta = (dia.valor * x.valor) / totalValor;
+            return { iso: "", data: dia.dia, ms: i, categoria: x.categoria, grupo: x.grupo, itens: (dia.itens * x.itens) / totalItens, receitaBruta, receitaLiquida: receitaBruta * liquidoPorBruto };
+        }),
+    );
+}
+
+/** Amostra fictícia de compradores: setor pelas vendas, idade da amostra estática (um pouco mais alta nos setores caros), valor perto do preço médio do setor. */
+function compradoresDe(d: Dataset, semente: string): Comprador[] {
+    const grupos = d.ingressosPorGrupo.filter((g) => g.vendido > 0).map((g) => ({ ...g, preco: g.valor / g.vendido }));
+    if (!grupos.length || !AMOSTRA_DE_IDADES.length) return [];
+    const porPreco = [...grupos].sort((a, b) => a.preco - b.preco).map((g) => g.grupo);
+    const total = grupos.reduce((s, g) => s + g.vendido, 0);
+    const r = makeRng(hash(semente));
+    return Array.from({ length: 2400 }, () => {
+        let x = r() * total;
+        let g = grupos[grupos.length - 1];
+        for (const c of grupos) {
+            if (x < c.vendido) {
+                g = c;
+                break;
+            }
+            x -= c.vendido;
+        }
+        const base = AMOSTRA_DE_IDADES[Math.floor(r() * AMOSTRA_DE_IDADES.length)];
+        const rank = porPreco.length > 1 ? porPreco.indexOf(g.grupo) / (porPreco.length - 1) : 0.5;
+        return { idade: Math.max(16, base.idade + Math.round(rank * 6 - 3)), uf: base.uf, grupo: g.grupo, valor: Math.round(g.preco * (0.85 + r() * 0.3)) };
+    });
+}
+
+function extrasDe(escopo: Escopo, d: Dataset, semente: string, organizacao: { repasses?: Repasse[]; contasFavorecidas?: { id: string; titular: string; tipo: string; chavePix?: string; banco?: string; agencia?: string; conta?: string }[] } | undefined, daOrganizacao: Evento[], historicos: Record<string, HistoricoVendas | undefined>, pedidos: Pedido[]): ExtrasDoRelatorio {
+    const ids = new Set(escopo.eventos.map((e) => e.id));
+
+    // Lotes: vendidos no histórico + pedidos pagos.
+    const pagosPorLote = new Map<string, number>();
+    for (const p of escopo.pagos) for (const i of p.itens) if (i.loteId) pagosPorLote.set(i.loteId, (pagosPorLote.get(i.loteId) ?? 0) + i.quantidade);
+    const lotes = escopo.eventos.flatMap((e) =>
+        e.sessoes.flatMap((s) =>
+            s.grupos.flatMap((g) =>
+                g.ingressos.flatMap((t) =>
+                    t.lotes.map((l) => ({
+                        lote: `${escopo.todos ? `${e.nome}: ` : ""}${g.nome}, ${t.nome}, ${l.nome}`,
+                        vendidos: (escopo.historicos[e.id]?.porLote[l.id] ?? 0) + (pagosPorLote.get(l.id) ?? 0),
+                        preco: l.preco,
+                    })),
+                ),
+            ),
+        ),
+    ).filter((l) => l.vendidos > 0);
+
+    // Repasses (Finanças) que tocam os eventos do escopo.
+    const repasses = (organizacao?.repasses ?? []).filter((r) => r.liquidacoes.some((l) => ids.has(l.eventoId)));
+    const contas = new Map((organizacao?.contasFavorecidas ?? []).map((c) => [c.id, c]));
+    const quando = (r: Repasse) => r.concluidoEm ?? r.dataPrevista;
+    const dataDe = (s: string) => {
+        const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+        return m ? `${m[3]}/${m[2]}/${m[1]}` : s;
+    };
+    const pagamentos = repasses
+        .filter((r) => r.status === "pago")
+        .sort((a, b) => quando(b).localeCompare(quando(a)))
+        .map((r) => {
+            const c = contas.get(r.contaId);
+            const conta = !c ? "—" : c.tipo === "pix" ? `Pix ${c.chavePix ?? ""}`.trim() : [c.banco, c.agencia && `ag. ${c.agencia}`, c.conta && `conta ${c.conta}`].filter(Boolean).join(", ") || "—";
+            return { data: dataDe(quando(r)), favorecido: c?.titular ?? r.solicitante, conta, valor: r.valorTransferido };
+        });
+    const repassado = repasses
+        .filter((r) => r.status !== "cancelado" && r.status !== "rejeitado" && r.status !== "falhou")
+        .reduce((s, r) => s + r.liquidacoes.filter((l) => ids.has(l.eventoId)).reduce((t, l) => t + l.valor, 0), 0);
+
+    // Vendas do ano corrente por evento da organização (dias do histórico no ano + pedidos pagos no ano).
+    const hoje = new Date();
+    const ano = hoje.getFullYear();
+    const vendasDoAno = {
+        ano,
+        eventos: daOrganizacao.map((e) => {
+            const serie = historicos[e.id]?.serie ?? [];
+            const doHistorico = serie.reduce((s, [, , fat], i) => {
+                const dia = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() - (serie.length - i));
+                return dia.getFullYear() === ano ? s + fat : s;
+            }, 0);
+            const dosPedidos = pedidos
+                .filter((p) => p.eventoId === e.id && p.status === "pago" && new Date(p.pagamento?.pagoEm ?? p.atualizadoEm).getFullYear() === ano)
+                .reduce((s, p) => s + p.subtotal, 0);
+            return { nome: e.nome, valor: doHistorico + dosPedidos };
+        }),
+    };
+
+    return { compradores: compradoresDe(d, semente), lotes, pagamentos, repassado, vendasDoAno };
+}
+
+/** Fonte do Relatório personalizado: o evento em contexto, ou todos os eventos da organização (BKS-27). */
+export function useFonteDoRelatorio(): FonteDoRelatorio {
+    const dataset = useDatasetDoEvento();
+    const evento = useEventoDosRelatorios();
+    const nome = evento.nome;
+    const ctx = useEventoAtual();
+    const todos = useTodosOsEventos();
+    const { tabelas } = useBanco();
+    const versao = useEventosVersao();
+    return useMemo<FonteDoRelatorio>(() => {
+        const daOrganizacao = eventosDaOrganizacao.map((e) => tabelas.eventos[e.id]).filter((e): e is Evento => !!e);
+        const eventos = todos ? daOrganizacao : [tabelas.eventos[ctx.id]].filter((e): e is Evento => !!e);
+        const ids = new Set(eventos.map((e) => e.id));
+        const pedidos = Object.values(tabelas.pedidos ?? {});
+        const escopo: Escopo = { eventos, historicos: tabelas.historico ?? {}, pagos: pedidos.filter((p) => ids.has(p.eventoId) && p.status === "pago"), todos };
+        const prop = proporcoes(escopo);
+        const consultar = (periodo: PeriodoSelecionado) => ajustarAoEscopo(dataset.consultar(periodo), escopo, prop);
+        const primeiro = eventos[0];
+        const organizacao = primeiro ? tabelas.organizacoes?.[organizacaoDoEvento(primeiro)] : undefined;
+        const semente = `${todos}|${[...ids].join(",")}`;
+        return {
+            nome,
+            todos,
+            periodoPadrao: dataset.periodoPadrao,
+            vazio: dataset.vazio,
+            consultar,
+            linhas: (periodo: PeriodoSelecionado) => linhasDoAgregado(consultar(periodo)),
+            extras: eventos.length ? extrasDe(escopo, consultar(null), semente, organizacao, daOrganizacao, tabelas.historico ?? {}, pedidos) : EXTRAS_VAZIOS,
+        };
+    }, [dataset, nome, ctx.id, todos, tabelas, versao]);
+}
+
 /* ---------------------------- OpenRouter -------------------------- */
 
 export const MODELO_PADRAO = "tencent/hy3:free";
@@ -59,9 +316,10 @@ const datasDoDataset = (dataset: Dataset) => {
     return { hoje: dias[dias.length - 1] ?? "", ontem: dias[dias.length - 2] ?? "", dias };
 };
 
-const SYSTEM = (dataset: Dataset) => {
+const SYSTEM = (dataset: Dataset, fonte: FonteDoRelatorio) => {
     const datas = datasDoDataset(dataset);
-    return `Você é um analista da Ingresse. Responda perguntas do organizador sobre o evento de forma CLARA e CONCISA, em português do Brasil.
+    const sobre = fonte.todos ? "todos os eventos da organização somados" : `o evento "${fonte.nome}"`;
+    return `Você é um analista da Ingresse. Responda perguntas do organizador sobre ${sobre} de forma CLARA e CONCISA, em português do Brasil.
 
 CAMADA SEMÂNTICA (tabelas, campos, medidas, dimensões e funções estatísticas disponíveis — use para saber o que considerar em cada análise e qual método aplicar):
 ${JSON.stringify(CAMADA_SEMANTICA)}
@@ -100,11 +358,11 @@ function umBloco(blocos: Bloco[]): Bloco[] {
 }
 
 /** Monta a resposta final a partir do texto do modelo. Uma consulta/chamada = um gráfico; N solicitações = N gráficos. */
-function finalize(conteudo: string, dataset: Dataset, linhas: FatoVenda[]): RespostaIA {
+function finalize(conteudo: string, dataset: Dataset, linhas: FatoVenda[], extras: ExtrasDoRelatorio): RespostaIA {
     const plano = extrairJson(conteudo);
     if (!plano) return { resposta: "", blocos: [], sugestoes: DEFAULT_SUGESTOES };
     const deConsultas = (plano.consultas ?? []).map((c) => executarConsulta(c, dataset, linhas));
-    const deFeatures = (plano.chamadas ?? []).flatMap((c) => umBloco(executarChamada(c, dataset)));
+    const deFeatures = (plano.chamadas ?? []).flatMap((c) => umBloco(executarChamada(c, dataset, extras)));
     return { resposta: plano.resposta ?? "", blocos: [...deConsultas, ...deFeatures], sugestoes: plano.sugestoes ?? DEFAULT_SUGESTOES };
 }
 
@@ -242,7 +500,7 @@ export function ehPerguntaFrequente(texto: string): boolean {
 }
 
 /** Modo demonstração: divide a mensagem em N solicitações e gera um gráfico por solicitação. */
-export function responderLocal(historico: Mensagem[], dataset: Dataset, linhas: FatoVenda[]): RespostaIA {
+export function responderLocal(historico: Mensagem[], dataset: Dataset, linhas: FatoVenda[], extras: ExtrasDoRelatorio = EXTRAS_VAZIOS): RespostaIA {
     const q = historico.filter((m) => m.autor === "user").pop()?.texto || "";
     const datas = datasDoDataset(dataset);
     // Correlação/relação é um pedido único — não dividir no " e " (ex.: "idade e grupo").
@@ -263,7 +521,7 @@ export function responderLocal(historico: Mensagem[], dataset: Dataset, linhas: 
         const p = rotearParte(parte, datas);
         if (!pedidos.some((x) => chave(x) === chave(p))) pedidos.push(p);
     }
-    const blocos = pedidos.flatMap((p) => ("medida" in p ? [executarConsulta(p, dataset, linhas)] : umBloco(executarChamada(p, dataset))));
+    const blocos = pedidos.flatMap((p) => ("medida" in p ? [executarConsulta(p, dataset, linhas)] : umBloco(executarChamada(p, dataset, extras))));
     return { resposta: "", blocos, sugestoes: DEFAULT_SUGESTOES };
 }
 
@@ -271,23 +529,24 @@ export function responderLocal(historico: Mensagem[], dataset: Dataset, linhas: 
 const LOADING_EXTRA_MS = 2000;
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-/** Dispatcher: OpenRouter (se houver chave) → modo demonstração local. Recebe o período e resolve os dados da fonte. */
-export async function chamarIA(historico: Mensagem[], periodo: PeriodoSelecionado): Promise<RespostaIA> {
-    const dataset = consultarPeriodo(periodo);
-    const linhas = linhasDoPeriodo(periodo);
+/** Dispatcher: OpenRouter (se houver chave) → modo demonstração local. Recebe o período e resolve os dados na fonte do evento. */
+export async function chamarIA(historico: Mensagem[], periodo: PeriodoSelecionado, fonte: FonteDoRelatorio): Promise<RespostaIA> {
+    const dataset = fonte.consultar(periodo);
+    const linhas = fonte.linhas(periodo);
     const orKey = getApiKey();
-    // Perguntas frequentes → resposta mockada determinística (não depende do LLM).
+    // Perguntas frequentes → resposta determinística (não depende do LLM).
     const ultimaUser = historico.filter((m) => m.autor === "user").pop()?.texto || "";
     const usarLocal = !orKey || ehPerguntaFrequente(ultimaUser);
-    const res = usarLocal ? responderLocal(historico, dataset, linhas) : await chamarOpenRouter(historico, dataset, linhas, orKey);
+    const res = usarLocal ? responderLocal(historico, dataset, linhas, fonte.extras) : await chamarOpenRouter(historico, dataset, linhas, fonte, orKey);
     // Segura o loading +2s para mostrar mais a animação de geração do gráfico.
     await delay(LOADING_EXTRA_MS);
     return res;
 }
 
-async function chamarOpenRouter(historico: Mensagem[], dataset: Dataset, linhas: FatoVenda[], key: string): Promise<RespostaIA> {
+async function chamarOpenRouter(historico: Mensagem[], dataset: Dataset, linhas: FatoVenda[], fonte: FonteDoRelatorio, key: string): Promise<RespostaIA> {
+    const { extras } = fonte;
     const baseMsgs: ChatMsg[] = [
-        { role: "system", content: SYSTEM(dataset) },
+        { role: "system", content: SYSTEM(dataset, fonte) },
         ...historico.map((m) => ({ role: m.autor === "user" ? ("user" as const) : ("assistant" as const), content: m.texto })),
     ];
 
@@ -299,10 +558,10 @@ async function chamarOpenRouter(historico: Mensagem[], dataset: Dataset, linhas:
         try {
             const data: any = await post(model, { messages: baseMsgs, temperature: 0.2 }, key);
             const conteudo: string = data?.choices?.[0]?.message?.content ?? "";
-            const res = finalize(conteudo, dataset, linhas);
+            const res = finalize(conteudo, dataset, linhas, extras);
             // Sempre entregar algo visual: se a IA não gerou blocos, o sistema gera a partir da pergunta.
             if (!res.blocos.length) {
-                const local = responderLocal(historico, dataset, linhas);
+                const local = responderLocal(historico, dataset, linhas, extras);
                 if (local.blocos.length) return { ...local, resposta: res.resposta || local.resposta };
             }
             if (res.blocos.length) return res;
@@ -311,6 +570,6 @@ async function chamarOpenRouter(historico: Mensagem[], dataset: Dataset, linhas:
         }
     }
     // Todos os modelos falharam → não deixa o usuário sem resposta: roteia localmente.
-    if (ultimoErro) return responderLocal(historico, dataset, linhas);
+    if (ultimoErro) return responderLocal(historico, dataset, linhas, extras);
     throw new Error("Falha ao consultar a IA.");
 }

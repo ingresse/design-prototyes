@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
     ArrowLeft,
-    ChevronLeft,
     Bank,
     FaceSmile,
     BankNote01,
@@ -65,6 +64,7 @@ import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-ic
 import { Tooltip, TooltipTrigger } from "@/components/base/tooltip/tooltip";
 import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
+import { CabecalhoDaPagina } from "../../components/cabecalho-da-pagina";
 import { DEFAULT_SELECTED, ManageColumnsModal } from "../components/ManageColumnsModal";
 import { ExportMenu, RelatorioPageHeader } from "../components/RelatorioPageHeader";
 import { RelatorioFiltersProvider, matchRow, inDateRange, useRelatorioFilters, type FilterFieldDef } from "../components/relatorio-filters";
@@ -948,7 +948,7 @@ const MeioPagamentosCard = ({ rows }: { rows: MeioPagamentoRow[] }) => {
             </Card>
         );
     }
-    const fillFor = (id: string) => MEIO_FILL[id] ?? "var(--color-utility-gray-400)";
+    const fillFor = (id: string) => MEIO_FILL[id] ?? "var(--color-utility-neutral-400)";
     const totalValor = rows.reduce((s, r) => s + r.valor, 0);
     const pctOf = (v: number) => (totalValor === 0 ? 0 : Math.round((v / totalValor) * 100));
     return (
@@ -3976,17 +3976,11 @@ const EditarPedidoPage = ({
         // (o que deixava o conteúdo por trás vazar ao rolar). pt-12 devolve o botão/título pra
         // a mesma posição visual de sempre.
         <div className="flex flex-1 flex-col bg-[#0A0A0A] font-['Elza']">
-            <div className="sticky top-0 z-40 -mt-12 mb-6 flex items-center gap-3 bg-[#0A0A0A] pt-8 pb-2">
-                <button
-                    type="button"
-                    aria-label="Voltar"
-                    onClick={onSair}
-                    className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-[#171717] text-fg-quaternary ring-1 ring-border-primary transition duration-100 ease-linear hover:bg-primary_hover hover:text-fg-quaternary_hover"
-                >
-                    <ChevronLeft className="size-5" aria-hidden="true" />
-                </button>
-                <h1 className="text-2xl font-bold text-primary">O que você quer mudar?</h1>
-            </div>
+            <CabecalhoDaPagina
+                className="sticky top-0 z-40 -mt-12 mb-6 bg-[#0A0A0A] pt-8 pb-2"
+                voltar={{ rotulo: "Transações", onClick: onSair }}
+                titulo="O que você quer mudar?"
+            />
 
             <div className="flex items-start gap-6">
                 <div className="flex flex-1 flex-col gap-4">
@@ -4002,9 +3996,9 @@ const EditarPedidoPage = ({
                     ))}
                 </div>
 
-                {/* top-[80px] = altura total da caixa do header (pt-8 + botão 40px + pb-2) —
+                {/* top-[141px] = altura total da caixa do header (pt-8 + voltar 40px + 16px + título 45px + pb-2) —
                  * evita que o resumo role por baixo dele ao grudar. */}
-                <aside className="sticky top-[80px] flex w-[330px] shrink-0 flex-col rounded-2xl border border-secondary">
+                <aside className="sticky top-[141px] flex w-[330px] shrink-0 flex-col rounded-2xl border border-secondary">
 
                     <div className="rounded-t-2xl border-b border-secondary bg-[#171717] px-4 py-3">
                         <h3 className="text-sm font-medium text-primary">Resumo</h3>

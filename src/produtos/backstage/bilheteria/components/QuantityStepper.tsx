@@ -13,7 +13,8 @@ interface QuantityStepperProps {
  * Contador de quantidade do passo 2 e do resumo.
  *
  * Usa o `InputNumber` horizontal do DS: além dos botões − e +, dá para digitar
- * a quantidade direto, o que importa em venda de lote grande.
+ * a quantidade direto, o que importa em venda de lote grande. No celular, 44 px
+ * de altura para o toque no balcão (UI-MOB-001).
  */
 export function QuantityStepper({ value, onChange, isDisabled, label, maxValue }: QuantityStepperProps) {
     return (
@@ -26,8 +27,8 @@ export function QuantityStepper({ value, onChange, isDisabled, label, maxValue }
             isDisabled={isDisabled}
             onChange={(next) => onChange(Number.isNaN(next) ? 0 : next)}
             aria-label={`Quantidade de ${label}`}
-            inputClassName="text-center tabular-nums"
-            className="w-[120px] shrink-0"
+            inputClassName="text-center tabular-nums max-md:min-h-11"
+            className="w-[120px] shrink-0 max-md:w-[148px]"
         />
     );
 }

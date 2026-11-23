@@ -45,13 +45,28 @@ const dia = (iso: string) => iso.slice(0, 10);
 const hora = (iso: string) => iso.slice(11, 16);
 const juntar = (d: string, h: string) => (d && h ? `${d}T${h}` : d ? `${d}T${h || HORA_INICIO_PADRAO}` : "");
 
-/** Fim sugerido para um intervalo novo: no mesmo dia, 4 h depois (até 23:59); em dias diferentes, o mesmo horário do início. */
+/**
+ * Fim sugerido para um intervalo novo: num dia só, 4 h depois (passando da meia-noite, termina no dia
+ * seguinte, EVT-129); em dias diferentes, o mesmo horário do início.
+ */
 function horaFimSugerida(inicioDia: string, fimDia: string, horaInicio: string) {
     if (inicioDia !== fimDia) return horaInicio;
     const [h, m] = horaInicio.split(":").map(Number);
-    const minutos = Math.min(h * 60 + m + 240, 23 * 60 + 59);
+    const minutos = (h * 60 + m + 240) % (24 * 60);
     return `${String(Math.floor(minutos / 60)).padStart(2, "0")}:${String(minutos % 60).padStart(2, "0")}`;
 }
+
+const diaSeguinte = (d: string) => {
+    const data = new Date(`${d}T12:00`);
+    data.setDate(data.getDate() + 1);
+    return `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, "0")}-${String(data.getDate()).padStart(2, "0")}`;
+};
+
+/** Um dia só e o fim antes do início: termina no dia seguinte, como nas sessões (EVT-129). */
+export const terminaNoDiaSeguinte = (inicio: string, fim: string) => !!inicio && !!fim && dia(inicio) === dia(fim) && !!hora(fim) && hora(fim) < hora(inicio);
+
+/** Fim de verdade do evento: no dia seguinte quando termina depois da meia-noite (EVT-129). */
+export const fimEfetivo = (inicio: string, fim: string) => (terminaNoDiaSeguinte(inicio, fim) ? `${diaSeguinte(dia(fim))}T${hora(fim)}` : fim);
 
 const MESES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
 
@@ -279,14 +294,15 @@ export function PeriodoDoEvento({ inicio, fim, onChange, erroInicio, erroFim, es
                         hint={inicio ? erroInicio : undefined}
                     />
                     <Input
-                        label={fim ? `Termina às (${formatarDia(dia(fim))})` : "Termina às"}
+                        // Passando da meia-noite num dia só, o rótulo já mostra o dia seguinte (EVT-129).
+                        label={fim ? `Termina às (${formatarDia(dia(fimEfetivo(inicio, fim)))})` : "Termina às"}
                         type="time"
                         inputClassName={HORA_COM_CONTRASTE}
                         isRequired
                         value={hora(fim)}
                         onChange={(h) => onChange(inicio, juntar(dia(fim), h))}
                         isInvalid={!!erroFim}
-                        hint={erroFim}
+                        hint={erroFim ?? (terminaNoDiaSeguinte(inicio, fim) ? "Termina no dia seguinte." : undefined)}
                     />
                 </div>
             </Surgir>

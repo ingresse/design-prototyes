@@ -11,14 +11,14 @@ import { InputBase } from "@/components/base/input/input";
 import { DURACAO_TRANSICAO, Surgir } from "@/components/foundations/transicao";
 import type { Pergunta } from "@/plataforma";
 import { BackstageLayout } from "../../components/Backstage";
-import { useResumoDeIngressos } from "../../aberturas-de-vendas/components/SeletorDeIngressos";
+import { useResumoDeIngressos } from "../../components/seletor-de-ingressos";
 import { Alca, mover } from "../../itens/components/Alca";
-import { LIMIAR_FERRAMENTAS, paraBusca } from "../../itens/components/escala";
+import { AvisoDeEscala, LIMIAR_FERRAMENTAS, paraBusca } from "../../itens/components/escala";
 import { novoId, salvarPerguntas, useCatalogo } from "../../itens/data/catalogo";
 import { formatar, useTextosItens } from "../../itens/data/textos-itens";
 import { NOME_DO_TIPO, setoresPorIngresso } from "../data/questionario";
 import { CartaoEdicaoNaCarteira, editaveisNaCarteira } from "../components/EdicaoNaCarteira";
-import { TITULO_PAGINA } from "@/produtos/backstage/components/titulo-pagina";
+import { CabecalhoDaPagina } from "../../components/cabecalho-da-pagina";
 
 /* ------------------------------------------------------------------ */
 /*  Questionário do evento (QST)                                       */
@@ -35,9 +35,10 @@ export const T = {
     nova: "Nova pergunta",
     buscar: "Buscar pergunta",
     contagem: "{visiveis} de {total}",
+    total: { one: "{n} pergunta", other: "{n} perguntas" },
     nada: "Nenhuma pergunta com esse texto.",
     vazio: "Nenhuma pergunta ainda",
-    vazioDica: "Crie as perguntas do formulário do participante e escolha em quais ingressos e combos cada uma aparece.",
+    vazioDica: "Crie as perguntas que quem compra responde e escolha em quais ingressos e combos cada uma aparece.",
     carregando: "Carregando perguntas",
     obrigatoria: "Obrigatória",
     opcional: "Opcional",
@@ -79,7 +80,7 @@ export function useOndeAparece() {
 export function Questionario() {
     const navigate = useNavigate();
     const { carregando, evento } = useCatalogo();
-    const { numero } = useTextosItens();
+    const { numero, plural } = useTextosItens();
     const ondeAparece = useOndeAparece();
     const setorDe = useMemo(() => setoresPorIngresso(evento), [evento?.sessoes]);
 
@@ -136,23 +137,26 @@ export function Questionario() {
     return (
         <BackstageLayout activeSection="questionario" activeItem="catalogo-questionario">
             <div className="flex min-w-0 flex-1 flex-col gap-6">
-                <header className="flex flex-wrap items-end justify-between gap-4">
-                    <div className="flex min-w-0 flex-col gap-1">
-                        <h1 className={TITULO_PAGINA}>{T.titulo}</h1>
-                        <p className="text-md text-tertiary">{T.subtitulo}</p>
-                    </div>
-                    {lista.length > 0 && (
-                        <div className="flex flex-wrap gap-3">
-                            {/* Perguntas e respostas ligadas: as respostas ficam em Relatórios (QST-14). */}
-                            <Button color="secondary" size="md" onClick={() => navigate("/backstage/relatorios/questionarios")}>
-                                Ver respostas
-                            </Button>
-                            <Button color="primary" size="md" iconLeading={Plus} onClick={() => navigate("/backstage/catalogo/questionario/nova")}>
-                                {T.nova}
-                            </Button>
-                        </div>
-                    )}
-                </header>
+                <CabecalhoDaPagina
+                    // Abre pelos atalhos de Ingressos e produtos: o voltar leva para lá (BKS-101, BKS-119).
+                    voltar={{ rotulo: "Ingressos e produtos", href: "/backstage/catalogo/ingressos" }}
+                    titulo={T.titulo}
+                    subtitulo={T.subtitulo}
+                    acoes={
+                        lista.length > 0 && (
+                            <>
+                                {/* Perguntas e respostas ligadas: as respostas ficam em Relatórios (QST-14). */}
+                                <Button color="secondary" size="md" onClick={() => navigate("/backstage/relatorios/questionarios")}>
+                                    Ver respostas
+                                </Button>
+                                <Button color="primary" size="md" iconLeading={Plus} onClick={() => navigate("/backstage/catalogo/questionario/nova")}>
+                                    {T.nova}
+                                </Button>
+                            </>
+                        )
+                    }
+                />
+                <AvisoDeEscala />
 
                 {carregando ? (
                     <div role="status" aria-label={T.carregando} className="flex flex-col gap-2">
@@ -192,7 +196,8 @@ export function Questionario() {
                                     wrapperClassName="w-full sm:max-w-80"
                                 />
                                 <span role="status" className="text-sm text-tertiary tabular-nums">
-                                    {termo ? T.ordemNaBusca : formatar(T.contagem, { visiveis: numero(filtradas.length), total: numero(local.length) })}
+                                    {/* Sem busca, só o total ("48 perguntas"); "N de M" só quando a busca filtra (M13). */}
+                                    {termo ? `${formatar(T.contagem, { visiveis: numero(filtradas.length), total: numero(local.length) })}. ${T.ordemNaBusca}` : plural(T.total, local.length)}
                                 </span>
                             </div>
                         )}

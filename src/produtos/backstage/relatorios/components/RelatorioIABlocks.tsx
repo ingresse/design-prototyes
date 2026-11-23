@@ -6,7 +6,7 @@ import { cx } from "@/utils/cx";
 import type { Bloco, Formato } from "../data/relatorio-ia";
 import { currencyFormatter, numberFormatter } from "../data/event";
 
-const CORES = ["var(--color-utility-brand-700)", "var(--color-utility-blue-500)", "var(--color-utility-orange-400)", "var(--color-utility-pink-500)", "var(--color-utility-green-500)", "var(--color-utility-gray-400)"];
+const CORES = ["var(--color-utility-brand-700)", "var(--color-utility-blue-500)", "var(--color-utility-orange-400)", "var(--color-utility-pink-500)", "var(--color-utility-green-500)", "var(--color-utility-neutral-400)"];
 
 const fmt = (v: number, f?: Formato) => (f === "moeda" ? currencyFormatter.format(v) : f === "pct" ? `${v}%` : numberFormatter.format(v));
 

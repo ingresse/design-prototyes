@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router";
-import { ArrowLeft, Calendar, ChevronDown, SearchLg, Ticket01 } from "@untitledui/icons";
+import { Calendar, ChevronDown, SearchLg, Ticket01 } from "@untitledui/icons";
 import { toast } from "sonner";
 import { Button } from "@/components/base/buttons/button";
 import { Checkbox } from "@/components/base/checkbox/checkbox";
@@ -9,8 +9,8 @@ import { Toggle } from "@/components/base/toggle/toggle";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
-import { TIPO_PERGUNTA, usePesquisas, type ItemVinculavel } from "../data/pesquisas-store";
-import { TITULO_PAGINA } from "@/produtos/backstage/components/titulo-pagina";
+import { CabecalhoDaPagina } from "../../components/cabecalho-da-pagina";
+import { usePesquisas, type ItemVinculavel } from "../data/pesquisas-store";
 
 export function VinculosPergunta() {
     const { perguntaId } = useParams();
@@ -117,26 +117,15 @@ export function VinculosPergunta() {
         voltar();
     };
 
-    const meta = pergunta ? TIPO_PERGUNTA[pergunta.tipo] : null;
-
     return (
         <BackstageLayout activeSection="pesquisas" activeItem="formularios-compra">
             <div className="flex min-w-0 flex-1 flex-col motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-right-4 motion-safe:duration-300 motion-safe:ease-out">
                 <main className="flex w-full flex-1 flex-col gap-6 pb-28">
-                    {/* Header */}
-                    <div className="flex flex-col gap-3">
-                        <button type="button" onClick={voltar} className="flex w-fit items-center gap-1.5 text-sm text-tertiary transition hover:text-secondary">
-                            <ArrowLeft className="size-4" />
-                            Voltar para perguntas
-                        </button>
-                        <div className="flex items-start gap-3">
-                            {meta && <meta.icon className="mt-1 size-5 shrink-0 text-fg-quaternary" />}
-                            <div className="flex flex-col gap-0.5">
-                                <h1 className={TITULO_PAGINA}>{pergunta?.titulo ?? "Pergunta"}</h1>
-                                <p className="text-sm text-tertiary">Selecione os ingressos em que esta pergunta será feita ao comprador.</p>
-                            </div>
-                        </div>
-                    </div>
+                    <CabecalhoDaPagina
+                        voltar={{ rotulo: "Perguntas por ingresso", onClick: voltar }}
+                        titulo={pergunta?.titulo ?? "Pergunta"}
+                        subtitulo="Selecione os ingressos em que esta pergunta será feita ao comprador."
+                    />
 
                     {/* Divider entre o header e a busca */}
                     <hr className="border-t border-secondary" />

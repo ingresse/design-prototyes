@@ -3,7 +3,7 @@
 > **Rotas:** `/backstage/categorias`
 > **No menu:** sem item de menu por enquanto; abre pela rota.
 > **Versão em uso:** única (`categorias/`)
-> **Revisado em:** 2026-11-18 (plural, trecho quase igual, Casais e Ao ar livre, sazonal sem data, sugestão de categoria)
+> **Revisado em:** 2026-11-23 (rótulo Entretenimento, CAT-43)
 
 Este arquivo é a fonte da verdade do comportamento da feature. Mudou uma regra no código, mude
 aqui no mesmo commit. Achou divergência entre código e este arquivo, registre em **Em aberto**
@@ -58,11 +58,13 @@ A leitura do banner usa o `claude -p` logado na máquina de quem roda o `npm run
 - **CAT-20** Duas abas sublinhadas: "Categorias e tags" (abre nela) e "Eventos", com a quantidade de eventos. _(pages/categorias.tsx)_
 - **CAT-21** Categorias e tags: um cartão por categoria, na ordem do mapa, com ícone, nome e quantidade de eventos. Clicar no cartão abre Eventos filtrado por ela. _(pages/categorias.tsx)_
 - **CAT-22** Depois das categorias, um bloco por grupo de tag, com o que vale e o máximo por evento, e as tags da mais usada para a menos (a quantidade aparece quando há evento). _(pages/categorias.tsx)_
-- **CAT-23** Eventos: todos os do banco, do criado mais recente para o mais antigo, com nome, local, cidade e data, o que a pessoa escreveu (quando há), a categoria com o ícone e as tags. Filtro por categoria no topo, com a contagem. _(pages/categorias.tsx)_
+- **CAT-23** Eventos: todos os do banco, do criado mais recente para o mais antigo, com nome, local, cidade e data, o que a pessoa escreveu (quando há), a categoria com o ícone e as tags. Na barra comum (BKS-111), busca por nome, local ou cidade à esquerda e, à direita, a contagem e o filtro por categoria. _(pages/categorias.tsx)_
+- **CAT-42** A lista de Eventos usa o cartão e as linhas comuns (`../components/tabela.tsx`, BKS-110): colunas Evento, Categoria e Tags; com o cartão abaixo de 704 px, cada evento vira um bloco com "Categoria:" e "Tags:" ao lado dos valores (até 21/11/2026 virava bloco abaixo de 1024 px de tela). Paginação do DS acima de 10; busca ou categoria voltam à página 1 (BKS-114). _(pages/categorias.tsx)_
 
 ### Estados
-- **CAT-40** Carregando o banco: esqueleto de dez cartões nas duas abas. _(pages/categorias.tsx)_
-- **CAT-41** Nenhum evento: "Nenhum evento ainda", com "Criar show ou festa". Filtro sem evento: "Nenhum evento nesta categoria.". _(pages/categorias.tsx)_
+- **CAT-40** Carregando o banco: esqueleto de dez cartões em Categorias e tags; linhas pulsando em Eventos (BKS-116). _(pages/categorias.tsx)_
+- ~~**CAT-41** Nenhum evento: "Nenhum evento ainda", com "Criar show ou festa". Busca ou categoria sem evento: "Nenhum evento encontrado para essa busca ou categoria." dentro do cartão, com "Limpar busca", que apaga a busca e volta para "Todas as categorias" (BKS-118). _(pages/categorias.tsx)_~~ Substituída por CAT-43 em 23/11/2026.
+- **CAT-43** Nenhum evento: "Nenhum evento ainda", com "Criar evento de entretenimento" (o tipo `show` se chama Entretenimento desde 23/11/2026, `eventos/rules.md` EVT-167; o subtítulo da página diz "entretenimento escolhe entre as outras"). Busca ou categoria sem evento: "Nenhum evento encontrado para essa busca ou categoria." dentro do cartão, com "Limpar busca", que apaga a busca e volta para "Todas as categorias" (BKS-118). _(pages/categorias.tsx)_
 
 ## Depende de / afeta
 

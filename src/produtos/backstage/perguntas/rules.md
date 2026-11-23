@@ -5,6 +5,8 @@
 > **Versão em uso:** única (`perguntas/`). A versão mais nova do mesmo assunto é Pesquisas (`/backstage/pesquisas`).
 > **Revisado em:** 2026-11-07
 
+> **Desde 21/11/2026 sem rota:** a URL leva para Questionário (`/backstage/catalogo/questionario`) (BKS-35). O código fica como histórico.
+
 Este arquivo é a fonte da verdade do comportamento da feature. Mudou uma regra no código, mude
 aqui no mesmo commit. Achou divergência entre código e este arquivo, registre em **Em aberto**
 em vez de escolher um lado em silêncio.

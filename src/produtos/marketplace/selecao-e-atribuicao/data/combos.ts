@@ -57,6 +57,8 @@ export interface Item {
     /** Cota do benefício vendida. A linha continua na tela, só o stepper trava (art. 8º I). */
     cotaEsgotada?: boolean;
     imagem?: string;
+    /** Etiquetas de destaque do Backstage ("Últimos ingressos"), até 3 (ETQ). */
+    etiquetas?: string[];
     obrigatorio?: boolean;
     /** Quantidade mínima deste item no combo (inclusos: >= 1). */
     qtdMin?: number;
@@ -89,6 +91,8 @@ export interface Ingresso {
     /** Fração da face base. Default 0.5. */
     percentualBeneficio?: number;
     cotaEsgotada?: boolean;
+    /** Etiquetas de destaque do Backstage (ETQ). */
+    etiquetas?: string[];
 }
 
 /**

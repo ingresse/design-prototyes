@@ -12,8 +12,10 @@ export interface PedidoItem {
     /** Quantidade comprada desse item. */
     quantity: number;
     name: string;
-    /** `{Grupo_nome} • {Sessão}` ou a composição resumida do combo. */
+    /** `{Grupo_nome}, {Sessão}` ou a composição resumida do combo. */
     subtitle?: string;
+    /** Data e hora da sessão do ingresso ("2 out 2026, 23:00"). */
+    data?: string;
     /** Lote do ingresso, quando o item é um ingresso. */
     lote?: string;
     /** Preço unitário — o total da linha vai na direita do item. */
@@ -75,17 +77,17 @@ export const PEDIDO_TIPO_LABEL: Record<PedidoTipo, string> = {
 const PAYMENT_LINK = "cart.ingresse.com/971c14dc-89ba-41dd-a469-cad4a1fde120";
 
 const baseItens = (): PedidoItem[] => [
-    { id: "it-1", quantity: 2, name: "Passaporte 2 dias - Inteira", subtitle: "Pista • 08 de agosto às 14:00", lote: "1º lote" },
+    { id: "it-1", quantity: 2, name: "Passaporte 2 dias - Inteira", subtitle: "Pista, 08 de agosto às 14:00", lote: "1º lote" },
     { id: "it-2", quantity: 1, name: "Copo oficial do evento" },
-    { id: "it-3", quantity: 1, name: "Passaporte de 2 dias", subtitle: "Combo • 2 sessões" },
+    { id: "it-3", quantity: 1, name: "Passaporte de 2 dias", subtitle: "Combo, 2 sessões" },
     {
         id: "it-4",
         quantity: 1,
         name: "Nome muito longo para um item de ingresso - Meia-entrada",
-        subtitle: "Camarote inferior direito • 27/09 15:00",
+        subtitle: "Camarote inferior direito, 27/09 15:00",
         lote: "3º lote",
     },
-    { id: "it-5", quantity: 1, name: "Domingo - Inteira", subtitle: "Pista • 09 de agosto às 14:30", lote: "2º lote" },
+    { id: "it-5", quantity: 1, name: "Domingo - Inteira", subtitle: "Pista, 09 de agosto às 14:30", lote: "2º lote" },
 ];
 
 const EMISSORES = ["nome@exemplo.com", "operacao@exemplo.com", "bilheteria@exemplo.com"];
@@ -123,7 +125,7 @@ function buildPedidos(): Pedido[] {
             tipo,
             title: "PASSAPORTE - SÁBADO + DOMINGO - LOTE 2 - LOTE 2",
             sessions: "08 de ago de 2026 - 14:00 | 09 de ago de 2026 - 14:00",
-            sessionShort: "Sáb, 08/08 • às 14h00",
+            sessionShort: "Sáb, 08/08, às 14h00",
             emissor: EMISSORES[index % EMISSORES.length],
             destinatario: "joaosilva@gmail.com",
             dataVenda: `${yyyy}-${mm}-${dd}`,

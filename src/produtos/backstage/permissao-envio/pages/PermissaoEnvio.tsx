@@ -10,8 +10,8 @@ import { Dialog, Modal, ModalOverlay } from "@/components/application/modals/mod
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
+import { CabecalhoDaPagina } from "../../components/cabecalho-da-pagina";
 import { cotaNivel, removePermissao, usePermissoes, type Permissao, type PermTipo } from "../data/permissoes";
-import { TITULO_PAGINA } from "@/produtos/backstage/components/titulo-pagina";
 
 const brNum = (n: number) => n.toLocaleString("pt-BR");
 
@@ -52,15 +52,15 @@ export function PermissaoEnvio() {
     return (
         <BackstageLayout activeSection="cortesias" activeItem="permissao-envio">
             <div className="flex min-w-0 flex-1 flex-col gap-6">
-                <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex flex-col gap-1">
-                        <h1 className={TITULO_PAGINA}>Permissão de envio</h1>
-                        <p className="text-sm text-tertiary">Defina quem pode emitir cortesias, quais ingressos e o limite de cada um.</p>
-                    </div>
-                    <Button size="md" color="primary" iconLeading={Plus} onClick={irParaNova}>
-                        Nova permissão
-                    </Button>
-                </header>
+                <CabecalhoDaPagina
+                    titulo="Permissão de envio"
+                    subtitulo="Defina quem pode emitir cortesias, quais ingressos e o limite de cada um."
+                    acoes={
+                        <Button size="md" color="primary" iconLeading={Plus} onClick={irParaNova}>
+                            Nova permissão
+                        </Button>
+                    }
+                />
 
                 <main className="flex flex-1 flex-col gap-5">
                     {/* Métricas */}

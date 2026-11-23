@@ -1,7 +1,8 @@
-import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type ComponentType, type CSSProperties, type FC, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type ComponentType, type CSSProperties, type FC, type HTMLAttributes, type ReactNode } from "react";
 import { motion, useReducedMotion } from "motion/react";
-import { useLocation, useNavigate, useNavigationType } from "react-router";
-import { Button as AriaButton, MenuItem as AriaMenuItem, type Key } from "react-aria-components";
+import { Link, useLocation, useNavigate, useNavigationType } from "react-router";
+import { toast } from "sonner";
+import { Button as AriaButton, Link as AriaLink, MenuItem as AriaMenuItem, SubmenuTrigger as AriaSubmenuTrigger, type Key } from "react-aria-components";
 import {
     LinkExternal01,
     Announcement01,
@@ -10,7 +11,9 @@ import {
     LayoutGrid01,
     ChevronDown,
     ChevronRight,
+    Bell01,
     ChevronSelectorVertical,
+    Copy01,
     DotsGrid,
     CoinsHand,
     File03,
@@ -26,7 +29,9 @@ import {
     LayersTwo01,
     ClipboardCheck,
     Sun,
+    SwitchHorizontal01,
     Ticket01,
+    Users01,
     XClose,
 } from "@untitledui/icons";
 import { Avatar } from "@/components/base/avatar/avatar";
@@ -34,6 +39,7 @@ import { Badge } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
 import { Dropdown } from "@/components/base/dropdown/dropdown";
 import { NavButton } from "@/components/application/app-navigation/base-components/nav-button";
+import { NavItemBase } from "@/components/application/app-navigation/base-components/nav-item";
 import { TreeView } from "@/components/application/tree-view/tree-view";
 import { Dot } from "@/components/foundations/dot-icon";
 import { cx } from "@/utils/cx";
@@ -41,7 +47,7 @@ import { useDoc } from "@/plataforma";
 import LogoBlack from "../../../assets/Company logo_black.svg";
 import LogoWhite from "../../../assets/Company logo_white.svg";
 import { AlterarStatusModal, ORDEM_STATUS } from "../eventos/components/AlterarStatusModal";
-import { EVENTO_STATUS_BADGE_COLOR, EVENTO_STATUS_LABEL, eventos, setEventoAtual, setEventoStatus, useEventoAtual, useEventosVersao, type EventoStatus } from "../eventos/data/eventos";
+import { EVENTO_STATUS_BADGE_COLOR, EVENTO_STATUS_LABEL, eventos, semEventosNaOrganizacao, setEventoStatus, useEventoAtual, useEventosVersao, type EventoStatus } from "../eventos/data/eventos";
 
 /** Logo da Ingresse, clicável, leva para a home do Backstage.
  *  O alvo era a altura da imagem, 20px: no telefone só acertava quem mirasse bem. O padding leva
@@ -69,18 +75,28 @@ import { useTheme } from "@/providers/theme-provider";
 import { ThemeToggle } from "./ThemeToggle";
 import { RemixDock } from "./remix/RemixShell";
 import { GuiaDeConfiguracao } from "../guia-de-configuracao/components/guia-de-configuracao";
+import { estadoDoEvento } from "../guia-de-configuracao/data/use-guia";
+import { BotaoDoGuia } from "../guia-de-configuracao/components/botao-do-guia";
+import { abrirNovidades, Novidades, useNovidadesNaoVistas } from "./novidades";
+import { SeletorDeEvento, type OpcaoDeEvento } from "./seletor-de-evento";
+import { trocarDeEvento } from "./troca-de-evento";
+import { MENU_DO_EVENTO, opcaoDaTela } from "./grupos-do-evento";
 import { AbasDeEmissao, LayoutDeRelatorios, ROTAS_COM_ABAS_DE_EMISSAO } from "./navegacao-de-secao";
 import { setTodosOsEventos, useTodosOsEventos } from "./escopo-dos-relatorios";
 /** Telas do evento usam o alerta do guia por aqui, sem importar de outro projeto. */
 export { AlertaDoGuia, PARAMETRO_NOVO_SETOR } from "../guia-de-configuracao/components/guia-de-configuracao";
 export { prepararGuiaDoEventoNovo } from "../guia-de-configuracao/data/memoria";
+/** Estado do evento lido pelo guia (setores, ingressos, abertura, publicação): a Visão geral usa no vazio. */
+export { estadoDoEvento } from "../guia-de-configuracao/data/use-guia";
 import { INICIO_DO_PAINEL, usePainel } from "./painel";
 import "./transicao-de-tela.css";
 import { USUARIO as USUARIO_FREEPASS, abrirEventoNoPainel, useAcessoNoEvento, useMinhasVendas, useSemearComissarios, type AcessoNoEvento } from "../freepass/data/minhas-vendas";
 import { FUNCAO_INFO, funcaoDaTela, setVisualizacao, useFuncoesDisponiveis, useVisualizacao, type Funcao, type Visualizacao } from "../freepass/data/funcoes";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
+import { Tooltip } from "@/components/base/tooltip/tooltip";
 
 export type BackstageSection =
+    | "visao-geral"
     | "equipe-e-permissoes"
     | "informacoes-evento"
     | "itens"
@@ -90,9 +106,12 @@ export type BackstageSection =
     | "equipe-e-comissarios"
     | "relatorios"
     | "comissarios"
-    | "marketing";
+    | "marketing"
+    // Compras em grupo é opção direta do menu do evento desde 22/11/2026 (BKS-07).
+    | "compras-em-grupo";
 
 export type BackstageItem =
+    | "visao-geral"
     | "informacoes-gerais"
     | "permissao-envio"
     | "catalogo-itens"
@@ -114,9 +133,21 @@ export type BackstageItem =
     | "relatorio-personalizado"
     | "relatorio-questionarios"
     | "relatorio-comissarios"
+    | "lista-de-usuarios"
     | "chave-de-acesso"
+    | "cupons"
+    | "lotes-sincronizados"
+    | "compras-em-grupo"
     | "minhas-vendas-evento"
-    | "formularios-compra";
+    | "formularios-compra"
+    | "lista-de-espera"
+    // Itens planejados, ainda sem tela (aparecem como "Em breve", BKS-07).
+    | "etiquetas"
+    | "pixel"
+    | "visao-do-dia"
+    | "indicadores-de-acesso"
+    | "reconciliacao"
+    | "repasse";
 
 const DISABLED_KEYS: Key[] = [];
 
@@ -149,12 +180,14 @@ interface BackstageLayoutProps {
 /* ------------------------------------------------------------------ */
 
 type LayoutVariant = "classic" | "topbar";
-const LAYOUT_STORAGE_KEY = "backstage-layout-variant";
+// v2: a escolha gravada antes de a barra no topo virar padrão (BKS-02) não vale mais.
+const LAYOUT_STORAGE_KEY = "backstage-layout-variant:v2";
 
 function useLayoutVariant(): [LayoutVariant, (v: LayoutVariant) => void] {
     const [variant, setVariant] = useState<LayoutVariant>(() => {
-        if (typeof window === "undefined") return "classic";
-        return window.localStorage.getItem(LAYOUT_STORAGE_KEY) === "topbar" ? "topbar" : "classic";
+        // Barra no topo é o padrão desde 20/11/2026 (BKS-02); a clássica segue no Shift+L.
+        if (typeof window === "undefined") return "topbar";
+        return window.localStorage.getItem(LAYOUT_STORAGE_KEY) === "classic" ? "classic" : "topbar";
     });
     const update = useCallback((v: LayoutVariant) => {
         setVariant(v);
@@ -199,6 +232,49 @@ function useSwitcherVisivel() {
  */
 const RESPIRO_DO_CONTEUDO = "px-4 pb-6 md:px-6";
 
+/** Título da aba fora do Backstage (index.html), devolvido ao sair do layout. */
+const TITULO_PADRAO = typeof document === "undefined" ? "" : document.title;
+/** Último título que o layout escreveu: título diferente deste e do padrão foi a própria tela que pôs (ex.: detalhe do pedido). */
+let tituloDoLayout: string | null = null;
+
+/**
+ * Título da aba do navegador (BKS-125): "<título da página> · Backstage", lido do h1 visível da tela
+ * (o h1 só para leitor de tela entra quando não há um visível); sem h1, só "Backstage". Relê a cada troca
+ * de rota e quando a tela termina de renderizar (MutationObserver). Tela que define o próprio título manda.
+ */
+function useTituloDaAba(sufixo: string) {
+    const { pathname } = useLocation();
+    useEffect(() => {
+        let quadro = 0;
+        const atualizar = () => {
+            quadro = 0;
+            const atual = document.title;
+            if (atual !== TITULO_PADRAO && atual !== tituloDoLayout) return;
+            const h1s = [...document.querySelectorAll<HTMLElement>("main h1")];
+            const h1 = h1s.find((h) => !h.closest(".sr-only") && h.getClientRects().length > 0) ?? h1s[0];
+            const texto = h1?.textContent?.replace(/\s+/g, " ").trim();
+            const titulo = texto ? `${texto} · ${sufixo}` : sufixo;
+            tituloDoLayout = titulo;
+            if (atual !== titulo) document.title = titulo;
+        };
+        const agendar = () => {
+            if (!quadro) quadro = requestAnimationFrame(atualizar);
+        };
+        atualizar();
+        const observador = new MutationObserver(agendar);
+        observador.observe(document.body, { childList: true, subtree: true, characterData: true });
+        return () => {
+            observador.disconnect();
+            if (quadro) cancelAnimationFrame(quadro);
+            if (document.title === tituloDoLayout) document.title = TITULO_PADRAO;
+            tituloDoLayout = null;
+        };
+    }, [pathname, sufixo]);
+}
+
+/** Página do evento no site (o mesmo endereço dos cards do site; abre também o evento ainda não publicado, como prévia). BKS-24. */
+const paginaDoEventoNoSite = (eventoId: string) => `/novo-site/Evento.dc.html?ev=${encodeURIComponent(eventoId)}`;
+
 export function BackstageLayout({
     activeSection,
     activeItem,
@@ -227,20 +303,34 @@ export function BackstageLayout({
     // Freepass: a mesma shell, sem o que é só da produtora (BKS-60 a BKS-66).
     const freepass = usePainel() === "freepass";
     useSemearComissarios(freepass);
-    // Relatórios são da organização (BKS-26): sem o menu do evento e com o item Relatórios ativo no menu da organização.
-    const relatoriosNaOrganizacao = !freepass && activeSection === "relatorios";
+    useTituloDaAba(freepass ? "Freepass" : "Backstage");
+    // Relatórios (BKS-26): pelo menu da organização, sem o menu do evento e com Relatórios ativo em cima.
+    // Pelo menu do evento (`?de=evento`), ficam dentro do evento: com o rail e sem o seletor de evento
+    // no topo do relatório (BKS-90).
+    const deEvento = new URLSearchParams(search).get("de") === "evento";
+    const telaDeRelatorio = !freepass && activeSection === "relatorios";
+    const relatoriosDoEvento = telaDeRelatorio && deEvento;
+    const relatoriosNaOrganizacao = telaDeRelatorio && !deEvento;
     if (relatoriosNaOrganizacao) {
         showEventContext = false;
         activeProducer = "relatorios";
     }
-    // Ao entrar nos Relatórios (BKS-27): pelo menu do evento (`?de=evento`), filtra pelo evento; por
-    // qualquer outro caminho (menu da organização), abre em "Todos os eventos". Só na entrada:
-    // trocar de relatório dentro deles mantém a escolha do topo.
-    const deEvento = new URLSearchParams(search).get("de") === "evento";
+    // Escopo dos Relatórios (BKS-27): dentro do evento, sempre o evento; pela organização, abre em
+    // "Todos os eventos" na entrada, e trocar de relatório mantém a escolha do topo. Sair de um relatório
+    // do evento (`?de=evento`) pelo menu da organização é uma entrada: volta a "Todos" (BKS-27). Antes,
+    // a tela anterior contava como relatório e o escopo do evento ficava.
     useLayoutEffect(() => {
-        if (relatoriosNaOrganizacao && !ultimaTelaFoiRelatorio) setTodosOsEventos(!deEvento);
-        ultimaTelaFoiRelatorio = relatoriosNaOrganizacao;
-    }, [pathname, relatoriosNaOrganizacao, deEvento]);
+        if (relatoriosDoEvento) setTodosOsEventos(false);
+        else if (relatoriosNaOrganizacao && !ultimaTelaFoiRelatorioDaOrganizacao) setTodosOsEventos(true);
+        ultimaTelaFoiRelatorioDaOrganizacao = relatoriosNaOrganizacao;
+    }, [pathname, relatoriosDoEvento, relatoriosNaOrganizacao]);
+    // Organização sem evento (EVT-99): tela do evento não tem evento para mostrar. Em vez de herdar o
+    // evento da organização anterior, volta para Eventos, que mostra o vazio e o "Criar evento" (BKS-06).
+    const irPara = useNavigate();
+    const semEventos = !freepass && showEventContext && semEventosNaOrganizacao();
+    useEffect(() => {
+        if (semEventos) irPara("/backstage/eventos", { replace: true });
+    }, [semEventos]);
     // Última tela do evento, para o "voltar para o evento" dos Relatórios.
     useEffect(() => {
         if (!showEventContext || freepass) return;
@@ -259,10 +349,29 @@ export function BackstageLayout({
     const railDoEvento = showEventContext && !porFuncao;
     const barraDoFreepass = freepass && <BarraDoFreepass funcao={funcaoAtual} telaDeEvento={showEventContext} />;
 
-    const abrirModalDeStatus = useCallback((status?: EventoStatus) => {
-        setStatusInicial(status);
-        setStatusModalOpen(true);
-    }, []);
+    // Rascunho só publica com a abertura de vendas programada (EVT-130): vale para o rail, o celular e o guia.
+    const docDoEvento = useDoc("eventos", eventoAtual.id);
+    const publicacaoBloqueada = eventoAtual.status === "rascunho" && estadoDoEvento(docDoEvento, false).abertura === "nenhum";
+    const abrirModalDeStatus = useCallback(
+        (status?: EventoStatus) => {
+            if (publicacaoBloqueada) {
+                toast.error("Programe a abertura de vendas antes de publicar o evento.");
+                return;
+            }
+            setStatusInicial(status);
+            setStatusModalOpen(true);
+        },
+        [publicacaoBloqueada],
+    );
+
+    // "Publicar" do guia fora da tela do evento chega à Visão geral com `?status=publicar` e abre o modal
+    // de status já em Publicado (GDC-74). O parâmetro sai da URL para recarregar não abrir de novo.
+    const pedeStatus = new URLSearchParams(search).get("status") === "publicar" && showEventContext && !freepass;
+    useEffect(() => {
+        if (!pedeStatus) return;
+        irPara(pathname, { replace: true });
+        abrirModalDeStatus("publicado");
+    }, [pedeStatus]);
 
     useEffect(() => {
         if (!menuMobile) return;
@@ -289,7 +398,13 @@ export function BackstageLayout({
             {menuMobile === "evento" && railDoEvento && (
                 <PainelMobile topo="113px" rotulo="Menu do evento" onFechar={() => setMenuMobile(null)}>
                     <div className="flex-1 px-2 py-3">
-                        <EventFunctionalitiesList activeSection={activeSection} activeItem={activeItem} />
+                        {/* O mesmo menu do rail (BKS-130): links de 44 px, o atual com o ícone invertido e `aria-current`.
+                            Tocar no item da própria tela também fecha a gaveta. O Freepass segue com a árvore. */}
+                        {freepass ? (
+                            <EventFunctionalitiesList activeSection={activeSection} activeItem={activeItem} />
+                        ) : (
+                            <MenuDoEvento activeSection={activeSection} activeItem={activeItem} onNavegar={() => setMenuMobile(null)} />
+                        )}
                     </div>
                     {!freepass && <StatusNoMenuMobile />}
                 </PainelMobile>
@@ -312,8 +427,8 @@ export function BackstageLayout({
     const tela = <TransicaoDeTela chave={chaveDaTela}>{children}</TransicaoDeTela>;
     const abaDeEmissao = !freepass ? ROTAS_COM_ABAS_DE_EMISSAO[pathname] : undefined;
     const corpo =
-        relatoriosNaOrganizacao ? (
-            <LayoutDeRelatorios ativo={activeItem} topo={<EventoDosRelatorios />} voltarPara={destinoDoVoltarAoEvento}>
+        telaDeRelatorio ? (
+            <LayoutDeRelatorios ativo={activeItem} topo={relatoriosDoEvento ? undefined : <EventoDosRelatorios />} voltarPara={destinoDoVoltarAoEvento} dentroDoEvento={relatoriosDoEvento}>
                 {tela}
             </LayoutDeRelatorios>
         ) : abaDeEmissao ? (
@@ -323,7 +438,61 @@ export function BackstageLayout({
         );
 
     // Guia de configuração do evento (guia-de-configuracao/rules.md): segue o produtor pelas telas do evento.
-    const guiaDeConfiguracao = showEventContext && !freepass && <GuiaDeConfiguracao eventoId={eventoAtual.id} abrirModalDeStatus={abrirModalDeStatus} recolher={recolherGuia} />;
+    // Na barra do topo, o botão "Guia" abre o guia em qualquer tela (GDC-60); na clássica, só nas telas do evento.
+    const guiaDeConfiguracao = !freepass && (showEventContext || variant === "topbar") && (
+        <GuiaDeConfiguracao
+            eventoId={eventoAtual.id}
+            telaDeEvento={showEventContext}
+            abrirModalDeStatus={abrirModalDeStatus}
+            recolher={recolherGuia}
+            noTopo={variant === "topbar"}
+            // A barra do guia no celular sai de cena com a gaveta aberta: cobria o status do evento no rodapé dela (GDC-75).
+            gavetaAberta={menuMobile !== null}
+        />
+    );
+
+    // Shell padrão do Backstage (BKS-92): rail da organização à esquerda, sem a logo; rail do evento ao lado;
+    // sino de novidades e Guia numa faixa no canto superior direito. O Freepass segue com a barra do topo.
+    if (variant === "topbar" && !freepass) {
+        return (
+            <EventStatusModalContext.Provider value={abrirModalDeStatus}>
+                <div
+                    className="min-h-screen bg-primary_alt"
+                    // Sem barra no topo, nada gruda abaixo dela. Os botões do topo terminam a 64 px: o painel do guia abre logo abaixo (GDC-16).
+                    style={{ "--bs-header-offset": "0px", "--bs-topo-do-guia": "64px" } as CSSProperties}
+                >
+                    {mobileChrome}
+                    <div className="flex flex-col md:flex-row">
+                        <RailDaOrganizacao activeProducer={activeProducer} />
+                        <RailDoEventoAnimado visivel={railDoEvento} folga={0} largura={256} render={(fantasma) => <RailMinimoDoEvento activeSection={fantasma ? undefined : activeSection} activeItem={fantasma ? undefined : activeItem} />} />
+                        <div className="relative flex min-w-0 flex-1 flex-col md:pr-6 md:pl-6">
+                            {/* Sino e Guia na linha do título, centrados nela: o título começa a 24 px do topo e tem 46 px de
+                                altura; os botões, 36 px (BKS-92). */}
+                            <div className="absolute top-7 right-6 z-10 hidden items-center gap-2 md:flex">
+                                <Novidades />
+                                <BotaoDoGuia />
+                            </div>
+                            {/* overflow-x-clip: desenhos decorativos (círculos do estado vazio) não alargam a página no celular (BKS-19).
+                                Só a linha do título reserva à direita o lugar do sino e do Guia: as ações da tela ficam abaixo
+                                do título, à esquerda (BKS-104), e não disputam esse canto. */}
+                            <main className="flex min-w-0 flex-1 flex-col overflow-x-clip pt-3 md:pt-6 md:[&_[data-linha-do-titulo]]:pr-40">
+                                <div className={cx("flex w-full flex-1 flex-col", RESPIRO_DO_CONTEUDO, "md:px-0")}>
+                                    {corpo}
+                                    {/* Fim da página livre do Guia de configuração, que é fixo no canto (GDC-43). */}
+                                    <div aria-hidden="true" className="h-(--altura-do-guia,0px) shrink-0" />
+                                </div>
+                            </main>
+                        </div>
+                        <RemixDock />
+                    </div>
+                    {showLayoutSwitcher && mostrarSwitcher && <LayoutSwitcher variant={variant} onChange={setVariant} />}
+                    {statusModal}
+                    {guiaDeConfiguracao}
+                    <SeletorOrganizacaoModal />
+                </div>
+            </EventStatusModalContext.Provider>
+        );
+    }
 
     if (variant === "topbar") {
         return (
@@ -335,10 +504,17 @@ export function BackstageLayout({
                     {mobileChrome}
                     <OrgTopBar activeProducer={activeProducer} telaDeEvento={showEventContext} />
                     <div className="flex flex-col gap-3 px-2 py-3 md:flex-row md:gap-6 md:px-6 md:py-6">
-                        <RailDoEventoAnimado visivel={railDoEvento} folga={24} render={(fantasma) => <EventRailTop activeSection={fantasma ? undefined : activeSection} activeItem={fantasma ? undefined : activeItem} />} />
+                        {/* Backstage: rail mínimo, integrado à página (BKS-86); o Freepass segue com o rail de card. */}
+                        {freepass ? (
+                            <RailDoEventoAnimado visivel={railDoEvento} folga={24} render={(fantasma) => <EventRailTop activeSection={fantasma ? undefined : activeSection} activeItem={fantasma ? undefined : activeItem} />} />
+                        ) : (
+                            <RailDoEventoAnimado visivel={railDoEvento} folga={24} largura={320} render={(fantasma) => <RailMinimoDoEvento activeSection={fantasma ? undefined : activeSection} activeItem={fantasma ? undefined : activeItem} />} />
+                        )}
                         {/* overflow-x-clip: desenhos decorativos (círculos do estado vazio) não alargam a página no celular (BKS-19). */}
                         <main className="flex min-w-0 flex-1 flex-col overflow-x-clip">
-                            <div className={cx("mx-auto flex w-full max-w-[1088px] flex-1 flex-col", RESPIRO_DO_CONTEUDO)}>
+                            {/* Sem largura máxima: a página ocupa toda a largura disponível (BKS-84). */}
+                            {/* md:px-0: a moldura já tem os 24 px da barra do topo; somar o respiro desalinhava o conteúdo do menu (BKS-84). */}
+                            <div className={cx("flex w-full flex-1 flex-col", RESPIRO_DO_CONTEUDO, "md:px-0")}>
                                 {barraDoFreepass}
                                 {corpo}
                                 {/* Fim da página livre do Guia de configuração, que é fixo no canto (GDC-43). */}
@@ -458,25 +634,55 @@ const MobileTopBar = ({ menu, onMenu, showEventContext, telaDeEvento }: { menu: 
                 <BrandLogo className="h-5" />
                 <span className="flex items-center gap-1">
                     {freepass && <EngrenagemDoFreepass telaDeEvento={telaDeEvento} />}
+                    {/* Novidades também no celular (BKS-81, BKS-121); no Freepass não aparece. */}
+                    {!freepass && <Novidades />}
                     <BotaoDoMenu aberto={menu === "org"} icone={DotsGrid} rotulo={freepass ? "menu do Freepass" : "menu da organização"} onClick={() => alternar("org")} />
                 </span>
             </div>
             {/* Com o menu da organização aberto, só a barra dela fica (como no Figma). */}
             {showEventContext && menu !== "org" && (
-                <div className="flex items-center gap-3 border-b border-secondary bg-primary px-4 py-2">
+                <div className="flex items-center gap-1 border-b border-secondary bg-primary py-1 pr-2 pl-4">
                     <BotaoDoMenu aberto={menu === "evento"} icone={Menu02} rotulo="menu do evento" onClick={() => alternar("evento")} />
-                    <img src={evento.cover} alt="" className="h-10 w-[30px] shrink-0 rounded-xxs object-cover" />
-                    <p className="line-clamp-2 min-w-0 flex-1 text-sm font-medium text-primary" title={evento.nome}>
-                        {evento.nome}
-                    </p>
-                    <Badge size="sm" type="pill-color" color={EVENTO_STATUS_BADGE_COLOR[evento.status]} className="shrink-0">
-                        {EVENTO_STATUS_LABEL[evento.status]}
-                    </Badge>
+                    {freepass ? (
+                        <span className="flex min-w-0 flex-1 items-center gap-3 p-1">
+                            <CabecaDoEventoNoCelular />
+                        </span>
+                    ) : (
+                        // A barra do evento abre a troca de evento, como o cartão do rail no desktop (BKS-129).
+                        <SeletorDeEvento opcoes={opcoesDeEvento()} selecionado={evento.id} onEscolher={trocarDeEvento} placement="bottom">
+                            <AriaButton
+                                aria-label={`Evento: ${evento.nome}, ${EVENTO_STATUS_LABEL[evento.status]}. Trocar evento`}
+                                className="flex min-w-0 flex-1 items-center gap-3 rounded-lg p-1 text-left outline-focus-ring transition duration-100 ease-linear hover:bg-primary_hover focus-visible:outline-2"
+                            >
+                                <CabecaDoEventoNoCelular />
+                                <ChevronSelectorVertical className="size-4 shrink-0 text-fg-quaternary" aria-hidden="true" />
+                            </AriaButton>
+                        </SeletorDeEvento>
+                    )}
                 </div>
             )}
         </header>
     );
 };
+
+/** Capa, nome (nome completo no `title`) e status do evento em contexto, na barra do celular. */
+const CabecaDoEventoNoCelular = () => {
+    const evento = useEventoAtual();
+    return (
+        <>
+            <img src={evento.cover} alt="" className="h-10 w-[30px] shrink-0 rounded-xxs object-cover" />
+            <span className="line-clamp-2 min-w-0 flex-1 text-sm font-medium text-primary" title={evento.nome}>
+                {evento.nome}
+            </span>
+            <Badge size="sm" type="pill-color" color={EVENTO_STATUS_BADGE_COLOR[evento.status]} className="shrink-0">
+                {EVENTO_STATUS_LABEL[evento.status]}
+            </Badge>
+        </>
+    );
+};
+
+/** Eventos da organização em contexto, com capa, data e status, para a troca de evento (BKS-129). */
+const opcoesDeEvento = () => eventos.map((e) => ({ id: e.id, nome: e.nome, capa: e.cover, dataLabel: e.dataLabel, status: e.status }));
 
 /** Painel aberto pela barra: fundo escurecido com desfoque e conteúdo à esquerda, 64 px antes da borda. */
 const PainelMobile = ({ topo, rotulo, onFechar, children }: { topo: string; rotulo: string; onFechar: () => void; children: ReactNode }) => (
@@ -500,13 +706,124 @@ const ORDEM_ORG_MOBILE = ["eventos", "equipe", "financas", "produtos", "publico"
 /** Usuário fictício do protótipo (o mesmo do Figma). */
 const USUARIO = { nome: "Olivia Rhye", email: "olivia@untitledui.com", iniciais: "OR" };
 
+/** Idiomas do menu da conta (BKS-134). A interface só existe em português; os outros avisam e não traduzem. */
+const IDIOMAS = [
+    { id: "pt-BR", rotulo: "Português (Brasil)" },
+    { id: "en-US", rotulo: "English" },
+    { id: "es", rotulo: "Español" },
+] as const;
+const CHAVE_DO_IDIOMA = "backstage-idioma";
+const lerIdioma = () => {
+    try {
+        return window.localStorage.getItem(CHAVE_DO_IDIOMA) ?? "pt-BR";
+    } catch {
+        return "pt-BR";
+    }
+};
+
+/**
+ * Itens do menu da conta, os mesmos no rail da organização (desktop) e na gaveta do celular (BKS-134):
+ * Idioma num submenu, com o atual marcado, e Sair, que volta à tela inicial do protótipo.
+ */
+const ItensDaConta = ({ antesDeSair }: { antesDeSair?: () => void }) => {
+    const navigate = useNavigate();
+    const naoVistas = useNovidadesNaoVistas();
+    const [idioma, setIdioma] = useState(lerIdioma);
+    const escolher = (id: string) => {
+        setIdioma(id);
+        try {
+            window.localStorage.setItem(CHAVE_DO_IDIOMA, id);
+        } catch {
+            /* sem storage, vale só nesta visita */
+        }
+        const rotulo = IDIOMAS.find((i) => i.id === id)?.rotulo;
+        if (id !== "pt-BR") toast.info(`O protótipo ainda não tem tradução para ${rotulo}. A interface segue em português.`);
+    };
+    return (
+        <>
+            {/* Novidades (BKS-136): a contagem do avatar leva para cá; abre o mesmo painel do sino. */}
+            <Dropdown.Item
+                id="novidades"
+                icon={Bell01}
+                label="Novidades"
+                addon={naoVistas > 0 ? `${naoVistas} ${naoVistas === 1 ? "nova" : "novas"}` : undefined}
+                onAction={() => {
+                    antesDeSair?.();
+                    abrirNovidades();
+                }}
+            />
+            <AriaSubmenuTrigger>
+                <Dropdown.Item id="idioma" icon={Globe01} label="Idioma" addon={IDIOMAS.find((i) => i.id === idioma)?.rotulo} />
+                <Dropdown.Popover placement="right top" offset={-6} className="w-56">
+                    <Dropdown.Menu
+                        aria-label="Idioma"
+                        selectionMode="single"
+                        disallowEmptySelection
+                        selectedKeys={new Set([idioma])}
+                        onSelectionChange={(chaves) => {
+                            const [id] = [...(chaves as Set<Key>)];
+                            if (id) escolher(String(id));
+                        }}
+                    >
+                        {IDIOMAS.map((i) => (
+                            <Dropdown.Item key={i.id} id={i.id} label={i.rotulo} selectionIndicator="radio" />
+                        ))}
+                    </Dropdown.Menu>
+                </Dropdown.Popover>
+            </AriaSubmenuTrigger>
+            <Dropdown.Separator />
+            <Dropdown.Item
+                id="sair"
+                icon={LogOut01}
+                label="Sair"
+                onAction={() => {
+                    antesDeSair?.();
+                    navigate("/");
+                }}
+            />
+        </>
+    );
+};
+
+/**
+ * Conta no fim do rail da organização (BKS-134): o avatar do DS abre o menu com o nome e o e-mail no alto,
+ * Idioma e Sair.
+ */
+const MenuDaConta = () => {
+    const usuario = USUARIO;
+    // No lugar do ponto de "online", a contagem de novidades não vistas (BKS-136).
+    const naoVistas = useNovidadesNaoVistas();
+    return (
+        <Dropdown.Root>
+            <AriaButton
+                aria-label={naoVistas > 0 ? `Conta: ${usuario.nome}, ${naoVistas} ${naoVistas === 1 ? "novidade não vista" : "novidades não vistas"}` : `Conta: ${usuario.nome}`}
+                className="cursor-pointer rounded-full outline-focus-ring transition duration-100 ease-linear focus-visible:outline-2 focus-visible:outline-offset-2"
+            >
+                <Avatar size="md" initials={usuario.iniciais} count={naoVistas || undefined} alt="" />
+            </AriaButton>
+            <Dropdown.Popover className="w-64" placement="right bottom">
+                <div className="flex items-center gap-3 border-b border-secondary px-4 py-3">
+                    <Avatar size="md" initials={usuario.iniciais} alt="" />
+                    <span className="flex min-w-0 flex-col text-sm">
+                        <span className="truncate font-semibold text-primary">{usuario.nome}</span>
+                        <span className="truncate text-tertiary">{usuario.email}</span>
+                    </span>
+                </div>
+                <Dropdown.Menu aria-label="Conta">
+                    <ItensDaConta />
+                </Dropdown.Menu>
+            </Dropdown.Popover>
+        </Dropdown.Root>
+    );
+};
+
 /** Menu da organização no celular: troca de organização, módulos em grade e conta no rodapé. */
 const PainelDaOrganizacao = ({ activeProducer, onFechar }: { activeProducer?: string; onFechar: () => void }) => {
-    const navigate = useNavigate();
     const org = useOrganizacaoAtual();
     const freepass = usePainel() === "freepass";
     const nav = useOrgNav();
     const usuario = freepass ? USUARIO_FREEPASS : USUARIO;
+    const naoVistas = useNovidadesNaoVistas();
     const { theme, setTheme } = useTheme();
     const escuro = theme === "dark" || (theme === "system" && typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches);
     return (
@@ -531,24 +848,33 @@ const PainelDaOrganizacao = ({ activeProducer, onFechar }: { activeProducer?: st
                 <nav aria-label={freepass ? "Áreas do Freepass" : "Módulos da organização"} className="grid grid-cols-3 gap-x-4 gap-y-6">
                     {(freepass ? nav : ORDEM_ORG_MOBILE.map((id) => nav.find((i) => i.id === id)!)).map((item) => {
                         const atual = activeProducer === item.id || (item.id === "eventos" && !activeProducer);
-                        return (
-                            <button
-                                key={item.id}
-                                type="button"
-                                disabled={!item.href}
-                                aria-current={atual ? "page" : undefined}
-                                onClick={() => {
-                                    if (!item.href) return;
-                                    navigate(item.href);
-                                    onFechar();
-                                }}
-                                className="group flex flex-col items-center gap-1 rounded-md outline-focus-ring focus-visible:outline-2 disabled:cursor-not-allowed disabled:opacity-50"
-                            >
-                                <span className={cx("flex items-center justify-center rounded-md p-3 text-fg-quaternary transition duration-100 ease-linear group-enabled:group-hover:bg-primary_hover", atual && "bg-primary_hover text-fg-secondary")}>
+                        // Como o rail do desktop (BKS-124): link do router com `aria-current` e o atual invertido,
+                        // visível nos dois temas. Sem destino, não navega (BKS-05). Navegar fecha a gaveta (troca de
+                        // rota); tocar no item da própria tela também fecha.
+                        const conteudo = (
+                            <>
+                                <span
+                                    className={cx(
+                                        "flex items-center justify-center rounded-md p-3 transition duration-100 ease-linear",
+                                        atual ? "bg-fg-primary text-bg-primary" : "text-fg-quaternary group-hover:bg-primary_hover",
+                                    )}
+                                >
                                     <item.icon className="size-5" />
                                 </span>
-                                <span className="text-center text-xs font-medium text-secondary">{item.label}</span>
-                            </button>
+                                <span className={cx("text-center text-xs text-secondary", atual ? "font-semibold" : "font-medium")}>{item.label}</span>
+                            </>
+                        );
+                        const classe = "group flex flex-col items-center gap-1 rounded-md outline-focus-ring focus-visible:outline-2";
+                        if (!item.href)
+                            return (
+                                <span key={item.id} aria-disabled="true" className={cx(classe, "cursor-not-allowed opacity-50")}>
+                                    {conteudo}
+                                </span>
+                            );
+                        return (
+                            <Link key={item.id} to={item.href} aria-current={atual ? "page" : undefined} onClick={onFechar} className={classe}>
+                                {conteudo}
+                            </Link>
                         );
                     })}
                 </nav>
@@ -556,7 +882,7 @@ const PainelDaOrganizacao = ({ activeProducer, onFechar }: { activeProducer?: st
             <div className="px-4 pb-4">
                 <Dropdown.Root>
                     <AriaButton className="flex w-full items-center gap-2 border-t border-secondary pt-4 text-left outline-focus-ring focus-visible:outline-2">
-                        <Avatar size="md" initials={usuario.iniciais} status="online" alt="" />
+                        <Avatar size="md" initials={usuario.iniciais} count={naoVistas || undefined} alt="" />
                         <span className="flex min-w-0 flex-1 flex-col text-sm">
                             <span className="truncate font-semibold text-primary">{usuario.nome}</span>
                             <span className="truncate text-tertiary">{usuario.email}</span>
@@ -565,7 +891,6 @@ const PainelDaOrganizacao = ({ activeProducer, onFechar }: { activeProducer?: st
                     </AriaButton>
                     <Dropdown.Popover className="w-64" placement="top end">
                         <Dropdown.Menu>
-                            <Dropdown.Item id="idioma" icon={Globe01} label="Alterar idioma" />
                             <Dropdown.Item
                                 id="cores"
                                 icon={escuro ? Moon01 : Sun}
@@ -573,8 +898,7 @@ const PainelDaOrganizacao = ({ activeProducer, onFechar }: { activeProducer?: st
                                 addon={escuro ? "Escuro" : "Claro"}
                                 onAction={() => setTheme(escuro ? "light" : "dark")}
                             />
-                            <Dropdown.Separator />
-                            <Dropdown.Item id="sair" icon={LogOut01} label="Sair" />
+                            <ItensDaConta antesDeSair={onFechar} />
                         </Dropdown.Menu>
                     </Dropdown.Popover>
                 </Dropdown.Root>
@@ -584,19 +908,22 @@ const PainelDaOrganizacao = ({ activeProducer, onFechar }: { activeProducer?: st
 };
 
 const SECTION_LABELS: Record<BackstageSection, string> = {
+    "visao-geral": "Visão geral",
     "equipe-e-permissoes": "Equipe e Permissões",
     "informacoes-evento": "Informações do evento",
-    itens: "Itens",
+    itens: "Ingressos e produtos",
     questionario: "Questionário",
     pesquisas: "Coleta de dados",
-    cortesias: "Emissão de ingressos",
+    cortesias: "Bilheteria e cortesias",
     "equipe-e-comissarios": "Equipe e Comissários",
     relatorios: "Relatórios",
     comissarios: "Comissários",
-    marketing: "Marketing",
+    marketing: "Divulgação",
+    "compras-em-grupo": "Compras em grupo",
 };
 
 const ITEM_LABELS: Record<BackstageItem, string> = {
+    "visao-geral": "Visão geral",
     "permissao-envio": "Permissão de envio",
     "catalogo-itens": "Itens",
     "catalogo-ingressos": "Ingressos",
@@ -620,6 +947,7 @@ const ITEM_LABELS: Record<BackstageItem, string> = {
     "chave-de-acesso": "Passkey",
     "minhas-vendas-evento": "Minhas vendas",
     "formularios-compra": "Perguntas por ingresso",
+    "lista-de-espera": "Lista de espera",
 };
 
 const MobileSectionSelector = ({
@@ -681,6 +1009,10 @@ interface EventNavItem {
     href: string;
     novo?: boolean;
     ia?: boolean;
+    /** Outras telas que marcam este item como atual (ex.: Produtos e Combos marcam Ingressos e produtos). */
+    ativoEm?: BackstageItem[];
+    /** Ainda sem tela: aparece desativado, com o selo "Em breve" (BKS-07). */
+    emBreve?: boolean;
 }
 interface EventNavSection {
     id: BackstageSection;
@@ -702,38 +1034,23 @@ interface EventNavSection {
 const ehDestinoUnico = (sec: EventNavSection) => !!sec.href || (sec.items.length === 1 && !sec.grupo);
 /** Página da seção que é destino único. */
 const destinoDaSecao = (sec: EventNavSection) => sec.href ?? sec.items[0]?.href;
-/** Telas que se dizem de outra seção, mas moram dentro de um item do menu (BKS-25): a Bilheteria é aba de Emissão de ingressos. */
+/** Telas que se dizem de outra seção, mas moram dentro de um item do menu (BKS-25): a Bilheteria é aba de Bilheteria e cortesias. */
 const SECOES_ABRIGADAS: Record<string, string> = { bilheteria: "cortesias" };
 
 /** Destino que ainda não existe ("#") ou seção sem destino: aparece desativado. */
 const ehDesativado = (href?: string) => !href || href === "#";
 
-/** Menu do evento. "Novo" nos itens, não no grupo: no rail de 280 px o selo cortava o nome da seção. */
-const EVENT_NAV: EventNavSection[] = [
-    {
-        id: "informacoes-evento", label: "Informações do evento", icon: InfoCircle, items: [
-            { id: "informacoes-gerais", label: "Informações do evento", href: "/backstage/informacoes-evento" },
-        ],
-    },
-    // Ordem do menu do evento: BKS-07.
-    {
-        // Itens é uma página só, com abas (BKS-17, components/abas-de-itens.tsx): no menu, um destino único.
-        id: "itens", label: "Itens", icon: ShoppingCart01, items: [{ id: "catalogo-ingressos", label: "Itens", href: "/backstage/catalogo/ingressos" }],
-    },
-    {
-        // Um item só: Cortesia e Bilheteria online viram abas (BKS-25, navegacao-de-secao.tsx).
-        id: "cortesias", label: "Emissão de ingressos", icon: Ticket01, items: [{ id: "emissao-cortesias", label: "Emissão de ingressos", href: "/backstage/cortesias" }],
-    },
-    // Equipe de operação e Comissários do evento viraram um destino só (ECO-01).
-    { id: "equipe-e-comissarios", label: "Equipe e Comissários", icon: UsersPlus, novo: true, items: [{ id: "equipe-e-comissarios", label: "Equipe e Comissários", href: "/backstage/evento/equipe" }] },
-    // Questionário não é item vendido: fica fora da página de Itens, num destino próprio (BKS-18).
-    { id: "questionario", label: "Questionário", icon: ClipboardCheck, items: [{ id: "catalogo-questionario", label: "Questionário", href: "/backstage/catalogo/questionario" }] },
-    // Um item só, direto para Passkey (BKS-25).
-    { id: "marketing", label: "Marketing", icon: Announcement01, items: [{ id: "chave-de-acesso", label: "Marketing", href: "/backstage/marketing/chave-de-acesso" }] },
-    // Um item só: os relatórios ficam num menu empilhado dentro da tela (BKS-25, navegacao-de-secao.tsx).
-    // Relatórios moram na organização (BKS-26); daqui, abre com o "voltar para o evento".
-    { id: "relatorios", label: "Relatórios", icon: File03, items: [{ id: "vendas-por-grupo", label: "Relatórios", href: "/backstage/relatorios/vendas-por-grupo?de=evento" }] },
-];
+/**
+ * Menu do evento por job do produtor (BKS-07): uma opção por grupo, que abre a central do grupo com
+ * as funcionalidades em cartões (jornada-do-evento/rules.md). Os grupos moram em grupos-do-evento.ts.
+ */
+const EVENT_NAV: EventNavSection[] = MENU_DO_EVENTO.map((o) => ({
+    id: o.id as BackstageSection,
+    label: o.nome,
+    icon: o.icone,
+    href: o.href,
+    items: [],
+}));
 
 
 
@@ -758,6 +1075,7 @@ const ItemBadges = ({ item }: { item: EventNavItem }) => (
     <>
         {item.novo && <Badge size="sm" type="pill-color" color="brand">Novo</Badge>}
         {item.ia && <Badge size="sm" type="pill-color" color="brand">IA</Badge>}
+        {item.emBreve && <Badge size="sm" type="pill-color" color="gray">Em breve</Badge>}
     </>
 );
 
@@ -769,27 +1087,39 @@ interface ProducerRailItemProps {
     href?: string;
 }
 
+/**
+ * Item do rail da organização (as duas shells): link do router, com o atual marcado para leitor de tela
+ * (`aria-current="page"`) e na tela pelo ícone invertido, como o item atual da barra do topo (BKS-85):
+ * fundo `fg-primary` e ícone na cor do fundo, visível nos dois temas (BKS-124). Sem destino, não navega (BKS-05).
+ */
 const ProducerRailItem = ({ icon: Icon, label, isActive, href }: ProducerRailItemProps) => {
-    const navigate = useNavigate();
-    return (
-        <button
-            type="button"
-            onClick={href ? () => navigate(href) : undefined}
-            className={cx(
-                "flex w-full flex-col items-center gap-1 rounded-md py-2 transition duration-100 ease-linear",
-                isActive ? "text-secondary" : "text-tertiary hover:text-secondary_hover",
-            )}
-        >
+    const classe = cx(
+        "group flex w-full flex-col items-center gap-1 rounded-md py-2 outline-focus-ring transition duration-100 ease-linear focus-visible:outline-2",
+        isActive ? "text-primary" : "text-tertiary hover:text-secondary_hover",
+    );
+    const conteudo = (
+        <>
             <span
                 className={cx(
                     "flex size-10 items-center justify-center rounded-lg transition duration-100 ease-linear",
-                    isActive ? "bg-tertiary" : "hover:bg-secondary_hover",
+                    isActive ? "bg-fg-primary text-bg-primary" : "group-hover:bg-secondary_hover",
                 )}
             >
                 <Icon className="size-5" />
             </span>
-            <span className="text-center text-xs font-medium leading-tight whitespace-pre-line">{label}</span>
-        </button>
+            <span className={cx("text-center text-xs leading-tight whitespace-pre-line", isActive ? "font-semibold" : "font-medium")}>{label}</span>
+        </>
+    );
+    if (!href)
+        return (
+            <span aria-disabled="true" className={cx(classe, "cursor-not-allowed opacity-50")}>
+                {conteudo}
+            </span>
+        );
+    return (
+        <Link to={href} aria-current={isActive ? "page" : undefined} className={classe}>
+            {conteudo}
+        </Link>
     );
 };
 
@@ -803,21 +1133,72 @@ const OrganizacaoRail = () => {
             onClick={abrirSeletorDeOrganizacao}
             aria-label={org ? `Organização: ${org.nome}. Trocar organização` : "Trocar organização"}
             title={org?.nome}
-            className="flex w-full flex-col items-center gap-1.5 rounded-lg px-1 py-1 outline-focus-ring focus-visible:outline-2 focus-visible:outline-offset-2"
+            className="flex w-full flex-col items-center gap-1.5 rounded-lg py-1 outline-focus-ring focus-visible:outline-2 focus-visible:outline-offset-2"
         >
-            <span className="relative">
-                <Avatar size="md" initials={org?.sigla ?? "?"} alt="" />
-                <span className="absolute -right-1 -bottom-1 flex size-4 items-center justify-center rounded-full bg-primary ring-1 ring-secondary">
-                    <ChevronDown className="size-3 text-fg-quaternary" />
-                </span>
+            <Avatar size="md" initials={org?.sigla ?? "?"} alt="" />
+            {/* Nome abaixo do avatar, em até duas linhas, com o seletor à direita (BKS-69). */}
+            <span className="flex w-full items-center justify-center gap-0.5">
+                <span className="line-clamp-2 min-w-0 text-center text-sm leading-tight font-medium text-secondary break-words">{org?.nome ?? "Organização"}</span>
+                <ChevronSelectorVertical className="size-4 shrink-0 text-fg-quaternary" aria-hidden="true" />
             </span>
-            {/* Nome da organização abaixo do avatar, em até duas linhas (BKS-69). */}
-            {org && <span className="line-clamp-2 w-full text-center text-sm leading-tight font-medium text-secondary break-words">{org.nome}</span>}
         </button>
     );
 };
 
 /** Chip da organização em contexto: barra do topo e gaveta mobile. Abre a troca (ORG-20). */
+/**
+ * Organização no canto direito da barra do topo (BKS-83): o chip abre um menu com a troca de
+ * organização, Membros, Ajustes e o tema.
+ */
+const MenuDaOrganizacao = ({ noRail = false }: { noRail?: boolean }) => {
+    const org = useOrganizacaoAtual();
+    const navigate = useNavigate();
+    const { theme, setTheme } = useTheme();
+    const escuro = theme === "dark" || (theme === "system" && typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+    return (
+        <Dropdown.Root>
+            {noRail ? (
+                // No rail (BKS-92): avatar, nome embaixo em até duas linhas e o seletor à direita do nome (BKS-69).
+                <AriaButton
+                    aria-label={org ? `Organização: ${org.nome}. Abrir menu da organização` : "Abrir menu da organização"}
+                    className="flex w-full flex-col items-center gap-1.5 rounded-lg py-1 outline-focus-ring focus-visible:outline-2 focus-visible:outline-offset-2"
+                >
+                    <Avatar size="md" initials={org?.sigla ?? "?"} alt="" />
+                    <span className="flex w-full items-center justify-center gap-0.5">
+                        <span className="line-clamp-2 min-w-0 text-center text-sm leading-tight font-medium break-words text-secondary">{org?.nome ?? "Organização"}</span>
+                        <ChevronSelectorVertical className="size-4 shrink-0 text-fg-quaternary" aria-hidden="true" />
+                    </span>
+                </AriaButton>
+            ) : (
+                <AriaButton
+                    aria-label={org ? `Organização: ${org.nome}. Abrir menu da organização` : "Abrir menu da organização"}
+                    className="flex min-w-0 shrink-0 items-center gap-2 rounded-full bg-secondary py-1.5 pr-2.5 pl-1.5 ring-1 ring-border-secondary outline-focus-ring transition duration-100 ease-linear hover:bg-secondary_hover focus-visible:outline-2 focus-visible:outline-offset-2"
+                >
+                    <Avatar size="xs" initials={org?.sigla ?? "?"} alt="" />
+                    <span className="max-w-48 truncate text-sm font-semibold text-primary">{org?.nome ?? "Organização"}</span>
+                    <ChevronDown className="size-4 shrink-0 text-fg-quaternary" aria-hidden="true" />
+                </AriaButton>
+            )}
+            <Dropdown.Popover className="w-64" placement={noRail ? "right top" : "bottom end"}>
+                <Dropdown.Menu>
+                    <Dropdown.Item id="trocar" icon={SwitchHorizontal01} label="Trocar organização" addon="⌘K" onAction={abrirSeletorDeOrganizacao} />
+                    <Dropdown.Separator />
+                    <Dropdown.Item id="membros" icon={Users01} label="Membros" onAction={() => navigate("/backstage/membros")} />
+                    <Dropdown.Item id="ajustes" icon={Settings01} label="Ajustes" onAction={() => navigate("/backstage/ajustes")} />
+                    <Dropdown.Separator />
+                    <Dropdown.Item
+                        id="tema"
+                        icon={escuro ? Moon01 : Sun}
+                        label="Trocar tema"
+                        addon={escuro ? "Escuro" : "Claro"}
+                        onAction={() => setTheme(escuro ? "light" : "dark")}
+                    />
+                </Dropdown.Menu>
+            </Dropdown.Popover>
+        </Dropdown.Root>
+    );
+};
+
 const OrganizacaoChip = ({ className, largo }: { className?: string; largo?: boolean }) => {
     const org = useOrganizacaoAtual();
     if (usePainel() === "freepass")
@@ -848,8 +1229,8 @@ const OrganizacaoChip = ({ className, largo }: { className?: string; largo?: boo
 const ProducerRail = ({ activeProducer }: { activeProducer?: string }) => {
     const nav = useOrgNav();
     return (
-    <aside className="sticky top-6 hidden h-[calc(100vh-3rem)] w-[100px] shrink-0 flex-col px-1 items-center justify-between rounded-2xl bg-primary py-4 lg:flex">
-        <div className="flex flex-col items-center gap-4">
+    <aside className="sticky top-6 hidden h-[calc(100vh-3rem)] w-[100px] shrink-0 flex-col items-center justify-between rounded-2xl p-2 lg:flex">
+        <div className="flex w-full flex-col items-center gap-4">
             <OrganizacaoRail />
             <nav className="flex flex-col items-center gap-1">
                 {nav.map((item) => (
@@ -884,15 +1265,18 @@ const SOFT_SCROLLBAR =
  */
 const RailDoEvento = ({ activeSection, activeItem, className }: EventRailProps & { className: string }) => {
     const ref = useRef<HTMLElement>(null);
+    const freepass = usePainel() === "freepass";
     useEffect(() => {
         // Espera o grupo do item abrir (o menu expande num efeito) antes de medir.
         const id = window.setTimeout(() => {
             const rail = ref.current;
             if (!rail) return;
-            rail.querySelectorAll('[aria-current="page"]').forEach((el) => el.removeAttribute("aria-current"));
-            const linha = rail.querySelector(".item-ativo")?.closest('[role="row"]');
+            // Na árvore (Freepass), a linha ativa recebe o `aria-current`; no menu de links, o link já o tem (BKS-130).
+            rail.querySelectorAll('[role="row"][aria-current="page"]').forEach((el) => el.removeAttribute("aria-current"));
+            const ativo = rail.querySelector(".item-ativo");
+            const linha = ativo?.closest('[role="row"]') ?? ativo;
             if (!linha) return;
-            linha.setAttribute("aria-current", "page");
+            if (linha.getAttribute("role") === "row") linha.setAttribute("aria-current", "page");
             const r = rail.getBoundingClientRect();
             const l = linha.getBoundingClientRect();
             if (l.bottom > r.bottom - 12 || l.top < r.top) rail.scrollTop += l.top - r.top - r.height / 3;
@@ -900,15 +1284,100 @@ const RailDoEvento = ({ activeSection, activeItem, className }: EventRailProps &
         return () => window.clearTimeout(id);
     }, [activeSection, activeItem]);
     return (
-        <aside ref={ref} className={cx("hidden w-[280px] shrink-0 flex-col gap-3 overflow-y-auto rounded-2xl bg-primary p-3 md:flex [&>*]:shrink-0", SOFT_SCROLLBAR, className)}>
+        <aside ref={ref} className={cx("hidden w-[280px] shrink-0 flex-col gap-3 overflow-y-auto rounded-2xl bg-primary md:flex [&>*]:shrink-0", SOFT_SCROLLBAR, className)}>
             {/* Filhos sem encolher: em tela baixa o rail rola, em vez de espremer e cortar o cartão do evento (BKS-66). */}
             <EventDetailsCard />
-            <EventFunctionalitiesList activeSection={activeSection} activeItem={activeItem} />
+            {freepass ? <EventFunctionalitiesList activeSection={activeSection} activeItem={activeItem} /> : <MenuDoEvento activeSection={activeSection} activeItem={activeItem} />}
         </aside>
     );
 };
 
 const EventRail = (props: EventRailProps) => <RailDoEvento {...props} className="sticky top-6 h-[calc(100vh-3rem)]" />;
+
+/*
+ * Rail do evento na barra do topo (BKS-86): sem fundo próprio, integrado à página. No alto, um card
+ * mínimo do evento (miniatura, data e nome) que abre a troca de evento, com o status e o link da
+ * página; abaixo, o menu do evento em lista vertical (NavItem do DS).
+ */
+const RailMinimoDoEvento = ({ activeSection, activeItem }: { activeSection?: BackstageSection; activeItem?: BackstageItem }) => {
+    useEventosVersao();
+    const evento = useEventoAtual();
+    const copiarId = () =>
+        navigator.clipboard
+            ?.writeText(evento.id)
+            .then(() => toast.success("ID do evento copiado."))
+            .catch(() => toast.error("Não foi possível copiar o ID."));
+    return (
+        <aside
+            aria-label="Evento"
+            className={cx(
+                // 24 px do topo e do pé da tela, o mesmo respiro do topo das páginas (BKS-133); colado ao rail da organização (BKS-92).
+                "sticky top-6 my-6 hidden h-[calc(100dvh-3rem)] w-64 shrink-0 flex-col md:flex",
+            )}
+        >
+            {/* Um card só, da altura do rail: o evento no alto e o menu embaixo (BKS-133). Só a capa encolhe com a
+                altura da tela; o resto fica inteiro, e o card só rola se nem a capa mínima couber. */}
+            <div className={cx("flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto rounded-2xl bg-primary p-2 [&>*]:shrink-0", SOFT_SCROLLBAR)}>
+                {/* Capa com o status no canto de cima e a data no de baixo, como o card do evento na lista. Em 3:4
+                    quando há altura; em tela baixa, encolhe até 128 px, e a arte aparece inteira (contain). */}
+                <div className="relative aspect-[3/4] max-h-full min-h-32 !shrink overflow-hidden rounded-xl">
+                    {/* Fundo: a mesma arte em cover, desfocada e a 20%; por cima, a arte inteira em contain, sem recorte (BKS-133). */}
+                    {/* `filter: blur` (não backdrop-blur): o desfoque também apaga a borda da própria imagem, então ela passa 48 px
+                        de cada lado da área recortada; com só 110% (12 px), as bordas ficavam sem desfoque. */}
+                    <img
+                        src={evento.cover}
+                        alt=""
+                        aria-hidden="true"
+                        className="absolute -inset-12 h-[calc(100%+6rem)] w-[calc(100%+6rem)] max-w-none object-cover object-center opacity-20 blur-xl"
+                    />
+                    <img src={evento.cover} alt="" className="absolute inset-0 size-full object-contain object-center" />
+                    <Badge size="sm" type="pill-color" color={EVENTO_STATUS_BADGE_COLOR[evento.status]} className="absolute top-2 left-2">
+                        {EVENTO_STATUS_LABEL[evento.status]}
+                    </Badge>
+                    {evento.day && (
+                        <span
+                            aria-hidden="true"
+                            className="absolute right-2 bottom-2 flex min-w-14 flex-col items-center rounded-lg bg-primary/90 px-2 py-1.5 text-primary shadow-xs backdrop-blur-sm"
+                        >
+                            <span className="text-sm font-medium text-secondary uppercase">{evento.weekday}</span>
+                            <span className="text-xl leading-6 font-semibold">{evento.day}</span>
+                            <span className="text-sm font-medium text-secondary uppercase">{evento.month}</span>
+                        </span>
+                    )}
+                </div>
+
+                <div className="flex flex-col gap-1 px-1">
+                    <div className="flex items-center gap-1">
+                        <span className="min-w-0 flex-1 truncate text-sm text-tertiary" title={evento.id}>
+                            ID: {evento.id}
+                        </span>
+                        <ButtonUtility size="xs" color="tertiary" icon={Copy01} tooltip="Copiar ID do evento" onPress={copiarId} className="shrink-0" />
+                    </div>
+                    {/* Só o nome, sem trocar de evento por aqui (BKS-133, desde 23/11/2026): a troca fica em Eventos, no rail da
+                        organização. Até duas linhas; o inteiro fica no `title`. */}
+                    <h2 className="line-clamp-2 text-lg leading-6 font-semibold text-primary" title={evento.nome}>
+                        {evento.nome}
+                    </h2>
+                    {evento.produtor && <span className="truncate text-sm text-tertiary">{evento.produtor}</span>}
+                </div>
+
+                {/* Abrir a página do evento no site, em outra aba (BKS-24), e o status ao lado (Publicar evento no rascunho). */}
+                <div className="flex items-start gap-2 px-1">
+                    <ButtonUtility size="sm" color="secondary" icon={LinkExternal01} tooltip="Abrir página do evento" href={paginaDoEventoNoSite(evento.id)} target="_blank" className="shrink-0" />
+                    <div className="min-w-0 flex-1">
+                        <SeletorDeStatus />
+                    </div>
+                </div>
+
+                {/* Divisor entre o evento e o menu, que mora no mesmo card. */}
+                <hr className="mx-1 border-secondary" />
+
+                {/* Menu do evento (BKS-07, BKS-130). */}
+                <MenuDoEvento activeSection={activeSection} activeItem={activeItem} />
+            </div>
+        </aside>
+    );
+};
 
 /*
  * Entrada e saída do rail do evento (BKS-29). Cada tela monta o próprio layout, então o rail some e
@@ -920,7 +1389,7 @@ let railNaTelaAnterior = false;
 const ENTRADA_DO_RAIL = { duration: 0.35, ease: [0.16, 1, 0.3, 1] as const };
 const SAIDA_DO_RAIL = { duration: 0.3, ease: [0.4, 0, 1, 1] as const };
 
-const RailDoEventoAnimado = ({ visivel, folga, render }: { visivel: boolean; folga: number; render: (fantasma: boolean) => ReactNode }) => {
+const RailDoEventoAnimado = ({ visivel, folga, render, largura = 280 }: { visivel: boolean; folga: number; render: (fantasma: boolean) => ReactNode; largura?: number }) => {
     const reduzir = useReducedMotion();
     const [entra] = useState(() => visivel && !railNaTelaAnterior);
     const [sai, setSai] = useState(() => !visivel && railNaTelaAnterior);
@@ -945,12 +1414,12 @@ const RailDoEventoAnimado = ({ visivel, folga, render }: { visivel: boolean; fol
             aria-hidden="true"
             inert
             className="hidden shrink-0 overflow-hidden md:block"
-            initial={{ width: 280, marginRight: 0, x: 0, opacity: 1 }}
+            initial={{ width: largura, marginRight: 0, x: 0, opacity: 1 }}
             animate={{ width: 0, marginRight: -folga, x: -48, opacity: 0 }}
             transition={SAIDA_DO_RAIL}
             onAnimationComplete={() => setSai(false)}
         >
-            <div className="h-full w-[280px]">{render(true)}</div>
+            <div className="h-full" style={{ width: largura }}>{render(true)}</div>
         </motion.div>
     );
 };
@@ -964,7 +1433,7 @@ const ORG_NAV: Array<{ id: string; icon: ComponentType<{ className?: string }>; 
     { id: "relatorios", icon: ICONES_ORGANIZACAO.relatorios, label: "Relatórios", href: "/backstage/relatorios/vendas-por-grupo" },
     // Comissários saiu da organização (ECO-09): o item volta a ser só Membros.
     { id: "equipe", icon: ICONES_ORGANIZACAO.membros, label: "Membros", href: "/backstage/membros" },
-    { id: "financas", icon: ICONES_ORGANIZACAO.financas, label: "Finanças" },
+    { id: "financas", icon: ICONES_ORGANIZACAO.financas, label: "Finanças", href: "/backstage/financas" },
     { id: "pedidos", icon: ICONES_ORGANIZACAO.pedidos, label: "Pedidos", href: "/backstage/pedidos" },
     { id: "produtos", icon: ICONES_ORGANIZACAO.produtos, label: "Produtos", href: "/backstage/produtos" },
     { id: "publico", icon: ICONES_ORGANIZACAO.publico, label: "Público", href: "/backstage/publico" },
@@ -1028,17 +1497,17 @@ const EngrenagemDoFreepass = ({ telaDeEvento }: { telaDeEvento?: boolean }) => {
 /** Troca de evento dentro da funcionalidade, no lugar do menu do evento (FCO-85). */
 const ULTIMA_TELA_DO_EVENTO = "backstage-ultima-tela-do-evento";
 
-/** De onde o "voltar para o evento" dos Relatórios volta: a última tela do evento aberta, ou Informações do evento. */
+/** De onde o "voltar para o evento" dos Relatórios volta: a última tela do evento aberta, ou a Visão geral. */
 export function destinoDoVoltarAoEvento() {
     try {
-        return window.sessionStorage.getItem(ULTIMA_TELA_DO_EVENTO) ?? "/backstage/informacoes-evento";
+        return window.sessionStorage.getItem(ULTIMA_TELA_DO_EVENTO) ?? "/backstage/evento/visao-geral";
     } catch {
-        return "/backstage/informacoes-evento";
+        return "/backstage/evento/visao-geral";
     }
 }
 
-/** A tela anterior era um relatório? Sobrevive à troca de página (cada página monta o próprio layout). */
-let ultimaTelaFoiRelatorio = false;
+/** A tela anterior era um relatório pela organização? Sobrevive à troca de página (cada página monta o próprio layout). */
+let ultimaTelaFoiRelatorioDaOrganizacao = false;
 
 /** Topo dos Relatórios: qual evento está sendo visto, com a troca entre os eventos da organização (BKS-26). */
 const EventoDosRelatorios = () => {
@@ -1048,11 +1517,11 @@ const EventoDosRelatorios = () => {
         <CabecaDeEvento
             legenda={todos ? "Relatórios da organização" : "Relatórios do evento"}
             atual={todos ? { id: "todos", nome: "Todos os eventos" } : undefined}
-            opcoes={[{ id: "todos", nome: "Todos os eventos" }, ...eventos.map((e) => ({ id: e.id, nome: e.nome }))]}
+            opcoes={[{ id: "todos", nome: "Todos os eventos" }, ...opcoesDeEvento()]}
             onEscolher={(id) => {
                 if (id === "todos") return setTodosOsEventos(true);
                 setTodosOsEventos(false);
-                setEventoAtual(id);
+                trocarDeEvento(id);
             }}
         />
     );
@@ -1069,7 +1538,7 @@ export const CabecaDeEvento = ({
     atual,
 }: {
     legenda: string;
-    opcoes: Array<{ id: string; nome: string }>;
+    opcoes: OpcaoDeEvento[];
     onEscolher: (id: string) => void;
     /** Mostra outra coisa no lugar do evento em contexto (ex.: "Todos os eventos"), com ícone no lugar da capa. */
     atual?: { id: string; nome: string };
@@ -1086,19 +1555,18 @@ export const CabecaDeEvento = ({
             )}
             <div className="flex min-w-0 flex-col">
                 <span className="text-sm text-tertiary">{legenda}</span>
-                <Dropdown.Root>
-                    <AriaButton className="flex min-w-0 items-center gap-1 rounded-md text-left text-md font-semibold text-primary outline-focus-ring hover:text-secondary_hover focus-visible:outline-2">
-                        <span className="truncate">{atual?.nome ?? evento.nome}</span>
+                {/* A mesma troca do rail (BKS-129): busca, data e status; o nome inteiro no `title`. */}
+                <SeletorDeEvento opcoes={opcoes} selecionado={atual?.id ?? evento.id} onEscolher={onEscolher}>
+                    <AriaButton
+                        aria-label={`${legenda}: ${atual?.nome ?? evento.nome}. Trocar`}
+                        className="flex min-w-0 items-center gap-1 rounded-md text-left text-md font-semibold text-primary outline-focus-ring hover:text-secondary_hover focus-visible:outline-2"
+                    >
+                        <span className="truncate" title={atual?.nome ?? evento.nome}>
+                            {atual?.nome ?? evento.nome}
+                        </span>
                         <ChevronDown className="size-4 shrink-0 text-fg-quaternary" aria-hidden="true" />
                     </AriaButton>
-                    <Dropdown.Popover className="w-80" placement="bottom start">
-                        <Dropdown.Menu aria-label="Trocar evento" selectionMode="single" selectedKeys={[atual?.id ?? evento.id]} onAction={(k) => onEscolher(String(k))}>
-                            {opcoes.map((o) => (
-                                <Dropdown.Item key={o.id} id={o.id} label={o.nome} />
-                            ))}
-                        </Dropdown.Menu>
-                    </Dropdown.Popover>
-                </Dropdown.Root>
+                </SeletorDeEvento>
             </div>
         </div>
     );
@@ -1139,16 +1607,64 @@ const BarraDoFreepass = ({ funcao, telaDeEvento }: { funcao: Funcao | null; tela
     );
 };
 
+const NO_MENU_DA_ORGANIZACAO = ["equipe", "ajustes"];
+const ORDEM_DA_BARRA_DO_TOPO = ["eventos", "produtos", "pedidos", "financas", "relatorios", "publico"];
+/** Nomes que mudam só na barra do topo (BKS-87). */
+const ROTULOS_DA_BARRA_DO_TOPO: Record<string, string> = { pedidos: "Vendas" };
+
+/**
+ * Menu da organização da shell padrão (barra do topo do Freepass e rail da organização, BKS-92): sem
+ * Membros e Ajustes (ficam no menu do avatar, BKS-83), na ordem de BKS-89 e com os nomes de BKS-87.
+ */
+function useNavDaOrganizacao(freepass: boolean) {
+    const nav = useOrgNav().filter((item) => freepass || !NO_MENU_DA_ORGANIZACAO.includes(item.id));
+    if (!freepass) nav.sort((a, b) => ORDEM_DA_BARRA_DO_TOPO.indexOf(a.id) - ORDEM_DA_BARRA_DO_TOPO.indexOf(b.id));
+    return nav.map((item) => ({ ...item, label: (!freepass && ROTULOS_DA_BARRA_DO_TOPO[item.id]) || item.label }));
+}
+
+/**
+ * Rail da organização da shell padrão (BKS-92): sem a logo; no alto, o avatar que abre o menu da
+ * organização; os itens no centro da altura da tela. Sem fundo próprio, integrado à página.
+ */
+const RailDaOrganizacao = ({ activeProducer }: { activeProducer?: string }) => {
+    const nav = useNavDaOrganizacao(false);
+    return (
+        <aside aria-label="Menu da organização" className="sticky top-0 hidden h-dvh w-[100px] shrink-0 grid-rows-[1fr_auto_1fr] px-2 py-6 md:grid">
+            <div className="self-start">
+                <MenuDaOrganizacao noRail />
+            </div>
+            <nav className="flex flex-col items-center gap-1">
+                {nav.map((item) => (
+                    <ProducerRailItem
+                        key={item.id}
+                        icon={item.icon}
+                        label={item.label}
+                        href={item.href}
+                        isActive={activeProducer === item.id || (item.id === "eventos" && !activeProducer)}
+                    />
+                ))}
+            </nav>
+            {/* Terceira linha: a conta no fim do rail (BKS-134); o menu segue no centro exato da altura. */}
+            <div className="flex justify-center self-end">
+                <MenuDaConta />
+            </div>
+        </aside>
+    );
+};
+
 const OrgTopBar = ({ activeProducer, telaDeEvento }: { activeProducer?: string; telaDeEvento?: boolean }) => {
     const navigate = useNavigate();
-    const nav = useOrgNav();
     const freepass = usePainel() === "freepass";
+    // Membros e Ajustes ficam no menu da organização, no chip à direita (BKS-83).
+    const nav = useNavDaOrganizacao(freepass);
     return (
-        <header className="sticky top-0 z-30 hidden border-b border-secondary bg-primary md:block">
-            <div className="flex h-16 items-center gap-3 px-4 md:px-6">
+        // Sem fundo próprio: a barra tem a cor da página (opaca só para o conteúdo não aparecer por baixo ao rolar) e uma borda de baixo bem próxima do fundo (BKS-85).
+        <header className="sticky top-0 z-30 hidden border-b border-tertiary bg-primary_alt md:block">
+            {/* Logo à esquerda e ações à direita; o menu fica no centro exato da tela, por posição absoluta,
+                para não deslocar quando os lados têm larguras diferentes (BKS-80). */}
+            <div className="relative flex h-16 items-center justify-between gap-3 px-4 md:px-6">
                 <BrandLogo className="h-6 shrink-0" />
-                <span className="h-6 w-px shrink-0 bg-border-secondary" aria-hidden="true" />
-                <nav className="flex items-center gap-0.5">
+                <nav className="absolute top-1/2 left-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center gap-0.5">
                     {nav.map((item) => {
                         const current = activeProducer === item.id || (item.id === "eventos" && !activeProducer);
                         return (
@@ -1162,18 +1678,26 @@ const OrgTopBar = ({ activeProducer, telaDeEvento }: { activeProducer?: string; 
                                     if (item.href) navigate(item.href);
                                 }}
                                 tooltipPlacement="bottom"
-                                className="text-tertiary"
+                                // Item atual invertido: fundo fg-primary com texto e ícone na cor do fundo da página (BKS-85).
+                                className={cx(
+                                    "bg-transparent text-tertiary",
+                                    current && "bg-fg-primary hover:bg-fg-primary [&_span]:!text-bg-primary [&_svg]:!text-bg-primary",
+                                )}
                             >
                                 {item.label}
                             </NavButton>
                         );
                     })}
                 </nav>
-                <div className="ml-auto flex items-center gap-3">
+                <div className="flex items-center justify-end gap-3">
                     {freepass && <EngrenagemDoFreepass telaDeEvento={telaDeEvento} />}
-                    <ThemeToggle />
+                    {/* No Backstage o tema fica no menu da organização (BKS-83); no Freepass, que não tem o menu, segue aqui. */}
+                    {freepass && <ThemeToggle />}
+                    {/* Novidades e o guia da organização (BKS-81, GDC-60); no Freepass não aparecem. */}
+                    {!freepass && <Novidades />}
+                    {!freepass && <BotaoDoGuia />}
                     <span className="h-6 w-px shrink-0 bg-border-secondary" aria-hidden="true" />
-                    <OrganizacaoChip />
+                    {freepass ? <OrganizacaoChip /> : <MenuDaOrganizacao />}
                 </div>
             </div>
         </header>
@@ -1210,8 +1734,6 @@ const STATUS_DESCRICAO_CURTA: Record<EventoStatus, string> = {
 const EventDetailsCard = () => {
     const evento = useEventoAtual();
     const freepass = usePainel() === "freepass";
-    // O espelho do evento em contexto não traz o slug: o link usa o do banco.
-    const slug = useDoc("eventos", evento.id)?.slug ?? evento.id;
 
     return (
         <div className="flex flex-col gap-3 overflow-hidden rounded-2xl bg-secondary pb-3">
@@ -1224,7 +1746,7 @@ const EventDetailsCard = () => {
                     </h3>
                 </div>
                 {/* Abre a página do evento no site, em outra aba (BKS-24). */}
-                <ButtonUtility size="sm" color="tertiary" icon={LinkExternal01} tooltip="Abrir página do evento" href={`/e/${slug}`} target="_blank" className="shrink-0" />
+                <ButtonUtility size="sm" color="tertiary" icon={LinkExternal01} tooltip="Abrir página do evento" href={paginaDoEventoNoSite(evento.id)} target="_blank" className="shrink-0" />
             </div>
             <p className="px-4 text-sm text-secondary">{evento.dataLabel}</p>
             {/* No Freepass o status é só leitura: quem muda é a produtora (BKS-64). */}
@@ -1250,6 +1772,10 @@ const StatusNoMenuMobile = () => {
         <div className="sticky bottom-0 flex flex-col gap-1.5 border-t border-secondary bg-primary px-4 pt-4 pb-6">
             {evento.status !== "rascunho" && <span className="text-sm text-quaternary">Status do evento</span>}
             <SeletorDeStatus />
+            {/* A página do evento no site, como no rail do desktop (BKS-24); no celular, com o texto à vista. */}
+            <Button size="sm" color="link-gray" iconLeading={LinkExternal01} href={paginaDoEventoNoSite(evento.id)} target="_blank" className="mt-2 self-start">
+                Abrir página do evento
+            </Button>
         </div>
     );
 };
@@ -1263,6 +1789,8 @@ const SeletorDeStatus = () => {
     const evento = useEventoAtual();
     const abrirModalDeStatus = useAbrirModalDeStatus();
     const encerrado = evento.status === "encerrado";
+    const doc = useDoc("eventos", evento.id);
+    const semAbertura = evento.status === "rascunho" && estadoDoEvento(doc, false).abertura === "nenhum";
     if (evento.status === "rascunho" || encerrado)
         return (
             <div className="flex flex-col gap-2">
@@ -1274,6 +1802,21 @@ const SeletorDeStatus = () => {
                 )}
                 {encerrado ? (
                     <p className="text-sm text-tertiary">Evento encerrado. O status não pode mais ser alterado.</p>
+                ) : semAbertura ? (
+                    // Sem abertura de vendas, publicar fica bloqueado; o motivo aparece no tooltip ao passar o mouse ou focar
+                    // (EVT-159). O botão fica focável (aria-disabled, não isDisabled) para o tooltip abrir pelo teclado.
+                    <Tooltip title="Programe a abertura de vendas para publicar." placement="bottom">
+                        <Button
+                            size="sm"
+                            color="primary"
+                            iconLeading={Globe01}
+                            className="w-full cursor-not-allowed opacity-50"
+                            aria-disabled="true"
+                            aria-label="Publicar evento: programe a abertura de vendas para publicar"
+                        >
+                            Publicar evento
+                        </Button>
+                    </Tooltip>
                 ) : (
                     <Button size="sm" color="primary" iconLeading={Globe01} className="w-full" onClick={() => abrirModalDeStatus()}>
                         Publicar evento
@@ -1283,7 +1826,8 @@ const SeletorDeStatus = () => {
         );
     return (
         <Dropdown.Root>
-            <Button size="sm" color="secondary" className="w-full justify-between" iconTrailing={ChevronDown}>
+            {/* O nome acessível diz o que é, não só o valor ("Publicado"). */}
+            <Button size="sm" color="secondary" className="w-full justify-between" iconTrailing={ChevronDown} aria-label={`Status do evento: ${EVENTO_STATUS_LABEL[evento.status]}. Alterar`}>
                 <span className="flex min-w-0 items-center gap-1.5">
                     <Dot size="sm" className={STATUS_DOT_COR[evento.status]} aria-hidden="true" />
                     <span className="truncate">{EVENTO_STATUS_LABEL[evento.status]}</span>
@@ -1328,6 +1872,60 @@ const SeletorDeStatus = () => {
     );
 };
 
+/*
+ * Ícone do item atual do menu do evento, invertido como no rail da organização (BKS-124): fundo
+ * `fg-primary` e o ícone na cor do fundo, visível nos dois temas. Um componente por ícone, guardado,
+ * para o NavItem não remontar o ícone a cada render.
+ */
+type IconeDoNavItem = FC<HTMLAttributes<HTMLOrSVGElement>>;
+const ICONES_INVERTIDOS = new WeakMap<FC<{ className?: string }>, IconeDoNavItem>();
+const iconeInvertido = (Icone: FC<{ className?: string }>): IconeDoNavItem => {
+    let invertido = ICONES_INVERTIDOS.get(Icone);
+    if (!invertido) {
+        invertido = ({ className }) => (
+            <span
+                aria-hidden="true"
+                // O NavItem dá 20 px e 8 px de margem ao ícone; o invertido tem 28 px e a mesma ocupação (28 px), para o texto não pular.
+                className={cx(className, "-my-1 -ml-1 mr-1 flex size-7 items-center justify-center rounded-md bg-fg-primary text-bg-primary group-hover/item:text-bg-primary")}
+            >
+                <Icone className="size-4" />
+            </span>
+        );
+        ICONES_INVERTIDOS.set(Icone, invertido);
+    }
+    return invertido;
+};
+
+/**
+ * Menu do evento do Backstage (BKS-07, BKS-130): rail mínimo, rail clássico e gaveta do celular com o
+ * mesmo desenho. Links do router (NavItem do DS) de 44 px, `aria-current="page"` no atual, que tem o
+ * ícone invertido e o texto em `text-primary`; os outros, em medium. Antes, o atual tinha só um fundo
+ * quase igual ao do cartão (1,04:1) e a gaveta usava a árvore, com linhas de 32 px que não eram links.
+ */
+const MenuDoEvento = ({ activeSection, activeItem, onNavegar }: { activeSection?: BackstageSection; activeItem?: BackstageItem; onNavegar?: () => void }) => (
+    <nav aria-label="Menu do evento">
+        <ul className="flex flex-col gap-0.5">
+            {EVENT_NAV.map((sec) => {
+                const atual = opcaoDaTela(activeSection, activeItem) === sec.id;
+                return (
+                    // Itens com 44 px (o NavItem do DS limita a 36 px); sem fundo próprio, nem no atual: quem marca é o ícone.
+                    <li
+                        key={sec.id}
+                        className={cx(
+                            "[&_a]:h-11 [&_a]:max-h-11 [&_a]:bg-transparent [&_a]:px-2 [&_a:hover]:bg-primary_hover",
+                            atual ? "item-ativo [&_a>span:last-child]:text-primary" : "[&_a>span:last-child]:font-medium",
+                        )}
+                    >
+                        <NavItemBase type="link" href={sec.href} icon={atual ? iconeInvertido(sec.icon) : sec.icon} current={atual} onClick={onNavegar}>
+                            {sec.label}
+                        </NavItemBase>
+                    </li>
+                );
+            })}
+        </ul>
+    </nav>
+);
+
 interface EventFunctionalitiesListProps {
     activeSection?: BackstageSection;
     activeItem?: BackstageItem;
@@ -1337,15 +1935,17 @@ interface EventFunctionalitiesListProps {
 const ACTIVE_CLASS = "item-ativo bg-tertiary hover:bg-tertiary";
 
 const EventFunctionalitiesList = ({ activeSection, activeItem }: EventFunctionalitiesListProps) => {
+    // A tela diz a seção dela; o grupo que a abriga é que abre (BKS-07).
+    const grupo = opcaoDaTela(activeSection, activeItem);
     const [expandedKeys, setExpandedKeys] = useState<Set<Key>>(
-        () => new Set(activeSection ? [activeSection] : []),
+        () => new Set(grupo ? [grupo] : []),
     );
 
     useEffect(() => {
-        if (activeSection) {
-            setExpandedKeys((prev) => (prev.has(activeSection) ? prev : new Set([...prev, activeSection])));
+        if (grupo) {
+            setExpandedKeys((prev) => (prev.has(grupo) ? prev : new Set([...prev, grupo])));
         }
-    }, [activeSection]);
+    }, [grupo]);
 
     const freepass = usePainel() === "freepass";
     const eventoId = useEventoAtual().id;
@@ -1378,7 +1978,7 @@ const EventFunctionalitiesList = ({ activeSection, activeItem }: EventFunctional
                     const href = destinoDaSecao(sec);
                     return (
                         <TreeView.Item key={sec.id} id={sec.id} textValue={sec.label} href={ehDesativado(href) ? undefined : href}>
-                            <TreeView.ItemContent icon={sec.icon} action={novo} className={ativo(activeSection === sec.id || SECOES_ABRIGADAS[activeSection ?? ""] === sec.id)}>
+                            <TreeView.ItemContent icon={sec.icon} action={novo} className={ativo(activeSection === sec.id || SECOES_ABRIGADAS[activeSection ?? ""] === sec.id || (!freepass && opcaoDaTela(activeSection, activeItem) === sec.id))}>
                                 {sec.label}
                             </TreeView.ItemContent>
                         </TreeView.Item>

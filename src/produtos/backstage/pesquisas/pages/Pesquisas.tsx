@@ -12,10 +12,10 @@ import { Toggle } from "@/components/base/toggle/toggle";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
+import { CabecalhoDaPagina } from "../../components/cabecalho-da-pagina";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { PerguntaEditorModal } from "../components/PerguntaEditorModal";
 import { TIPO_PERGUNTA, usePesquisas, type Pergunta } from "../data/pesquisas-store";
-import { TITULO_PAGINA } from "@/produtos/backstage/components/titulo-pagina";
 
 export function Pesquisas() {
     const navigate = useNavigate();
@@ -43,19 +43,20 @@ export function Pesquisas() {
         <BackstageLayout activeSection="pesquisas" activeItem="formularios-compra">
             <div className="flex min-w-0 flex-1 flex-col motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-left-4 motion-safe:duration-300 motion-safe:ease-out">
                 <main className="flex flex-1 flex-col gap-6">
-                    {/* Header */}
-                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                        <div className="flex flex-col gap-1">
-                            <h1 className={TITULO_PAGINA}>Perguntas por ingresso</h1>
-                            <p className="text-sm text-tertiary">
+                    <CabecalhoDaPagina
+                        titulo="Perguntas por ingresso"
+                        subtitulo={
+                            <>
                                 Escolha quais perguntas estarão na compra de cada item.
                                 <br />O formulário do comprador seguirá exatamente a mesma ordem abaixo.
-                            </p>
-                        </div>
-                        <Button size="md" color="primary" iconLeading={Plus} onClick={abrirCriar}>
-                            Criar pergunta
-                        </Button>
-                    </div>
+                            </>
+                        }
+                        acoes={
+                            <Button size="md" color="primary" iconLeading={Plus} onClick={abrirCriar}>
+                                Criar pergunta
+                            </Button>
+                        }
+                    />
 
                     {ingressos.length === 0 ? (
                         <EmptyStateWrap

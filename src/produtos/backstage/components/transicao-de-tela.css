@@ -47,6 +47,14 @@
     animation: bs-tela-deslizar 360ms var(--bs-tela-curva) both;
 }
 
+/* A tela cresce a partir da própria altura, não de 0% (BKS-127). A altura do `.bs-tela` não é
+   definida (a página cresce com o conteúdo), então o `flex-1` (base 0%) das telas caía no
+   tamanho do conteúdo e ignorava um `h-[calc(100dvh-…)]`: a tela de altura fixa ficava mais
+   alta que a janela. Com base `auto`, a altura da tela vale e o `flex-1` só completa o que sobra. */
+.bs-tela > * {
+    flex-basis: auto;
+}
+
 /* Blocos da página: o conteúdo de cada tela é um contêiner com cabeçalho, seções e listas. */
 .bs-tela > * > * {
     animation: bs-tela-subir 480ms var(--bs-tela-curva) both;

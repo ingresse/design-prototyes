@@ -70,6 +70,19 @@ async function api<T>(init?: RequestInit, query = ""): Promise<T> {
 
 const post = <T,>(body: unknown) => api<T>({ method: "POST", body: JSON.stringify(body) });
 
+/**
+ * Eventos que a seed nova publicou (2026-11-23.1: INCEPTION, 4102, com histórico de vendas). Completar a seed
+ * não muda documento que já existe, então quem já tinha o banco gravado ficava com o evento em rascunho:
+ * aqui ele passa a publicado, só se ainda estiver em rascunho (um status escolhido depois é respeitado).
+ */
+const PUBLICADOS_PELA_SEED = ["4102"];
+function publicarDaSeed(t: Tabelas) {
+    for (const id of PUBLICADOS_PELA_SEED) {
+        const ev = t.eventos[id];
+        if (ev?.status === "rascunho") t.eventos[id] = { ...ev, status: "publicado" };
+    }
+}
+
 function lerLocal(): Tabelas | null {
     try {
         const raw = localStorage.getItem(LOCAL_KEY);
@@ -82,6 +95,7 @@ function lerLocal(): Tabelas | null {
         if (p.versao !== SEED_VERSAO) {
             const seed = indexar(SEED);
             for (const c of COLECOES) p.tabelas[c] = { ...seed[c], ...(p.tabelas[c] ?? {}) } as never;
+            publicarDaSeed(p.tabelas);
         }
         return completarFimDasSessoes(p.tabelas);
     } catch {

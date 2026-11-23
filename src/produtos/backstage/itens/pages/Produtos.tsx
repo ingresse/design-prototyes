@@ -1,20 +1,18 @@
 import { useMemo, useState } from "react";
-import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useNavigate } from "react-router";
 import { toast } from "sonner";
-import { PauseCircle, PlayCircle, Plus, SearchLg, ShoppingBag01, Trash01 } from "@untitledui/icons";
-import { EmptyState } from "@/components/application/empty-state/empty-state";
+import { PauseCircle, PlayCircle, Plus, ShoppingBag01, Trash01 } from "@untitledui/icons";
 import { Dialog, Modal, ModalOverlay } from "@/components/application/modals/modal";
-import { Badge } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
-import { Checkbox } from "@/components/base/checkbox/checkbox";
-import { InputBase } from "@/components/base/input/input";
-import { DURACAO_TRANSICAO, Surgir } from "@/components/foundations/transicao";
+import { ButtonGroup, ButtonGroupItem } from "@/components/base/button-group/button-group";
 import type { ProdutoDaOrganizacao, ProdutoNoEvento } from "@/plataforma";
+import { type OpcaoDeLista, SeletorDeLista } from "../components/SeletorDeLista";
 import { estadoDoProduto, precoDoProduto, produtosDo, salvarProdutosDoEvento, useCatalogo, type EstadoItem, type ProdutoNoCatalogo } from "../data/catalogo";
 import { formatar, useTextosItens } from "../data/textos-itens";
 import { EstadoBadge } from "../components/comuns";
-import { AcoesEmLote, AvisoDeEscala, BarraDeFiltros, BotaoMostrarMais, CaixaDeSelecao, LIMIAR_FERRAMENTAS, paraBusca, useMostrarMais, useSelecao } from "../components/escala";
+import { AcoesEmLote, CaixaDeSelecao, paraBusca, useSelecao } from "../components/escala";
+import { RodapeDePaginacao, usePaginacao } from "../../components/rodape-de-paginacao";
+import { BarraDaLista, CabecalhoDaTabela, CarregandoTabela, CartaoDaTabela, Celula, LinhaDaTabela, SemResultados, TituloDaLinha, VazioDaTabela } from "../../components/tabela";
 
 /* ------------------------------------------------------------------ */
 /*  Produtos do evento (ITM)                                           */
@@ -32,13 +30,17 @@ const TEXTOS = {
     listaDeProdutos: "Produtos do evento",
     carregando: "Carregando produtos",
     vazioTitulo: "Nenhum produto neste evento",
-    vazioDica: "Escolha produtos da biblioteca da organização ou crie um novo.",
+    vazioDica: "Escolha produtos da biblioteca da organização. Para um produto novo, crie antes na organização.",
     disponiveis: { one: "{n} disponível", other: "{n} disponíveis" },
     abrir: "Abrir {nome}",
     buscar: "Buscar produto",
-    filtroEstado: "Estado",
-    todosOsEstados: "Todos os estados",
-    nenhumNoFiltro: "Nenhum produto com esses filtros.",
+    filtroEstado: "Filtrar por estado",
+    todos: "Todos",
+    nenhumNoFiltro: "Nenhum produto encontrado.",
+    colProduto: "Produto",
+    colPreco: "Preço",
+    colDisponivel: "Disponível",
+    colEstado: "Estado",
     lote: {
         pausar: "Pausar",
         voltar: "Voltar a vender",
@@ -81,7 +83,6 @@ function usePlural() {
 export function Produtos() {
     const navigate = useNavigate();
     const plural = usePlural();
-    const reduzir = useReducedMotion();
     const { t } = useTextosItens();
     const { carregando, evento, biblioteca } = useCatalogo();
     const [adicionando, setAdicionando] = useState(false);
@@ -100,18 +101,24 @@ export function Produtos() {
         const q = paraBusca(busca.trim());
         return produtos.filter((p) => (!q || paraBusca(p.produto.nome).includes(q)) && (estado === "todos" || estadoDoProduto(p.noEvento) === estado));
     }, [produtos, busca, estado]);
-    const pagina = useMostrarMais(filtrados);
+    // Busca, filtro ou tamanho mudou: volta à página 1 (BKS-114).
+    const paginacao = usePaginacao(filtrados, [busca, estado]);
 
-    // Mudou a busca ou o filtro: volta ao começo da lista e esquece a seleção, que era de outro recorte.
+    // Mudou a busca ou o filtro: esquece a seleção, que era de outro recorte.
     const aoFiltrar = (aplicar: () => void) => {
         aplicar();
-        pagina.reiniciar();
         selecao.limpar();
     };
+    const limparBusca = () =>
+        aoFiltrar(() => {
+            setBusca("");
+            setEstado("todos");
+        });
 
+    // Só os estados que um produto pode ter (pausado, sem estoque, à venda) e que aparecem na lista.
     const opcoesDeEstado: { id: EstadoItem | "todos"; label: string }[] = [
-        { id: "todos", label: TEXTOS.todosOsEstados },
-        ...(["a-venda", "pausado", "sem-estoque", "agendado", "encerrado"] as const).map((id) => ({ id, label: t.estado[id] })),
+        { id: "todos", label: TEXTOS.todos },
+        ...(["a-venda", "pausado", "sem-estoque"] as const).filter((id) => produtos.some((p) => estadoDoProduto(p.noEvento) === id)).map((id) => ({ id, label: t.estado[id] })),
     ];
 
     /** Grava a lista nova de uma vez só, avisa com plural e limpa a seleção. */
@@ -151,93 +158,73 @@ export function Produtos() {
         // Rail, menu, título e abas ficam no LayoutDeItens: trocar de aba troca só este conteúdo.
         <>
             <div className="flex min-w-0 flex-1 flex-col gap-6">
-                <header className="flex flex-wrap items-center justify-between gap-3">
-                    <div className="flex min-w-0 flex-col gap-0.5">
-                        <h2 className="sr-only">{TEXTOS.titulo}</h2>
-                        {carregando ? (
-                            <span aria-hidden="true" className="mt-1 h-4 w-40 animate-pulse rounded bg-secondary motion-reduce:animate-none" />
-                        ) : (
+                {/* A ação da aba fica abaixo das abas, à esquerda, com a contagem ao lado (BKS-25). Vazio, os dois saem: o estado vazio já diz e já tem a ação. */}
+                <h2 className="sr-only">{TEXTOS.titulo}</h2>
+                {carregando ? (
+                    <span aria-hidden="true" className="h-4 w-40 animate-pulse rounded bg-secondary motion-reduce:animate-none" />
+                ) : (
+                    !vazio && (
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                            {botaoAdicionar}
                             <p className="text-sm text-tertiary">{plural(TEXTOS.produtosNoEvento, produtos.length)}</p>
-                        )}
-                    </div>
-                    {botaoAdicionar}
-                </header>
-
-                <AvisoDeEscala />
-
-                <section aria-labelledby="titulo-lista-produtos" className="flex flex-col gap-4">
-                    <h2 id="titulo-lista-produtos" className="sr-only">
-                        {TEXTOS.listaDeProdutos}
-                    </h2>
-
-                    <Surgir visivel={vazio}>
-                        <div className="flex items-center justify-center py-16">
-                            <EmptyState size="sm">
-                                <EmptyState.Header>
-                                    <EmptyState.FeaturedIcon icon={ShoppingBag01} color="gray" theme="modern" />
-                                </EmptyState.Header>
-                                <EmptyState.Content>
-                                    <EmptyState.Title>{TEXTOS.vazioTitulo}</EmptyState.Title>
-                                    <EmptyState.Description>{TEXTOS.vazioDica}</EmptyState.Description>
-                                </EmptyState.Content>
-                                <EmptyState.Footer>{botaoAdicionar}</EmptyState.Footer>
-                            </EmptyState>
                         </div>
-                    </Surgir>
+                    )
+                )}
 
-                    {!carregando && (
-                        <BarraDeFiltros
-                            total={produtos.length}
-                            visiveis={filtrados.length}
-                            busca={busca}
-                            onBusca={(v) => aoFiltrar(() => setBusca(v))}
-                            placeholder={TEXTOS.buscar}
-                            filtros={[
-                                {
-                                    id: "estado",
-                                    rotulo: TEXTOS.filtroEstado,
-                                    valor: estado,
-                                    opcoes: opcoesDeEstado,
-                                    onChange: (v) => aoFiltrar(() => setEstado(v as EstadoItem | "todos")),
-                                },
-                            ]}
-                            onLimpar={() =>
-                                aoFiltrar(() => {
-                                    setBusca("");
-                                    setEstado("todos");
-                                })
-                            }
-                        />
+                {/* Lista do Backstage (BKS-110 a BKS-118): barra, cartão, linhas, paginação e estados. */}
+                <section aria-label={TEXTOS.listaDeProdutos} className="flex flex-col gap-4">
+                    {carregando ? (
+                        <CarregandoTabela rotulo={TEXTOS.carregando} />
+                    ) : vazio ? (
+                        <VazioDaTabela icone={ShoppingBag01} titulo={TEXTOS.vazioTitulo} texto={TEXTOS.vazioDica} acao={botaoAdicionar} />
+                    ) : (
+                        <>
+                            <BarraDaLista
+                                busca={{ valor: busca, onChange: (v) => aoFiltrar(() => setBusca(v)), placeholder: TEXTOS.buscar }}
+                                filtro={
+                                    opcoesDeEstado.length > 2 && (
+                                        <ButtonGroup
+                                            size="sm"
+                                            aria-label={TEXTOS.filtroEstado}
+                                            selectedKeys={new Set([estado])}
+                                            onSelectionChange={(k) => aoFiltrar(() => setEstado(([...k][0] as EstadoItem | "todos") ?? "todos"))}
+                                            disallowEmptySelection
+                                        >
+                                            {opcoesDeEstado.map((o) => (
+                                                <ButtonGroupItem key={o.id} id={o.id}>
+                                                    {o.label}
+                                                </ButtonGroupItem>
+                                            ))}
+                                        </ButtonGroup>
+                                    )
+                                }
+                            />
+                            <CartaoDaTabela>
+                                <CabecalhoDaTabela>
+                                    {comSelecao && <span className="w-4 shrink-0" />}
+                                    <span className="min-w-0 flex-1">{TEXTOS.colProduto}</span>
+                                    <span className="w-28 text-right">{TEXTOS.colPreco}</span>
+                                    <span className="w-32 text-right">{TEXTOS.colDisponivel}</span>
+                                    <span className="w-32">{TEXTOS.colEstado}</span>
+                                </CabecalhoDaTabela>
+                                {filtrados.length === 0 ? (
+                                    <SemResultados texto={TEXTOS.nenhumNoFiltro} onLimpar={limparBusca} />
+                                ) : (
+                                    <ul className="flex flex-col divide-y divide-secondary">
+                                        {paginacao.visiveis.map((p) => (
+                                            <LinhaDoProduto
+                                                key={p.produto.id}
+                                                item={p}
+                                                onAbrir={() => navigate(`/backstage/catalogo/produtos/${p.produto.id}`)}
+                                                selecao={comSelecao ? { marcado: selecao.tem(p.produto.id), onChange: (on) => selecao.alternar(p.produto.id, on) } : undefined}
+                                            />
+                                        ))}
+                                    </ul>
+                                )}
+                                <RodapeDePaginacao {...paginacao} />
+                            </CartaoDaTabela>
+                        </>
                     )}
-
-                    {carregando && <EsqueletoDaLista />}
-
-                    <Surgir visivel={!carregando && produtos.length > 0 && filtrados.length === 0}>
-                        <p className="py-8 text-center text-sm text-tertiary">{TEXTOS.nenhumNoFiltro}</p>
-                    </Surgir>
-
-                    <ul hidden={carregando} className="flex flex-col gap-3 empty:hidden">
-                        <AnimatePresence initial={false} mode="popLayout">
-                            {pagina.visiveis.map((p) => (
-                                <motion.li
-                                    key={p.produto.id}
-                                    layout={!reduzir}
-                                    initial={{ opacity: 0, y: reduzir ? 0 : 8 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    exit={{ opacity: 0, y: reduzir ? 0 : -8 }}
-                                    transition={{ duration: reduzir ? 0.12 : DURACAO_TRANSICAO, ease: [0.16, 1, 0.3, 1] }}
-                                >
-                                    <LinhaDoProduto
-                                        item={p}
-                                        onAbrir={() => navigate(`/backstage/catalogo/produtos/${p.produto.id}`)}
-                                        selecao={comSelecao ? { marcado: selecao.tem(p.produto.id), onChange: (on) => selecao.alternar(p.produto.id, on) } : undefined}
-                                    />
-                                </motion.li>
-                            ))}
-                        </AnimatePresence>
-                    </ul>
-
-                    {!carregando && <BotaoMostrarMais restantes={pagina.restantes} onClick={pagina.mostrarMais} />}
                 </section>
 
                 {comSelecao && (
@@ -286,7 +273,10 @@ export function Produtos() {
     );
 }
 
-/** Linha-cartão: celular empilha (imagem e nome em cima; preço, estoque e estado embaixo); desktop em uma linha. */
+/**
+ * Uma linha da tabela (BKS-113): imagem e nome, preço, disponível e estado. O nome é o botão que abre
+ * o produto e cobre a linha inteira; a caixa de seleção fica por cima. Estreito, vira bloco com rótulos.
+ */
 function LinhaDoProduto({
     item,
     onAbrir,
@@ -302,123 +292,91 @@ function LinhaDoProduto({
     const { produto, noEvento } = item;
 
     return (
-        // Foco do teclado no botão que cobre a linha aparece no cartão inteiro (WCAG 2.4.7).
-        <article className="relative flex items-start rounded-2xl bg-primary ring-1 ring-secondary outline-focus-ring transition duration-100 ease-linear hover:ring-brand has-[>button:focus-visible]:outline-2 has-[>button:focus-visible]:outline-offset-2 md:items-center">
+        <LinhaDaTabela
+            interativa
+            selecionada={selecao?.marcado}
+            className="relative outline-focus-ring -outline-offset-2 has-[.abrir-linha:focus-visible]:outline-2"
+        >
             {selecao && (
-                <div className="flex h-18 shrink-0 items-center pt-4 pl-4 md:h-auto md:self-stretch md:pt-0">
+                <div className="flex h-10 items-center">
                     <CaixaDeSelecao rotulo={produto.nome} marcado={selecao.marcado} onChange={selecao.onChange} />
                 </div>
             )}
-            <button
-                type="button"
-                onClick={onAbrir}
-                aria-label={formatar(TEXTOS.abrir, { nome: produto.nome })}
-                className="flex w-full min-w-0 flex-1 flex-col gap-3 p-4 text-left outline-hidden after:absolute after:inset-0 md:flex-row md:items-center md:gap-6"
-            >
-                <span className="flex min-w-0 flex-1 items-center gap-3">
+            <div className="flex min-w-0 flex-1 flex-col gap-2 @min-[44rem]:flex-row @min-[44rem]:items-center @min-[44rem]:gap-4">
+                <div className="flex min-w-0 flex-1 items-center gap-3">
                     <ImagemDoProduto produto={produto} />
-                    <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                        <span className="truncate text-md font-semibold text-primary">{produto.nome}</span>
-                    </span>
-                </span>
-                <span className="flex flex-wrap items-center gap-x-4 gap-y-2 md:flex-nowrap md:justify-end">
-                    <span className="text-md font-semibold text-primary tabular-nums md:w-24 md:text-right">{preco(precoDoProduto(item))}</span>
-                    <span className="text-sm text-tertiary tabular-nums md:w-32 md:text-right">{plural(TEXTOS.disponiveis, Math.max(0, noEvento.estoque))}</span>
-                    <span className="md:flex md:w-32 md:justify-end">
-                        <EstadoBadge estado={estadoDoProduto(noEvento)} />
-                    </span>
-                </span>
-            </button>
-        </article>
+                    <TituloDaLinha
+                        titulo={
+                            <button
+                                type="button"
+                                onClick={onAbrir}
+                                aria-label={formatar(TEXTOS.abrir, { nome: produto.nome })}
+                                className="abrir-linha max-w-full cursor-pointer truncate text-left outline-hidden after:absolute after:inset-0"
+                            >
+                                {produto.nome}
+                            </button>
+                        }
+                    />
+                </div>
+                <Celula rotulo={TEXTOS.colPreco} numero className="font-semibold @min-[44rem]:w-28">
+                    {preco(precoDoProduto(item))}
+                </Celula>
+                <Celula rotulo={TEXTOS.colDisponivel} numero className="@min-[44rem]:w-32">
+                    {plural(TEXTOS.disponiveis, Math.max(0, noEvento.estoque))}
+                </Celula>
+                <Celula rotulo={TEXTOS.colEstado} className="items-center @min-[44rem]:w-32">
+                    <EstadoBadge estado={estadoDoProduto(noEvento)} />
+                </Celula>
+            </div>
+        </LinhaDaTabela>
     );
 }
 
 function ImagemDoProduto({ produto }: { produto: ProdutoDaOrganizacao }) {
     return (
-        <span className="flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-secondary">
+        <span className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-secondary">
             {produto.imagem ? (
                 <img src={produto.imagem} alt="" aria-hidden="true" className="size-full object-cover" />
             ) : (
-                <ShoppingBag01 className="size-6 text-fg-quaternary" aria-hidden="true" />
+                <ShoppingBag01 className="size-5 text-fg-quaternary" aria-hidden="true" />
             )}
         </span>
     );
 }
 
-/** Esqueleto enquanto o banco carrega: as mesmas linhas da lista. */
-function EsqueletoDaLista() {
-    return (
-        <div role="status" aria-label={TEXTOS.carregando} className="flex flex-col gap-3">
-            {[0, 1, 2].map((i) => (
-                <div key={i} aria-hidden="true" className="flex items-center gap-3 rounded-2xl bg-primary p-4 ring-1 ring-secondary">
-                    <span className="size-14 shrink-0 animate-pulse rounded-lg bg-secondary motion-reduce:animate-none" />
-                    <span className="flex min-w-0 flex-1 flex-col gap-2">
-                        <span className="h-4 w-40 max-w-full animate-pulse rounded bg-secondary motion-reduce:animate-none" />
-                        <span className="h-3.5 w-64 max-w-full animate-pulse rounded bg-secondary motion-reduce:animate-none" />
-                    </span>
-                </div>
-            ))}
-        </div>
-    );
-}
-
 /**
- * Seletor de produtos da biblioteca (padrão "Add products"): busca, marca vários e adiciona de uma
- * vez. Os que já estão no evento aparecem marcados e desabilitados.
+ * Seletor de produtos da biblioteca (padrão "Add products"): o mesmo slideout de escolher em lista do catálogo
+ * (`SeletorDeLista`, ITM-35): busca, marca vários e adiciona de uma vez. Os que já estão no evento aparecem
+ * marcados e desabilitados, com "Já no evento".
  */
 function AdicionarProdutos({ aberto, onFechar }: { aberto: boolean; onFechar: () => void }) {
     const navigate = useNavigate();
     const plural = usePlural();
-    const { t, preco, numero } = useTextosItens();
+    const { t, preco } = useTextosItens();
     const { evento, biblioteca } = useCatalogo();
-    const [busca, setBusca] = useState("");
-    const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
     const [salvando, setSalvando] = useState(false);
-
     const noEvento = useMemo(() => new Set((evento?.produtos ?? []).map((p) => p.produtoId)), [evento]);
-    const filtrados = useMemo(() => {
-        const q = paraBusca(busca.trim());
-        return q ? biblioteca.filter((p) => paraBusca(p.nome).includes(q)) : biblioteca;
-    }, [biblioteca, busca]);
-    const pagina = useMostrarMais(filtrados);
-    const visiveis = pagina.visiveis;
-    // Busca, contagem e "selecionar todos" só quando a biblioteca passa de uma tela (UI-LST-001).
-    const ferramentas = biblioteca.length > LIMIAR_FERRAMENTAS;
-    const marcaveis = useMemo(() => filtrados.filter((p) => !noEvento.has(p.id)).map((p) => p.id), [filtrados, noEvento]);
-    const todosMarcados = marcaveis.length > 0 && marcaveis.every((id) => selecionados.has(id));
+    const opcoes = useMemo<OpcaoDeLista[]>(
+        () =>
+            biblioteca.map((p) => ({
+                id: p.id,
+                rotulo: p.nome,
+                detalhe: preco(p.precoBase),
+                midia: <ImagemDoProduto produto={p} />,
+                fixa: noEvento.has(p.id) ? TEXTOS.modal.jaNoEvento : undefined,
+            })),
+        [biblioteca, noEvento, preco],
+    );
 
-    const fechar = () => {
-        onFechar();
-        setBusca("");
-        setSelecionados(new Set());
-        pagina.reiniciar();
-    };
-
-    const buscar = (v: string) => {
-        setBusca(v);
-        pagina.reiniciar();
-    };
-
-    // Soma à seleção atual: o que já foi marcado em outra busca continua marcado.
-    const marcarTodos = () => setSelecionados((atual) => new Set([...atual, ...marcaveis]));
-
-    const marcar = (id: string, on: boolean) =>
-        setSelecionados((atual) => {
-            const prox = new Set(atual);
-            if (on) prox.add(id);
-            else prox.delete(id);
-            return prox;
-        });
-
-    const adicionar = async () => {
-        if (!evento || selecionados.size === 0) return;
+    const adicionar = async (ids: string[]) => {
+        if (!evento || ids.length === 0) return;
         // Entram pausados e sem estoque, pelo preço base: só vendem quando o produtor definir estoque e ligar.
-        const novos: ProdutoNoEvento[] = biblioteca.filter((p) => selecionados.has(p.id) && !noEvento.has(p.id)).map((p) => ({ produtoId: p.id, estoque: 0, ativo: false }));
+        const novos: ProdutoNoEvento[] = ids.filter((id) => !noEvento.has(id)).map((produtoId) => ({ produtoId, estoque: 0, ativo: false }));
         setSalvando(true);
         try {
             await salvarProdutosDoEvento(evento, [...(evento.produtos ?? []), ...novos]);
             toast.success(plural(TEXTOS.modal.adicionados, novos.length));
-            fechar();
+            onFechar();
         } catch {
             toast.error(t.erroAoSalvar);
         } finally {
@@ -426,107 +384,24 @@ function AdicionarProdutos({ aberto, onFechar }: { aberto: boolean; onFechar: ()
         }
     };
 
+    if (!aberto) return null;
     return (
-        <ModalOverlay isOpen={aberto} onOpenChange={(v) => !v && !salvando && fechar()} isDismissable={!salvando}>
-            <Modal className="sm:max-w-[560px]">
-                <Dialog aria-label={TEXTOS.modal.titulo}>
-                    <div className="flex max-h-[min(720px,85dvh)] w-full min-w-0 flex-col rounded-2xl bg-primary shadow-xl ring-1 ring-border-secondary">
-                        <div className="flex flex-col gap-4 border-b border-secondary p-5 sm:p-6">
-                            <div className="flex flex-col gap-1">
-                                <h2 className="text-lg font-semibold text-primary">{TEXTOS.modal.titulo}</h2>
-                                <p className="text-sm text-tertiary">{TEXTOS.modal.dica}</p>
-                            </div>
-                            {ferramentas && (
-                                <div className="flex flex-col gap-2">
-                                    <InputBase
-                                        size="sm"
-                                        icon={SearchLg}
-                                        value={busca}
-                                        aria-label={TEXTOS.modal.buscar}
-                                        placeholder={TEXTOS.modal.buscarPlaceholder}
-                                        onChange={(e) => buscar(e.target.value)}
-                                    />
-                                    <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
-                                        <span role="status" className="text-sm text-tertiary tabular-nums">
-                                            {formatar(TEXTOS.modal.contagem, { visiveis: numero(filtrados.length), total: numero(biblioteca.length) })}
-                                        </span>
-                                        {todosMarcados ? (
-                                            <Button color="link-gray" size="sm" onClick={() => setSelecionados(new Set())}>
-                                                {TEXTOS.modal.limparSelecao}
-                                            </Button>
-                                        ) : (
-                                            marcaveis.length > 1 && (
-                                                <Button color="link-color" size="sm" onClick={marcarTodos}>
-                                                    {plural(TEXTOS.modal.selecionarTodos, marcaveis.length)}
-                                                </Button>
-                                            )
-                                        )}
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-
-                        <div className="min-h-0 flex-1 overflow-y-auto">
-                            <Surgir visivel={filtrados.length === 0}>
-                                <p className="px-5 py-8 text-center text-sm text-tertiary sm:px-6">{biblioteca.length === 0 ? TEXTOS.modal.bibliotecaVazia : TEXTOS.modal.nenhum}</p>
-                            </Surgir>
-                            <ul className="flex flex-col">
-                                {visiveis.map((p) => {
-                                    const ja = noEvento.has(p.id);
-                                    return (
-                                        <li key={p.id} className="border-b border-secondary last:border-b-0">
-                                            <Checkbox
-                                                isSelected={ja || selecionados.has(p.id)}
-                                                isDisabled={ja}
-                                                onChange={(on) => marcar(p.id, on)}
-                                                className="w-full cursor-pointer items-center gap-3 px-5 py-3 hover:bg-primary_hover sm:px-6 [&>div:last-child]:min-w-0 [&>div:last-child]:flex-1"
-                                                label={
-                                                    <span className="flex min-w-0 items-center gap-3">
-                                                        <ImagemDoProduto produto={p} />
-                                                        <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                                                            <span className="truncate text-sm font-medium text-primary">{p.nome}</span>
-                                                            <span className="text-sm font-normal text-tertiary tabular-nums">{preco(p.precoBase)}</span>
-                                                        </span>
-                                                        {ja && (
-                                                            <Badge size="sm" type="pill-color" color="gray" className="shrink-0">
-                                                                {TEXTOS.modal.jaNoEvento}
-                                                            </Badge>
-                                                        )}
-                                                    </span>
-                                                }
-                                            />
-                                        </li>
-                                    );
-                                })}
-                            </ul>
-                            {pagina.restantes > 0 && (
-                                <div className="border-t border-secondary px-5 py-4 sm:px-6">
-                                    <BotaoMostrarMais restantes={pagina.restantes} onClick={pagina.mostrarMais} />
-                                </div>
-                            )}
-                        </div>
-
-                        <div className="flex flex-col gap-3 border-t border-secondary p-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-                            <Button color="link-color" size="md" className="self-start sm:self-center" onClick={() => navigate("/backstage/produtos/novo")}>
-                                {TEXTOS.modal.criarNovo}
-                            </Button>
-                            <div className="flex flex-wrap items-center justify-between gap-3 sm:justify-end">
-                                <span className="text-sm text-tertiary" role="status">
-                                    {plural(TEXTOS.modal.selecionados, selecionados.size)}
-                                </span>
-                                <div className="flex gap-3">
-                                    <Button color="secondary" size="md" onClick={fechar} isDisabled={salvando}>
-                                        {TEXTOS.modal.cancelar}
-                                    </Button>
-                                    <Button color="primary" size="md" onClick={adicionar} isLoading={salvando} isDisabled={selecionados.size === 0}>
-                                        {TEXTOS.modal.confirmar}
-                                    </Button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </Dialog>
-            </Modal>
-        </ModalOverlay>
+        <SeletorDeLista
+            titulo={TEXTOS.modal.titulo}
+            descricao={TEXTOS.modal.dica}
+            opcoes={opcoes}
+            selecionados={[]}
+            vazio={TEXTOS.modal.bibliotecaVazia}
+            rotuloConfirmar={TEXTOS.modal.confirmar}
+            exigeSelecao
+            salvando={salvando}
+            acaoExtra={
+                <Button color="link-color" size="sm" onClick={() => navigate("/backstage/produtos/novo")}>
+                    {TEXTOS.modal.criarNovo}
+                </Button>
+            }
+            onConfirmar={(ids) => void adicionar(ids)}
+            onFechar={onFechar}
+        />
     );
 }

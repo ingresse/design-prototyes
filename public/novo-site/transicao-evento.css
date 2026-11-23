@@ -1,0 +1,13 @@
+/* transicao-evento.css: os clones da transição cartão -> Evento (Rafael Morinaga, 16/11/2026).
+   Fonte: tools/previa/transicao-evento.css; o gerador (tools/previa/transicao-evento.mjs) copia para previa/ e liga na helmet de todas as telas.
+   Documento da coreografia: cabeçalho de tools/previa/transicao-evento.js.
+   O posicionamento, o tamanho e o raio dos clones vão em style="" porque precisam existir no primeiro quadro da tela nova, antes de este CSS chegar
+   (o motor de templates traz a helmet depois de montar). Aqui fica só o que pode chegar depois. */
+
+/* o clone vive uns 500 ms: a camada já nasce promovida para o voo não pagar o custo no primeiro quadro */
+#te-poster, #te-titulo, #te-fundo { will-change: transform, opacity; backface-visibility: hidden; }
+#te-poster > img { will-change: transform; }
+
+/* movimento reduzido: sem clones (a navegação é a troca simples do motor; os tokens de duração valem 0) */
+@media (prefers-reduced-motion: reduce) { #te-poster, #te-titulo, #te-fundo { display: none !important; } }
+:root[data-motion="reduce"] #te-poster, :root[data-motion="reduce"] #te-titulo, :root[data-motion="reduce"] #te-fundo { display: none !important; }

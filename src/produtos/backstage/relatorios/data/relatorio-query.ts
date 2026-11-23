@@ -240,10 +240,16 @@ function tituloAuto(medida: string, dim: string | null, acumulado?: boolean): st
 
 /* --------------------------- Execução ----------------------------- */
 
+/** Nomes canônicos (camelCase) por minúsculas: "taxaValidacao" normalizado vira "taxavalidacao" e precisa voltar. */
+const CANONICA_MEDIDA = new Map([...Object.values(ALIAS_MEDIDA), ...Object.keys(UNIDADE)].map((m) => [m.toLowerCase(), m]));
+const CANONICA_DIM = new Map(Object.values(ALIAS_DIM).map((m) => [m.toLowerCase(), m]));
+
 /** Executa uma consulta genérica e devolve o bloco visual. */
 export function executarConsulta(c: Consulta, d: Dataset, linhas: FatoVenda[]): Bloco {
-    const medida = ALIAS_MEDIDA[norm(c.medida ?? "")] ?? norm(c.medida ?? "");
-    const dim = c.dimensao ? (ALIAS_DIM[norm(c.dimensao)] ?? norm(c.dimensao)) : null;
+    const n = norm(c.medida ?? "");
+    const medida = ALIAS_MEDIDA[n] ?? CANONICA_MEDIDA.get(n) ?? n;
+    const nd = c.dimensao ? norm(c.dimensao) : "";
+    const dim = c.dimensao ? (ALIAS_DIM[nd] ?? CANONICA_DIM.get(nd) ?? nd) : null;
     const res = resolver(medida, dim, d, linhas);
 
     if (!res) return { tipo: "texto", titulo: c.titulo || "Análise", conteudo: "Não consegui montar essa análise com os dados disponíveis." };

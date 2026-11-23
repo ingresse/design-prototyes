@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { Button } from "@/components/base/buttons/button";
-import { RadioButton, RadioGroup } from "@/components/base/radio-buttons/radio-buttons";
+import * as RadioGroups from "@/components/base/radio-groups/radio-groups";
+import { Surgir } from "@/components/foundations/transicao";
 import { AlertTriangle, ChevronDown, Coins01, Link01 } from "@untitledui/icons";
 import { Badge } from "@/components/base/badges/badges";
-import { cx } from "@/utils/cx";
+import { motion, useReducedMotion } from "motion/react";
 import { formatBRL, type Buyer } from "../data/catalogo";
 import { cartCount, cartLines, cartTotal, type Cart, type CartLine } from "../data/carrinho";
 import { BuyerIdentity, BuyerNoAccount } from "./BuyerStep";
@@ -30,9 +31,13 @@ interface PaymentStepProps {
     onMethodChange: (method: PaymentMethod) => void;
     /** Conclui a venda com o meio de pagamento escolhido. */
     onSelectMethod: (method: PaymentMethod) => void;
+    /** Com "Vender ingresso" no rodapé do painel de passos (BIL-80), o passo não mostra o botão. */
+    semAcao?: boolean;
     onQuantityChange: (id: string, quantity: number) => void;
     /** Identificação pulada — link de pagamento indisponível. */
     linkBlocked: boolean;
+    /** Taxa de serviço do evento (`Evento.taxaServico`), a mesma que a venda grava; sem ela, a opção não mostra valor. */
+    taxa?: number;
 }
 
 /** Passo 3 — escolha do meio de pagamento e conferência do pedido. */
@@ -43,12 +48,16 @@ export function PaymentStep({
     method,
     onMethodChange,
     onSelectMethod,
+    semAcao = false,
     onQuantityChange,
     linkBlocked,
+    taxa,
 }: PaymentStepProps) {
     const lines = cartLines(cart);
     const subtotal = cartTotal(cart);
-    const fee = subtotal * SERVICE_FEE_RATE;
+    const fee = subtotal * (taxa ?? SERVICE_FEE_RATE);
+    // O que a produtora paga no "só a taxa": a taxa de serviço do evento sobre os itens, como a venda grava (BIL-92).
+    const taxaDaProdutora = taxa === undefined ? null : Math.round(subtotal * taxa * 100) / 100;
     const count = cartCount(cart);
 
     return (
@@ -56,45 +65,39 @@ export function PaymentStep({
             <section className="flex flex-col gap-4 rounded-xl bg-primary p-4 ring-1 ring-border-secondary md:p-5">
                 <h2 className="text-sm font-medium text-secondary">Escolha como vai ser pago</h2>
 
-                <RadioGroup
+                {/* Os dois meios são o grupo de rádio com ícone do DS (`radio-groups`): título, o que acontece e a escolha no cartão inteiro. */}
+                <RadioGroups.IconSimple
                     aria-label="Meio de pagamento"
                     value={method}
                     onChange={(value) => onMethodChange(value as PaymentMethod)}
-                    className="gap-3"
-                >
-                    <MethodOption
-                        icon={Link01}
-                        label="Link de pagamento"
-                        value="link"
-                        isSelected={method === "link"}
-                        isDisabled={linkBlocked}
-                    >
-                        {linkBlocked ? (
-                            <p className="text-sm text-tertiary">
-                                Indisponível: sem identificação do comprador não há e-mail para onde enviar o link e os ingressos.
-                            </p>
-                        ) : (
-                            <p className="text-sm text-tertiary">O comprador paga {formatBRL(subtotal + fee)} pelo link.</p>
-                        )}
-                    </MethodOption>
-
-                    {/*
-                      Uma linha por opção, no mesmo formato: quem lê está atendendo uma
-                      fila e decide por comparação — o comprador paga agora ou não paga.
-                      O que interessa ao fechamento é verdadeiro e precisa estar escrito,
-                      mas não a cada venda: fica recolhido, para o operador novo e para
-                      quando a dúvida aparecer.
-                    */}
-                    <MethodOption
-                        icon={Coins01}
-                        label="Cobrar só a taxa da bilheteria do produtor"
-                        value="saldo"
-                        isSelected={method === "saldo"}
-                        footer={<ComoFunciona />}
-                    >
-                        <p className="text-sm text-tertiary">O comprador não paga nada. Os ingressos saem emitidos na hora.</p>
-                    </MethodOption>
-                </RadioGroup>
+                    items={[
+                        {
+                            value: "link",
+                            title: "Link de pagamento",
+                            secondaryTitle: "",
+                            icon: Link01,
+                            disabled: linkBlocked,
+                            description: linkBlocked
+                                ? "Indisponível: sem identificação do comprador não há e-mail para onde enviar o link e os ingressos."
+                                : `O comprador paga ${formatBRL(subtotal + fee)} pelo link.`,
+                        },
+                        {
+                            value: "saldo",
+                            title: "Cobrar só a taxa da bilheteria do produtor",
+                            secondaryTitle: "",
+                            icon: Coins01,
+                            description:
+                                taxaDaProdutora === null
+                                    ? "O comprador não paga nada e os ingressos saem emitidos na hora. A produtora paga a taxa da bilheteria no fechamento."
+                                    : `O comprador não paga nada e os ingressos saem emitidos na hora. A produtora paga ${formatBRL(taxaDaProdutora)} de taxa da bilheteria no fechamento.`,
+                        },
+                    ]}
+                />
+                {/*
+                  O que interessa ao fechamento é verdadeiro e precisa estar escrito, mas não a cada
+                  venda: fica recolhido, para o operador novo e para quando a dúvida aparecer.
+                */}
+                <ComoFunciona />
 
                 {/* No desktop o aviso e a ação dividem a última linha do container. */}
                 <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -108,15 +111,17 @@ export function PaymentStep({
                         <span />
                     )}
 
-                    <Button
-                        size="md"
-                        color="primary"
-                        isDisabled={!method}
-                        onClick={() => method && onSelectMethod(method)}
-                        className="w-full shrink-0 md:w-auto"
-                    >
-                        Vender ingresso
-                    </Button>
+                    {!semAcao && (
+                        <Button
+                            size="md"
+                            color="primary"
+                            isDisabled={!method}
+                            onClick={() => method && onSelectMethod(method)}
+                            className="w-full shrink-0 md:w-auto"
+                        >
+                            {method === "link" ? "Gerar link de pagamento" : "Emitir ingressos"}
+                        </Button>
+                    )}
                 </div>
             </section>
 
@@ -140,7 +145,7 @@ export function PaymentStep({
 
                 <div className="flex items-center justify-between gap-3 border-t border-secondary px-4 pt-4 md:px-5">
                     <p className="text-sm text-tertiary">Itens</p>
-                    <Badge size="sm" type="modern" color="gray">
+                    <Badge size="md" type="modern" color="gray">
                         {count} {count === 1 ? "item" : "itens"}
                     </Badge>
                 </div>
@@ -175,69 +180,26 @@ const ItemRow = ({ line, onQuantityChange }: { line: CartLine; onQuantityChange:
 
             {line.composicao && (
                 <>
-                    {showDetails && (
+                    <Surgir visivel={showDetails}>
                         <div className="px-3 pb-3">
                             <ComboComposition entries={line.composicao} />
                         </div>
-                    )}
+                    </Surgir>
                     <button
                         type="button"
                         onClick={() => setShowDetails((open) => !open)}
                         aria-expanded={showDetails}
                         aria-label={`Detalhes de ${line.name}`}
-                        className="flex items-center justify-between gap-2 border-t border-secondary px-3 py-2.5 text-sm text-tertiary transition duration-100 ease-linear hover:text-secondary_hover"
+                        className="flex min-h-11 items-center justify-between gap-2 border-t border-secondary px-3 py-2.5 text-sm text-tertiary transition duration-100 ease-linear hover:text-secondary_hover"
                     >
                         Detalhes
-                        <ChevronDown
-                            className={cx("size-5 transition-transform duration-100 ease-linear", showDetails && "rotate-180")}
-                            aria-hidden="true"
-                        />
+                        <Seta aberta={showDetails} className="size-5" />
                     </button>
                 </>
             )}
         </div>
     );
 };
-
-interface MethodOptionProps {
-    icon: typeof Link01;
-    label: string;
-    value: PaymentMethod;
-    isSelected: boolean;
-    isDisabled?: boolean;
-    children: React.ReactNode;
-    /** Conteúdo abaixo do rótulo, fora do <label> — para não virar alvo do radio. */
-    footer?: React.ReactNode;
-}
-
-/** Cartão de meio de pagamento: radio, título e o resumo da cobrança como descrição. */
-const MethodOption = ({ icon: Icon, label, value, isSelected, isDisabled, children, footer }: MethodOptionProps) => (
-    <div
-        className={cx(
-            "group flex flex-col rounded-lg bg-secondary ring-1 transition duration-100 ease-linear",
-            isDisabled ? "opacity-50 ring-transparent" : "hover:bg-secondary_hover",
-            isSelected ? "ring-brand" : "ring-transparent",
-        )}
-    >
-        <label className={cx("flex flex-col gap-3 p-4", isDisabled ? "cursor-not-allowed" : "cursor-pointer")}>
-        <span className="flex items-center gap-3">
-            <RadioButton value={value} slot={null} isDisabled={isDisabled} aria-label={label} />
-            <Icon
-                className={cx(
-                    "size-5 shrink-0 transition-colors duration-100 ease-linear",
-                    isSelected ? "text-fg-brand-primary" : "text-fg-quaternary",
-                    !isDisabled && "group-hover:text-fg-brand-primary",
-                )}
-                aria-hidden="true"
-            />
-            <span className="text-sm font-medium text-primary">{label}</span>
-        </span>
-            {/* Recuo alinhado ao texto do rótulo, não ao radio. */}
-            <div className="flex flex-col gap-2 pl-8">{children}</div>
-        </label>
-        {footer}
-    </div>
-);
 
 /**
  * O que o produtor paga no fechamento — a resposta que a apresentação do MVP
@@ -247,31 +209,33 @@ const ComoFunciona = () => {
     const [aberto, setAberto] = useState(false);
 
     return (
-        <div className="flex flex-col px-4 pb-4 pl-12">
+        <div className="flex flex-col">
             <button
                 type="button"
                 aria-expanded={aberto}
-                // preventDefault: o botão vive dentro do cartão do radio e sem isso
-                // abrir a explicação também trocava o meio de pagamento.
-                onClick={(event) => {
-                    event.preventDefault();
-                    setAberto((open) => !open);
-                }}
-                className="flex w-fit items-center gap-1 text-sm font-medium text-tertiary transition duration-100 ease-linear hover:text-secondary_hover"
+                onClick={() => setAberto((open) => !open)}
+                className="flex min-h-11 w-fit items-center gap-1 text-sm font-medium text-tertiary transition duration-100 ease-linear hover:text-secondary_hover"
             >
                 Como isso aparece no fechamento?
-                <ChevronDown
-                    className={cx("size-4 transition-transform duration-100 ease-linear", aberto && "rotate-180")}
-                    aria-hidden="true"
-                />
+                <Seta aberta={aberto} className="size-4" />
             </button>
 
-            {aberto && (
-                <p className="pt-2 text-sm text-tertiary">
+            <Surgir visivel={aberto}>
+                <p className="pb-1 text-sm text-tertiary">
                     No fechamento, o produtor paga só a taxa da bilheteria. O valor do ingresso não é descontado do repasse. Use também
                     quando ele já recebeu por fora, em Pix, dinheiro ou maquininha própria.
                 </p>
-            )}
+            </Surgir>
         </div>
+    );
+};
+
+/** Seta de abrir e fechar: gira em 200 ms; com movimento reduzido, troca na hora. */
+const Seta = ({ aberta, className }: { aberta: boolean; className?: string }) => {
+    const reduzir = useReducedMotion();
+    return (
+        <motion.span animate={{ rotate: aberta ? 180 : 0 }} transition={reduzir ? { duration: 0 } : { duration: 0.2, ease: "easeOut" }} className="flex">
+            <ChevronDown className={className} aria-hidden="true" />
+        </motion.span>
     );
 };

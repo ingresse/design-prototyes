@@ -14,39 +14,30 @@ import {
     DownloadCloud01,
     Edit01,
     Eye,
-    HelpCircle,
+    Gift01,
     RefreshCcw01,
-    SearchLg,
     SlashCircle01,
-    XClose,
-    SwitchHorizontal01
+    XClose
 } from "@untitledui/icons";
 import type { Selection } from "react-aria-components";
-import { Badge, BadgeWithDot } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
+import { ButtonGroup, ButtonGroupItem } from "@/components/base/button-group/button-group";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
+import { InputBase } from "@/components/base/input/input";
 import { Checkbox } from "@/components/base/checkbox/checkbox";
-import { Input } from "@/components/base/input/input";
 import { MultiSelect } from "@/components/base/select/multi-select";
 import { Tabs } from "@/components/application/tabs/tabs";
-import { PaginationCardAdvanced } from "@/components/application/pagination/pagination";
-import { cx } from "@/utils/cx";
-import { Tooltip, TooltipTrigger } from "@/components/base/tooltip/tooltip";
 import { useRotaDoPainel } from "../../components/painel";
 import { BackstageLayout } from "../../components/Backstage";
+import { RodapeDePaginacao, usePaginacao } from "../../components/rodape-de-paginacao";
+import { BarraDaLista, CabecalhoDaTabela, CartaoDaTabela, Celula, LinhaDaTabela, SemResultados, TituloDaLinha, VazioDaTabela } from "../../components/tabela";
 import { CancelConfirmModal } from "../components/CancelConfirmModal";
 import { ItemDetailsSlideOut } from "../components/ItemDetailsSlideOut";
 import { PedidoDetailsSlideOut } from "../components/PedidoDetailsSlideOut";
-import {
-    ITEM_KIND_OPTIONS,
-    ITEM_STATUS_META,
-    ITEM_STATUS_OPTIONS,
-    type CortesiaItem,
-} from "../data/item-types";
-import {
-    useCortesiasStore,
-    type PedidoStatus,
-} from "../data/cortesias-store";
+import { ITEM_KIND_LABEL, ITEM_KIND_OPTIONS, ITEM_STATUS_META, ITEM_STATUS_SELO, statusDoDestinatario, type CortesiaItem, type ItemStatus } from "../data/item-types";
+import { useCortesiasStore } from "../data/cortesias-store";
+import { MetricasDaLista, SeloDeStatus } from "../../components/estado-de-pedido";
+import { baixarCsv, nomeComData } from "../utils/baixar-csv";
 import { showSuccessToast } from "../utils/toast";
 import { TituloDaEmissao } from "@/produtos/backstage/components/navegacao-de-secao";
 
@@ -55,20 +46,40 @@ import { TituloDaEmissao } from "@/produtos/backstage/components/navegacao-de-se
 /*  Constants                                                         */
 /* ------------------------------------------------------------------ */
 
-const PEDIDO_STATUS_OPTIONS = [
-    { id: "emitido", label: "Emitido" },
-    { id: "cancelado", label: "Cancelado" },
+/** Status de um destinatário, pelos itens dele (COR-51). */
+type StatusDoDestinatario = "emitido" | "parcial" | "cancelado";
+type FiltroPedido = "todos" | StatusDoDestinatario;
+type FiltroItem = "todos" | ItemStatus;
+
+/** Filtro de status da aba Pedidos, em botões segmentados (BKS-111). */
+const PEDIDO_STATUS_FILTRO: { id: FiltroPedido; label: string }[] = [
+    { id: "todos", label: "Todos" },
+    { id: "emitido", label: "Emitidos" },
+    { id: "parcial", label: "Parciais" },
+    { id: "cancelado", label: "Cancelados" },
 ];
 
-const PEDIDO_STATUS_META: Record<
-    PedidoStatus,
-    { label: string; color: "success" | "error" }
-> = {
-    emitido: { label: "Emitido", color: "success" },
-    cancelado: { label: "Cancelado", color: "error" },
+/** Rótulos curtos do filtro de status da aba Itens: os quatro cabem em 390 px. */
+const ITEM_STATUS_FILTRO: Record<ItemStatus, string> = {
+    aceito: "Aceitos",
+    pendente: "Pendentes",
+    cancelado: "Cancelados",
+    processando: "Processando",
+    erro: "Com erro",
 };
+const ORDEM_DO_FILTRO: ItemStatus[] = ["aceito", "pendente", "cancelado", "processando", "erro"];
+/** Processando e Com erro só entram no filtro quando há item assim (a emissão hoje é imediata). */
+const SEMPRE_NO_FILTRO: ItemStatus[] = ["aceito", "pendente", "cancelado"];
 
-const DEFAULT_PAGE_SIZE = 100;
+/** Larguras das colunas no modo tabela (cartão com 704 px ou mais, BKS-115). */
+const COL = {
+    flex: "@min-[44rem]:min-w-0 @min-[44rem]:flex-1",
+    itens: "@min-[44rem]:w-12",
+    statusPedido: "@min-[44rem]:w-44",
+    envio: "@min-[44rem]:w-32",
+    statusItem: "@min-[44rem]:w-40",
+    emissor: "@min-[44rem]:w-28",
+};
 
 /* ------------------------------------------------------------------ */
 /*  Page                                                              */
@@ -81,7 +92,6 @@ export function RelatorioPedidos() {
 
     const rota = useRotaDoPainel();
     const handleEmitir = useCallback(() => navigate(rota("/backstage/itens")), [navigate, rota]);
-    const handleExport = useCallback(() => console.log("Exportar relatório"), []);
 
     const isEmpty = pedidos.length === 0;
 
@@ -91,10 +101,18 @@ export function RelatorioPedidos() {
                 {isEmpty ? (
                     <>
                         {/* O título fica também no vazio (COR-01): a ação mora no próprio vazio, então o topo não repete o botão. */}
-                        <header>
-                            <TituloDaEmissao>Cortesias</TituloDaEmissao>
-                        </header>
-                        <EmptyState onEmitir={handleEmitir} />
+                        <TituloDaEmissao>Cortesias</TituloDaEmissao>
+                        {/* Lista vazia: o estado vazio do DS com a ação principal (BKS-117). */}
+                        <VazioDaTabela
+                            icone={Gift01}
+                            titulo="Distribua itens para convidados especiais"
+                            texto="Leve mais pessoas para o seu evento com convites exclusivos e fáceis de enviar."
+                            acao={
+                                <Button size="md" color="primary" onClick={handleEmitir}>
+                                    Emitir cortesias
+                                </Button>
+                            }
+                        />
                     </>
                 ) : (
                     <>
@@ -113,9 +131,9 @@ export function RelatorioPedidos() {
                             </Tabs>
 
                             {activeTab === "pedidos" ? (
-                                <PedidosTabView onExport={handleExport} />
+                                <PedidosTabView />
                             ) : (
-                                <ItensTabView onExport={handleExport} />
+                                <ItensTabView />
                             )}
                         </main>
                     </>
@@ -126,61 +144,6 @@ export function RelatorioPedidos() {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Empty state                                                       */
-/* ------------------------------------------------------------------ */
-
-interface EmptyStateProps {
-    onEmitir: () => void;
-}
-
-const EmptyState = ({ onEmitir }: EmptyStateProps) => (
-    <main className="relative flex flex-1 flex-col items-center justify-center overflow-hidden py-16">
-        <div className="z-10 flex max-w-xl flex-col items-center gap-6 text-center">
-            <div className="flex flex-col items-center gap-1">
-                <p className="text-display-md font-normal italic text-tertiary">
-                    Distribua itens
-                </p>
-                <h2 className="text-display-md font-bold text-primary">
-                    para convidados especiais
-                </h2>
-            </div>
-            <p className="max-w-md text-md text-tertiary">
-                Leve mais pessoas para o seu evento com convites exclusivos e fáceis de
-                enviar.
-            </p>
-            <Button size="lg" color="primary" onClick={onEmitir}>
-                Emitir cortesias
-            </Button>
-        </div>
-
-        <EmptyStateIllustration />
-    </main>
-);
-
-const EmptyStateIllustration = () => (
-    <div
-        aria-hidden="true"
-        className="pointer-events-none absolute bottom-0 left-1/2 flex w-[640px] max-w-full -translate-x-1/2 flex-col gap-3 opacity-30"
-    >
-        {[0, 1].map((card) => (
-            <div
-                key={card}
-                className="flex flex-col gap-3 rounded-2xl border border-secondary bg-secondary_subtle p-5"
-                style={{ transform: `translateX(${card === 0 ? "-12px" : "12px"})` }}
-            >
-                {[0, 1, 2].map((row) => (
-                    <div key={row} className="flex items-center gap-3">
-                        <div className="h-3 w-24 rounded-full bg-quaternary" />
-                        <div className="h-3 flex-1 rounded-full bg-quaternary" />
-                        <div className="h-3 w-16 rounded-full bg-quaternary" />
-                    </div>
-                ))}
-            </div>
-        ))}
-    </div>
-);
-
-/* ------------------------------------------------------------------ */
 /*  Page header                                                       */
 /* ------------------------------------------------------------------ */
 
@@ -189,203 +152,88 @@ interface PageHeaderProps {
 }
 
 const PageHeader = ({ onEmitir }: PageHeaderProps) => (
-    <header className="flex items-center justify-between gap-3">
-        <TituloDaEmissao>Cortesias</TituloDaEmissao>
-        <Button size="md" color="primary" onClick={onEmitir} className="ml-auto">
-            Emitir cortesia
-        </Button>
-    </header>
+    <TituloDaEmissao
+        acoes={
+            <Button size="md" color="primary" onClick={onEmitir}>
+                Emitir cortesia
+            </Button>
+        }
+    >
+        Cortesias
+    </TituloDaEmissao>
 );
 
 /* ------------------------------------------------------------------ */
-/*  Metrics row                                                       */
+/*  Filtros                                                           */
 /* ------------------------------------------------------------------ */
 
-interface Metric {
-    label: string;
-    value: number;
-}
-
-const numberFormatter = new Intl.NumberFormat("pt-BR");
-
-const MetricsRow = ({ metrics }: { metrics: Metric[] }) => (
-    <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        {metrics.map((m) => (
-            <div
-                key={m.label}
-                className="flex flex-col gap-1 rounded-xl bg-primary p-4 ring-1 ring-border-secondary"
-            >
-                <p className="text-sm text-tertiary">{m.label}</p>
-                <p className="text-display-sm font-semibold text-primary">
-                    {numberFormatter.format(m.value)}
-                </p>
-            </div>
-        ))}
-    </div>
-);
-
-/* ------------------------------------------------------------------ */
-/*  Filters bar                                                       */
-/* ------------------------------------------------------------------ */
-
-interface FiltersBarProps {
-    search: string;
-    searchPlaceholder: string;
-    onSearchChange: (v: string) => void;
-    statusKeys: Set<string>;
-    onStatusKeysChange: (keys: Set<string>) => void;
-    statusOptions: { id: string; label: string }[];
-    emissorKeys: Set<string>;
-    onEmissorKeysChange: (keys: Set<string>) => void;
-    emissorOptions: { id: string; label: string }[];
-    /** Optional: extra "tipo do item" filter (only shown on the Itens tab). */
-    kindKeys?: Set<string>;
-    onKindKeysChange?: (keys: Set<string>) => void;
-    kindOptions?: { id: string; label: string }[];
-}
-
-const FiltersBar = ({
-    search,
-    searchPlaceholder,
-    onSearchChange,
-    statusKeys,
-    onStatusKeysChange,
-    statusOptions,
-    emissorKeys,
-    onEmissorKeysChange,
-    emissorOptions,
-    kindKeys,
-    onKindKeysChange,
-    kindOptions,
-}: FiltersBarProps) => {
-    const handleStatusSelection = (selection: Selection) => {
-        if (selection === "all") {
-            onStatusKeysChange(new Set(statusOptions.map((o) => o.id)));
-        } else {
-            onStatusKeysChange(new Set(Array.from(selection).map(String)));
-        }
-    };
-
-    const handleEmissorSelection = (selection: Selection) => {
-        if (selection === "all") {
-            onEmissorKeysChange(new Set(emissorOptions.map((o) => o.id)));
-        } else {
-            onEmissorKeysChange(new Set(Array.from(selection).map(String)));
-        }
-    };
-
-    const handleKindSelection = (selection: Selection) => {
-        if (!onKindKeysChange || !kindOptions) return;
-        if (selection === "all") {
-            onKindKeysChange(new Set(kindOptions.map((o) => o.id)));
-        } else {
-            onKindKeysChange(new Set(Array.from(selection).map(String)));
-        }
-    };
-
-    const showKind = !!(kindKeys && onKindKeysChange && kindOptions);
-
+/** Filtro de status: botões segmentados do DS, na largura toda no celular (BKS-111). */
+function FiltroDeStatus<T extends string>({
+    valor,
+    opcoes,
+    onChange,
+}: {
+    valor: T;
+    opcoes: { id: T; label: string }[];
+    onChange: (v: T) => void;
+}) {
     return (
-        <div
-            className={cx(
-                "grid grid-cols-1 gap-3 border-b border-secondary px-4 py-4 md:px-6",
-                showKind
-                    ? "md:grid-cols-[minmax(0,350px)_220px_220px_240px]"
-                    : "md:grid-cols-[minmax(0,350px)_220px_240px]",
-            )}
+        <ButtonGroup
+            size="sm"
+            aria-label="Status"
+            disallowEmptySelection
+            selectedKeys={[valor]}
+            onSelectionChange={(keys) => {
+                const [k] = [...keys];
+                if (k !== undefined) onChange(String(k) as T);
+            }}
+            className="w-full sm:w-max"
         >
-            <Input
-                label="Busca"
-                size="sm"
-                icon={SearchLg}
-                placeholder={searchPlaceholder}
-                value={search}
-                onChange={(v: string) => onSearchChange(v)}
-            />
+            {opcoes.map((o) => (
+                <ButtonGroupItem key={o.id} id={o.id} className="flex-1 justify-center sm:flex-none">
+                    {o.label}
+                </ButtonGroupItem>
+            ))}
+        </ButtonGroup>
+    );
+}
+
+/** Filtro de seleção múltipla (Tipo do item, Emissor responsável), sem rótulo visível: o "Todos" diz o quê. */
+const FiltroMultiplo = ({
+    rotulo,
+    todos,
+    keys,
+    onChange,
+    options,
+    showSearch = false,
+}: {
+    rotulo: string;
+    todos: string;
+    keys: Set<string>;
+    onChange: (keys: Set<string>) => void;
+    options: { id: string; label: string }[];
+    showSearch?: boolean;
+}) => {
+    const handleSelection = (selection: Selection) =>
+        onChange(selection === "all" ? new Set(options.map((o) => o.id)) : new Set(Array.from(selection).map(String)));
+    return (
+        <div className="w-full sm:w-52">
             <MultiSelect
-                label="Status"
                 size="sm"
-                aria-label="Status"
-                placeholder="Todos"
-                items={statusOptions}
-                selectedKeys={statusKeys}
-                onSelectionChange={handleStatusSelection}
-                onReset={() => onStatusKeysChange(new Set())}
-                onSelectAll={() =>
-                    onStatusKeysChange(new Set(statusOptions.map((o) => o.id)))
-                }
-                showSearch={false}
-                selectedCountFormatter={(count) =>
-                    count === statusOptions.length
-                        ? "Todos"
-                        : `${count} ${count === 1 ? "selecionado" : "selecionados"}`
+                aria-label={rotulo}
+                placeholder={todos}
+                items={options}
+                selectedKeys={keys}
+                onSelectionChange={handleSelection}
+                onReset={() => onChange(new Set())}
+                onSelectAll={() => onChange(new Set(options.map((o) => o.id)))}
+                showSearch={showSearch}
+                selectedCountFormatter={(count: number) =>
+                    count === options.length ? todos : `${count} ${count === 1 ? "selecionado" : "selecionados"}`
                 }
             >
-                {(item) => (
-                    <MultiSelect.Item
-                        id={item.id}
-                        selectionIndicator="checkbox"
-                        selectionIndicatorAlign="left"
-                    >
-                        {item.label}
-                    </MultiSelect.Item>
-                )}
-            </MultiSelect>
-            {showKind && kindKeys && kindOptions && (
-                <MultiSelect
-                    label="Tipo do item"
-                    size="sm"
-                    aria-label="Tipo do item"
-                    placeholder="Todos"
-                    items={kindOptions}
-                    selectedKeys={kindKeys}
-                    onSelectionChange={handleKindSelection}
-                    onReset={() => onKindKeysChange?.(new Set())}
-                    onSelectAll={() =>
-                        onKindKeysChange?.(new Set(kindOptions.map((o) => o.id)))
-                    }
-                    showSearch={false}
-                    selectedCountFormatter={(count: number) =>
-                        count === kindOptions.length
-                            ? "Todos"
-                            : `${count} ${count === 1 ? "selecionado" : "selecionados"}`
-                    }
-                >
-                    {(item: { id: string; label: string }) => (
-                        <MultiSelect.Item
-                            id={item.id}
-                            selectionIndicator="checkbox"
-                            selectionIndicatorAlign="left"
-                        >
-                            {item.label}
-                        </MultiSelect.Item>
-                    )}
-                </MultiSelect>
-            )}
-            <MultiSelect
-                label="Emissor responsável"
-                size="sm"
-                aria-label="Emissor responsável"
-                placeholder="Todos"
-                items={emissorOptions}
-                selectedKeys={emissorKeys}
-                onSelectionChange={handleEmissorSelection}
-                onReset={() => onEmissorKeysChange(new Set())}
-                onSelectAll={() =>
-                    onEmissorKeysChange(new Set(emissorOptions.map((o) => o.id)))
-                }
-                selectedCountFormatter={(count) =>
-                    count === emissorOptions.length
-                        ? "Todos"
-                        : `${count} ${count === 1 ? "selecionado" : "selecionados"}`
-                }
-            >
-                {(item) => (
-                    <MultiSelect.Item
-                        id={item.id}
-                        selectionIndicator="checkbox"
-                        selectionIndicatorAlign="left"
-                    >
+                {(item: { id: string; label: string }) => (
+                    <MultiSelect.Item id={item.id} selectionIndicator="checkbox" selectionIndicatorAlign="left">
                         {item.label}
                     </MultiSelect.Item>
                 )}
@@ -395,7 +243,7 @@ const FiltersBar = ({
 };
 
 /* ------------------------------------------------------------------ */
-/*  Selection bar (sticky)                                            */
+/*  Selection bar                                                     */
 /* ------------------------------------------------------------------ */
 
 interface SelectionBarProps {
@@ -406,51 +254,49 @@ interface SelectionBarProps {
     cancelLabel: string;
     onClear: () => void;
     onCancel: () => void;
+    /** "Selecionar todos da página": no modo lista o cabeçalho das colunas some, então ele vem para cá. */
+    todos: { isSelected: boolean; isIndeterminate: boolean; onChange: (s: boolean) => void };
+    /** Linhas selecionáveis do filtro atual, em todas as páginas (COR-57). */
+    totalDoFiltro: number;
+    onSelecionarFiltro: () => void;
 }
 
-const SelectionBar = ({
-    selectedCount,
-    emptyLabel,
-    singular,
-    plural,
-    cancelLabel,
-    onClear,
-    onCancel,
-}: SelectionBarProps) => (
-    <div className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-3 border-b border-secondary bg-secondary px-4 py-3 md:px-6">
-        <p className="text-sm text-tertiary">
-            {selectedCount === 0
-                ? emptyLabel
-                : `${selectedCount} ${selectedCount === 1 ? singular : plural}`}
-        </p>
-        <div className="flex items-center gap-2">
-            <Button
-                size="sm"
-                color="secondary"
-                isDisabled={selectedCount === 0}
-                onClick={onClear}
-            >
-                Limpar seleção
-            </Button>
-            <Button
-                size="sm"
-                color="primary-destructive"
-                isDisabled={selectedCount === 0}
-                onClick={onCancel}
-            >
-                {cancelLabel}
-            </Button>
+const SelectionBar = ({ selectedCount, emptyLabel, singular, plural, cancelLabel, onClear, onCancel, todos, totalDoFiltro, onSelecionarFiltro }: SelectionBarProps) => {
+    // A página toda marcada e o filtro tem mais: oferece marcar todas as páginas de uma vez (COR-57).
+    const ofereceFiltro = todos.isSelected && totalDoFiltro > selectedCount;
+    const tudoDoFiltro = selectedCount > 0 && selectedCount >= totalDoFiltro && totalDoFiltro > 0;
+    return (
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-secondary bg-secondary px-5 py-3 md:px-6">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                <Checkbox aria-label="Selecionar todos da página" {...todos} className="@min-[44rem]:hidden max-md:-m-3.5 max-md:p-3.5" />
+                <p className="text-sm text-tertiary" aria-live="polite">
+                    {selectedCount === 0
+                        ? emptyLabel
+                        : tudoDoFiltro && totalDoFiltro > 1
+                          ? `Todos os ${totalDoFiltro} ${plural.replace(" selecionados", "")} do filtro selecionados`
+                          : `${selectedCount} ${selectedCount === 1 ? singular : plural}`}
+                </p>
+                {ofereceFiltro && (
+                    <Button size="sm" color="link-color" onClick={onSelecionarFiltro} className="max-md:min-h-11">
+                        {`Selecionar todos os ${totalDoFiltro} do filtro`}
+                    </Button>
+                )}
+            </div>
+            <div className="flex flex-wrap items-center gap-2 max-md:w-full max-md:[&>*]:min-h-11 max-md:[&>*]:flex-1">
+                <Button size="sm" color="secondary" isDisabled={selectedCount === 0} onClick={onClear}>
+                    Limpar seleção
+                </Button>
+                <Button size="sm" color="primary-destructive" isDisabled={selectedCount === 0} onClick={onCancel}>
+                    {cancelLabel}
+                </Button>
+            </div>
         </div>
-    </div>
-);
+    );
+};
 
 /* ------------------------------------------------------------------ */
 /*  Pedidos tab                                                       */
 /* ------------------------------------------------------------------ */
-
-interface PedidosTabViewProps {
-    onExport: () => void;
-}
 
 interface DestinatarioRow {
     rowId: string; // composite "pedidoId|email"
@@ -460,12 +306,14 @@ interface DestinatarioRow {
     dataEnvio: string;
     email: string;
     documento: string;
-    status: PedidoStatus;
+    /** Pelos itens deste destinatário, não pelo envio inteiro (COR-51). */
+    status: StatusDoDestinatario;
+    statusRotulo: string;
     itemIds: string[];
     itemCount: number;
 }
 
-const PedidosTabView = ({ onExport }: PedidosTabViewProps) => {
+const PedidosTabView = () => {
     const {
         pedidos,
         itens,
@@ -474,17 +322,15 @@ const PedidosTabView = ({ onExport }: PedidosTabViewProps) => {
     } = useCortesiasStore();
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [search, setSearch] = useState("");
-    const [statusKeys, setStatusKeys] = useState<Set<string>>(new Set());
+    const [status, setStatus] = useState<FiltroPedido>("todos");
     const [emissorKeys, setEmissorKeys] = useState<Set<string>>(new Set());
-    const [page, setPage] = useState(0);
-    const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
     const [detailsRowId, setDetailsRowId] = useState<string | null>(null);
     const [pendingCancelRowId, setPendingCancelRowId] = useState<string | null>(null);
     const [showCancelSelectedConfirm, setShowCancelSelectedConfirm] = useState(false);
 
     const destinatarios = useMemo<DestinatarioRow[]>(() => {
         const pedidoById = new Map(pedidos.map((p) => [p.id, p]));
-        const groups = new Map<string, DestinatarioRow>();
+        const groups = new Map<string, DestinatarioRow & { itens: CortesiaItem[] }>();
         for (const item of itens) {
             const pedido = pedidoById.get(item.pedidoId);
             if (!pedido) continue;
@@ -492,6 +338,7 @@ const PedidosTabView = ({ onExport }: PedidosTabViewProps) => {
             const existing = groups.get(key);
             if (existing) {
                 existing.itemIds.push(item.id);
+                existing.itens.push(item);
                 existing.itemCount += 1;
             } else {
                 groups.set(key, {
@@ -502,13 +349,19 @@ const PedidosTabView = ({ onExport }: PedidosTabViewProps) => {
                     dataEnvio: pedido.dataEnvio,
                     email: item.email,
                     documento: item.documento,
-                    status: pedido.status,
+                    status: "emitido",
+                    statusRotulo: "",
                     itemIds: [item.id],
+                    itens: [item],
                     itemCount: 1,
                 });
             }
         }
-        return Array.from(groups.values());
+        // O status da linha sai dos itens daquele destinatário: Emitido, Parcial com o número ou Cancelado (COR-51).
+        return Array.from(groups.values()).map(({ itens: doDestinatario, ...row }) => {
+            const st = statusDoDestinatario(doDestinatario);
+            return { ...row, status: st.status, statusRotulo: st.rotulo };
+        });
     }, [pedidos, itens]);
 
     const emissorOptions = useMemo(() => {
@@ -519,7 +372,7 @@ const PedidosTabView = ({ onExport }: PedidosTabViewProps) => {
     const filtered = useMemo(() => {
         const q = search.trim().toLowerCase();
         return destinatarios.filter((d) => {
-            if (statusKeys.size > 0 && !statusKeys.has(d.status)) return false;
+            if (status !== "todos" && d.status !== status) return false;
             if (emissorKeys.size > 0 && !emissorKeys.has(d.emissor)) return false;
             if (q) {
                 const matches =
@@ -531,11 +384,16 @@ const PedidosTabView = ({ onExport }: PedidosTabViewProps) => {
             }
             return true;
         });
-    }, [destinatarios, search, statusKeys, emissorKeys]);
+    }, [destinatarios, search, status, emissorKeys]);
 
-    const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
-    const safePage = Math.min(page, totalPages - 1);
-    const visibleRows = filtered.slice(safePage * pageSize, (safePage + 1) * pageSize);
+    // Busca, filtro ou tamanho novo voltam à página 1 (BKS-114).
+    const paginacao = usePaginacao(filtered, [search, status, emissorKeys]);
+    const visibleRows = paginacao.visiveis;
+    const limparFiltros = () => {
+        setSearch("");
+        setStatus("todos");
+        setEmissorKeys(new Set());
+    };
 
     const toggleSelect = useCallback((id: string, isSelected: boolean) => {
         setSelectedIds((prev) => {
@@ -620,19 +478,33 @@ const PedidosTabView = ({ onExport }: PedidosTabViewProps) => {
         [destinatarios, selectedIds],
     );
 
-    const metrics = useMemo<Metric[]>(
-        () => [
-            {
-                label: "Pedidos emitidos",
-                value: pedidos.filter((p) => p.status === "emitido").length,
-            },
-            {
-                label: "Pedidos cancelados",
-                value: pedidos.filter((p) => p.status === "cancelado").length,
-            },
-        ],
-        [pedidos],
+    // Métricas contam destinatários, a mesma unidade das linhas (COR-58); "Cancelados em parte" só aparece quando há.
+    const metrics = useMemo(() => {
+        const parciais = destinatarios.filter((d) => d.status === "parcial").length;
+        return [
+            { rotulo: "Destinatários com cortesia", valor: destinatarios.filter((d) => d.status !== "cancelado").length },
+            ...(parciais > 0 ? [{ rotulo: "Cancelados em parte", valor: parciais }] : []),
+            { rotulo: "Destinatários cancelados", valor: destinatarios.filter((d) => d.status === "cancelado").length },
+        ];
+    }, [destinatarios]);
+
+    // "Parciais" só entra no filtro quando há destinatário assim.
+    const statusOptions = useMemo(
+        () => PEDIDO_STATUS_FILTRO.filter((o) => o.id !== "parcial" || status === "parcial" || destinatarios.some((d) => d.status === "parcial")),
+        [destinatarios, status],
     );
+
+    const selecionaveisDoFiltro = useMemo(() => filtered.filter((r) => r.status !== "cancelado"), [filtered]);
+    const selecionarFiltro = useCallback(() => setSelectedIds(new Set(selecionaveisDoFiltro.map((r) => r.rowId))), [selecionaveisDoFiltro]);
+
+    // Exporta as linhas do filtro atual, todas as páginas (COR-56).
+    const exportar = useCallback(() => {
+        baixarCsv(
+            nomeComData("cortesias-pedidos"),
+            ["Destinatário", "Documento", "Pedido", "ID do pedido", "Itens", "Status", "Data de envio", "Emissor responsável"],
+            filtered.map((d) => [d.email, d.documento, d.pedidoNome, d.pedidoId, d.itemCount, d.statusRotulo, d.dataEnvio, d.emissor]),
+        );
+    }, [filtered]);
 
     const selectableVisibleRows = useMemo(
         () => visibleRows.filter((r) => r.status !== "cancelado"),
@@ -646,76 +518,69 @@ const PedidosTabView = ({ onExport }: PedidosTabViewProps) => {
         selectableVisibleRows.length > 0 &&
         pageSelectedCount === selectableVisibleRows.length;
     const someOnPageSelected = pageSelectedCount > 0 && !allOnPageSelected;
+    const todos = { isSelected: allOnPageSelected, isIndeterminate: someOnPageSelected, onChange: toggleAllOnPage };
 
     return (
         <>
-            <MetricsRow metrics={metrics} />
+            <MetricasDaLista metricas={metrics} />
 
-            <div className="flex justify-end">
-                <Button
-                    size="sm"
-                    color="secondary"
-                    iconLeading={DownloadCloud01}
-                    onClick={onExport}
+            <div className="flex flex-col gap-4">
+                <BarraDaLista
+                    busca={{ valor: search, onChange: setSearch, placeholder: "Buscar por pedido, e-mail ou documento" }}
+                    filtro={<FiltroDeStatus valor={status} opcoes={statusOptions} onChange={setStatus} />}
                 >
-                    Exportar em CSV
-                </Button>
-            </div>
+                    <FiltroMultiplo rotulo="Emissor responsável" todos="Todos os emissores" keys={emissorKeys} onChange={setEmissorKeys} options={emissorOptions} showSearch />
+                    <Button size="sm" color="secondary" iconLeading={DownloadCloud01} onClick={exportar} isDisabled={filtered.length === 0}>
+                        Exportar em CSV
+                    </Button>
+                </BarraDaLista>
 
-            <div className="rounded-xl bg-primary ring-1 ring-border-secondary">
-                <FiltersBar
-                    search={search}
-                    searchPlaceholder="Buscar por id ou nome do pedido"
-                    onSearchChange={(v) => {
-                        setSearch(v);
-                        setPage(0);
-                    }}
-                    statusKeys={statusKeys}
-                    onStatusKeysChange={(keys) => {
-                        setStatusKeys(keys);
-                        setPage(0);
-                    }}
-                    statusOptions={PEDIDO_STATUS_OPTIONS}
-                    emissorKeys={emissorKeys}
-                    onEmissorKeysChange={(keys) => {
-                        setEmissorKeys(keys);
-                        setPage(0);
-                    }}
-                    emissorOptions={emissorOptions}
-                />
+                <CartaoDaTabela>
+                    <SelectionBar
+                        selectedCount={selectedIds.size}
+                        emptyLabel="Nenhum destinatário selecionado"
+                        singular="destinatário selecionado"
+                        plural="destinatários selecionados"
+                        cancelLabel="Cancelar destinatários selecionados"
+                        onClear={clearSelection}
+                        onCancel={requestCancelSelected}
+                        todos={todos}
+                        totalDoFiltro={selecionaveisDoFiltro.length}
+                        onSelecionarFiltro={selecionarFiltro}
+                    />
 
-                <SelectionBar
-                    selectedCount={selectedIds.size}
-                    emptyLabel="Nenhum destinatário selecionado"
-                    singular="destinatário selecionado"
-                    plural="destinatários selecionados"
-                    cancelLabel="Cancelar destinatários selecionados"
-                    onClear={clearSelection}
-                    onCancel={requestCancelSelected}
-                />
+                    <CabecalhoDaTabela ordenavel>
+                        <Checkbox aria-label="Selecionar todos da página" {...todos} className="shrink-0" />
+                        <span className="min-w-0 flex-1">Destinatário</span>
+                        <span className="min-w-0 flex-1">Pedido</span>
+                        <span className="w-12 text-right">Itens</span>
+                        <span className="w-44">Status</span>
+                        <span className="w-32">Envio</span>
+                        <span className="w-15">
+                            <span className="sr-only">Ações</span>
+                        </span>
+                    </CabecalhoDaTabela>
 
-                <PedidosTable
-                    rows={visibleRows}
-                    selectedIds={selectedIds}
-                    allOnPageSelected={allOnPageSelected}
-                    someOnPageSelected={someOnPageSelected}
-                    onToggleSelect={toggleSelect}
-                    onToggleAllOnPage={toggleAllOnPage}
-                    onCancel={requestCancelRow}
-                    onDetails={handleDetails}
-                    onRename={renamePedido}
-                />
+                    {filtered.length === 0 ? (
+                        <SemResultados texto="Nenhum destinatário encontrado." onLimpar={limparFiltros} />
+                    ) : (
+                        <ul className="flex flex-col divide-y divide-secondary">
+                            {visibleRows.map((row) => (
+                                <PedidoRow
+                                    key={row.rowId}
+                                    row={row}
+                                    isSelected={selectedIds.has(row.rowId)}
+                                    onToggleSelect={toggleSelect}
+                                    onCancel={requestCancelRow}
+                                    onDetails={handleDetails}
+                                    onRename={renamePedido}
+                                />
+                            ))}
+                        </ul>
+                    )}
 
-                <PaginationCardAdvanced
-                    page={safePage + 1}
-                    total={totalPages}
-                    pageSize={pageSize}
-                    onPageChange={(p) => setPage(p - 1)}
-                    onPageSizeChange={(size) => {
-                        setPageSize(size);
-                        setPage(0);
-                    }}
-                />
+                    <RodapeDePaginacao {...paginacao} />
+                </CartaoDaTabela>
             </div>
 
             <PedidoDetailsSlideOut
@@ -817,16 +682,18 @@ const EditableNomeCell = ({ value, onSave }: EditableNomeCellProps) => {
 
     if (isEditing) {
         return (
-            <div className="flex max-w-[320px] items-center gap-1">
-                <input
+            <div className="pointer-events-auto relative z-10 flex min-w-0 flex-1 items-center gap-1">
+                {/* Campo do DS (COR-05); até 22/11/2026 era um <input> cru. */}
+                <InputBase
                     ref={inputRef}
+                    size="sm"
                     type="text"
                     value={draft}
-                    onChange={(e) => setDraft(e.target.value)}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDraft(e.target.value)}
                     onKeyDown={handleKeyDown}
                     onBlur={commit}
                     aria-label="Nome do pedido"
-                    className="min-w-0 flex-1 rounded-md bg-primary px-2 py-1 text-sm text-primary outline-none ring-1 ring-brand"
+                    wrapperClassName="min-w-0 flex-1"
                 />
                 <ButtonUtility
                     size="xs"
@@ -849,161 +716,93 @@ const EditableNomeCell = ({ value, onSave }: EditableNomeCellProps) => {
     }
 
     return (
-        <div className="group/nome flex max-w-[320px] items-center gap-2">
-            <span className="block min-w-0 flex-1 truncate" title={value}>
+        <div className="group/nome flex min-w-0 flex-1 items-center gap-2">
+            <span className="block min-w-0 truncate" title={value}>
                 {value}
             </span>
+            {/* No toque não há hover: o lápis fica sempre visível. */}
             <ButtonUtility
                 size="xs"
                 color="tertiary"
                 icon={Edit01}
                 tooltip="Editar nome"
-                className="opacity-0 transition group-hover/nome:opacity-100 focus-visible:opacity-100"
+                className="pointer-events-auto relative z-10 shrink-0 opacity-0 transition group-hover/nome:opacity-100 focus-visible:opacity-100 pointer-coarse:opacity-100"
                 onClick={() => setIsEditing(true)}
             />
         </div>
     );
 };
 
-interface PedidosTableProps {
-    rows: DestinatarioRow[];
-    selectedIds: Set<string>;
-    allOnPageSelected: boolean;
-    someOnPageSelected: boolean;
+interface PedidoRowProps {
+    row: DestinatarioRow;
+    isSelected: boolean;
     onToggleSelect: (id: string, selected: boolean) => void;
-    onToggleAllOnPage: (selected: boolean) => void;
     onCancel: (rowId: string) => void;
     onDetails: (rowId: string) => void;
     onRename: (pedidoId: string, nome: string) => void;
 }
 
-const PedidosTable = ({
-    rows,
-    selectedIds,
-    allOnPageSelected,
-    someOnPageSelected,
-    onToggleSelect,
-    onToggleAllOnPage,
-    onCancel,
-    onDetails,
-    onRename,
-}: PedidosTableProps) => {
-    if (rows.length === 0) {
-        return (
-            <div className="px-6 py-16 text-center text-sm text-tertiary">
-                Nenhum destinatário encontrado.
-            </div>
-        );
-    }
-
+/**
+ * Uma linha por destinatário: tabela a partir de 704 px de cartão; abaixo, bloco com rótulos (BKS-115).
+ * A linha inteira abre o detalhe (um botão por baixo de tudo); caixa, nome e ações ficam por cima (COR-61).
+ * No bloco, as ações têm texto e 44 px de altura; na tabela, ícones com dica.
+ */
+const PedidoRow = ({ row, isSelected, onToggleSelect, onCancel, onDetails, onRename }: PedidoRowProps) => {
+    const isCancelled = row.status === "cancelado";
     return (
-        <div className="overflow-x-auto">
-            <table className="w-full border-collapse">
-                <thead>
-                    <tr className="border-b border-secondary bg-secondary_subtle text-left">
-                        <th className="w-10 px-4 py-3 md:px-6">
-                            <Checkbox
-                                aria-label="Selecionar todos da página"
-                                isSelected={allOnPageSelected}
-                                isIndeterminate={someOnPageSelected}
-                                onChange={(s) => onToggleAllOnPage(s)}
-                            />
-                        </th>
-                        <th className="px-4 py-3 text-xs font-semibold text-tertiary">Destinatário</th>
-                        <th className="px-4 py-3 text-xs font-semibold text-tertiary">Pedido</th>
-                        <th className="px-4 py-3 text-xs font-semibold text-tertiary">Itens</th>
-                        <th className="px-4 py-3 text-xs font-semibold text-tertiary">
-                            Emissor responsável
-                        </th>
-                        <th className="px-4 py-3 text-xs font-semibold text-tertiary">Status</th>
-                        <th className="px-4 py-3 text-xs font-semibold text-tertiary">
-                            Data de envio
-                        </th>
-                        <th className="w-24 px-4 py-3" aria-label="Ações" />
-                    </tr>
-                </thead>
-                <tbody>
-                    {rows.map((row, i) => {
-                        const isSelected = selectedIds.has(row.rowId);
-                        const isCancelled = row.status === "cancelado";
-                        const meta = PEDIDO_STATUS_META[row.status];
-                        return (
-                            <tr
-                                key={row.rowId}
-                                className={cx(
-                                    "transition duration-100 ease-linear hover:bg-primary_hover",
-                                    i !== rows.length - 1 && "border-b border-secondary",
-                                )}
-                            >
-                                <td className="px-4 py-3 md:px-6">
-                                    <Checkbox
-                                        aria-label={`Selecionar destinatário ${row.email}`}
-                                        isSelected={isSelected}
-                                        isDisabled={isCancelled}
-                                        onChange={(s) => onToggleSelect(row.rowId, s)}
-                                    />
-                                </td>
-                                <td className="px-4 py-3">
-                                    <div className="flex flex-col gap-0.5">
-                                        <span className="text-sm font-medium text-primary">
-                                            {row.email}
-                                        </span>
-                                        <span className="text-xs text-tertiary">
-                                            Documento: {row.documento}
-                                        </span>
-                                    </div>
-                                </td>
-                                <td className="px-4 py-3 text-sm text-primary">
-                                    <div className="flex flex-col gap-0.5">
-                                        <EditableNomeCell
-                                            value={row.pedidoNome}
-                                            onSave={(nome) => onRename(row.pedidoId, nome)}
-                                        />
-                                        <span
-                                            className="block max-w-[200px] truncate text-xs text-tertiary"
-                                            title={row.pedidoId}
-                                        >
-                                            ID: {row.pedidoId}
-                                        </span>
-                                    </div>
-                                </td>
-                                <td className="px-4 py-3 text-sm whitespace-nowrap text-tertiary">
-                                    {row.itemCount}
-                                </td>
-                                <td className="px-4 py-3 text-sm text-secondary">{row.emissor}</td>
-                                <td className="px-4 py-3">
-                                    <BadgeWithDot size="sm" type="modern" color={meta.color}>
-                                        {meta.label}
-                                    </BadgeWithDot>
-                                </td>
-                                <td className="px-4 py-3 text-sm whitespace-nowrap text-tertiary">
-                                    {row.dataEnvio}
-                                </td>
-                                <td className="px-4 py-3">
-                                    <div className="flex justify-end gap-1">
-                                        <ButtonUtility
-                                            size="xs"
-                                            color="tertiary"
-                                            icon={SlashCircle01}
-                                            tooltip="Cancelar"
-                                            isDisabled={isCancelled}
-                                            onClick={() => onCancel(row.rowId)}
-                                        />
-                                        <ButtonUtility
-                                            size="xs"
-                                            color="tertiary"
-                                            icon={Eye}
-                                            tooltip="Detalhes"
-                                            onClick={() => onDetails(row.rowId)}
-                                        />
-                                    </div>
-                                </td>
-                            </tr>
-                        );
-                    })}
-                </tbody>
-            </table>
-        </div>
+        <LinhaDaTabela interativa selecionada={isSelected} className="relative">
+            <button
+                type="button"
+                onClick={() => onDetails(row.rowId)}
+                aria-label={`Ver detalhes de ${row.email}`}
+                className="absolute inset-0 cursor-pointer outline-focus-ring focus-visible:outline-2 focus-visible:-outline-offset-2"
+            />
+            <Checkbox
+                aria-label={`Selecionar destinatário ${row.email}`}
+                isSelected={isSelected}
+                isDisabled={isCancelled}
+                onChange={(s) => onToggleSelect(row.rowId, s)}
+                className="relative z-10 mt-0.5 shrink-0 max-md:-m-3.5 max-md:p-3.5 @min-[44rem]:mt-0"
+            />
+            <div className="pointer-events-none flex min-w-0 flex-1 flex-col gap-1.5 @min-[44rem]:flex-row @min-[44rem]:items-center @min-[44rem]:gap-4">
+                <TituloDaLinha titulo={<span className="break-all whitespace-normal">{row.email}</span>} apoio={`Documento: ${row.documento}`} />
+                <Celula rotulo="Pedido" className={COL.flex}>
+                    <span className="flex min-w-0 flex-1 flex-col">
+                        <EditableNomeCell value={row.pedidoNome} onSave={(nome) => onRename(row.pedidoId, nome)} />
+                        <span className="block truncate text-tertiary" title={row.pedidoId}>
+                            ID: {row.pedidoId}
+                        </span>
+                    </span>
+                </Celula>
+                <Celula rotulo="Itens" numero className={COL.itens}>
+                    {row.itemCount}
+                </Celula>
+                <Celula rotulo="Status" className={COL.statusPedido}>
+                    <SeloDeStatus status={row.status} rotulo={row.statusRotulo} />
+                </Celula>
+                {/* No modo tabela, data e emissor dividem a coluna Envio. */}
+                <Celula rotulo="Emissor responsável" className="@min-[44rem]:hidden">
+                    {row.emissor}
+                </Celula>
+                <Celula rotulo="Data de envio" className={COL.envio}>
+                    <span className="tabular-nums">{row.dataEnvio}</span>
+                    <span className="hidden truncate text-tertiary @min-[44rem]:block">{row.emissor}</span>
+                </Celula>
+                {/* Bloco (celular): ações com texto, 44 px. */}
+                <div className="pointer-events-auto relative z-10 mt-1 flex flex-wrap gap-2 @min-[44rem]:hidden">
+                    <Button size="sm" color="secondary" iconLeading={SlashCircle01} isDisabled={isCancelled} onClick={() => onCancel(row.rowId)} className="min-h-11">
+                        Cancelar
+                    </Button>
+                    <Button size="sm" color="secondary" iconLeading={Eye} onClick={() => onDetails(row.rowId)} className="min-h-11">
+                        Detalhes
+                    </Button>
+                </div>
+                <div className="pointer-events-auto relative z-10 hidden shrink-0 gap-1 @min-[44rem]:flex @min-[44rem]:w-15 @min-[44rem]:justify-end">
+                    <ButtonUtility size="xs" color="tertiary" icon={SlashCircle01} tooltip="Cancelar" isDisabled={isCancelled} onClick={() => onCancel(row.rowId)} />
+                    <ButtonUtility size="xs" color="tertiary" icon={Eye} tooltip="Detalhes" onClick={() => onDetails(row.rowId)} />
+                </div>
+            </div>
+        </LinhaDaTabela>
     );
 };
 
@@ -1011,11 +810,7 @@ const PedidosTable = ({
 /*  Itens tab                                                         */
 /* ------------------------------------------------------------------ */
 
-interface ItensTabViewProps {
-    onExport: () => void;
-}
-
-const ItensTabView = ({ onExport }: ItensTabViewProps) => {
+const ItensTabView = () => {
     const {
         itens,
         cancelItem: storeCancelItem,
@@ -1023,11 +818,9 @@ const ItensTabView = ({ onExport }: ItensTabViewProps) => {
     } = useCortesiasStore();
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [search, setSearch] = useState("");
-    const [statusKeys, setStatusKeys] = useState<Set<string>>(new Set());
+    const [status, setStatus] = useState<FiltroItem>("todos");
     const [kindKeys, setKindKeys] = useState<Set<string>>(new Set());
     const [emissorKeys, setEmissorKeys] = useState<Set<string>>(new Set());
-    const [page, setPage] = useState(0);
-    const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
     const [pendingCancelItemId, setPendingCancelItemId] = useState<string | null>(null);
     const [showCancelSelectedConfirm, setShowCancelSelectedConfirm] = useState(false);
     const [detailsItemId, setDetailsItemId] = useState<string | null>(null);
@@ -1037,10 +830,19 @@ const ItensTabView = ({ onExport }: ItensTabViewProps) => {
         return names.sort().map((name) => ({ id: name, label: name }));
     }, [itens]);
 
+    // Aceitos, Pendentes e Cancelados sempre; Processando e Com erro só quando há item assim.
+    const statusOptions = useMemo<{ id: FiltroItem; label: string }[]>(
+        () => [
+            { id: "todos", label: "Todos" },
+            ...ORDEM_DO_FILTRO.filter((s) => SEMPRE_NO_FILTRO.includes(s) || s === status || itens.some((it) => it.status === s)).map((s) => ({ id: s, label: ITEM_STATUS_FILTRO[s] })),
+        ],
+        [itens, status],
+    );
+
     const filtered = useMemo(() => {
         const q = search.trim().toLowerCase();
         return itens.filter((it) => {
-            if (statusKeys.size > 0 && !statusKeys.has(it.status)) return false;
+            if (status !== "todos" && it.status !== status) return false;
             if (kindKeys.size > 0 && !kindKeys.has(it.kind)) return false;
             if (emissorKeys.size > 0 && !emissorKeys.has(it.emissor)) return false;
             if (q) {
@@ -1053,11 +855,17 @@ const ItensTabView = ({ onExport }: ItensTabViewProps) => {
             }
             return true;
         });
-    }, [itens, search, statusKeys, kindKeys, emissorKeys]);
+    }, [itens, search, status, kindKeys, emissorKeys]);
 
-    const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
-    const safePage = Math.min(page, totalPages - 1);
-    const visibleRows = filtered.slice(safePage * pageSize, (safePage + 1) * pageSize);
+    // Busca, filtro ou tamanho novo voltam à página 1 (BKS-114).
+    const paginacao = usePaginacao(filtered, [search, status, kindKeys, emissorKeys]);
+    const visibleRows = paginacao.visiveis;
+    const limparFiltros = () => {
+        setSearch("");
+        setStatus("todos");
+        setKindKeys(new Set());
+        setEmissorKeys(new Set());
+    };
 
     const toggleSelect = useCallback((id: string, isSelected: boolean) => {
         setSelectedIds((prev) => {
@@ -1144,27 +952,29 @@ const ItensTabView = ({ onExport }: ItensTabViewProps) => {
         [detailsItemId, itens],
     );
 
-    const metrics = useMemo<Metric[]>(
+    // Os três últimos somam o total: com cadastro (Aceito), pendentes de cadastro e cancelados (COR-59).
+    // "Itens validados" saiu em 22/11/2026: contava os aceitos, e "validar" é passar na portaria.
+    const metrics = useMemo(
         () => [
-            {
-                label: "Itens totais",
-                value: itens.length,
-            },
-            {
-                label: "Itens com cadastro pendente",
-                value: itens.filter((it) => it.status === "pendente").length,
-            },
-            {
-                label: "Itens cancelados",
-                value: itens.filter((it) => it.status === "cancelado").length,
-            },
-            {
-                label: "Itens validados",
-                value: itens.filter((it) => it.status === "aceito").length,
-            },
+            { rotulo: "Itens emitidos", valor: itens.length },
+            { rotulo: "Itens com cadastro", valor: itens.filter((it) => it.status === "aceito").length },
+            { rotulo: "Itens com cadastro pendente", valor: itens.filter((it) => it.status === "pendente").length },
+            { rotulo: "Itens cancelados", valor: itens.filter((it) => it.status === "cancelado").length },
         ],
         [itens],
     );
+
+    const selecionaveisDoFiltro = useMemo(() => filtered.filter((r) => r.status !== "cancelado" && r.status !== "erro"), [filtered]);
+    const selecionarFiltro = useCallback(() => setSelectedIds(new Set(selecionaveisDoFiltro.map((r) => r.id))), [selecionaveisDoFiltro]);
+
+    // Exporta as linhas do filtro atual, todas as páginas (COR-56).
+    const exportar = useCallback(() => {
+        baixarCsv(
+            nomeComData("cortesias-itens"),
+            ["ID do item", "Item", "Detalhe", "Tipo", "Status", "Destinatário", "Documento", "Emissor responsável", "ID do pedido"],
+            filtered.map((it) => [it.id, it.nome, it.subtitulo, ITEM_KIND_LABEL[it.kind], ITEM_STATUS_META[it.status].label, it.email, it.documento, it.emissor, it.pedidoId]),
+        );
+    }, [filtered]);
 
     const selectableVisibleRows = useMemo(
         () =>
@@ -1181,82 +991,70 @@ const ItensTabView = ({ onExport }: ItensTabViewProps) => {
         selectableVisibleRows.length > 0 &&
         pageSelectedCount === selectableVisibleRows.length;
     const someOnPageSelected = pageSelectedCount > 0 && !allOnPageSelected;
+    const todos = { isSelected: allOnPageSelected, isIndeterminate: someOnPageSelected, onChange: toggleAllOnPage };
 
     return (
         <>
-            <MetricsRow metrics={metrics} />
+            <MetricasDaLista metricas={metrics} />
 
-            <div className="flex justify-end">
-                <Button
-                    size="sm"
-                    color="secondary"
-                    iconLeading={DownloadCloud01}
-                    onClick={onExport}
+            <div className="flex flex-col gap-4">
+                <BarraDaLista
+                    busca={{ valor: search, onChange: setSearch, placeholder: "Buscar por nome, e-mail, ID ou documento" }}
+                    filtro={<FiltroDeStatus valor={status} opcoes={statusOptions} onChange={setStatus} />}
                 >
-                    Exportar em CSV
-                </Button>
-            </div>
+                    <FiltroMultiplo rotulo="Tipo do item" todos="Todos os tipos" keys={kindKeys} onChange={setKindKeys} options={ITEM_KIND_OPTIONS} />
+                    <FiltroMultiplo rotulo="Emissor responsável" todos="Todos os emissores" keys={emissorKeys} onChange={setEmissorKeys} options={emissorOptions} showSearch />
+                    <Button size="sm" color="secondary" iconLeading={DownloadCloud01} onClick={exportar} isDisabled={filtered.length === 0}>
+                        Exportar em CSV
+                    </Button>
+                </BarraDaLista>
 
-            <div className="rounded-xl bg-primary ring-1 ring-border-secondary">
-                <FiltersBar
-                    search={search}
-                    searchPlaceholder="Buscar por nome, e-mail, ID ou Documento"
-                    onSearchChange={(v) => {
-                        setSearch(v);
-                        setPage(0);
-                    }}
-                    statusKeys={statusKeys}
-                    onStatusKeysChange={(keys) => {
-                        setStatusKeys(keys);
-                        setPage(0);
-                    }}
-                    statusOptions={ITEM_STATUS_OPTIONS}
-                    kindKeys={kindKeys}
-                    onKindKeysChange={(keys) => {
-                        setKindKeys(keys);
-                        setPage(0);
-                    }}
-                    kindOptions={ITEM_KIND_OPTIONS}
-                    emissorKeys={emissorKeys}
-                    onEmissorKeysChange={(keys) => {
-                        setEmissorKeys(keys);
-                        setPage(0);
-                    }}
-                    emissorOptions={emissorOptions}
-                />
+                <CartaoDaTabela>
+                    <SelectionBar
+                        selectedCount={selectedIds.size}
+                        emptyLabel="Nenhum item selecionado"
+                        singular="item selecionado"
+                        plural="itens selecionados"
+                        cancelLabel="Cancelar itens selecionados"
+                        onClear={clearSelection}
+                        onCancel={requestCancelSelected}
+                        todos={todos}
+                        totalDoFiltro={selecionaveisDoFiltro.length}
+                        onSelecionarFiltro={selecionarFiltro}
+                    />
 
-                <SelectionBar
-                    selectedCount={selectedIds.size}
-                    emptyLabel="Nenhum item selecionado"
-                    singular="item selecionado"
-                    plural="itens selecionados"
-                    cancelLabel="Cancelar itens selecionados"
-                    onClear={clearSelection}
-                    onCancel={requestCancelSelected}
-                />
+                    <CabecalhoDaTabela ordenavel>
+                        <Checkbox aria-label="Selecionar todos da página" {...todos} className="shrink-0" />
+                        <span className="min-w-0 flex-1">Item</span>
+                        <span className="w-40">Status</span>
+                        <span className="min-w-0 flex-1">Destinatário</span>
+                        {/* Sem o "?" que não explicava nada (COR-60): o nome da coluna basta. */}
+                        <span className="w-28">Emissor</span>
+                        <span className="w-23">
+                            <span className="sr-only">Ações</span>
+                        </span>
+                    </CabecalhoDaTabela>
 
-                <ItensTable
-                    rows={visibleRows}
-                    selectedIds={selectedIds}
-                    allOnPageSelected={allOnPageSelected}
-                    someOnPageSelected={someOnPageSelected}
-                    onToggleSelect={toggleSelect}
-                    onToggleAllOnPage={toggleAllOnPage}
-                    onCancel={requestCancelItem}
-                    onResend={handleResend}
-                    onDetails={handleDetails}
-                />
+                    {filtered.length === 0 ? (
+                        <SemResultados texto="Nenhum item encontrado." onLimpar={limparFiltros} />
+                    ) : (
+                        <ul className="flex flex-col divide-y divide-secondary">
+                            {visibleRows.map((row) => (
+                                <ItemRow
+                                    key={row.id}
+                                    row={row}
+                                    isSelected={selectedIds.has(row.id)}
+                                    onToggleSelect={toggleSelect}
+                                    onCancel={requestCancelItem}
+                                    onResend={handleResend}
+                                    onDetails={handleDetails}
+                                />
+                            ))}
+                        </ul>
+                    )}
 
-                <PaginationCardAdvanced
-                    page={safePage + 1}
-                    total={totalPages}
-                    pageSize={pageSize}
-                    onPageChange={(p) => setPage(p - 1)}
-                    onPageSizeChange={(size) => {
-                        setPageSize(size);
-                        setPage(0);
-                    }}
-                />
+                    <RodapeDePaginacao {...paginacao} />
+                </CartaoDaTabela>
             </div>
 
             <CancelConfirmModal
@@ -1293,7 +1091,7 @@ const ItensTabView = ({ onExport }: ItensTabViewProps) => {
                 listItems={selectedItensList.map((it) => (
                     <div className="flex flex-col">
                         <span className="font-medium text-primary">{it.nome}</span>
-                        <span className="text-xs text-tertiary">{it.subtitulo}</span>
+                        <span className="text-sm text-tertiary">{it.subtitulo}</span>
                     </div>
                 ))}
                 confirmLabel="Cancelar itens"
@@ -1315,156 +1113,72 @@ const ItensTabView = ({ onExport }: ItensTabViewProps) => {
 /*  Itens table                                                       */
 /* ------------------------------------------------------------------ */
 
-interface ItensTableProps {
-    rows: CortesiaItem[];
-    selectedIds: Set<string>;
-    allOnPageSelected: boolean;
-    someOnPageSelected: boolean;
+interface ItemRowProps {
+    row: CortesiaItem;
+    isSelected: boolean;
     onToggleSelect: (id: string, selected: boolean) => void;
-    onToggleAllOnPage: (selected: boolean) => void;
     onCancel: (id: string) => void;
     onResend: (id: string) => void;
     onDetails: (id: string) => void;
 }
 
-const ItensTable = ({
-    rows,
-    selectedIds,
-    allOnPageSelected,
-    someOnPageSelected,
-    onToggleSelect,
-    onToggleAllOnPage,
-    onCancel,
-    onResend,
-    onDetails,
-}: ItensTableProps) => {
-    if (rows.length === 0) {
-        return (
-            <div className="px-6 py-16 text-center text-sm text-tertiary">
-                Nenhum item encontrado.
-            </div>
-        );
-    }
-
+/** Uma linha por item emitido: tabela a partir de 704 px de cartão; abaixo, bloco com rótulos (BKS-115). A linha inteira abre o detalhe (COR-61). */
+const ItemRow = ({ row, isSelected, onToggleSelect, onCancel, onResend, onDetails }: ItemRowProps) => {
+    const isCancelled = row.status === "cancelado";
+    const isErro = row.status === "erro";
     return (
-        <div className="overflow-x-auto">
-            <table className="w-full border-collapse">
-                <thead>
-                    <tr className="border-b border-secondary bg-secondary_subtle text-left">
-                        <th className="w-10 px-4 py-3 md:px-6">
-                            <Checkbox
-                                aria-label="Selecionar todos da página"
-                                isSelected={allOnPageSelected}
-                                isIndeterminate={someOnPageSelected}
-                                onChange={(s) => onToggleAllOnPage(s)}
-                            />
-                        </th>
-                        <th className="px-4 py-3 text-xs font-semibold text-tertiary">Item</th>
-                        <th className="px-4 py-3 text-xs font-semibold text-tertiary">Status</th>
-                        <th className="px-4 py-3 text-xs font-semibold text-tertiary">
-                            <span className="inline-flex items-center gap-1">
-                                Emissor responsável
-                                <HelpCircle
-                                    aria-hidden="true"
-                                    className="size-3.5 text-fg-quaternary"
-                                />
+        <LinhaDaTabela interativa selecionada={isSelected} className="relative">
+            <button
+                type="button"
+                onClick={() => onDetails(row.id)}
+                aria-label={`Ver detalhes de ${row.nome} para ${row.email}`}
+                className="absolute inset-0 cursor-pointer outline-focus-ring focus-visible:outline-2 focus-visible:-outline-offset-2"
+            />
+            <Checkbox
+                aria-label={`Selecionar item ${row.id}`}
+                isSelected={isSelected}
+                isDisabled={isCancelled || isErro}
+                onChange={(s) => onToggleSelect(row.id, s)}
+                className="relative z-10 mt-0.5 shrink-0 max-md:-m-3.5 max-md:p-3.5 @min-[44rem]:mt-0"
+            />
+            <div className="pointer-events-none flex min-w-0 flex-1 flex-col gap-1.5 @min-[44rem]:flex-row @min-[44rem]:items-center @min-[44rem]:gap-4">
+                <TituloDaLinha titulo={row.nome} apoio={row.subtitulo} />
+                <Celula rotulo="Status" className={COL.statusItem}>
+                    <SeloDeStatus status={ITEM_STATUS_SELO[row.status]} />
+                </Celula>
+                <Celula rotulo="Destinatário" className={COL.flex}>
+                    <span className="flex min-w-0 flex-1 flex-col">
+                        <span className="flex min-w-0 items-center gap-2">
+                            <span className="break-all @min-[44rem]:truncate" title={row.email}>
+                                {row.email}
                             </span>
-                        </th>
-                        <th className="px-4 py-3 text-xs font-semibold text-tertiary">
-                            Destinatário
-                        </th>
-                        <th className="w-32 px-4 py-3" aria-label="Ações" />
-                    </tr>
-                </thead>
-                <tbody>
-                    {rows.map((row, i) => {
-                        const isSelected = selectedIds.has(row.id);
-                        const isCancelled = row.status === "cancelado";
-                        const isErro = row.status === "erro";
-                        const meta = ITEM_STATUS_META[row.status];
-                        return (
-                            <tr
-                                key={row.id}
-                                className={cx(
-                                    "transition duration-100 ease-linear hover:bg-primary_hover",
-                                    i !== rows.length - 1 && "border-b border-secondary",
-                                )}
-                            >
-                                <td className="px-4 py-3 md:px-6">
-                                    <Checkbox
-                                        aria-label={`Selecionar item ${row.id}`}
-                                        isSelected={isSelected}
-                                        isDisabled={isCancelled || isErro}
-                                        onChange={(s) => onToggleSelect(row.id, s)}
-                                    />
-                                </td>
-                                <td className="px-4 py-3">
-                                    <div className="flex flex-col gap-0.5">
-                                        <span className="text-sm font-medium text-primary">
-                                            {row.nome}
-                                        </span>
-                                        <span className="text-xs text-tertiary">
-                                            {row.subtitulo}
-                                        </span>
-                                    </div>
-                                </td>
-                                <td className="px-4 py-3">
-                                    <BadgeWithDot size="sm" type="modern" color={meta.color}>
-                                        {meta.label}
-                                    </BadgeWithDot>
-                                </td>
-                                <td className="px-4 py-3 text-sm text-secondary">{row.emissor}</td>
-                                <td className="px-4 py-3">
-                                    <div className="flex flex-col gap-1">
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-sm text-primary">{row.email}</span>
-                                            {row.transferido && (
-                                                <Tooltip title="Transferido">
-                                                    <TooltipTrigger>
-                                                        <SwitchHorizontal01
-                                                            aria-label="Transferido"
-                                                            className="size-4 text-utility-sky-500"
-                                                        />
-                                                    </TooltipTrigger>
-                                                </Tooltip>
-                                            )}
-                                        </div>
-                                        <span className="text-xs text-tertiary">
-                                            Documento: {row.documento}
-                                        </span>
-                                    </div>
-                                </td>
-                                <td className="px-4 py-3">
-                                    <div className="flex justify-end gap-1">
-                                        <ButtonUtility
-                                            size="xs"
-                                            color="tertiary"
-                                            icon={SlashCircle01}
-                                            tooltip="Cancelar"
-                                            isDisabled={isCancelled}
-                                            onClick={() => onCancel(row.id)}
-                                        />
-                                        <ButtonUtility
-                                            size="xs"
-                                            color="tertiary"
-                                            icon={RefreshCcw01}
-                                            tooltip="Reenviar"
-                                            onClick={() => onResend(row.id)}
-                                        />
-                                        <ButtonUtility
-                                            size="xs"
-                                            color="tertiary"
-                                            icon={Eye}
-                                            tooltip="Detalhes"
-                                            onClick={() => onDetails(row.id)}
-                                        />
-                                    </div>
-                                </td>
-                            </tr>
-                        );
-                    })}
-                </tbody>
-            </table>
-        </div>
+                            {/* Transferido em texto, não só no ícone (COR-10). */}
+                            {row.transferido && <span className="shrink-0 text-tertiary">(transferido)</span>}
+                        </span>
+                        <span className="truncate text-tertiary">Documento: {row.documento}</span>
+                    </span>
+                </Celula>
+                <Celula rotulo="Emissor responsável" className={COL.emissor}>
+                    <span className="block truncate">{row.emissor}</span>
+                </Celula>
+                {/* Bloco (celular): ações com texto, 44 px. Reenviar fica desativado no cancelado (COR-12). */}
+                <div className="pointer-events-auto relative z-10 mt-1 flex flex-wrap gap-2 @min-[44rem]:hidden">
+                    <Button size="sm" color="secondary" iconLeading={SlashCircle01} isDisabled={isCancelled} onClick={() => onCancel(row.id)} className="min-h-11">
+                        Cancelar
+                    </Button>
+                    <Button size="sm" color="secondary" iconLeading={RefreshCcw01} isDisabled={isCancelled || isErro} onClick={() => onResend(row.id)} className="min-h-11">
+                        Reenviar
+                    </Button>
+                    <Button size="sm" color="secondary" iconLeading={Eye} onClick={() => onDetails(row.id)} className="min-h-11">
+                        Detalhes
+                    </Button>
+                </div>
+                <div className="pointer-events-auto relative z-10 hidden shrink-0 gap-1 @min-[44rem]:flex @min-[44rem]:w-23 @min-[44rem]:justify-end">
+                    <ButtonUtility size="xs" color="tertiary" icon={SlashCircle01} tooltip="Cancelar" isDisabled={isCancelled} onClick={() => onCancel(row.id)} />
+                    <ButtonUtility size="xs" color="tertiary" icon={RefreshCcw01} tooltip="Reenviar" isDisabled={isCancelled || isErro} onClick={() => onResend(row.id)} />
+                    <ButtonUtility size="xs" color="tertiary" icon={Eye} tooltip="Detalhes" onClick={() => onDetails(row.id)} />
+                </div>
+            </div>
+        </LinhaDaTabela>
     );
 };

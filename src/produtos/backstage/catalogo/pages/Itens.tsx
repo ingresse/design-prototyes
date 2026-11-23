@@ -7,8 +7,8 @@ import { ButtonUtility } from "@/components/base/buttons/button-utility";
 import { Toggle } from "@/components/base/toggle/toggle";
 import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
+import { CabecalhoDaPagina } from "../../components/cabecalho-da-pagina";
 import { VincularChavesSlideOut } from "../components/VincularChavesSlideOut";
-import { TITULO_PAGINA } from "@/produtos/backstage/components/titulo-pagina";
 
 /* ---- Mock data (exemplo realista de Réveillon) ---- */
 const GROUP = {
@@ -103,17 +103,20 @@ export function Itens() {
         <BackstageLayout activeSection="itens" activeItem="catalogo-itens">
             <div className="flex min-w-0 flex-1 flex-col md:h-[calc(100dvh-4.5rem)] md:overflow-hidden">
                 {/* Header da página (fixo) */}
-                <header className="flex shrink-0 items-center justify-between gap-3">
-                    <h1 className={TITULO_PAGINA}>Itens</h1>
-                    <div className="flex items-center gap-3">
-                        <Button size="lg" color="secondary">
-                            Ajustar abertura de vendas
-                        </Button>
-                        <Button size="lg" color="primary">
-                            Editar grupos
-                        </Button>
-                    </div>
-                </header>
+                <CabecalhoDaPagina
+                    className="shrink-0"
+                    titulo="Itens"
+                    acoes={
+                        <>
+                            <Button size="md" color="secondary">
+                                Ajustar abertura de vendas
+                            </Button>
+                            <Button size="md" color="primary">
+                                Editar grupos
+                            </Button>
+                        </>
+                    }
+                />
 
                 {/* Card do grupo */}
                 <div className="mt-6 flex flex-col overflow-hidden rounded-xl ring-1 ring-border-secondary md:min-h-0 md:flex-1">

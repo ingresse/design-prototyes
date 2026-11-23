@@ -11,7 +11,7 @@ import { ButtonUtility } from "@/components/base/buttons/button-utility";
 import { Input } from "@/components/base/input/input";
 import { ComboBox } from "@/components/base/select/combobox";
 import { Select } from "@/components/base/select/select";
-import { LIMIAR_FERRAMENTAS } from "../components/escala";
+import { AvisoDeEscala, LIMIAR_FERRAMENTAS } from "../components/escala";
 import { Toggle } from "@/components/base/toggle/toggle";
 import { Tooltip, TooltipTrigger } from "@/components/base/tooltip/tooltip";
 import { DURACAO_TRANSICAO, Surgir } from "@/components/foundations/transicao";
@@ -19,10 +19,12 @@ import type { Lote, TipoIngresso } from "@/plataforma";
 import { PRAZO_DA_COMPRA_PENDENTE_MIN } from "@/plataforma";
 import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
+import { CabecalhoDaPagina } from "../../components/cabecalho-da-pagina";
 import { DescricaoRica } from "../../components/descricao-rica";
 import { ButtonGroup, ButtonGroupItem } from "@/components/base/button-group/button-group";
 import { SeletorDeLista } from "../components/SeletorDeLista";
-import { CHAVES_DE_EXEMPLO, SEGMENTACOES } from "../data/exemplos";
+import { codigosDoEvento } from "../../components/passkeys-do-evento";
+import { useSegmentacoesDaOrganizacao } from "../../components/segmentacoes-da-organizacao";
 import {
     BarraDeSalvar,
     EscolhaEmLista,
@@ -32,6 +34,7 @@ import {
     ConfirmarSaida,
     EstadoBadge,
     SecaoDoItem,
+    ToggleAVenda,
     irParaPrimeiroErro,
 } from "../components/comuns";
 import {
@@ -64,6 +67,8 @@ const GRADE_LOTES = "md:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)_minmax(0,1.1fr)
 
 const T = {
     voltar: "Ingressos",
+    /** Voltar do topo: nome da tela de destino (BKS-40). */
+    voltarCabecalho: "Ingressos e produtos",
     novo: "Novo ingresso",
     disponiveis: "{n} disponíveis",
     pendentes: "{n} pendentes",
@@ -85,6 +90,7 @@ const T = {
     inteira: "Inteira",
     meia: "Meia-entrada",
     descricao: "Descrição",
+    descricaoCampo: "Texto para o comprador",
     descricaoDica: "Aparece para o comprador. Diga o que está incluso e quem pode usar.",
     setor: "Grupo",
     setorErro: "Escolha um grupo. Crie grupos na página Ingressos.",
@@ -116,10 +122,10 @@ const T = {
     transferenciaPorDependentes: "Com dependentes como portadores, a transferência fica em Nunca permitir.",
     transferenciaPorSegmento: "Com segmentação, a transferência fica em Somente na compra.",
     chaves: "Passkeys",
-    chavesDica: "Com Passkey vinculada, só quem tem uma delas compra. As Passkeys são criadas em Marketing › Passkey.",
+    chavesDica: "Com Passkey vinculada, só quem tem uma delas compra. As Passkeys são criadas em Ingressos e produtos › Passkey.",
     chavesVincular: "Vincular Passkeys",
     chavesTitulo: "Passkeys de {item}",
-    chavesVazio: "Nenhuma Passkey neste evento. Crie em Marketing › Passkey.",
+    chavesVazio: "Nenhuma Passkey neste evento. Crie em Ingressos e produtos › Passkey.",
     avancadoDica: "Já vêm preenchidas. Mude só se precisar.",
     avancado: "Avançado",
     portador: "Tipo de portador",
@@ -164,13 +170,27 @@ export function IngressoDetalhe() {
     const navigate = useNavigate();
     const reduzir = useReducedMotion();
     const { carregando, evento, vendidos, pendentes } = useCatalogo();
+    // Segmentações gravadas na organização (SEG-52).
+    const SEGMENTACOES_DA_ORG = useSegmentacoesDaOrganizacao().opcoes;
     const { t, preco, numero, plural, dataCurta } = useTextosItens();
     const novo = id === "novo";
 
     const setores = useMemo(() => (evento?.sessoes ?? []).flatMap((s) => s.grupos.map((g) => ({ setor: g, sessao: s }))), [evento]);
     const achado = novo ? undefined : acharIngresso(evento, id);
     const original = useMemo<{ tipo: TipoIngresso; setorId: string } | null>(() => {
-        if (novo) return { tipo: ingressoNovo(), setorId: params.get("setor") ?? setores[0]?.setor.id ?? "" };
+        if (novo) {
+            // Vindo de "Mais opções" da criação rápida (ITM-139): o que foi digitado já entra no rascunho.
+            const base = ingressoNovo();
+            const preco = params.get("preco");
+            const quantidade = params.get("quantidade");
+            const tipo: TipoIngresso = {
+                ...base,
+                nome: params.get("nome") ?? base.nome,
+                beneficio: params.get("tipo") === "meia-entrada" ? "meia-entrada" : base.beneficio,
+                lotes: [{ ...base.lotes[0], preco: preco ? Number(preco) : base.lotes[0].preco, quantidade: quantidade ? Number(quantidade) : base.lotes[0].quantidade }],
+            };
+            return { tipo, setorId: params.get("setor") ?? setores[0]?.setor.id ?? "" };
+        }
         return achado ? { tipo: achado.tipo, setorId: achado.setor.id } : null;
         // O original só muda quando o item do banco muda (ou ao trocar de rota).
     }, [novo, achado?.tipo, achado?.setor.id, setores.length]);
@@ -322,13 +342,23 @@ export function IngressoDetalhe() {
     return (
         <BackstageLayout activeSection="itens" activeItem="catalogo-ingressos">
             <div className="flex min-w-0 flex-1 flex-col gap-6">
-                {/* Criar e editar usam o mesmo formulário: sem título no topo, só o voltar; o "À venda" fica ao lado do nome (ITM-32). */}
-                <header>
-                    <h1 className="sr-only">{novo ? T.novo : original.tipo.nome}</h1>
-                    <Button color="tertiary" size="md" iconLeading={ArrowLeft} onClick={voltar} className="-ml-3">
-                        {T.voltar}
-                    </Button>
-                </header>
+                {/* Criar e editar usam o mesmo formulário e o cabeçalho padrão (BKS-100); o "À venda" fica na linha do título,
+                    à direita e alinhado ao pé dele, como no produto e no combo (ITM-150). Na edição, grava na hora (ITM-32). */}
+                <div className="flex flex-col gap-4">
+                    <CabecalhoDaPagina
+                        voltar={{ rotulo: T.voltarCabecalho, onClick: voltar }}
+                        titulo={novo ? T.novo : original.tipo.nome}
+                        selo={<ToggleAVenda titulo={novo ? T.novo : original.tipo.nome} ativo={tipo.ativo} onAtivo={(ativo) => void alternarAtivo(ativo)} />}
+                        seloNoPe
+                    />
+                    {/* Ligado mas sem vender (esgotado ou sem lote à venda): o motivo logo abaixo do título. */}
+                    <Surgir visivel={!novo && tipo.ativo && estado !== "a-venda"}>
+                        <p role="status" className="text-sm text-warning-primary">
+                            {T.avisoLigado[estado === "esgotado" ? "esgotado" : tipo.lotes.length ? "semLote" : "semLotes"]}
+                        </p>
+                    </Surgir>
+                    <AvisoDeEscala />
+                </div>
 
                 <div className="flex w-full flex-col gap-4">
                     <SecaoDoItem
@@ -349,44 +379,17 @@ export function IngressoDetalhe() {
                                 }))}
                             />
                         </div>
-                        <div className="flex items-start gap-4">
-                            <Input
-                                label={T.nome}
-                                isRequired
-                                maxLength={70}
-                                value={tipo.nome}
-                                onChange={(v) => set({ nome: v })}
-                                placeholder="Ex.: Inteira"
-                                isInvalid={tentou && !!erros.nome}
-                                hint={tentou && erros.nome ? erros.nome : formatar(T.nomeContador, { n: tipo.nome.length })}
-                                className="min-w-0 flex-1"
-                            />
-                            {/* O "À venda" fica ao lado do nome, com o rótulo em cima, como na lista (UI-FRM-005). Na edição, grava na hora (ITM-32). */}
-                            <div className="flex shrink-0 flex-col gap-1.5">
-                                <span className="text-sm font-medium text-secondary" aria-hidden="true">
-                                    {t.visibilidade.ativo}
-                                </span>
-                                <div className="flex h-11 items-center">
-                                    <Toggle size="md" aria-label={t.visibilidade.ativo} isSelected={tipo.ativo} onChange={(ativo) => void alternarAtivo(ativo)} />
-                                </div>
-                            </div>
-                        </div>
-                        {/* Ligado mas sem vender (esgotado ou sem lote à venda): o motivo fica logo abaixo do nome. */}
-                        <Surgir visivel={!novo && tipo.ativo && estado !== "a-venda"}>
-                            <p role="status" className="text-sm text-warning-primary">
-                                {T.avisoLigado[estado === "esgotado" ? "esgotado" : tipo.lotes.length ? "semLote" : "semLotes"]}
-                            </p>
-                        </Surgir>
+                        <Input
+                            label={T.nome}
+                            isRequired
+                            maxLength={70}
+                            value={tipo.nome}
+                            onChange={(v) => set({ nome: v })}
+                            placeholder="Ex.: Inteira"
+                            isInvalid={tentou && !!erros.nome}
+                            hint={tentou && erros.nome ? erros.nome : formatar(T.nomeContador, { n: tipo.nome.length })}
+                        />
                         <div className="grid gap-4 md:grid-cols-3">
-                            <Select
-                                label={T.itemVendido}
-                                tooltip={T.itemVendidoDica}
-                                selectedKey={tipo.itemVendido ?? "ingresso"}
-                                onSelectionChange={(k) => k && set({ itemVendido: k === "ingresso" ? undefined : (k as TipoIngresso["itemVendido"]) })}
-                                items={(["ingresso", "checkin", "pacote"] as const).map((id) => ({ id, label: T.itens[id] }))}
-                            >
-                                {(i) => <Select.Item id={i.id}>{i.label}</Select.Item>}
-                            </Select>
                             <Select
                                 label={T.tipo}
                                 selectedKey={tipo.beneficio ?? "inteira"}
@@ -395,6 +398,15 @@ export function IngressoDetalhe() {
                                     { id: "inteira", label: T.inteira },
                                     { id: "meia-entrada", label: T.meia },
                                 ]}
+                            >
+                                {(i) => <Select.Item id={i.id}>{i.label}</Select.Item>}
+                            </Select>
+                            <Select
+                                label={T.itemVendido}
+                                tooltip={T.itemVendidoDica}
+                                selectedKey={tipo.itemVendido ?? "ingresso"}
+                                onSelectionChange={(k) => k && set({ itemVendido: k === "ingresso" ? undefined : (k as TipoIngresso["itemVendido"]) })}
+                                items={(["ingresso", "checkin", "pacote"] as const).map((id) => ({ id, label: T.itens[id] }))}
                             >
                                 {(i) => <Select.Item id={i.id}>{i.label}</Select.Item>}
                             </Select>
@@ -409,14 +421,6 @@ export function IngressoDetalhe() {
                                 {(i) => <Select.Item id={i.id}>{i.label}</Select.Item>}
                             </Select>
                         </div>
-                        {/* Mesmo editor do "Sobre o evento" (EVT-86); grava o HTML, que a compra já mostra formatado. */}
-                        <DescricaoRica
-                            label={T.descricao}
-                            valor={tipo.descricao ?? ""}
-                            onChange={(html) => set({ descricao: html || undefined })}
-                            placeholder={T.descricaoPlaceholder}
-                            hint={T.descricaoDica}
-                        />
                     </SecaoDoItem>
 
                     {/* Sem cartão em volta: a tabela de lotes já é o contêiner (UI-VIS-019). */}
@@ -548,6 +552,17 @@ export function IngressoDetalhe() {
                         </Surgir>
                     </SecaoDoItem>
 
+                    {/* Descrição depois de preço e lotes (ITM-20): o essencial para vender vem primeiro; o texto rico é opcional e longo. */}
+                    <SecaoDoItem titulo={T.descricao} descricao={T.descricaoDica}>
+                        {/* Mesmo editor do "Sobre o evento" (EVT-86); grava o HTML, que a compra já mostra formatado. */}
+                        <DescricaoRica
+                            label={T.descricaoCampo}
+                            valor={tipo.descricao ?? ""}
+                            onChange={(html) => set({ descricao: html || undefined })}
+                            placeholder={T.descricaoPlaceholder}
+                        />
+                    </SecaoDoItem>
+
                     <SecaoDoItem titulo={t.vendas.titulo}>
                         <CamposDeVendas valor={tipo.vendas} onChange={(vendas) => set({ vendas })} />
                         <div className="flex flex-col gap-2 border-t border-secondary pt-5">
@@ -584,7 +599,7 @@ export function IngressoDetalhe() {
                             <EscolhaEmLista
                                 rotulo={T.segmentacao}
                                 dica={T.segmentacaoDica}
-                                escolhidos={(tipo.segmentos ?? []).map((id) => SEGMENTACOES.find((x) => x.id === id)?.label ?? id)}
+                                escolhidos={(tipo.segmentos ?? []).map((id) => SEGMENTACOES_DA_ORG.find((x) => x.id === id)?.label ?? id)}
                                 vazio={T.segmentacaoSem}
                                 onEscolher={() => setSeletor({ tipo: "segmentos" })}
                             />
@@ -629,7 +644,7 @@ export function IngressoDetalhe() {
                     titulo={formatar(T.chavesTitulo, { item: seletor.loteId ? (tipo.lotes.find((l) => l.id === seletor.loteId)?.nome ?? "") : tipo.nome || T.novo })}
                     descricao={T.chavesDica}
                     vazio={T.chavesVazio}
-                    opcoes={CHAVES_DE_EXEMPLO.map((c) => ({ id: c, rotulo: c }))}
+                    opcoes={codigosDoEvento(evento).map((c) => ({ id: c, rotulo: c }))}
                     selecionados={(seletor.loteId ? tipo.lotes.find((l) => l.id === seletor.loteId)?.chaves : tipo.chaves) ?? []}
                     onFechar={() => setSeletor(null)}
                     onConfirmar={(ids) => {
@@ -658,7 +673,7 @@ export function IngressoDetalhe() {
                     titulo={T.segmentacaoTitulo}
                     descricao={T.segmentacaoDica}
                     vazio={T.segmentacaoVazio}
-                    opcoes={SEGMENTACOES.map((x) => ({ id: x.id, rotulo: x.label }))}
+                    opcoes={SEGMENTACOES_DA_ORG.map((x) => ({ id: x.id, rotulo: x.label }))}
                     selecionados={tipo.segmentos ?? []}
                     onFechar={() => setSeletor(null)}
                     onConfirmar={(ids) => {

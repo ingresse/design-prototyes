@@ -9,10 +9,10 @@ import { RadioButtonBase } from "@/components/base/radio-buttons/radio-buttons";
 import { Tabs } from "@/components/application/tabs/tabs";
 import { cx } from "@/utils/cx";
 import { Checkbox } from "@/components/base/checkbox/checkbox";
-import { Aviso, CampoMotivo, FOCO, MOTIVO_INICIAL, Miniatura, Regra, ResumoFinanceiro, Stepper, capitalizar, mascararEmail } from "../pos-compra-ui";
+import { Aviso, CampoMotivo, FOCO, InfoDaCobranca, MOTIVO_INICIAL, Miniatura, Regra, ResumoFinanceiro, Stepper, capitalizar } from "../pos-compra-ui";
 import { COBRANCA_TROCA_PERGUNTAS, vocabularioDoEvento, type Vocabulario } from "../../data/pos-compra-store";
 import { AbasCarrossel, ChipLegenda, type AbaItem } from "../abas-carrossel";
-import { EditorResposta } from "../respostas-ui";
+import { AvisoDeEstoque, EditorResposta } from "../respostas-ui";
 import {
     SESSOES,
     calcularTrocaItens,
@@ -273,7 +273,6 @@ export function TrocarItensWizard({ pedido, linhasIniciais, onFechar, onEnviado 
     /* §10.2: a sobra do downgrade fica com a Ingresse e a tela exige aceite explícito. */
     const naoDevolvido = calculo?.naoDevolvido ?? 0;
     const precisaAceite = naoDevolvido > 0;
-    const [precisaFormulario, setPrecisaFormulario] = useState(false);
 
     /* ------------------------------------------------------------------ */
     /*  Etapas                                                             */
@@ -285,9 +284,12 @@ export function TrocarItensWizard({ pedido, linhasIniciais, onFechar, onEnviado 
        mesmo formulário ia direto para a cobrança sem ninguém olhar o que o participante tinha
        respondido.
 
-       Fica fixa depois de entrar no fluxo, para o stepper não mudar de tamanho enquanto a pessoa
-       responde. */
-    const comFormularios = precisaFormulario || paresComFormulario.length > 0;
+       PED-110: o número de etapas é decidido na entrada. A etapa existe quando algum item do
+       catálogo do evento tem formulário; se os itens escolhidos não têm, ela é pulada (fica
+       concluída no stepper). Antes ela nascia ao escolher um item com formulário e o stepper
+       passava de 3 para 4 etapas no meio do fluxo. */
+    const comFormularios = doEvento.some((item) => perguntasDoItem(item).length > 0);
+    const pularFormularios = comFormularios && paresComFormulario.length === 0;
     const etapas: Etapa[] = ["saem", "entram", ...(comFormularios ? (["formularios"] as Etapa[]) : []), "revisao"];
     const etapa = etapas[Math.min(indice, etapas.length - 1)];
 
@@ -330,7 +332,7 @@ export function TrocarItensWizard({ pedido, linhasIniciais, onFechar, onEnviado 
     const rotuloAvancar =
         etapa === "saem"
             ? "Escolher o que entra"
-            : etapa === "entram" && comFormularios
+            : etapa === "entram" && comFormularios && !pularFormularios
               ? paresIncompletos.length > 0
                   ? `Responder ${vocab.formularios}`
                   : `Conferir ${vocab.formularios}`
@@ -340,11 +342,9 @@ export function TrocarItensWizard({ pedido, linhasIniciais, onFechar, onEnviado 
        que o pedido registra, como nas três EFs. */
     const fechar = () => onFechar();
 
-    const avancar = () => {
-        if (etapa === "entram" && paresComFormulario.length > 0) setPrecisaFormulario(true);
-        setIndice((i) => i + 1);
-    };
-    const voltar = () => (indice === 0 ? fechar() : setIndice((i) => i - 1));
+    const avancar = () => setIndice((i) => i + (etapa === "entram" && pularFormularios ? 2 : 1));
+    /* A etapa pulada na ida é pulada na volta. */
+    const voltar = () => (indice === 0 ? fechar() : setIndice((i) => i - (etapa === "revisao" && pularFormularios ? 2 : 1)));
 
     const cartaoCatalogo = (item: CatalogoItem) => {
         const referencia = referenciaDoItem(item);
@@ -420,7 +420,7 @@ export function TrocarItensWizard({ pedido, linhasIniciais, onFechar, onEnviado 
         <WizardShell
             onClose={fechar}
             titulo="Trocar"
-            subtitulo={`${comprador?.nome ?? "Comprador"} · Pedido ${uuidCurto(pedido.id)}`}
+            subtitulo={`Pedido ${uuidCurto(pedido.id)}, de ${comprador?.nome ?? "comprador sem nome"}`}
             /* "Formulários" vira "Fichas de inscrição" no esporte: é o nome que o atendente
                procura, e o stepper é onde ele confere em que ponto está. */
             etapas={etapas.map((e) => (e === "formularios" ? capitalizar(vocab.formularios) : TITULO_ETAPA[e]))}
@@ -436,6 +436,7 @@ export function TrocarItensWizard({ pedido, linhasIniciais, onFechar, onEnviado 
                       : "Enviar cobrança"
             }
             rotuloContinuar="Continuar trocando"
+            indiceAnterior={etapa === "revisao" && pularFormularios ? indice - 2 : undefined}
             onVoltar={voltar}
             onAvancar={avancar}
             onConfirmar={confirmar}
@@ -443,7 +444,7 @@ export function TrocarItensWizard({ pedido, linhasIniciais, onFechar, onEnviado 
                 falta ? (
                     <span className="text-tertiary">{falta}</span>
                 ) : etapa === "revisao" && calculo && calculo.total > 0 ? (
-                    `${formatarMoeda(calculo.total)} para ${mascararEmail(destino)}`
+                    <InfoDaCobranca total={calculo.total} destino={destino} />
                 ) : (etapa === "entram" || etapa === "formularios") && calculo ? (
                     /* O total vem para cá assim que existe. A etapa só mostrava "+R$ 60,00 por
                        unidade" na linha, que é a diferença de um item e não o preço da operação:
@@ -452,7 +453,7 @@ export function TrocarItensWizard({ pedido, linhasIniciais, onFechar, onEnviado 
                         <span className="font-semibold">
                             {totalEntram} de {totalSaem}
                         </span>{" "}
-                        escolhidos · <span className="font-semibold">Total {formatarMoeda(calculo.total)}</span>
+                        escolhidos. <span className="font-semibold">Total {formatarMoeda(calculo.total)}</span>
                     </span>
                 ) : undefined
             }
@@ -483,7 +484,8 @@ export function TrocarItensWizard({ pedido, linhasIniciais, onFechar, onEnviado 
                                 value={termo}
                                 aria-label="Buscar"
                                 onChange={(evento) => setTermo(evento.target.value)}
-                                placeholder={`Busque por sessão, ${vocab.grupo.toLowerCase()}, lote ou nome`}
+                                /* Curto o bastante para caber inteiro em 390 px (antes cortava no meio). */
+                                placeholder="Nome, lote ou data"
                             />
                         </div>
                         {tiposDisponiveis.length > 1 && (
@@ -594,6 +596,7 @@ export function TrocarItensWizard({ pedido, linhasIniciais, onFechar, onEnviado 
                     </p>
                 ) : (
                     <>
+                        <AvisoDeEstoque perguntas={paresComFormulario.flatMap(({ novoItem }) => perguntasDoItem(novoItem))} />
                         {paresComFormulario.map(({ linha, novoItem }, posicao) => {
                             const pendentes = faltando(linha, novoItem);
                             const { nome } = identidadeDaLinha(pedido, linha);
@@ -666,7 +669,7 @@ export function TrocarItensWizard({ pedido, linhasIniciais, onFechar, onEnviado 
                                             <ArrowDown className="size-4 shrink-0 text-fg-quaternary" aria-hidden="true" />
                                             <span className="line-through">
                                                 {itemSai?.nome}
-                                                {detalheDoItem(itemSai) && ` · ${detalheDoItem(itemSai)}`}
+                                                {detalheDoItem(itemSai) && `, ${detalheDoItem(itemSai)}`}
                                             </span>
                                         </p>
                                         <p className="flex items-center gap-2 text-md font-semibold text-primary">
@@ -675,7 +678,7 @@ export function TrocarItensWizard({ pedido, linhasIniciais, onFechar, onEnviado 
                                             </span>
                                             <span>
                                                 {novoItem.nome}
-                                                {detalheDoItem(novoItem) && <span className="text-sm font-normal text-tertiary"> · {detalheDoItem(novoItem)}</span>}
+                                                {detalheDoItem(novoItem) && <span className="text-sm font-normal text-tertiary">, {detalheDoItem(novoItem)}</span>}
                                             </span>
                                         </p>
                                     </li>
@@ -875,11 +878,12 @@ const LinhaCatalogo = ({
                                 {saindo === 0 && noPedido > 0 && <Badge size="md" type="pill-color" color="blue">{noPedido === 1 ? "1 igual no pedido" : `${noPedido} iguais no pedido`}</Badge>}
                                 {bloqueado && <Badge size="md" type="pill-color" color="error">{impedimento?.curto}</Badge>}
                                 {estoqueCurto && <Badge size="md" type="pill-color" color="warning">Só {item.estoque} {item.estoque === 1 ? "disponível" : "disponíveis"}</Badge>}
-                                {/* O custo da escolha fica legível no momento da escolha: escolher um
-                                    item com formulário fazia o stepper crescer de três para quatro
-                                    etapas no instante do toque, sem nada ter avisado. */}
+                                {/* O custo da escolha fica legível no momento da escolha: o item pede
+                                    respostas na etapa seguinte. */}
                                 {!bloqueado && perguntasDoFormulario > 0 && (
-                                    <Badge size="md" type="pill-color" color="gray">Pede formulário · {perguntasDoFormulario === 1 ? "1 pergunta" : `${perguntasDoFormulario} perguntas`}</Badge>
+                                    <Badge size="md" type="pill-color" color="gray">
+                                        {perguntasDoFormulario === 1 ? "Pede 1 resposta" : `Pede ${perguntasDoFormulario} respostas`}
+                                    </Badge>
                                 )}
                             </span>
                         )}

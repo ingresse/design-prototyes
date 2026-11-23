@@ -8,8 +8,28 @@
 
 import Statistics from "statistics.js";
 import type { Bloco, Dataset, Formato } from "./relatorio-ia";
-import { COMPRADORES, GRUPOS } from "@/reports/event-dataset";
+import type { Comprador } from "@/reports/event-dataset";
 import { currencyFormatter, numberFormatter } from "./event";
+
+/* ---------------------- Dados além do agregado -------------------- */
+/*  O que algumas features precisam e o agregado (`Dataset`) não tem.  */
+/*  Montado por `useFonteDoRelatorio` (relatorio-ia.ts) a partir do    */
+/*  evento em contexto (ou de todos os eventos da organização).        */
+
+export interface ExtrasDoRelatorio {
+    /** Amostra fictícia de compradores (idade, UF, setor e valor pago), coerente com os setores e preços do evento. */
+    compradores: Comprador[];
+    /** Lotes do evento: vendidos (histórico + pedidos pagos) e preço. */
+    lotes: { lote: string; vendidos: number; preco: number }[];
+    /** Repasses pagos da organização para os eventos do escopo, do mais recente ao mais antigo. */
+    pagamentos: { data: string; favorecido: string; conta: string; valor: number }[];
+    /** Já repassado ou em repasse dos eventos do escopo (R$). */
+    repassado: number;
+    /** Vendas do ano corrente por evento da organização. */
+    vendasDoAno: { ano: number; eventos: { nome: string; valor: number }[] };
+}
+
+export const EXTRAS_VAZIOS: ExtrasDoRelatorio = { compradores: [], lotes: [], pagamentos: [], repassado: 0, vendasDoAno: { ano: new Date().getFullYear(), eventos: [] } };
 
 /* -------------------------- Métodos estatísticos ------------------ */
 /*  Delegados à biblioteca statistics.js (média, mediana, desvio,      */
@@ -173,7 +193,8 @@ export function descreverBlocos(blocos: Bloco[]): string {
 
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
-export function executarChamada(chamada: Chamada, d: Dataset): Bloco[] {
+export function executarChamada(chamada: Chamada, d: Dataset, extras: ExtrasDoRelatorio = EXTRAS_VAZIOS): Bloco[] {
+    const COMPRADORES = extras.compradores;
     const args = chamada.args ?? {};
     switch (chamada.feature) {
         case "totais":
@@ -250,7 +271,7 @@ export function executarChamada(chamada: Chamada, d: Dataset): Bloco[] {
                     e.n++;
                     porGrupo.set(c.grupo, e);
                 }
-                const ordem = GRUPOS.filter((g) => g.categoria === "Ingressos").map((g) => g.nome);
+                const ordem = d.ingressosPorGrupo.map((g) => g.grupo);
                 const dados = [...porGrupo.entries()]
                     .map(([grupo, e]) => ({ nome: grupo, valor: Math.round(e.soma / e.n), i: ordem.indexOf(grupo) }))
                     .sort((x, y) => (x.i < 0 ? 99 : x.i) - (y.i < 0 ? 99 : y.i))
@@ -273,6 +294,7 @@ export function executarChamada(chamada: Chamada, d: Dataset): Bloco[] {
 
             // Correlação envolvendo idade → catálogo de compradores (idade × ticket pago).
             if (a === "idade" || b === "idade") {
+                if (!COMPRADORES.length) return [{ tipo: "texto", titulo: "Correlação — Idade × Ticket pago", conteudo: "Ainda não há vendas para cruzar idade e valor pago." }];
                 const amostra = COMPRADORES.filter((_, i) => i % 3 === 0); // ~800 pontos
                 const xs = amostra.map((c) => c.idade);
                 const ys = amostra.map((c) => c.valor);
@@ -442,30 +464,23 @@ export function executarChamada(chamada: Chamada, d: Dataset): Bloco[] {
         /* ---- Perguntas frequentes do produtor (dados mockados) ---- */
 
         case "vendas_por_lote": {
-            // Lotes dos ingressos: quantidade vendida + preço do lote (mock).
-            const lotes = [
-                { lote: "Pista — 1º lote", vendidos: 4200, preco: 180 },
-                { lote: "Pista — 2º lote", vendidos: 3800, preco: 240 },
-                { lote: "Pista — 3º lote", vendidos: 2600, preco: 320 },
-                { lote: "Pista Premium — 1º lote", vendidos: 1900, preco: 420 },
-                { lote: "Pista Premium — 2º lote", vendidos: 1450, preco: 520 },
-                { lote: "Camarote — 1º lote", vendidos: 980, preco: 890 },
-                { lote: "Camarote — 2º lote", vendidos: 620, preco: 1180 },
-                { lote: "Área VIP — Lote único", vendidos: 340, preco: 2200 },
-            ];
+            // Lotes do evento: vendidos (histórico + pedidos pagos) × preço do lote. Total do evento, sem filtro de período.
+            const lotes = [...extras.lotes].sort((a, b) => b.vendidos * b.preco - a.vendidos * a.preco);
+            if (!lotes.length) return [{ tipo: "texto", titulo: "Ingressos vendidos e valor por lote", conteudo: "Nenhum lote vendido ainda." }];
+            const limite = 20;
             return [
                 {
                     tipo: "tabela",
-                    titulo: "Ingressos vendidos e valor por lote",
+                    titulo: lotes.length > limite ? `Ingressos vendidos e valor por lote (${limite} maiores de ${numberFormatter.format(lotes.length)})` : "Ingressos vendidos e valor por lote",
                     colunas: ["Lote", "Vendidos", "Valor do lote", "Total arrecadado"],
-                    linhas: lotes.map((l) => [l.lote, numberFormatter.format(l.vendidos), currencyFormatter.format(l.preco), currencyFormatter.format(l.vendidos * l.preco)]),
+                    linhas: lotes.slice(0, limite).map((l) => [l.lote, numberFormatter.format(l.vendidos), currencyFormatter.format(l.preco), currencyFormatter.format(l.vendidos * l.preco)]),
                 },
             ];
         }
 
         case "genero": {
             // Distribuição por gênero (mock, proporcional ao público vendido).
-            const base = d.ocupacao?.vendido || d.totais.itensVendidos || 12000;
+            const base = d.ocupacao?.vendido || d.totais.itensVendidos || 0;
             const fem = Math.round(base * 0.54);
             const masc = Math.round(base * 0.44);
             const outro = Math.max(0, base - fem - masc);
@@ -484,46 +499,37 @@ export function executarChamada(chamada: Chamada, d: Dataset): Bloco[] {
         }
 
         case "ultimos_pagamentos": {
-            // Últimos repasses/pagamentos executados (mock).
-            const pagamentos = [
-                { data: "18/07/2026", favorecido: "Produtora Carneiros Live Ltda", email: "financeiro@carneiroslive.com.br", valor: 420000 },
-                { data: "11/07/2026", favorecido: "Bar do Mar Serviços de A&B", email: "contato@bardomar.com.br", valor: 96500 },
-                { data: "04/07/2026", favorecido: "Sound & Light Estruturas", email: "adm@soundlight.com.br", valor: 158000 },
-                { data: "27/06/2026", favorecido: "Agência Talentos Brasil", email: "pagamentos@talentosbrasil.com", valor: 240000 },
-                { data: "20/06/2026", favorecido: "Segurança Praia Norte ME", email: "financeiro@praianorte.com.br", valor: 73200 },
-            ];
+            // Repasses pagos da organização (Finanças) para os eventos do escopo.
+            const pagamentos = extras.pagamentos.slice(0, 5);
+            if (!pagamentos.length) return [{ tipo: "texto", titulo: "Últimos pagamentos realizados", conteudo: "Nenhum repasse pago ainda para os eventos deste relatório." }];
             return [
                 {
                     tipo: "tabela",
-                    titulo: "Últimos 5 pagamentos realizados",
-                    colunas: ["Data", "Favorecido", "E-mail", "Valor transferido"],
-                    linhas: pagamentos.map((p) => [p.data, p.favorecido, p.email, currencyFormatter.format(p.valor)]),
+                    titulo: `Últimos ${pagamentos.length} pagamentos realizados`,
+                    colunas: ["Data", "Favorecido", "Conta", "Valor transferido"],
+                    linhas: pagamentos.map((p) => [p.data, p.favorecido, p.conta, currencyFormatter.format(p.valor)]),
                 },
             ];
         }
 
         case "saldo_repasse": {
-            // Saldo líquido disponível para repasse agora (mock derivado do borderô).
-            const saldo = d.bordero?.liquido ? Math.round(d.bordero.liquido * 0.38) : 3860000;
-            return [{ tipo: "metric", titulo: "Saldo disponível para repasse", valor: currencyFormatter.format(saldo), ajuda: "Valor líquido já liberado para executar pagamentos neste momento." }];
+            // Líquido do período menos o que já foi repassado (ou está em repasse) dos eventos do escopo.
+            const saldo = Math.max(0, (d.bordero?.liquido ?? 0) - extras.repassado);
+            return [{ tipo: "metric", titulo: "Saldo disponível para repasse", valor: currencyFormatter.format(saldo), ajuda: "Líquido do borderô no período menos os repasses já pedidos para os eventos deste relatório." }];
         }
 
         case "vendas_ano": {
-            // Total de ingressos vendidos no ano somando TODOS os eventos do produtor (mock).
-            const eventos = [
-                { nome: "Réveillon Carneiros 2027", valor: d.totais.valorTotalBruto || 13196160 },
-                { nome: "Carnaval Recife 2026", valor: 4820000 },
-                { nome: "São João Caruaru 2026", valor: 6310000 },
-                { nome: "Festival de Verão 2026", valor: 2140000 },
-                { nome: "Ano Novo Porto 2026", valor: 3960000 },
-            ];
-            const total = eventos.reduce((s, e) => s + e.valor, 0);
+            // Vendas do ano somando TODOS os eventos da organização (histórico + pedidos pagos).
+            const { ano, eventos } = extras.vendasDoAno;
+            const comVenda = eventos.filter((e) => e.valor > 0).sort((a, b) => b.valor - a.valor);
+            if (!comVenda.length) return [{ tipo: "texto", titulo: `Vendas em ${ano}`, conteudo: `Nenhuma venda em ${ano} nos eventos da organização.` }];
+            const total = comVenda.reduce((s, e) => s + e.valor, 0);
             return [
                 {
                     tipo: "barras",
-                    titulo: `Ingressos vendidos em 2026 — total ${currencyFormatter.format(total)} (todos os eventos)`,
+                    titulo: `Ingressos vendidos em ${ano}: total ${currencyFormatter.format(total)} (todos os eventos)`,
                     formato: "moeda",
-                    dados: eventos.map((e) => ({ nome: e.nome, valor: e.valor })),
+                    dados: comVenda.map((e) => ({ nome: e.nome, valor: e.valor })),
                 },
             ];
         }
@@ -534,6 +540,6 @@ export function executarChamada(chamada: Chamada, d: Dataset): Bloco[] {
 }
 
 /** Executa o plano da IA (lista de chamadas) e devolve os blocos já com a visualização decidida. */
-export function executarPlano(chamadas: Chamada[], d: Dataset): Bloco[] {
-    return chamadas.flatMap((c) => executarChamada(c, d));
+export function executarPlano(chamadas: Chamada[], d: Dataset, extras: ExtrasDoRelatorio = EXTRAS_VAZIOS): Bloco[] {
+    return chamadas.flatMap((c) => executarChamada(c, d, extras));
 }

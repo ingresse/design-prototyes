@@ -25,7 +25,8 @@ export const CANAL_LABEL: Record<Canal, string> = {
 export const CANAL_COR: Record<Canal, string> = {
     ingresse: "var(--color-utility-blue-500)",
     bilheteria: "var(--color-utility-orange-500)",
-    cortesia: "var(--color-utility-gray-400)",
+    // `utility-gray-400` não existe no tema: a cortesia sumia da barra e da legenda (UI-DS-011).
+    cortesia: "var(--color-utility-neutral-400)",
 };
 
 /** Um setor (grupo) de uma sessão, com estoque e vendidos por canal. */
@@ -198,9 +199,13 @@ export interface ResumoEvento {
     /** Variação do ritmo contra os 7 dias anteriores. */
     variacaoRitmo: number;
     diasParaEvento: number;
-    /** Projeção de faturamento no dia do evento, limitada pela capacidade. */
+    /** A data do evento já passou (EVT-45): sem projeção nem "ritmo atual" (EVT-146). */
+    realizado: boolean;
+    /** Projeção de faturamento no dia do evento, limitada pela capacidade. Evento realizado: o faturamento. */
     projecao: number;
     sparkline: number[];
+    /** Série diária só com dias fechados (até ontem), para o gráfico e o ritmo (EVT-147, como EVT-03). */
+    serieFechada: DiaVenda[];
 }
 
 const somaCanais = (sessoes: Sessao[]): Record<Canal, number> =>
@@ -231,8 +236,10 @@ export function resumoDoEvento(evento: Evento): ResumoEvento {
             ritmo7: 0,
             variacaoRitmo: 0,
             diasParaEvento,
+            realizado: diasParaEvento < 0,
             projecao: 0,
             sparkline: [],
+            serieFechada: [],
         };
     }
 
@@ -241,8 +248,12 @@ export function resumoDoEvento(evento: Evento): ResumoEvento {
     const vendidos = porCanal.ingresse + porCanal.bilheteria + porCanal.cortesia;
     const faturamento = vendas.serie.reduce((total, d) => total + d.faturamento, 0);
 
-    const ultimos7 = vendas.serie.slice(-7);
-    const anteriores7 = vendas.serie.slice(-14, -7);
+    // Ritmo e gráfico só com dias fechados: hoje ainda não acabou e puxaria a curva para zero (EVT-147, como EVT-03).
+    // O faturamento soma tudo, inclusive o que já foi pago hoje.
+    const hoje = iso(HOJE);
+    const serieFechada = vendas.serie.filter((d) => d.dataISO < hoje);
+    const ultimos7 = serieFechada.slice(-7);
+    const anteriores7 = serieFechada.slice(-14, -7);
     const ritmo7 = ultimos7.reduce((t, d) => t + d.ingressos, 0) / Math.max(1, ultimos7.length);
     const ritmoAnterior = anteriores7.reduce((t, d) => t + d.ingressos, 0) / Math.max(1, anteriores7.length);
 
@@ -251,7 +262,9 @@ export function resumoDoEvento(evento: Evento): ResumoEvento {
     // O ritmo atual projetado até o dia do evento não pode passar do teto físico:
     // vender toda a capacidade pelo ticket médio praticado.
     const teto = capacidade * ticketMedio;
-    const projecao = Math.min(teto, faturamento + Math.max(0, diasParaEvento) * faturamentoDia7);
+    // Evento realizado não projeta: o resultado é o faturamento (EVT-146).
+    const realizado = diasParaEvento < 0;
+    const projecao = realizado ? faturamento : Math.min(teto, faturamento + diasParaEvento * faturamentoDia7);
 
     return {
         evento,
@@ -266,8 +279,10 @@ export function resumoDoEvento(evento: Evento): ResumoEvento {
         ritmo7,
         variacaoRitmo: ritmoAnterior ? ritmo7 / ritmoAnterior - 1 : 0,
         diasParaEvento,
+        realizado,
         projecao,
-        sparkline: vendas.serie.slice(-30).map((d) => d.ingressos),
+        sparkline: serieFechada.slice(-30).map((d) => d.ingressos),
+        serieFechada,
     };
 }
 
@@ -438,6 +453,8 @@ export interface Ritmo {
     total: number;
     /** Datas dos 7 dias anteriores, a base da comparação. */
     datasAnteriores: string[];
+    /** Na organização: a mesma série dividida por evento, para as barras empilhadas (EVT-162). */
+    porEvento?: { id: string; nome: string; serie: number[] }[];
 }
 
 export interface RitmoOrganizacao {
@@ -472,15 +489,24 @@ const montaRitmo = (serie: number[], datas: string[]): Ritmo => {
  */
 export function ritmoDaOrganizacao(lista: ResumoEvento[]): RitmoOrganizacao {
     const porData = new Map<string, { gmv: number; ingressos: number; produtos: number }>();
+    // Por evento e por data, para empilhar as barras (EVT-162).
+    const porEventoData = new Map<string, Map<string, { gmv: number; ingressos: number; produtos: number }>>();
 
     for (const resumo of lista) {
+        const doEvento = new Map<string, { gmv: number; ingressos: number; produtos: number }>();
         for (const dia of resumo.vendas?.serie ?? []) {
             const atual = porData.get(dia.dataISO) ?? { gmv: 0, ingressos: 0, produtos: 0 };
             atual.gmv += dia.faturamento;
             atual.ingressos += dia.ingressos;
             atual.produtos += dia.produtos;
             porData.set(dia.dataISO, atual);
+            const doDia = doEvento.get(dia.dataISO) ?? { gmv: 0, ingressos: 0, produtos: 0 };
+            doDia.gmv += dia.faturamento;
+            doDia.ingressos += dia.ingressos;
+            doDia.produtos += dia.produtos;
+            doEvento.set(dia.dataISO, doDia);
         }
+        if (doEvento.size) porEventoData.set(resumo.evento.id, doEvento);
     }
 
     // Só dias fechados: o dia de hoje ainda não acabou e puxaria a curva para baixo,
@@ -489,14 +515,22 @@ export function ritmoDaOrganizacao(lista: ResumoEvento[]): RitmoOrganizacao {
     const ordenados = [...porData.entries()].filter(([data]) => data < hoje).sort(([a], [b]) => a.localeCompare(b));
     const datas = ordenados.map(([data]) => data);
     const dias = ordenados.map(([, valores]) => valores);
+    const recentes = datas.slice(-JANELA);
 
     /* Ticket médio do dia, não média dos tickets: dia sem venda distorceria. */
     const serieTicket = dias.map((d) => (d.ingressos ? d.gmv / d.ingressos : 0));
 
+    const comEventos = (ritmo: Ritmo, chave: "gmv" | "ingressos" | "produtos"): Ritmo => ({
+        ...ritmo,
+        porEvento: lista
+            .filter((r) => porEventoData.has(r.evento.id))
+            .map((r) => ({ id: r.evento.id, nome: r.evento.nome, serie: recentes.map((d) => porEventoData.get(r.evento.id)?.get(d)?.[chave] ?? 0) })),
+    });
+
     return {
-        gmv: montaRitmo(dias.map((d) => d.gmv), datas),
-        produtos: montaRitmo(dias.map((d) => d.produtos), datas),
-        ingressos: montaRitmo(dias.map((d) => d.ingressos), datas),
+        gmv: comEventos(montaRitmo(dias.map((d) => d.gmv), datas), "gmv"),
+        produtos: comEventos(montaRitmo(dias.map((d) => d.produtos), datas), "produtos"),
+        ingressos: comEventos(montaRitmo(dias.map((d) => d.ingressos), datas), "ingressos"),
         ticket: montaRitmo(serieTicket, datas),
     };
 }

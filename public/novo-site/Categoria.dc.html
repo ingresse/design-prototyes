@@ -1,0 +1,882 @@
+<!doctype html>
+<html lang="pt-BR" data-pagina="categoria" data-superficie="chao">
+<head>
+<meta charset="utf-8">
+<script src="./ponte-backstage.js" data-ponte-backstage></script>
+<script src="./transicao-evento.js" data-previa-te></script>
+<script data-mvp-cedo>(function () {
+  var r = document.documentElement, v = null;
+  try {
+    var m = new URLSearchParams(location.search).get('modo');
+    if (m === 'mvp' || m === 'completo') localStorage.setItem('previa-modo', m);
+    v = localStorage.getItem('previa-modo') || 'mvp'; // padrão no design-prototypes: modo MVP
+  } catch (e) {}
+  if (v === 'mvp') { r.setAttribute('data-modo', 'mvp'); window.IngresseMvp = true; }
+})();</script>
+<script data-previa-esportes-cedo>(function () {
+  var root = document.documentElement, qs = new URLSearchParams(location.search), v = null;
+  try {
+    if (qs.get('dados') === 'mock' || qs.get('dados') === 'bff') localStorage.setItem('previa-dados', qs.get('dados'));
+    v = localStorage.getItem('previa-dados') || 'bff'; // padrão no design-prototypes: dados do Backstage (ponte-backstage.js)
+  } catch (e) {}
+  root.setAttribute('data-dados', v === 'bff' ? 'bff' : 'mock');
+  if (v !== 'bff' || !window.fetch) return;
+  var f0 = window.fetch;
+  window.fetch = function (u, o) {
+    var url = typeof u === 'string' ? u : (u && u.url) || '', alvo = null, md;
+    if (/\/api\/eventos(\.json)?(\?|$)/.test(url)) alvo = url.replace(/\/api\/eventos(\.json)?/, '/api/bff/eventos');
+    else if ((md = /(?:^|\/)dados\/((?:busca-artistas|busca-locais|catalogo-indice|sorteio-pool|home-reais|categoria-[a-z0-9-]+)\.json)(\?|$)/.exec(url))) alvo = '/api/bff/dados/' + md[1]; // os índices e as categorias também saem do BFF
+    if (!alvo) return f0.apply(this, arguments);
+    var self = this, args = arguments;
+    return f0.call(this, alvo, o).then(function (r) {
+      if (r.ok) { root.setAttribute('data-dados-ok', ''); return r; }
+      return r.clone().json().catch(function () { return {}; }).then(function (d) { root.setAttribute('data-dados-falha', (d && d.error) || ('HTTP ' + r.status)); return f0.apply(self, args); });
+    }, function () { root.setAttribute('data-dados-falha', 'sem conexão com o servidor local'); return f0.apply(self, args); });
+  };
+})();
+(function () {
+  var root = document.documentElement, qs = new URLSearchParams(location.search), v = null;
+  try {
+    if (qs.get('esportes') === 'on' || qs.get('esportes') === 'off') localStorage.setItem('previa-esportes', qs.get('esportes'));
+    v = localStorage.getItem('previa-esportes');
+  } catch (e) {}
+  var ligado = v === 'on';
+  root.setAttribute('data-esportes', ligado ? 'on' : 'off');
+  var DESCOBERTA = ['home', 'busca', 'categoria', 'artista', 'venue', 'colecao'];
+  if (ligado || DESCOBERTA.indexOf(root.getAttribute('data-pagina')) < 0 || qs.get('escopo') === 'esportes') return;
+  root.setAttribute('data-esportes-ocultar', '');
+  var prova = function (e) { var c = (e && e.cats) || []; return c.indexOf('corridas') >= 0 || (c.indexOf('esportes') >= 0 && c.indexOf('futebol') < 0); };
+  var f0 = window.fetch;
+  if (!f0) return;
+  window.fetch = function (u) {
+    var url = typeof u === 'string' ? u : (u && u.url) || '', p = f0.apply(this, arguments);
+    if (!/\/api\/eventos(\.json)?(\?|$)/.test(url)) return p;
+    return p.then(function (r) {
+      if (!r.ok) return r;
+      return r.clone().json().then(function (d) {
+        if (!d || !d.events) return r;
+        d.events = d.events.filter(function (e) { return !prova(e); });
+        if (d.categories) d.categories = d.categories.filter(function (c) { return c.id !== 'corridas'; });
+        return new Response(JSON.stringify(d), { status: r.status, statusText: r.statusText, headers: { 'Content-Type': 'application/json' } });
+      }).catch(function () { return r; });
+    });
+  };
+})();</script>
+<script data-previa-nav-cedo>(function () {
+  try {
+    var h = document.documentElement;
+    var tema = localStorage.getItem('prototipo-theme');
+    if (tema !== 'dark' && tema !== 'light') tema = window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    if (/\/(Ingressos|Checkout|Pagamento)\.dc\.html$/.test(location.pathname) || (/\/Evento\.dc\.html$/.test(location.pathname) && sessionStorage.getItem('mov:de'))) {
+      // chegada do movimento-compra.js (ele tem o seu portão e a sua entrada): aqui só o fundo da última tela vista, que fecha o quadro
+      // branco do tema escuro entre a saída e a entrada. Sai em movimento-navegacao.js quando o portão dele abre.
+      h.setAttribute('data-mov-dona', '');
+      var bgc = localStorage.getItem('mov:bg:' + tema);
+      if (bgc) {
+        h.style.setProperty('background-color', bgc, 'important');
+        h.setAttribute('data-mov-bgcompra', '');
+        setTimeout(function () { h.removeAttribute('data-mov-bgcompra'); h.style.removeProperty('background-color'); }, 3000);
+      }
+      return;
+    }
+    var j = sessionStorage.getItem('mov:nav');
+    var o = j ? JSON.parse(j) : null;
+    // o registro vale para esta URL (ou para qualquer uma, quando a tela anterior saiu sem clique nosso: Voltar, URL digitada, recarregar)
+    if (!o || o.v !== 1 || Date.now() - o.t > 6000 || (o.para && o.para !== location.pathname)) {
+      o = { v: 1, padrao: 'direta', bg: localStorage.getItem('mov:bg:' + tema) || '' };
+    }
+    h.setAttribute('data-mov-nav', o.padrao || '');
+    h.setAttribute('data-mov-nav-gate', '');
+    var g = document.createElement('style');
+    g.id = 'mov-nav-portao';
+    // sem transições (data-mov-nav, que sai 2 quadros depois do portão abrir): os estilos chegam com a tela escondida e, sem isto, cores e bordas
+    // ainda estariam em transição de 160 ms quando ela aparece (e, em movimento reduzido, a própria visibilidade levaria um quadro para virar)
+    g.textContent = 'html[data-mov-nav-gate] #dc-root{visibility:hidden}html[data-mov-nav] #dc-root,html[data-mov-nav] #dc-root *,html[data-mov-nav] #dc-root *::before,html[data-mov-nav] #dc-root *::after{transition:none !important}';
+    (document.head || h).appendChild(g);
+    if (o.bg) h.style.setProperty('background-color', o.bg, 'important');
+    if (o.ponte && o.ponte.html) {
+      // a fonte da ponte tem nome próprio (ElzaPonte): a identidade da tela nova declara "Elza" com font-display swap e, se a ponte usasse
+      // esse nome, o texto trocaria para a fonte de sistema quando o CSS novo chegasse. Os dados (base64, guardados pela tela anterior)
+      // entram por FontFace binária, sem espera; sem eles, cai na URL (block = texto invisível até a fonte chegar).
+      var r4 = sessionStorage.getItem('mov:fonte400'), r6 = sessionStorage.getItem('mov:fonte600');
+      var bin = function (b64) { var t = atob(b64), u = new Uint8Array(t.length), i; for (i = 0; i < t.length; i++) u[i] = t.charCodeAt(i); return u.buffer; };
+      var doDados = false;
+      if (r4 && r6 && window.FontFace) {
+        // FontFace com dados binários fica pronta na hora (status "loaded" no mesmo instante): o texto da ponte já nasce na fonte certa
+        try {
+          document.fonts.add(new FontFace('ElzaPonte', bin(r4), { weight: '400 500' }));
+          document.fonts.add(new FontFace('ElzaPonte', bin(r6), { weight: '600 700' }));
+          doDados = true;
+        } catch (e) {}
+      }
+      if (!doDados) {
+        var f = document.createElement('style');
+        f.id = 'mov-ponte-fonte';
+        f.textContent = '@font-face{font-family:"ElzaPonte";src:url(./fontes/Elza-Regular.woff2) format("woff2");font-weight:400 500;font-display:block}' +
+          '@font-face{font-family:"ElzaPonte";src:url(./fontes/Elza-Semibold.woff2) format("woff2");font-weight:600 700;font-display:block}';
+        (document.head || h).appendChild(f);
+      }
+      // dentro de um shadow root: o CSS da tela nova (div, span, a, svg…) não alcança a ponte enquanto ela espera
+      var d = document.createElement('div');
+      d.id = 'mov-ponte';
+      d.setAttribute('aria-hidden', 'true');
+      d.style.cssText = 'all:initial;position:fixed;left:0;top:' + (o.ponte.top || 0) + 'px;width:' + o.ponte.w + 'px;height:' + o.ponte.h + 'px;z-index:2147483000;pointer-events:none;overflow:hidden;display:block';
+      var sr = d.attachShadow ? d.attachShadow({ mode: 'open' }) : d;
+      sr.innerHTML = o.ponte.html;
+      h.appendChild(d);
+    }
+    if (o.poster && o.poster.src) {
+      var im = document.createElement('img');
+      im.id = 'mov-ponte-poster';
+      im.alt = '';
+      im.setAttribute('aria-hidden', 'true');
+      im.src = o.poster.src;
+      im.style.cssText = 'all:initial;position:fixed;left:' + o.poster.x + 'px;top:' + o.poster.y + 'px;width:' + o.poster.w + 'px;height:' + o.poster.h + 'px;object-fit:cover;border-radius:' + (o.poster.r || '0') + ';z-index:' + (o.poster.z || 1) + ';pointer-events:none;display:block';
+      h.appendChild(im);
+    }
+    setTimeout(function () {
+      var pp = document.getElementById('mov-ponte-poster');
+      if (pp) pp.remove();
+      var p = document.getElementById('mov-ponte');
+      if (p) p.remove();
+      var s = document.getElementById('mov-ponte-fonte');
+      if (s) s.remove();
+      h.removeAttribute('data-mov-nav-gate');
+      h.removeAttribute('data-mov-nav');
+      h.style.removeProperty('background-color');
+    }, 3000);
+  } catch (e) {}
+})();</script>
+<script data-bu-cedo>(function(){try{var p=new URLSearchParams(location.search),t=(p.get("tipo")||"").split(",").filter(Boolean);var so=t.length>0&&t.every(function(x){return x==="corridas"||x==="esportes"});if(p.get("escopo")==="esportes"||so){document.documentElement.setAttribute("data-marca","esportes");document.title="Busca de provas | Ingresse Sports";}}catch(e){}})();</script>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<script data-es-redir>(function(){try{if(window.IngresseMvp)return;/* mvp: no MODO MVP Esportes é uma categoria comum, sem a vertical Ingresse Sports */var c=new URLSearchParams(location.search).get("c");if(c==="esportes"||c==="corridas")location.replace("Esportes.dc.html");}catch(e){}})();</script>
+<meta name="robots" content="noindex, follow">
+<meta name="theme-color" content="#F5F4F2">
+<meta name="format-detection" content="telephone=no">
+<link rel="preload" href="./fontes/Elza-Semibold.woff2" as="font" type="font/woff2" crossorigin data-previa>
+<link rel="preload" href="./fontes/Elza-Regular.woff2" as="font" type="font/woff2" crossorigin data-previa>
+<title>Categoria — Ingresse</title>
+<script src="./vendor/react.js"></script>
+<script src="./vendor/react-dom.js"></script>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<script src="./destinos.js" defer data-previa></script>
+<style data-cat>
+/* Página de categoria (tools/previa/categorias.mjs; Mariana, 27/10/2026): classes cat-*, só tokens da identidade.
+   Hero = a vitrine da Home (.vit*, regras em identidade-componentes.css §11) com o título da categoria e o cymatics na cor dela. */
+html[data-pagina="categoria"] main { max-width: none !important; padding: 0 0 var(--space-section) !important; display: block; }
+
+/* ---------- hero ---------- */
+.cat-hero { row-gap: var(--space-7); align-items: start; padding-bottom: var(--space-hero-y); }
+.cat-hero > .vit-main, .cat-hero > .vit-rail, .cat-hero > .cat-id { position: relative; z-index: 1; }
+.cat-hero > .car-pause { z-index: 3; }
+.cat-id { grid-column: 1 / -1; display: flex; align-items: center; gap: var(--space-6); }
+.cat-ic { flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; width: 88px; height: 88px; box-sizing: border-box; color: var(--cat-cor); border: var(--border-width-hairline) solid color-mix(in srgb, var(--cat-cor) 55%, transparent); background: color-mix(in srgb, var(--cat-cor) 8%, transparent); }
+.cat-ic svg { width: 56px; height: 56px; display: block; } /* só vale para o ícone estático (Untitled UI): o <svg> do Lottie leva width/height 100% inline do lottie-web e ocupa a caixa inteira (86 px; 70 px no celular) */
+html[data-modo="mvp"] .cat-ic--completo { display: none; } /* MODO MVP (15/11/2026): no título fica o ícone do menu de categorias do MVP (.cat-ic.mvp-so, categorias.mjs) */
+.cat-ic > svg[viewBox="0 0 24 24"] { stroke-width: 1.5; } /* ícone estático (Untitled UI, 24 px, traço 2 no padrão): maior, com traço de 1,5 para não pesar */
+.cat-ic [stroke]:not([stroke="none"]) { stroke: currentColor; } /* Lottie: o traço segue a cor da categoria, no claro e no escuro */
+/* Lottie no título: o glifo ocupa a caixa inteira (86 px no desktop, 70 px no celular) e o traço nativo (32 em 512, 1,5 px a 24 px) escalava junto: 5,4 px no desktop e 4,4 px no celular, quase 3x o resto da família (menu de categorias e navbar: 2 px).
+   O traço fica em 2 px na tela (--border-width-strong) em qualquer tamanho da caixa e em qualquer quadro da animação (vector-effect: non-scaling-stroke ignora também o esticar/amassar do gesto). Desenho e gesto não mudam; o mesmo arquivo no menu (32 px) continua certo. 16/11/2026, Fabio. */
+.cat-ic[data-lottie] path[stroke] { stroke-width: var(--border-width-strong); vector-effect: non-scaling-stroke; }
+.cat-id-txt { min-width: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+.cat-h1 { margin: 0; font-size: var(--font-size-title-1); line-height: var(--font-lh-title-1); letter-spacing: var(--font-ls-title-1); font-weight: 600; color: var(--color-text-primary); text-wrap: balance; }
+.cat-desc { margin: 0; max-width: 56ch; font-size: var(--font-size-body); line-height: var(--font-lh-body); color: var(--color-text-secondary); text-wrap: pretty; }
+.cat-total { margin: 0; font-size: var(--font-size-small); color: var(--color-text-secondary); font-variant-numeric: tabular-nums; }
+.cat-total strong { color: var(--cat-cor); font-size: var(--font-size-body); font-weight: 600; }
+.cat-hero .vit-title { font-size: var(--font-size-title-2) !important; line-height: var(--font-lh-title-2); letter-spacing: var(--font-ls-title-2, 0); }
+.cat-hero .vit-poster { width: 240px; }
+.cat-hero .vit-bar i { background: var(--cat-cor); }
+.cat-hero .vit-item img { background: var(--color-bg-island); }
+/* cymatics: placa de Chladni na cor da categoria (categoria.js), linhas de no máximo 20 % de opacidade; mais fraca atrás do texto; sem desfoque */
+.cat-cym { position: absolute; inset: 0; z-index: 0; width: 100%; height: 100%; pointer-events: none; opacity: 0; transition: opacity var(--motion-duration-hero) var(--motion-ease-move);
+  -webkit-mask-image: linear-gradient(90deg, rgba(0,0,0,.42) 0%, rgba(0,0,0,.42) 46%, rgba(0,0,0,.8) 74%, #000 100%); mask-image: linear-gradient(90deg, rgba(0,0,0,.42) 0%, rgba(0,0,0,.42) 46%, rgba(0,0,0,.8) 74%, #000 100%); }
+.cat-cym.is-on { opacity: 1; }
+@media (max-width: 1024px) { .cat-cym { -webkit-mask-image: linear-gradient(rgba(0,0,0,.5), rgba(0,0,0,.5)); mask-image: linear-gradient(rgba(0,0,0,.5), rgba(0,0,0,.5)); } }
+@media (max-width: 640px) {
+  .cat-id { gap: var(--space-4); align-items: flex-start; flex-direction: column; }
+  .cat-ic { width: 72px; height: 72px; } .cat-ic svg { width: 44px; height: 44px; } /* idem: o glifo do Lottie ocupa os 70 px da caixa, não os 44 */
+  .cat-hero { row-gap: var(--space-5); }
+  .cat-hero .vit-poster { width: 100%; max-width: 200px; }
+}
+.cat-convite[hidden] { display: none; } /* reservado: convite à Ingresse Sports (outra frente); sem conteúdo e sem altura até lá */
+
+/* ---------- lista ---------- */
+.cat-lista { max-width: calc(var(--layout-content-max) + 2 * var(--layout-margin)); margin-inline: auto; padding: var(--space-8) var(--layout-margin) 0; box-sizing: border-box; }
+.cat-lista-t { margin: 0 0 var(--space-5); font-size: var(--font-size-title-3); line-height: var(--font-lh-title-3); font-weight: 600; letter-spacing: 0; }
+.cat-ferr { display: flex; flex-direction: column; gap: var(--space-5); margin-bottom: var(--space-6); }
+.cat-campo { width: min(760px, 100%); border-style: solid; border-color: var(--color-field-border); background: var(--color-field-bg); border-radius: var(--radius-base); transition: border-color var(--motion-duration-fast) var(--motion-ease-move); }
+.cat-campo:hover { border-color: var(--color-field-border-hover); }
+.cat-campo > svg { flex: 0 0 auto; stroke: var(--color-field-placeholder); }
+.cat-campo input { flex: 1; width: 100%; min-width: 0; padding: 0; border: 0 !important; background: transparent !important; box-shadow: none; font-size: var(--font-size-body) !important; color: var(--color-field-fg); -webkit-appearance: none; appearance: none; }
+.cat-campo input::placeholder { color: var(--color-field-placeholder); opacity: 1; }
+.cat-campo input:focus, .cat-campo input:focus-visible { outline: none !important; box-shadow: none !important; border: 0 !important; }
+.cat-campo:focus-within { outline: var(--focus-width) solid var(--color-focus-ring); outline-offset: var(--focus-offset); }
+.cat-campo input[type="search"]::-webkit-search-cancel-button { display: none; } /* o botão de limpar é o nosso (.cat-limpar): igual em todos os navegadores */
+.cat-limpar { flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; width: var(--size-touch-default); height: var(--size-touch-default); padding: 0; border: 0; background: transparent; color: var(--color-text-tertiary); cursor: pointer; }
+.cat-limpar:hover { color: var(--color-text-primary); background: var(--color-bg-hover); }
+.cat-limpar svg { width: var(--size-icon-md); height: var(--size-icon-md); stroke-width: 2; }
+@media (max-width: 640px) { .cat-campo > .cat-limpar { order: 2; } }
+.cat-filtros { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-4) var(--space-5); }
+.cat-grupo { display: flex; align-items: center; gap: var(--space-3); min-width: 0; }
+.cat-rot { font-size: var(--font-size-small); font-weight: 600; }
+.cat-grupo .seg { flex-wrap: nowrap; max-width: 100%; }
+.cat-sel { display: flex; align-items: center; gap: var(--space-3); font-size: var(--font-size-small); font-weight: 600; }
+.cat-sel select { cursor: pointer; font-weight: 400; max-width: 100%; } /* a seta, a folga e a altura vêm da regra global do select (Untitled UI NativeSelect) */
+.cat-sel-ord { margin-left: auto; }
+.cat-ativos { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2) var(--space-5); }
+.cat-cont { margin: 0; font-size: var(--font-size-small); color: var(--color-text-tertiary); font-variant-numeric: tabular-nums; }
+@media (max-width: 760px) {
+  .cat-grupo { flex-direction: column; align-items: stretch; gap: var(--space-2); flex: 1 1 100%; }
+  .cat-grupo .seg { display: flex; width: 100%; }
+  .cat-grupo .seg button { flex: 1 1 auto; min-width: 0; padding-inline: var(--space-2); white-space: nowrap; }
+  .cat-sel { flex: 1 1 100%; justify-content: space-between; }
+  .cat-sel select { flex: 1 1 auto; max-width: 70%; }
+  .cat-sel-ord { margin-left: 0; }
+}
+.cat-sentinela { height: 1px; margin-top: var(--space-6); }
+.cat-mais { display: flex; flex-direction: column; align-items: center; gap: var(--space-3); padding: var(--space-6) 0 0; }
+.cat-mais-t, .cat-fim p { margin: 0; font-size: var(--font-size-small); color: var(--color-text-tertiary); font-variant-numeric: tabular-nums; }
+.cat-mais-b { min-height: var(--size-touch-default); padding: 0 var(--space-6); }
+.cat-mais-b[aria-disabled="true"] { cursor: progress; }
+.cat-fim { display: flex; flex-direction: column; align-items: center; gap: var(--space-3); padding: var(--space-8) 0 0; text-align: center; border-top: var(--border-width-hairline) solid var(--color-border-subtle); margin-top: var(--space-8); }
+/* o cartão que acabou de chegar recebe o foco quando o lote veio do botão; o anel é o da casa */
+.cat-grade > a.card:focus-visible { outline-offset: -2px; }
+button.cat-topo.bs { position: fixed; right: var(--space-5); bottom: var(--space-5); z-index: 20; width: var(--size-touch-default); min-width: var(--size-touch-default); height: var(--size-touch-default); padding: 0 !important; justify-content: center; background: var(--color-bg-page) !important; opacity: 0; visibility: hidden; transform: translateY(var(--motion-distance-md)); transition: opacity var(--motion-duration-base) var(--motion-ease-move), transform var(--motion-duration-base) var(--motion-ease-move), visibility 0s linear var(--motion-duration-base); }
+button.cat-topo.bs[data-on="true"] { opacity: 1; visibility: visible; transform: none; transition: opacity var(--motion-duration-base) var(--motion-ease-enter), transform var(--motion-duration-base) var(--motion-ease-enter), visibility 0s; }
+.cat-topo svg { width: var(--size-icon-md); height: var(--size-icon-md); stroke-width: 2; }
+@media (max-width: 640px) { .cat-lista { padding-top: var(--space-7); } }
+
+/* alvos de 44 px (auditoria): o link do título do destaque era uma linha de 32 a 41 px; "Início" da trilha tinha 36 px de largura */
+.cat-hero .vit-info > a:not(.bp) { display: block; min-height: var(--size-touch-default); }
+html[data-pagina="categoria"] .hdr .crumbs > a.crumb-back { min-width: var(--size-touch-min); justify-content: center; text-align: center; }
+
+/* ---------- MODO MVP (Wander, 15/11/2026): topo PRETO com a areia do hero do Evento (mvp.js, areiaCategoria), nas MESMAS dimensões do topo claro de antes ----------
+   Só fundo, texto e textura mudam (o padding, a altura e a grade são os de mvp.css). Preto nos dois temas. Seletor mais específico que o de mvp.css (que não é desta frente). */
+html[data-modo="mvp"][data-pagina="categoria"] main .cat-hero { background: var(--color-primitive-neutral-950); color: var(--color-primitive-neutral-0); border-bottom-color: var(--color-primitive-neutral-950); }
+html[data-modo="mvp"][data-pagina="categoria"] main .cat-hero .cat-h1,
+html[data-modo="mvp"][data-pagina="categoria"] main .cat-hero .cat-total,
+html[data-modo="mvp"][data-pagina="categoria"] main .cat-hero .cat-total strong { color: var(--color-primitive-neutral-0); }
+html[data-modo="mvp"][data-pagina="categoria"] main .cat-hero .cat-desc { color: var(--color-primitive-neutral-300); }
+html[data-modo="mvp"][data-pagina="categoria"] main .cat-hero .cat-ic { color: var(--color-primitive-neutral-0); border-color: var(--color-primitive-neutral-0); background: var(--color-primitive-neutral-950); }
+
+/* «Seguir» a categoria (MVP): o chip do «Seguir» do artista, vestido para o fundo preto; troca de estado com transição (sem corte seco) */
+.cat-seguir { margin-left: auto; align-self: center; flex: 0 0 auto; gap: calc(var(--space-2) - 0.1875rem) !important; /* o chip zerava o gap: o sino encostava no «Seguir» (15/11). O desenho do sino tem ~3 px de respiro dentro dos 20 px: descontados, a distância VISÍVEL entre o sino e o texto é de 8 px (--space-2) */ transition: background-color var(--motion-duration-base) var(--motion-ease-move), border-color var(--motion-duration-base) var(--motion-ease-move), color var(--motion-duration-base) var(--motion-ease-move); }
+.cat-seguir .btn-ic { width: var(--size-icon-sm); height: var(--size-icon-sm); display: inline-flex; }
+.cat-seguir .btn-ic svg { width: 100%; height: 100%; }
+.cat-seguir .btn-ic [stroke]:not([stroke="none"]) { stroke: currentColor; }
+.cat-seguir::before { display: none !important; } /* o ✓ do chip selecionado sai: o sino e o rótulo «Seguindo» já dizem o estado */
+html[data-modo="mvp"][data-pagina="categoria"] main .cat-hero .cat-seguir { background: transparent; border-color: var(--color-primitive-neutral-0); color: var(--color-primitive-neutral-0); }
+html[data-modo="mvp"][data-pagina="categoria"] main .cat-hero .cat-seguir:hover { background: color-mix(in srgb, var(--color-primitive-neutral-0) 12%, transparent); }
+html[data-modo="mvp"][data-pagina="categoria"] main .cat-hero .cat-seguir[aria-pressed="true"] { background: var(--color-primitive-neutral-0); border-color: var(--color-primitive-neutral-0); color: var(--color-primitive-neutral-950); }
+html[data-modo="mvp"][data-pagina="categoria"] main .cat-hero .cat-seguir:focus-visible { outline: var(--focus-width) solid var(--color-primitive-neutral-0); outline-offset: calc(var(--focus-offset) + var(--border-width-hairline)); }
+@media (max-width: 640px) { .cat-seguir { margin-left: 0; align-self: flex-start; } } /* no celular o título empilha (ícone, texto, botão) */
+@media (prefers-reduced-motion: reduce) { .cat-seguir { transition: none; } }
+html[data-motion="reduce"] .cat-seguir { transition: none; }
+
+@keyframes vitfill{from{width:0}to{width:100%}}
+
+@keyframes vitin{from{opacity:0;transform:translateY(12px) scale(.98)}to{opacity:1;transform:none}}
+.vit{position:relative;border-radius:24px;overflow:hidden;background:#0a0a0b;color:#fff;display:grid;grid-template-columns:minmax(0,1fr) 300px;min-height:340px;isolation:isolate}
+.vit-bg{display:none}
+.vit::before{content:"";position:absolute;inset:0;z-index:0;background:url(assets/palco-hero-club.avif) center 40%/cover no-repeat;filter:contrast(1.12) brightness(.82)}
+.vit::after{content:"";position:absolute;inset:0;z-index:0;background:linear-gradient(rgba(0,0,0,.62) 0%,rgba(0,0,0,.18) 38%,rgba(0,0,0,.86) 100%);pointer-events:none}
+.vit-main{position:relative;z-index:1;display:flex;align-items:center;gap:32px;padding:28px 36px}
+.vit-poster{flex:0 0 auto;display:block;width:280px;aspect-ratio:3/4;border-radius:12px;overflow:hidden;box-shadow:0 12px 32px rgba(10,10,11,.16);animation:vitin .5s ease}
+
+@keyframes vitPosterIn{from{opacity:0;transform:translateX(56px) rotate(2deg) scale(.94)}to{opacity:1;transform:none}}
+
+@keyframes vitPosterInRev{from{opacity:0;transform:translateX(-56px) rotate(-2deg) scale(.94)}to{opacity:1;transform:none}}
+
+@keyframes vitInfoIn{from{opacity:0;transform:translateX(32px)}to{opacity:1;transform:none}}
+
+@keyframes vitInfoInRev{from{opacity:0;transform:translateX(-32px)}to{opacity:1;transform:none}}
+
+@keyframes vitBgIn{from{opacity:0;transform:scale(1.08)}to{opacity:1;transform:scale(1)}}
+.vit.is-moving .vit-poster{animation:vitPosterIn .6s cubic-bezier(.2,.8,.2,1) both}
+.vit.is-moving .vit-info{animation:vitInfoIn .6s cubic-bezier(.2,.8,.2,1) .08s both}
+.vit.is-moving.is-rev .vit-poster{animation-name:vitPosterInRev}
+.vit.is-moving.is-rev .vit-info{animation-name:vitInfoInRev}
+.vit.is-moving .vit-bg{animation:vitBgIn .9s ease both}
+.vit-poster img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .5s}
+.vit-poster:hover img{transform:scale(1.04)}
+.vit-info{display:flex;flex-direction:column;gap:12px;min-width:0;animation:vitin .5s ease}
+.vit-count{font-size:13px;color:rgba(255,255,255,.7);font-variant-numeric:tabular-nums;letter-spacing:.08em}
+.vit-count b{color:#fff;font-size:15px}
+.vit-title{font-size:clamp(24px,2.2vw,34px);line-height:1.12;text-wrap:balance;color:#fff}
+.vit-meta{font-size:16px;color:rgba(255,255,255,.8)}
+.vit-rail{position:relative;z-index:1;display:flex;flex-direction:column;gap:4px;padding:20px 14px;background:rgba(10,10,10,.55);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);border-left:1px solid rgba(255,255,255,.12)}
+.vit .vit-rail-h{color:rgba(255,255,255,.78);padding:0 8px 8px}
+.vit-item{position:relative;display:flex;align-items:center;gap:12px;padding:8px;border:none;border-radius:12px;background:transparent;color:#fff;font:inherit;text-align:left;cursor:pointer;opacity:.7;transition:opacity .2s,background .2s}
+.vit-item:hover,.vit-item:focus-visible{opacity:1;background:rgba(255,255,255,.06)}
+.vit-item[aria-selected=true]{opacity:1;background:rgba(255,255,255,.12);box-shadow:none}
+.vit-item img{flex:0 0 auto;width:40px;height:53px;object-fit:cover;border-radius:6px}
+.vit-item-t{display:flex;flex-direction:column;gap:2px;min-width:0}
+.vit-item-t strong{font-size:14px;line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.vit-item-t small{font-size:12px;color:rgba(255,255,255,.72)}
+.vit-bar{position:absolute;left:60px;right:8px;bottom:4px;height:2px;border-radius:2px;background:rgba(10,10,11,.08);overflow:hidden;opacity:0}
+.vit-item[aria-selected=true] .vit-bar{opacity:1}
+.vit-bar i{display:block;height:100%;background:#FF271A}
+
+@media (max-width:1024px){.vit{grid-template-columns:1fr}.vit-rail{flex-direction:row;overflow-x:auto;border-left:none;border-top:1px solid var(--line);padding:12px;scroll-snap-type:x mandatory}.vit-rail-h{display:none}.vit-item{flex:0 0 230px;scroll-snap-align:start}}
+
+@media (max-width:640px){.vit-main{flex-direction:column;align-items:flex-start;gap:18px;padding:20px}.vit-poster{width:100%;max-width:220px;align-self:center}}
+
+@media (prefers-reduced-motion:reduce){.vit-poster,.vit-info,.vit.is-moving .vit-poster,.vit.is-moving .vit-info,.vit.is-moving .vit-bg{animation:none}.vit-bar i{animation:none !important;width:100%}}
+
+</style>
+<style data-pb>
+/* lupa de busca do menu (pilula-busca.mjs) */
+.hdr-search.hdr-lupa { flex: 0 0 auto !important; display: inline-flex !important; align-items: center; justify-content: center; width: var(--size-touch-default); height: var(--size-touch-default); min-height: var(--size-touch-default) !important; padding: 0 !important; margin: 0 0 0 auto !important; max-width: none; border-radius: var(--radius-base); color: var(--color-text-primary) !important; cursor: pointer; }
+.hdr-search.hdr-lupa svg { stroke: currentColor; }
+.hdr .crumbs { min-width: 0; flex: 0 1 auto; overflow: hidden; }
+.hdr .crumbs .crumb-cur, .hdr .crumbs [aria-current] { overflow: hidden; text-overflow: ellipsis; }
+</style>
+<link rel="stylesheet" href="./theme.css">
+<link rel="stylesheet" href="./base.css">
+<script src="./theme.js"></script>
+<link rel="stylesheet" href="./ux.css">
+<link rel="stylesheet" href="./ds.css">
+<script src="./ux.js" defer></script>
+<script src="./vit-motion.js" defer></script>
+<script src="./vendor/lottie_svg.min.js" defer data-previa></script>
+<script src="./icones-motion.js" defer data-previa></script>
+<script src="./categoria.js" defer data-previa></script>
+<script src="./futebol-cartao.js" defer data-previa></script>
+<link rel="stylesheet" href="./identidade-v1.css" data-previa>
+<script src="./previa.js" defer data-previa></script>
+<script src="./movimento-compra.js" defer data-previa></script>
+<script src="./movimento-navegacao.js" defer data-previa></script>
+<link rel="stylesheet" href="./cidade-cabecalho.css" data-previa>
+<script src="./modal-uui.js" defer data-previa></script>
+<script src="./lugares-consulta.js" defer data-previa></script>
+<script src="./local.js" defer data-previa></script>
+<script src="./local-ui.js" defer data-previa></script>
+<script src="./cidade-cabecalho.js" defer data-previa></script>
+<link rel="stylesheet" href="./lembretes.css" data-previa>
+<script src="./lembretes.js" defer data-previa></script>
+<link rel="stylesheet" href="./menu-conta.css" data-previa>
+<script src="./menu-conta.js" defer data-previa></script>
+<script src="./cartao-evento.js" defer data-previa></script>
+<script src="./lacunas.js" defer data-previa></script>
+<link rel="stylesheet" href="./mvp.css" data-previa data-mvp>
+<script src="./mvp.js" defer data-previa data-mvp></script>
+<link rel="stylesheet" href="./transicao-evento.css" data-previa data-previa-te>
+</helmet>
+
+<div style="min-height: 100vh; background: var(--pagina-bg)">
+<header class="hdr">
+  <div class="hdr-row" style="max-width: 1280px; margin: 0 auto; padding: 14px 24px; display: flex; align-items: center; gap: 24px; flex-wrap: wrap">
+    <a href="Main.dc.html" aria-label="Ingresse — início" class="hdr-logo"><img src="./assets/8703fb5f412b57860d569f5abeea2cae.svg" alt="Ingresse"></a>
+    <nav aria-label="Trilha" class="crumbs">
+      <a href="Main.dc.html" class="crumb-back">Início</a><span class="crumb-cur"> / <span style="color: var(--ink)" aria-current="page">{{nome}}</span></span><!-- mvp:trilha:ini --><span class="mvp-so mvp-trilha" data-mvp-trilha data-atual=""><button type="button" class="mvp-trilha__b" aria-haspopup="menu" aria-expanded="false" aria-controls="mvp-trilha-m" aria-label="Categoria: {{nome}}. Trocar de categoria"><span class="mvp-trilha__ic"><sc-if value="{{ic_shows}}" hint-placeholder-val="{{false}}"><span class="btn-ic" aria-hidden="true" data-lottie="./assets/icones/cat-mvp-shows.json" data-repouso="0" data-loop="0"></span></sc-if><sc-if value="{{ic_festivais}}" hint-placeholder-val="{{false}}"><span class="btn-ic" aria-hidden="true" data-lottie="./assets/icones/cat-mvp-festivais.json" data-repouso="0" data-loop="0"></span></sc-if><sc-if value="{{ic_baladas}}" hint-placeholder-val="{{false}}"><span class="btn-ic" aria-hidden="true" data-lottie="./assets/icones/cat-mvp-festas.json" data-repouso="0" data-loop="1"></span></sc-if><sc-if value="{{ic_universitario}}" hint-placeholder-val="{{false}}"><span class="btn-ic" aria-hidden="true" data-lottie="./assets/icones/cat-mvp-universitario.json" data-repouso="0" data-loop="0"></span></sc-if><sc-if value="{{ic_futebol}}" hint-placeholder-val="{{false}}"><span class="btn-ic" aria-hidden="true" data-lottie="./assets/icones/mvp-cat-futebol.json" data-repouso="0" data-loop="0"></span></sc-if><sc-if value="{{ic_esportes}}" hint-placeholder-val="{{false}}"><span class="btn-ic" aria-hidden="true" data-lottie="./assets/icones/cat-mvp-esportes.json" data-repouso="0" data-loop="0"></span></sc-if><sc-if value="{{ic_teatro}}" hint-placeholder-val="{{false}}"><span class="btn-ic" aria-hidden="true" data-lottie="./assets/icones/mvp-cat-teatro.json" data-repouso="0" data-loop="0"></span></sc-if><sc-if value="{{ic_stand_up}}" hint-placeholder-val="{{false}}"><span class="btn-ic" aria-hidden="true" data-lottie="./assets/icones/cat-mvp-stand-up.json" data-repouso="0" data-loop="0"></span></sc-if><sc-if value="{{ic_infantil}}" hint-placeholder-val="{{false}}"><span class="btn-ic" aria-hidden="true" data-lottie="./assets/icones/cat-mvp-infantil.json" data-repouso="0" data-loop="0"></span></sc-if><sc-if value="{{ic_feiras}}" hint-placeholder-val="{{false}}"><span class="btn-ic" aria-hidden="true" data-lottie="./assets/icones/mvp-cat-feiras.json" data-repouso="0" data-loop="0"></span></sc-if></span><span class="mvp-trilha__n" aria-current="page">{{nome}}</span><svg class="ico ico-14" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button><span class="mvp-trilha__m" id="mvp-trilha-m" hidden><span class="mvp-trilha__topo"><strong>Categorias</strong><button type="button" class="mvp-trilha__fechar" aria-label="Fechar o menu de categorias"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button></span><ul role="menu" aria-label="Categorias"><li role="none"><a role="menuitem" href="Categoria.dc.html?c=shows" data-slug="shows"><span class="btn-ic" aria-hidden="true" data-lottie="./assets/icones/cat-mvp-shows.json" data-repouso="0" data-loop="0"></span><span>Shows</span></a></li><li role="none"><a role="menuitem" href="Categoria.dc.html?c=festivais" data-slug="festivais"><span class="btn-ic" aria-hidden="true" data-lottie="./assets/icones/cat-mvp-festivais.json" data-repouso="0" data-loop="0"></span><span>Festivais</span></a></li><li role="none"><a role="menuitem" href="Categoria.dc.html?c=baladas" data-slug="baladas"><span class="btn-ic" aria-hidden="true" data-lottie="./assets/icones/cat-mvp-festas.json" data-repouso="0" data-loop="1"></span><span>Festas e Baladas</span></a></li><li role="none"><a role="menuitem" href="Categoria.dc.html?c=universitario" data-slug="universitario"><span class="btn-ic" aria-hidden="true" data-lottie="./assets/icones/cat-mvp-universitario.json" data-repouso="0" data-loop="0"></span><span>Universitário</span></a></li><li role="none"><a role="menuitem" href="Categoria.dc.html?c=futebol" data-slug="futebol"><span class="btn-ic" aria-hidden="true" data-lottie="./assets/icones/mvp-cat-futebol.json" data-repouso="0" data-loop="0"></span><span>Futebol</span></a></li><li role="none"><a role="menuitem" href="Categoria.dc.html?c=esportes" data-slug="esportes"><span class="btn-ic" aria-hidden="true" data-lottie="./assets/icones/cat-mvp-esportes.json" data-repouso="0" data-loop="0"></span><span>Esportes</span></a></li><li role="none"><a role="menuitem" href="Categoria.dc.html?c=teatro" data-slug="teatro"><span class="btn-ic" aria-hidden="true" data-lottie="./assets/icones/mvp-cat-teatro.json" data-repouso="0" data-loop="0"></span><span>Teatro</span></a></li><li role="none"><a role="menuitem" href="Categoria.dc.html?c=stand-up" data-slug="stand-up"><span class="btn-ic" aria-hidden="true" data-lottie="./assets/icones/cat-mvp-stand-up.json" data-repouso="0" data-loop="0"></span><span>Stand-up</span></a></li><li role="none"><a role="menuitem" href="Categoria.dc.html?c=infantil" data-slug="infantil"><span class="btn-ic" aria-hidden="true" data-lottie="./assets/icones/cat-mvp-infantil.json" data-repouso="0" data-loop="0"></span><span>Kids e Família</span></a></li><li role="none"><a role="menuitem" href="Categoria.dc.html?c=feiras" data-slug="feiras"><span class="btn-ic" aria-hidden="true" data-lottie="./assets/icones/mvp-cat-feiras.json" data-repouso="0" data-loop="0"></span><span>Feiras e Exposições</span></a></li></ul></span></span><!-- mvp:trilha:fim -->
+    </nav>
+    <!-- mvp:busca-nav:ini --><form class="mvp-so mvp-nb" role="search" action="Busca.dc.html" method="get" data-mvp-nb><button type="button" class="hdr-search hdr-lupa mvp-nb__abrir" aria-expanded="false" aria-controls="mvp-nb-campo" aria-label="Buscar evento, prova, time, artista ou local"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg></button><span class="mvp-nb__veu" aria-hidden="true"></span><span class="mvp-nb__fundo ilha" aria-hidden="true"></span><div class="mvp-nb__campo ilha" id="mvp-nb-campo"><span class="mvp-nb__lupa" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg></span><input class="mvp-nb__in" type="search" name="q" enterkeyhint="search" autocomplete="off" aria-label="Buscar evento, prova, time, artista ou local" placeholder="Evento, prova, time, artista, local..."><button type="submit" class="bp bp-sm">Buscar</button><button type="button" class="mvp-nb__fechar" aria-label="Fechar a busca"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div><p class="mvp-nb__dica ilha" aria-hidden="true"><span class="mvp-nb__dica-r">Experimente buscar</span> <span class="mvp-nb__tw"></span><span class="mvp-nb__cursor"></span></p></form><!-- mvp:busca-nav:fim --><a href="Busca.dc.html" class="hdr-search hdr-lupa" aria-label="Buscar evento, prova, time, artista ou local">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+    </a>
+    <span class="cid" data-cidade>
+      <button type="button" class="bs cid-btn" data-cidade-btn data-marcado="true" aria-haspopup="dialog" aria-expanded="false" aria-label="Cidade: São Paulo. Trocar">
+        <span class="btn-ic cid-pin" aria-hidden="true" data-lottie="./assets/icones/esp-perto-de-voce.json" data-repouso="0" data-loop="0"></span>
+        <span class="cid-nome" data-cidade-nome>São Paulo</span>
+        <svg class="cid-chev ico ico-14" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+      </button>
+    </span>
+    <!-- mvp:revenda:ini --><a class="bs mvp-so mvp-revenda" href="https://revenda.ingresse.com" target="_blank" rel="noopener noreferrer" aria-label="Revenda Oficial, abre em nova aba"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 8V7m0 5.5v-1m0 5.5v-1M5.2 4h13.6c1.12 0 1.68 0 2.108.218a2 2 0 0 1 .874.874C22 5.52 22 6.08 22 7.2v1.3a3.5 3.5 0 1 0 0 7v1.3c0 1.12 0 1.68-.218 2.108a2 2 0 0 1-.874.874C20.48 20 19.92 20 18.8 20H5.2c-1.12 0-1.68 0-2.108-.218a2 2 0 0 1-.874-.874C2 18.48 2 17.92 2 16.8v-1.3a3.5 3.5 0 1 0 0-7V7.2c0-1.12 0-1.68.218-2.108a2 2 0 0 1 .874-.874C3.52 4 4.08 4 5.2 4Z"/></svg><span class="mvp-revenda__t">Revenda</span></a><!-- mvp:revenda:fim --><!-- mc:ini --><button type="button" class="avatar-hdr mc-av" data-menu-conta data-conta="true" aria-haspopup="menu" aria-expanded="false" aria-label="Minha conta"><span class="uui-avatar uui-avatar--lg" aria-hidden="true"><span class="uui-avatar__content"><span class="mc-ini" aria-hidden="true">PE</span><svg class="mc-gen" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 21a8 8 0 0 0-16 0"/><path d="M12 13a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"/></svg><img src="./assets/pessoas/pessoa-exemplo.jpg" srcset="./assets/pessoas/pessoa-exemplo.jpg 96w, ./assets/pessoas/pessoa-exemplo@2x.jpg 192w" sizes="48px" width="48" height="48" alt=""></span></span><span class="mc-n" data-mc-n data-vazio="true" aria-hidden="true">0</span></button><!-- mc:fim -->
+  </div>
+</header>
+
+<main class="cat" data-cat="{{slug}}" data-cat-estado="{{estado}}" style="{{corVar}}">
+
+  <sc-if value="{{semCategoria}}" hint-placeholder-val="{{false}}">
+    <section class="cat-lista">
+      <div class="uui-empty-state" role="status">
+        <span class="uui-empty-state__icon"><svg class="uui-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="m21 21-3.5-3.5m2.5-6a8.5 8.5 0 1 1-17 0 8.5 8.5 0 0 1 17 0Z"/></svg></span>
+        <div class="uui-empty-state__header"><h1 class="uui-empty-state__title">Não encontramos essa categoria</h1><p class="uui-empty-state__text">Veja todos os eventos ou escolha uma categoria na Home.</p></div>
+        <div class="uui-empty-state__actions"><a href="Busca.dc.html" class="bp">Ver todos os eventos</a><a href="Main.dc.html" class="bs">Voltar para a Home</a></div>
+      </div>
+    </section>
+  </sc-if>
+
+  <sc-if value="{{temCategoria}}" hint-placeholder-val="{{true}}">
+  <!-- HERO: a vitrine da Home (classes .vit*, 8 s por destaque, pausa, barra de progresso) com os destaques da categoria, o título com o ícone animado e o cymatics na cor da categoria -->
+  <section class="vit cat-hero" data-cym="categoria" data-seed="{{heroSeed}}" data-estilo="{{estilo}}" data-cor="{{corRgb}}" aria-roledescription="carrossel" aria-label="{{heroRotulo}}" onMouseEnter="{{pause}}" onMouseLeave="{{resume}}" onFocus="{{pause}}" onBlur="{{resume}}">
+    <div class="cat-id">
+      <sc-if value="{{ic_shows}}" hint-placeholder-val="{{false}}"><span class="cat-ic cat-ic--completo" aria-hidden="true" data-lottie="./assets/icones/cat-shows.json" data-repouso="0" data-loop="0"></span><span class="cat-ic mvp-so" aria-hidden="true" data-lottie="./assets/icones/cat-mvp-shows.json" data-repouso="0" data-loop="0"></span></sc-if>
+      <sc-if value="{{ic_festivais}}" hint-placeholder-val="{{false}}"><span class="cat-ic cat-ic--completo" aria-hidden="true" data-lottie="./assets/icones/cat-festivais.json" data-repouso="0" data-loop="0"></span><span class="cat-ic mvp-so" aria-hidden="true" data-lottie="./assets/icones/cat-mvp-festivais.json" data-repouso="0" data-loop="0"></span></sc-if>
+      <sc-if value="{{ic_baladas}}" hint-placeholder-val="{{false}}"><span class="cat-ic cat-ic--completo" aria-hidden="true" data-lottie="./assets/icones/cat-festa-e-balada.json" data-repouso="0" data-loop="1"></span><span class="cat-ic mvp-so" aria-hidden="true" data-lottie="./assets/icones/cat-mvp-festas.json" data-repouso="0" data-loop="1"></span></sc-if>
+      <sc-if value="{{ic_musica_eletronica}}" hint-placeholder-val="{{false}}"><span class="cat-ic" aria-hidden="true" data-lottie="./assets/icones/cat-musica-eletronica.json" data-repouso="0" data-loop="0"></span></sc-if>
+      <sc-if value="{{ic_futebol}}" hint-placeholder-val="{{false}}"><span class="cat-ic cat-ic--completo" aria-hidden="true" data-lottie="./assets/icones/cat-futebol.json" data-repouso="0" data-loop="0"></span><span class="cat-ic mvp-so" aria-hidden="true" data-lottie="./assets/icones/mvp-cat-futebol.json" data-repouso="0" data-loop="0"></span></sc-if>
+      <sc-if value="{{ic_esportes}}" hint-placeholder-val="{{false}}"><span class="cat-ic cat-ic--completo" aria-hidden="true" data-lottie="./assets/icones/cat-esportes.json" data-repouso="0" data-loop="0"></span><span class="cat-ic mvp-so" aria-hidden="true" data-lottie="./assets/icones/cat-mvp-esportes.json" data-repouso="0" data-loop="0"></span></sc-if>
+      <sc-if value="{{ic_corridas}}" hint-placeholder-val="{{false}}"><span class="cat-ic" aria-hidden="true" data-lottie="./assets/icones/cat-corridas.json" data-repouso="0" data-loop="0"></span></sc-if>
+      <sc-if value="{{ic_teatro}}" hint-placeholder-val="{{false}}"><span class="cat-ic cat-ic--completo" aria-hidden="true" data-lottie="./assets/icones/cat-teatro.json" data-repouso="0" data-loop="0"></span><span class="cat-ic mvp-so" aria-hidden="true" data-lottie="./assets/icones/mvp-cat-teatro.json" data-repouso="0" data-loop="0"></span></sc-if>
+      <sc-if value="{{ic_gastronomia}}" hint-placeholder-val="{{false}}"><span class="cat-ic" aria-hidden="true" data-lottie="./assets/icones/cat-gastronomia.json" data-repouso="0" data-loop="0"></span></sc-if>
+      <sc-if value="{{ic_infantil}}" hint-placeholder-val="{{false}}"><span class="cat-ic cat-ic--completo" aria-hidden="true" data-lottie="./assets/icones/cat-kids.json" data-repouso="0" data-loop="0"></span><span class="cat-ic mvp-so" aria-hidden="true" data-lottie="./assets/icones/cat-mvp-infantil.json" data-repouso="0" data-loop="0"></span></sc-if>
+      <sc-if value="{{ic_universitario}}" hint-placeholder-val="{{false}}"><span class="cat-ic" aria-hidden="true" data-lottie="./assets/icones/cat-mvp-universitario.json" data-repouso="0" data-loop="0"></span></sc-if>
+      <sc-if value="{{ic_stand_up}}" hint-placeholder-val="{{false}}"><span class="cat-ic" aria-hidden="true" data-lottie="./assets/icones/cat-mvp-stand-up.json" data-repouso="0" data-loop="0"></span></sc-if>
+      <sc-if value="{{ic_feiras}}" hint-placeholder-val="{{false}}"><span class="cat-ic" aria-hidden="true" data-lottie="./assets/icones/mvp-cat-feiras.json" data-repouso="0" data-loop="0"></span></sc-if>
+      <div class="cat-id-txt">
+        <h1 class="cat-h1">{{nome}}</h1>
+        <p class="cat-desc">{{descricao}}</p>
+        <p class="cat-total"><strong>{{totalNum}}</strong> {{totalPal}}</p>
+      </div>
+      <button type="button" class="chip chip-lg cat-seguir mvp-so" aria-pressed="{{seguirPressed}}" aria-label="{{seguirAria}}" onClick="{{seguirToggle}}"><span class="btn-ic" aria-hidden="true" data-lottie="./assets/icones/avisar.json" data-repouso="0" data-loop="0"></span><span class="cat-seguir__t">{{seguirRotulo}}</span></button>
+    </div>
+    <sc-if value="{{heroCarregando}}" hint-placeholder-val="{{false}}">
+      <div class="vit-main" aria-hidden="true"><div class="vit-poster sk"></div><div class="vit-info"><div class="sk" style="height: 20px; width: 80px"></div><div class="sk" style="height: 40px; width: min(420px, 100%)"></div><div class="sk" style="height: 20px; width: min(320px, 100%)"></div></div></div>
+    </sc-if>
+    <sc-if value="{{temDestaques}}" hint-placeholder-val="{{true}}">
+    <div class="vit-main">
+      <a href="{{slide.href}}" class="vit-poster" aria-label="{{slide.name}}"><img src="{{slide.img}}" alt=""></a>
+      <div class="vit-info">
+        <div class="vit-count" aria-hidden="true"><b>{{slideNum}}</b> / {{slideTotal}}</div>
+        <div class="over">{{slide.kicker}}</div>
+        <a href="{{slide.href}}"><h2 class="disp soft vit-title">{{slide.name}}</h2></a>
+        <div class="vit-meta">{{slide.date}} · {{slide.venue}}</div>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px">
+          <a href="{{slide.href}}" class="bp">{{slide.cta}}</a>
+        </div>
+      </div>
+    </div>
+    <button type="button" class="car-pause" onClick="{{toggleStop}}" aria-label="{{stopLabel}}" title="{{stopLabel}}"><sc-if value="{{isStopped}}" hint-placeholder-val="{{false}}"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"></path></svg></sc-if><sc-if value="{{isRunning}}" hint-placeholder-val="{{true}}"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 5h4v14H7zM13 5h4v14h-4z"></path></svg></sc-if></button>
+    <div class="vit-rail" role="tablist" aria-label="Destaques de {{nome}}" onKeyDown="{{onRailKey}}">
+      <div class="over vit-rail-h">Destaques</div>
+      <sc-for list="{{queue}}" as="q" hint-placeholder-count="5">
+        <button type="button" role="tab" class="vit-item" aria-selected="{{q.sel}}" tabindex="{{q.tab}}" aria-label="{{q.name}}" onClick="{{q.pick}}">
+          <img src="{{q.img}}" alt="">
+          <span class="vit-item-t"><strong>{{q.name}}</strong><small>{{q.date}}</small></span>
+          <span class="vit-bar" aria-hidden="true"><i style="{{q.bar}}"></i></span>
+        </button>
+      </sc-for>
+    </div>
+    </sc-if>
+  </section>
+
+  <!-- espaço previsto para o convite à Ingresse Sports (Esportes e Corridas); a vertical vem de outra frente, depois da pesquisa -->
+  <sc-if value="{{temConviteSports}}" hint-placeholder-val="{{false}}"><div class="cat-convite" data-slot="ingresse-sports" hidden></div></sc-if>
+
+  <section class="cat-lista" aria-labelledby="cat-lista-h">
+    <h2 class="cat-lista-t" id="cat-lista-h">{{listaTitulo}}</h2>
+    <div class="cat-ferr">
+      <form role="search" class="campo-busca cat-campo" onSubmit="{{submit}}" aria-label="{{buscaRotulo}}">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#55555A" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+        <label style="flex: 1; display: flex; min-width: 0"><span class="sr-only">{{buscaRotulo}}</span>
+          <input type="search" id="cat-q" value="{{q}}" onInput="{{onQuery}}" enterkeyhint="search" autocomplete="off" placeholder="{{buscaRotulo}}"></label>
+        <sc-if value="{{temQ}}" hint-placeholder-val="{{false}}"><button type="button" class="cat-limpar" onClick="{{limparQ}}" aria-label="Limpar busca"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button></sc-if>
+        <button type="submit" class="bp bp-sm">Buscar</button>
+      </form>
+      <div class="cat-filtros">
+        <div class="cat-grupo"><span class="cat-rot" id="cat-per-l">Período</span>
+          <div class="seg" role="group" aria-labelledby="cat-per-l">
+            <sc-for list="{{periodos}}" as="p" hint-placeholder-count="4"><button type="button" aria-pressed="{{p.on}}" onClick="{{p.pick}}">{{p.label}}</button></sc-for>
+          </div>
+        </div>
+        <label class="cat-sel">Cidade
+          <select value="{{cidade}}" onChange="{{onCidade}}">
+            <option value="">Todas as cidades</option>
+            <sc-for list="{{cidades}}" as="c" hint-placeholder-count="4"><option value="{{c.v}}">{{c.l}}</option></sc-for>
+          </select>
+        </label>
+        <label class="cat-sel cat-sel-ord">Ordenar por
+          <select value="{{sort}}" onChange="{{onSort}}"><option value="data">Data mais próxima</option><option value="preco">Menor preço</option></select>
+        </label>
+      </div>
+      <div class="cat-ativos">
+        <p class="cat-cont">{{contagem}}</p>
+        <sc-if value="{{temFiltros}}" hint-placeholder-val="{{false}}"><button type="button" class="linkbtn cat-limpar-tudo" onClick="{{limparTudo}}">Limpar filtros</button></sc-if>
+      </div>
+    </div>
+
+    <p class="sr-only" role="status" aria-live="polite" aria-atomic="true">{{anuncio}}</p>
+
+    <sc-if value="{{carregando}}" hint-placeholder-val="{{false}}">
+      <div class="res-grid" aria-busy="true" aria-label="{{carregandoRotulo}}" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px">
+        <sc-for list="{{skels}}" as="k" hint-placeholder-count="12"><div class="ev-card ev-card--esqueleto" data-tipo="show" aria-hidden="true"><div class="ev-card__caixa"><span class="ev-card__midia sk"></span><span class="ev-card__corpo"><span class="sk" data-l="titulo"></span><span class="sk" data-l="meta"></span><span class="sk" data-l="meta"></span></span></div></div></sc-for>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{temErro}}" hint-placeholder-val="{{false}}">
+      <div class="uui-empty-state" role="alert">
+        <span class="uui-empty-state__icon"><svg class="uui-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8v4m0 4h.01M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10Z"/></svg></span>
+        <div class="uui-empty-state__header"><h2 class="uui-empty-state__title">{{erroTitulo}}</h2><p class="uui-empty-state__text">Confira a conexão e tente de novo.</p></div>
+        <div class="uui-empty-state__actions"><button type="button" class="bp" onClick="{{tentar}}">Tentar de novo</button></div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{temCards}}" hint-placeholder-val="{{true}}">
+      <div class="res-grid cat-grade" id="cat-grade" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px">
+        <sc-for list="{{cards}}" as="e" hint-placeholder-count="12">
+          <sc-if value="{{e.cEhShow}}" hint-placeholder-val="{{true}}">
+          <article class="ev-card" data-tipo="show" data-situacao="{{e.cSit}}" data-quieto="{{e.cQuieto}}" data-ini="{{e.cIni}}" data-sem-sincronia="1">
+          <div class="ev-card__caixa">
+            <a class="ev-card__link" href="{{e.cHref}}" target="{{e.cTarget}}" rel="{{e.cRel}}" aria-label="{{e.cAria}}">
+            <span class="ev-card__midia">
+              <img class="ev-card__img" src="{{e.cImg}}" alt="" loading="lazy" decoding="async" width="810" height="1080">
+              <span class="ev-card__ver ilha" aria-hidden="true">Ver detalhes</span>
+            </span>
+            <span class="ev-card__corpo">
+              <sc-if value="{{e.cTemEstado}}" hint-placeholder-val="{{false}}"><span class="tag ev-card__estado" data-sit="{{e.cSit}}"><span class="ev-ic" data-i="{{e.cEstadoIcone}}" aria-hidden="true"></span>{{e.cEstado}}</span></sc-if>
+              <h3 class="ev-card__titulo">{{e.cNome}}</h3>
+              <span class="ev-card__meta"><span class="ev-card__data">{{e.cData}}</span><span class="ev-card__local">{{e.cLocal}}</span></span>
+            </span>
+            </a>
+            <sc-if value="{{e.cCtaTem}}" hint-placeholder-val="{{true}}"><a class="bs bs-ink ev-card__cta" href="{{e.cCtaHref}}" target="{{e.cCtaTarget}}" rel="{{e.cCtaRel}}" aria-label="{{e.cCtaAria}}"><span class="ev-card__cta-t">{{e.cCtaRotulo}}</span><svg class="ico ev-card__seta" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M8 7h9v9"/></svg></a></sc-if>
+          </div>
+        </article>
+          </sc-if>
+          <sc-if value="{{e.cEhJogo}}" hint-placeholder-val="{{false}}">
+          <article class="ev-card" data-tipo="jogo" data-situacao="{{e.cSit}}" data-quieto="{{e.cQuieto}}" data-ini="{{e.cIni}}" data-jogo="{{e.cJogoId}}" data-sem-sincronia="1">
+          <div class="ev-card__caixa">
+            <a class="ev-card__link" href="{{e.cHref}}" target="{{e.cTarget}}" rel="{{e.cRel}}" aria-label="{{e.cAria}}">
+            <span class="ev-card__midia ev-card__placa ilha">
+              <sc-if value="{{e.cTemArte}}" hint-placeholder-val="{{true}}"><span class="ev-card__fundo" aria-hidden="true"><img src="{{e.cArte}}" alt="" loading="lazy" decoding="async" width="576" height="768"></span></sc-if>
+              <span class="ev-card__faixa" aria-hidden="true">
+                <sc-if value="{{e.cE1Tem}}" hint-placeholder-val="{{true}}"><img class="ev-card__escudo" src="{{e.cE1Src}}" alt="{{e.cE1Alt}}" width="64" height="64"></sc-if><sc-if value="{{e.cE1Mon}}" hint-placeholder-val="{{false}}"><span class="ev-card__escudo ev-card__mono">{{e.cE1Mono}}</span></sc-if>
+                <span class="ev-card__x">x</span>
+                <sc-if value="{{e.cE2Tem}}" hint-placeholder-val="{{true}}"><img class="ev-card__escudo" src="{{e.cE2Src}}" alt="{{e.cE2Alt}}" width="64" height="64"></sc-if><sc-if value="{{e.cE2Mon}}" hint-placeholder-val="{{false}}"><span class="ev-card__escudo ev-card__mono">{{e.cE2Mono}}</span></sc-if>
+              </span>
+              <sc-if value="{{e.cTemCamp}}" hint-placeholder-val="{{true}}"><span class="ev-card__camp">{{e.cCamp}}</span></sc-if>
+              <span class="ev-card__apaga" aria-hidden="true"></span>
+              <span class="ev-card__ver ilha" aria-hidden="true">Ver detalhes</span>
+            </span>
+            <span class="ev-card__corpo">
+              <sc-if value="{{e.cTemEstado}}" hint-placeholder-val="{{false}}"><span class="tag ev-card__estado" data-sit="{{e.cSit}}"><span class="ev-ic" data-i="{{e.cEstadoIcone}}" aria-hidden="true"></span>{{e.cEstado}}</span></sc-if>
+              <h3 class="ev-card__titulo">{{e.cNome}}</h3>
+              <span class="ev-card__meta"><span class="ev-card__data">{{e.cData}}</span><span class="ev-card__local">{{e.cLocal}}</span></span>
+            </span>
+            </a>
+            <sc-if value="{{e.cCtaTem}}" hint-placeholder-val="{{true}}"><a class="bs bs-ink ev-card__cta" href="{{e.cCtaHref}}" target="{{e.cCtaTarget}}" rel="{{e.cCtaRel}}" aria-label="{{e.cCtaAria}}"><span class="ev-card__cta-t">{{e.cCtaRotulo}}</span><svg class="ico ev-card__seta" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M8 7h9v9"/></svg></a></sc-if>
+          </div>
+        </article>
+          </sc-if>
+        </sc-for>
+        <sc-if value="{{carregandoMais}}" hint-placeholder-val="{{false}}">
+          <sc-for list="{{skelsMais}}" as="k" hint-placeholder-count="12"><div class="ev-card ev-card--esqueleto" data-tipo="show" aria-hidden="true"><div class="ev-card__caixa"><span class="ev-card__midia sk"></span><span class="ev-card__corpo"><span class="sk" data-l="titulo"></span><span class="sk" data-l="meta"></span><span class="sk" data-l="meta"></span></span></div></div></sc-for>
+        </sc-if>
+      </div>
+      <sc-if value="{{temMais}}" hint-placeholder-val="{{true}}">
+        <div id="cat-sentinela" class="cat-sentinela" data-lotes="{{lotes}}" data-estado="{{estadoMais}}" aria-hidden="true"></div>
+        <div class="cat-mais">
+          <p class="cat-mais-t">Mostrando {{qtdVisiveis}} de {{qtdTotal}}</p>
+          <button type="button" class="bs cat-mais-b" onClick="{{carregarMais}}" aria-disabled="{{maisOcupado}}">{{maisRotulo}}</button>
+        </div>
+      </sc-if>
+      <sc-if value="{{fimDaLista}}" hint-placeholder-val="{{false}}">
+        <div class="cat-fim"><p>{{fimTexto}}</p><a href="#cat-lista-h" class="linkbtn" onClick="{{irTopo}}">Voltar ao topo</a></div>
+      </sc-if>
+    </sc-if>
+
+    <sc-if value="{{temVazio}}" hint-placeholder-val="{{false}}">
+      <div class="uui-empty-state" role="status">
+        <span class="uui-empty-state__icon"><svg class="uui-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="m21 21-3.5-3.5m2.5-6a8.5 8.5 0 1 1-17 0 8.5 8.5 0 0 1 17 0Z"/></svg></span>
+        <div class="uui-empty-state__header"><h2 class="uui-empty-state__title">{{vazioTitulo}}</h2><p class="uui-empty-state__text">Tente outro termo ou limpe os filtros.</p></div>
+        <div class="uui-empty-state__actions"><button type="button" class="bp" onClick="{{limparTudo}}">Limpar busca</button></div>
+      </div>
+    </sc-if>
+  </section>
+  </sc-if>
+</main>
+
+<button type="button" class="cat-topo bs" data-on="{{topoOn}}" tabindex="{{topoTab}}" onClick="{{irTopo}}" aria-label="Voltar ao topo"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5m0 0-7 7m7-7 7 7"/></svg></button>
+<footer class="rp" aria-label="Rodapé">
+  <div class="rp-in">
+    <div class="rp-topo">
+      <a href="Main.dc.html" class="rp-marca" aria-label="Ingresse — início"><img src="./assets/8703fb5f412b57860d569f5abeea2cae.svg" alt="Ingresse"></a>
+      <div class="rp-cols">
+      <nav class="rp-col" aria-labelledby="rp-c0">
+        <h2 class="rp-col__t" id="rp-c0">A Ingresse</h2>
+        <ul class="rp-lista">
+          <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Sobre a Ingresse</a></li>
+          <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Trabalhe conosco</a></li>
+          <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Diversidade e inclusão</a></li>
+          <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Imprensa</a></li>
+        </ul>
+      </nav>
+      <nav class="rp-col" aria-labelledby="rp-c1">
+        <h2 class="rp-col__t" id="rp-c1">Ajuda</h2>
+        <ul class="rp-lista">
+          <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Central de ajuda</a></li>
+          <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Perguntas frequentes</a></li>
+          <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Pedir reembolso</a></li>
+          <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Regras de meia‑entrada</a></li>
+        </ul>
+      </nav>
+      <nav class="rp-col" aria-labelledby="rp-c2">
+        <h2 class="rp-col__t" id="rp-c2">Descubra</h2>
+        <ul class="rp-lista">
+          <li><a class="rp-link" href="Busca.dc.html?escopo=artistas">Artistas</a></li>
+          <li><a class="rp-link" href="Busca.dc.html?escopo=locais">Locais</a></li>
+          <li><a class="rp-link" href="https://revenda.ingresse.com" target="_blank" rel="noopener noreferrer" aria-label="Revenda Oficial, abre em nova aba">Revenda Oficial</a></li>
+          <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Para <span class="rp-nw">produtores<svg class="rp-ico rp-ico--sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M8 7h9v9"/></svg></span></a></li>
+        </ul>
+      </nav>
+      </div>
+    </div>
+    <div class="rp-linha">
+      <div class="rp-apps" role="group" aria-label="Baixe o app">
+        <a class="bs rp-app" href="#" data-toast="O link da App Store entra quando o app novo for publicado" aria-label="Baixar o app da Ingresse para iOS"><svg class="rp-ico" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16.37 12.83c-.02-2.3 1.88-3.4 1.97-3.46-1.07-1.57-2.74-1.78-3.33-1.8-1.42-.14-2.77.83-3.49.83-.72 0-1.83-.81-3.01-.79-1.55.02-2.98.9-3.78 2.29-1.61 2.8-.41 6.94 1.16 9.21.77 1.11 1.68 2.36 2.88 2.31 1.16-.05 1.59-.75 2.99-.75 1.4 0 1.79.75 3.01.72 1.24-.02 2.03-1.13 2.79-2.25.88-1.29 1.24-2.54 1.26-2.6-.03-.01-2.42-.93-2.45-3.71zM14.08 6.07c.64-.77 1.07-1.85.95-2.92-.92.04-2.03.61-2.69 1.38-.59.68-1.11 1.78-.97 2.83 1.02.08 2.07-.52 2.71-1.29z"/></svg><span>iOS</span></a>
+        <a class="bs rp-app" href="#" data-toast="O link do Google Play entra quando o app novo for publicado" aria-label="Baixar o app da Ingresse para Android"><svg class="rp-ico" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 18c0 .55.45 1 1 1h1v3.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5V19h2v3.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5V19h1c.55 0 1-.45 1-1V8H6v10zM3.5 8C2.67 8 2 8.67 2 9.5v7c0 .83.67 1.5 1.5 1.5S5 17.33 5 16.5v-7C5 8.67 4.33 8 3.5 8zm17 0c-.83 0-1.5.67-1.5 1.5v7c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5v-7c0-.83-.67-1.5-1.5-1.5zm-4.97-5.84l1.3-1.3c.2-.2.2-.51 0-.71-.2-.2-.51-.2-.71 0l-1.48 1.48A5.84 5.84 0 0 0 12 1c-.96 0-1.86.23-2.66.63L7.85.15c-.2-.2-.51-.2-.71 0-.2.2-.2.51 0 .71l1.31 1.31A5.98 5.98 0 0 0 6 7h12c0-1.99-.97-3.75-2.47-4.84zM10 5H9V4h1v1zm5 0h-1V4h1v1z"/></svg><span>Android</span></a>
+      </div>
+      <ul class="rp-redes" aria-label="Ingresse nas redes">
+        <li><a class="bs bs-icone rp-rede" href="https://www.instagram.com/ingresse/" target="_blank" rel="noopener noreferrer" aria-label="Ingresse no Instagram (abre em nova aba)"><svg class="rp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><path d="M17.5 6.5h.01"/></svg></a></li>
+        <li><a class="bs bs-icone rp-rede" href="https://www.tiktok.com/@ingresse" target="_blank" rel="noopener noreferrer" aria-label="Ingresse no TikTok (abre em nova aba)"><svg class="rp-ico" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16.6 5.82A4.28 4.28 0 0 1 15.54 3h-3.09v12.4a2.59 2.59 0 0 1-2.59 2.5c-1.42 0-2.6-1.16-2.6-2.6 0-1.72 1.66-3.01 3.37-2.48V9.66c-3.45-.46-6.47 2.22-6.47 5.64 0 3.33 2.76 5.7 5.69 5.7 3.14 0 5.69-2.55 5.69-5.7V9.01a7.35 7.35 0 0 0 4.3 1.38V7.3s-1.88.09-3.24-1.48z"/></svg></a></li>
+        <li><a class="bs bs-icone rp-rede" href="https://www.linkedin.com/company/ingresse/" target="_blank" rel="noopener noreferrer" aria-label="Ingresse no LinkedIn (abre em nova aba)"><svg class="rp-ico" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.45 20.45h-3.56v-5.57c0-1.33-.02-3.04-1.85-3.04-1.85 0-2.14 1.45-2.14 2.94v5.67H9.35V9h3.41v1.56h.05c.48-.9 1.64-1.85 3.37-1.85 3.6 0 4.27 2.37 4.27 5.46v6.28zM5.34 7.43a2.06 2.06 0 1 1 0-4.13 2.06 2.06 0 0 1 0 4.13zM7.12 20.45H3.56V9h3.56v11.45z"/></svg></a></li>
+      </ul>
+    </div>
+    <div class="rp-base">
+      <p class="rp-direitos">© 2026 Ingresse</p>
+      <details class="rp-idioma">
+        <summary class="rp-idioma__b" aria-haspopup="menu"><span class="sr-only">Idioma do site: </span><img class="rp-band" src="./assets/flags/br.svg" alt="" width="24" height="18" data-pv-lang-band><span data-pv-lang-nome>Português (Brasil)</span><svg class="rp-ico rp-ico--sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary>
+        <ul class="rp-idioma__lista" role="menu" aria-label="Idioma do site">
+          <li role="none"><button type="button" class="rp-idioma__op" role="menuitemradio" data-pv-lang="PT" aria-checked="true" tabindex="-1" lang="pt-BR"><img class="rp-band" src="./assets/flags/br.svg" alt="" width="24" height="18">Português (Brasil)</button></li>
+          <li role="none"><button type="button" class="rp-idioma__op" role="menuitemradio" data-pv-lang="PT-PT" aria-checked="false" tabindex="-1" lang="pt-PT"><img class="rp-band" src="./assets/flags/pt.svg" alt="" width="24" height="18">Português (Portugal)</button></li>
+          <li role="none"><button type="button" class="rp-idioma__op" role="menuitemradio" data-pv-lang="ES" aria-checked="false" tabindex="-1" lang="es"><img class="rp-band" src="./assets/flags/es.svg" alt="" width="24" height="18">Español</button></li>
+          <li role="none"><button type="button" class="rp-idioma__op" role="menuitemradio" data-pv-lang="EN" aria-checked="false" tabindex="-1" lang="en"><img class="rp-band" src="./assets/flags/us.svg" alt="" width="24" height="18">English</button></li>
+        </ul>
+      </details>
+      <ul class="rp-legais" aria-label="Termos e políticas">
+        <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Política de privacidade</a></li>
+        <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Termos de uso</a></li>
+        <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Termos de compra</a></li>
+        <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Configurações de cookies</a></li>
+      </ul>
+    </div>
+    <div class="rp-grupo">
+      <h2 class="rp-grupo__t" id="rp-grupo">Empresas do Grupo Ingresse</h2>
+      <ul class="rp-grupo__lista" aria-labelledby="rp-grupo">
+        <li><a class="rp-link" href="https://ingresse.com/" target="_blank" rel="noopener noreferrer" aria-label="Ingresse (ingresse.com, abre em nova aba)">Ingresse</a></li>
+        <li><a class="rp-link" href="https://ticketsports.com.br/" target="_blank" rel="noopener noreferrer" aria-label="TicketSports (ticketsports.com.br, abre em nova aba)">TicketSports</a></li>
+        <li><a class="rp-link" href="https://outgo.com.br/" target="_blank" rel="noopener noreferrer" aria-label="OutGo (outgo.com.br, abre em nova aba)">OutGo</a></li>
+        <li><a class="rp-link" href="https://ingressonacional.com.br/" target="_blank" rel="noopener noreferrer" aria-label="Ingresso Nacional (ingressonacional.com.br, abre em nova aba)">Ingresso Nacional</a></li>
+        <li><a class="rp-link" href="https://ingressolive.com/" target="_blank" rel="noopener noreferrer" aria-label="Ingresso Live (ingressolive.com, abre em nova aba)">Ingresso Live</a></li>
+        <li><a class="rp-link" href="https://blacktag.com.br/" target="_blank" rel="noopener noreferrer" aria-label="Blacktag (blacktag.com.br, abre em nova aba)">Blacktag</a></li>
+        <li><a class="rp-link" href="https://pixelticket.com.br/" target="_blank" rel="noopener noreferrer" aria-label="PixelTicket (pixelticket.com.br, abre em nova aba)">PixelTicket</a></li>
+        <li><a class="rp-link" href="https://meep.com.br/" target="_blank" rel="noopener noreferrer" aria-label="Meep (meep.com.br, abre em nova aba)">Meep</a></li>
+      </ul>
+    </div>
+  </div>
+</footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":2400}}'>
+const CATEGORIAS = [{"slug":"shows","nome":"Shows","nomeMvp":"Shows","singular":"Show","descricao":"Shows e turnês, de casas pequenas a arenas.","estilo":"rock","cor":{"hex":"#FD8072","matiz":28,"rgb":[253,128,114]},"seed":309817711,"convite":null,"total":157},{"slug":"festivais","nome":"Festivais","nomeMvp":"Festivais","singular":"Festival","descricao":"Festivais de um ou mais dias, com vários palcos.","estilo":"festival","cor":{"hex":"#FD74B5","matiz":353,"rgb":[253,116,181]},"seed":1283100023,"convite":null,"total":56},{"slug":"baladas","nome":"Festa e balada","nomeMvp":"Festas e Baladas","singular":"Festa e balada","descricao":"Festas, baladas e noites com pista.","estilo":"pista","cor":{"hex":"#DF74E3","matiz":326,"rgb":[223,116,227]},"seed":3270542139,"convite":null,"total":68},{"slug":"musica-eletronica","nome":"Música eletrônica","nomeMvp":null,"singular":"Música eletrônica","descricao":"House, techno e rave em clubs, festas e festivais.","estilo":"eletronica","cor":{"hex":"#2BD1FE","matiz":222,"rgb":[43,209,254]},"seed":3482084502,"convite":null,"total":64},{"slug":"futebol","nome":"Futebol","nomeMvp":"Futebol","singular":"Futebol","descricao":"Jogos e campeonatos para torcer da arquibancada.","estilo":"bola","cor":{"hex":"#40D872","matiz":150,"rgb":[64,216,114]},"seed":3105678424,"convite":null,"total":47},{"slug":"esportes","nome":"Esportes","nomeMvp":"Esportes","singular":"Esporte","descricao":"Jogos, campeonatos e provas, para ver ou para participar.","estilo":"quadra","cor":{"hex":"#11DAC8","matiz":184,"rgb":[17,218,200]},"seed":2459100196,"convite":null,"total":234},{"slug":"corridas","nome":"Corridas","nomeMvp":null,"singular":"Corrida","descricao":"Corridas de rua, meias maratonas e maratonas.","estilo":"faixas","cor":{"hex":"#FE9D4A","matiz":58,"rgb":[254,157,74]},"seed":4073144640,"convite":null,"total":119},{"slug":"teatro","nome":"Teatro","nomeMvp":"Teatro","singular":"Teatro","descricao":"Peças, musicais e stand-up em cartaz.","estilo":"cortina","cor":{"hex":"#978CFF","matiz":286,"rgb":[151,140,255]},"seed":1039853160,"convite":null,"total":37},{"slug":"gastronomia","nome":"Gastronomia","nomeMvp":null,"singular":"Gastronomia","descricao":"Jantares, festivais e experiências à mesa.","estilo":"mesa","cor":{"hex":"#9AD335","matiz":128,"rgb":[154,211,53]},"seed":2896954693,"convite":null,"total":36},{"slug":"infantil","nome":"Kids","nomeMvp":"Kids e Família","singular":"Kids","descricao":"Programação para crianças e para ir em família.","estilo":"ciranda","cor":{"hex":"#ECC914","matiz":96,"rgb":[236,201,20]},"seed":398515984,"convite":null,"total":36},{"slug":"universitario","nome":"Universitário","nomeMvp":"Universitário","singular":"Festa universitária","descricao":"Calouradas, chopadas, jogos e festas das atléticas.","estilo":"campus","cor":{"hex":"#49D2EA","matiz":212,"rgb":[73,210,234]},"seed":1734260283,"convite":null,"total":26},{"slug":"stand-up","nome":"Stand-up","nomeMvp":"Stand-up","singular":"Stand-up","descricao":"Comediantes em turnê, noites de stand-up e festivais de humor.","estilo":"riso","cor":{"hex":"#FF9C68","matiz":45,"rgb":[255,156,104]},"seed":1545299193,"convite":null,"total":26},{"slug":"feiras","nome":"Feiras e Exposições","nomeMvp":"Feiras e Exposições","singular":"Feira","descricao":"Feiras de livro, cultura pop, games, arte, café e gastronomia, e exposições.","estilo":"estandes","cor":{"hex":"#C1D034","matiz":115,"rgb":[193,208,52]},"seed":639280929,"convite":null,"total":24}];
+const LOTE = 12;
+const TITULOS = { futebol: 'Ingressos de futebol: jogos e campeonatos | Ingresse' };
+// vocabulário por categoria: no futebol a palavra é «jogo» (guia de futebol, seção 1), nunca «evento»
+const vocab = slug => (slug === 'futebol' ? { s: 'jogo', p: 'jogos' } : { s: 'evento', p: 'eventos' });
+// «Seguir» a categoria (MODO MVP, Wander, 15/11/2026): um clique liga, outro desliga; fica no navegador (localStorage, lista de slugs) e vale ao recarregar.
+// O envio real dos avisos depende do serviço de notificações (pendência do Marcelino); aqui é simulado. Textos provisórios, para a Luiza.
+const SEGUIR_CHAVE = 'ingresse-seguir-categorias';
+const seguidas = () => { try { const v = JSON.parse(localStorage.getItem(SEGUIR_CHAVE) || '[]'); return Array.isArray(v) ? v : []; } catch (e) { return []; } };
+const gravarSeguidas = l => { try { localStorage.setItem(SEGUIR_CHAVE, JSON.stringify(l)); } catch (e) {} };
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    const qs = new URLSearchParams(location.search);
+    const slug = qs.get('c') || 'shows';
+    const cfg0 = CATEGORIAS.find(c => c.slug === slug) || null;
+    const cfg = cfg0 && window.IngresseMvp && cfg0.nomeMvp ? { ...cfg0, nome: cfg0.nomeMvp } : cfg0; // MODO MVP (15/11/2026): o nome do menu de categorias («Festas e Baladas», «Kids e Família»)
+    if (TITULOS[slug]) document.title = TITULOS[slug]; // título da aba por categoria (futebol: 29/10/2026); as outras seguem com o título genérico
+    // Voltar do navegador: volta com os mesmos lotes, busca, filtros e posição (sessionStorage, por categoria)
+    let salvo = null;
+    try { const nav = performance.getEntriesByType('navigation')[0]; if (nav && nav.type === 'back_forward') salvo = JSON.parse(sessionStorage.getItem('cat:' + slug) || 'null'); } catch (e) {}
+    const q0 = qs.has('q') ? qs.get('q') : (salvo ? salvo.q : '');
+    this.state = { slug, cfg, seguindo: seguidas().includes(slug), dados: null, erro: false, lotes: salvo ? salvo.lotes : 1, q: q0, qq: q0, sort: salvo ? salvo.sort : 'data', cidade: salvo ? salvo.cidade : (qs.get('cidade') || ''), periodo: salvo ? salvo.periodo : '', mais: false, anuncio: '', slide: 0, paused: false, stopped: false, topo: false };
+    this.restaurarY = salvo && salvo.y > 0 ? salvo.y : 0;
+    this.y = 0;
+  }
+  componentDidMount() {
+    if (!this.state.cfg) return;
+    this.carregar();
+    this.aoMais = () => this.maisLote(false);
+    document.addEventListener('cat:mais', this.aoMais);
+    this.cidMuda = e => { const nome = e && e.detail && e.detail.nome; this.setState({ cidade: nome && this.temCidade(nome) ? nome : '', lotes: 1 }); };
+    document.addEventListener('previa:cidade', this.cidMuda);
+    this.aoRolar = () => {
+      this.y = window.scrollY;
+      const topo = this.y > 720;
+      if (topo !== this.state.topo) this.setState({ topo });
+      clearTimeout(this.tg); this.tg = setTimeout(() => this.guardar(), 150);
+    };
+    window.addEventListener('scroll', this.aoRolar, { passive: true });
+    this.aoSair = () => this.guardar();
+    window.addEventListener('pagehide', this.aoSair);
+    if (history.scrollRestoration) history.scrollRestoration = 'manual';
+    // Autoplay dos destaques: respeita movimento reduzido, hover/foco (pausa) e o botão de pausa (WCAG 2.2.2), como na Home
+    const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    this.restart = () => {
+      clearInterval(this.timer);
+      if (this.state.stopped) return;
+      this.timer = setInterval(() => { if (!this.state.paused && !this.state.stopped) this.setState({ slide: this.state.slide + 1 }); }, 8000);
+    };
+    if (reduce) this.setState({ stopped: true }); else this.restart();
+  }
+  componentWillUnmount() {
+    clearInterval(this.timer); clearTimeout(this.tq); clearTimeout(this.tm);
+    document.removeEventListener('cat:mais', this.aoMais); document.removeEventListener('previa:cidade', this.cidMuda);
+    window.removeEventListener('scroll', this.aoRolar); window.removeEventListener('pagehide', this.aoSair);
+  }
+  componentDidUpdate() { this.guardar(); }
+  guardar() {
+    const s = this.state;
+    if (!s.cfg || !s.dados) return;
+    try { sessionStorage.setItem('cat:' + s.slug, JSON.stringify({ lotes: s.lotes, q: s.qq, sort: s.sort, cidade: s.cidade, periodo: s.periodo, y: Math.round(this.y || window.scrollY) })); } catch (e) {}
+  }
+  temCidade(nome) { const d = this.state.dados; return !!d && d.cidades.some(c => c.v === nome); }
+  carregar() {
+    this.setState({ erro: false });
+    fetch('./dados/categoria-' + this.state.slug + '.json').then(r => r.ok ? r.json() : Promise.reject(r.status)).then(d => {
+      const norm = t => (t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+      const fmt = new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false });
+      const rotuloData = iso => {
+        if (!iso || isNaN(Date.parse(iso))) return 'Data a confirmar';
+        const p = fmt.formatToParts(new Date(iso)); const g = t => (p.find(x => x.type === t) || {}).value || ''; const lm = s => s.replace('.', '');
+        const wd = lm(g('weekday')); const h = String(Number(g('hour'))); const min = g('minute');
+        return wd.charAt(0).toUpperCase() + wd.slice(1) + ' ' + g('day') + ' ' + lm(g('month')) + ' · ' + (min === '00' ? h + 'h' : h + 'h' + min);
+      };
+      const R = { venda: 'À venda', pre: 'Pré-venda', 'nao-aberto': 'Não aberto', esgotado: 'Esgotado', cancelado: 'Cancelado', encerrado: 'Encerrado', adiado: 'Adiado' };
+      const ev = d.e.map(e => ({
+        id: e.i, k: e.k, name: e.n, iso: e.d, t: Date.parse(e.d) || 8e15, venueNome: e.l, cidade: e.c, uf: e.u, sit: e.s, cents: e.p, g: e.g, z: e.z,
+        img: e.img || (e.i < 1000 ? './cymatics/evt-' + e.i + '.png' : './cymatics-cat/' + e.i + '.png'), href: window.IngresseDestinos ? window.IngresseDestinos.evento({ id: e.i, k: e.k, s: e.s, m: e.m, j: e.j }) : (e.j ? 'Evento.dc.html?jogo=' + e.i : 'Evento.dc.html'), /* e.j: jogo com página de confronto (futebol); destinos.js: jogo sem página vai ao jogo-modelo e prova esportiva à página da prova (28/10) */
+        m: e.m, j: e.j, rawR: e.r, uf: e.u, date: rotuloData(e.d), venue: e.l + ' · ' + e.c + ', ' + e.u, rotulo: e.r || R[e.s], // e.r: rótulo próprio da situação ("Inscrições abertas", "Em breve", "Data a confirmar")
+        fim: e.s === 'encerrado' || e.s === 'cancelado' ? 1 : 0,
+        busca: norm([e.n, e.l, e.c, e.u, (e.q || []).join(' ')].concat((e.t || []).map(id => d.tags[id] || id), e.m && d.fut ? [(d.fut.camps[e.m.c] || {}).n, (d.fut.times[e.m.h] || {}).s, (d.fut.times[e.m.a] || {}).s, e.m.f] : []).join(' '))
+      }));
+      const porCidade = new Map(); ev.forEach(e => porCidade.set(e.cidade, (porCidade.get(e.cidade) || 0) + 1));
+      const cidades = [...porCidade.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'pt-BR')).map(([n, k]) => ({ v: n, l: n + ' (' + k + ')' }));
+      // destaques: à venda e pré-venda primeiro (por data, só os que ainda não aconteceram), depois o resto; de 3 a 5
+      const agora = Date.now();
+      const futuros = ev.filter(e => e.t >= agora - 864e5);
+      const propria = e => (e.k[0] === this.state.slug ? 0 : 1); // os eventos cuja categoria principal é esta vêm antes (os festivais não tomam o hero de Shows)
+      const prim = futuros.filter(e => e.sit === 'venda' || e.sit === 'pre').sort((a, b) => propria(a) - propria(b) || a.t - b.t);
+      const resto = futuros.filter(e => e.sit === 'esgotado' || e.sit === 'nao-aberto').sort((a, b) => a.t - b.t);
+      // jogo de futebol: o selo é o da página de confronto («Abre 3 mar», «Venda para sócios») e o botão diz «Ver jogo»; «Pré-venda» e «Ver evento» são do show
+      const seloJogo = e => { const J = window.IngresseJogo; const t = e.m && J ? J.seloDaVenda(e.sit, e.rawR, e.m).texto : ''; return t || (e.m ? 'À venda' : e.rotulo); };
+      const ctaDe = e => (e.m ? (e.sit === 'venda' ? 'Ver ingressos' : 'Ver jogo') : (e.sit === 'pre' ? 'Ver pré-venda' : e.sit === 'venda' ? 'Ver ingressos' : 'Ver evento'));
+      const destaques = prim.concat(resto).slice(0, 5).map(e => ({ ...e, kicker: (e.sit === 'venda' || e.sit === 'pre' ? '' : seloJogo(e) + ' · ') + this.state.cfg.singular, cta: ctaDe(e) }));
+      this.setState({ dados: { total: d.total, ev, cidades, destaques, norm, fut: d.fut || null }, erro: false }, () => {
+        const nome = this.state.cidade;
+        if (nome && !this.temCidade(nome)) this.setState({ cidade: '' });
+        else if (!nome && window.IngresseCidade && window.IngresseCidade.explicita() && this.temCidade(window.IngresseCidade.atual().nome) && !this.restaurarY && !this.state.qq) this.setState({ cidade: window.IngresseCidade.atual().nome });
+        if (this.restaurarY) { const y = this.restaurarY; this.restaurarY = 0; requestAnimationFrame(() => requestAnimationFrame(() => window.scrollTo(0, y))); }
+      });
+    }).catch(() => this.setState({ erro: true }));
+  }
+  filtrar() {
+    const s = this.state, d = s.dados;
+    if (!d) return [];
+    const termos = d.norm(s.qq).split(/\s+/).filter(Boolean);
+    let lista = d.ev.filter(e => termos.every(t => e.busca.includes(t)));
+    if (s.cidade) lista = lista.filter(e => e.cidade === s.cidade);
+    if (s.periodo) {
+      const ini = new Date(); ini.setHours(0, 0, 0, 0);
+      const fim = new Date(ini);
+      if (s.periodo === 'hoje') fim.setDate(fim.getDate() + 1);
+      else if (s.periodo === 'semana') fim.setDate(fim.getDate() + 7);
+      else { fim.setMonth(fim.getMonth() + 1, 1); }
+      lista = lista.filter(e => e.t >= ini.getTime() && e.t < fim.getTime());
+    }
+    const porData = (a, b) => a.fim - b.fim || a.t - b.t;
+    const porPreco = (a, b) => a.fim - b.fim || (a.cents == null) - (b.cents == null) || (a.cents || 0) - (b.cents || 0) || a.t - b.t;
+    return [...lista].sort(s.sort === 'preco' ? porPreco : porData);
+  }
+  aplicarQ(v) {
+    const t = v.trim();
+    try { const u = new URL(location.href); if (t) u.searchParams.set('q', t); else u.searchParams.delete('q'); history.replaceState(history.state, '', u); } catch (e) {}
+    this.setState({ qq: t, lotes: 1 }, () => this.anunciar());
+  }
+  anunciar(msg) {
+    if (msg) { this.setState({ anuncio: msg }); return; }
+    const n = this.filtrar().length, q = this.state.qq;
+    this.setState({ anuncio: n === 0 ? 'Nenhum resultado' + (q ? ' para ' + q : '') : n + (n === 1 ? ' resultado' : ' resultados') + (q ? ' para ' + q : '') });
+  }
+  maisLote(porBotao) {
+    const s = this.state;
+    if (s.mais || !s.dados) return;
+    const total = this.filtrar().length, vis = s.lotes * LOTE;
+    if (vis >= total) return;
+    this.setState({ mais: true });
+    clearTimeout(this.tm);
+    // o catálogo já está no navegador; o esqueleto dá o tempo de ver que mais eventos estão chegando (e do leitor de tela perceber)
+    this.tm = setTimeout(() => {
+      const n = Math.min(LOTE, total - vis);
+      this.setState({ lotes: this.state.lotes + 1, mais: false, anuncio: n + (n === 1 ? ' ' + vocab(this.state.slug).s + ' a mais' : ' ' + vocab(this.state.slug).p + ' a mais') }, () => {
+        if (porBotao) { const novo = document.querySelector('.ev-card[data-ini="true"] .ev-card__link'); if (novo) { novo.focus({ preventScroll: true }); novo.scrollIntoView({ block: 'nearest' }); } }
+      });
+    }, 260);
+  }
+  renderVals() {
+    const s = this.state, cfg = s.cfg;
+    if (!cfg) return { semCategoria: true, temCategoria: false, estado: 'erro', nome: 'Categoria', slug: '', corVar: '', topoOn: 'false', topoTab: '-1', irTopo: () => {}, anuncio: '' };
+    const d = s.dados;
+    const plural = (n, a, b) => n + ' ' + (n === 1 ? a : b);
+    const V = vocab(cfg.slug), jogos = cfg.slug === 'futebol';
+    const lista = this.filtrar();
+    const vis = lista.slice(0, s.lotes * LOTE);
+    const temMais = !!d && vis.length < lista.length;
+    // o cartão único (cartao-evento.js): jogo de futebol com os dados do confronto, o resto pelo catálogo; os dois destinos, o estado e os textos saem de window.IngresseCartao
+    const ehIni = k => k === (s.lotes - 1) * LOTE && s.lotes > 1;
+    const jogoVista = (e, ini) => window.IngresseCartao.jogo({ ...window.IngresseJogo.vista(window.IngresseJogo.deCompacto({ i: e.id, d: e.iso, l: e.venueNome, c: e.cidade, u: e.uf, s: e.sit, r: e.rawR, p: e.cents, m: e.m }, d.fut, e.href)), ini });
+    const cards = vis.map((e, k) => ({ ...e, ...(e.m && d && d.fut && window.IngresseJogo ? jogoVista(e, ehIni(k) ? 'true' : 'false') : window.IngresseCartao.catalogo({ id: e.id, name: e.name, iso: e.iso, venue: e.venue, img: e.img, situacao: e.sit, m: e.m }, { href: e.href, ini: ehIni(k) })) }));
+    const q = s.qq;
+    const temFiltros = !!(q || s.cidade || s.periodo);
+    const slides = d ? d.destaques : [];
+    const si = slides.length ? ((s.slide % slides.length) + slides.length) % slides.length : 0;
+    const slide = slides[si] || {};
+    const still = s.paused || s.stopped;
+    const go = k => { this.setState({ slide: k }); if (this.restart) this.restart(); };
+    const queue = slides.map((x, k) => ({ name: x.name, date: x.date, img: x.img, sel: k === si ? 'true' : 'false', tab: k === si ? '0' : '-1', pick: () => go(k), bar: k === si ? (still ? 'width:100%' : 'animation:vitfill 8s linear forwards') : 'width:0' }));
+    const periodos = [['', 'Todas'], ['hoje', 'Hoje'], ['semana', 'Esta semana'], ['mes', 'Este mês']].map(([v, l]) => ({ label: l, on: s.periodo === v ? 'true' : 'false', pick: () => this.setState({ periodo: v, lotes: 1 }, () => this.anunciar()) }));
+    const total = d ? d.total : cfg.total;
+    const estado = s.erro ? 'erro' : !d ? 'carregando' : lista.length === 0 ? 'vazio' : 'pronto';
+    const rgb = cfg.cor.rgb.join(',');
+    return {
+      semCategoria: false, temCategoria: true, slug: cfg.slug, nome: cfg.nome, descricao: cfg.descricao, estilo: cfg.estilo, corRgb: rgb, corVar: '--cat-cor: ' + cfg.cor.hex + '; --cat-cor-rgb: ' + rgb,
+      estado, totalNum: total, totalPal: total === 1 ? V.s : V.p, heroRotulo: 'Destaques de ' + cfg.nome,
+      seguirPressed: s.seguindo ? 'true' : 'false', seguirRotulo: s.seguindo ? 'Seguindo' : 'Seguir', seguirAria: (s.seguindo ? 'Seguindo ' : 'Seguir ') + cfg.nome,
+      seguirToggle: () => {
+        const on = !this.state.seguindo, l = seguidas().filter(x => x !== cfg.slug);
+        gravarSeguidas(on ? l.concat(cfg.slug) : l);
+        this.setState({ seguindo: on });
+        if (window.IX && window.IX.toast) window.IX.toast(on ? 'Você vai receber avisos de novos eventos de ' + cfg.nome + '.' : 'Você deixou de seguir ' + cfg.nome + '.', on ? 'ok' : 'info');
+      },
+      ic_shows: cfg.slug === 'shows', ic_festivais: cfg.slug === 'festivais', ic_baladas: cfg.slug === 'baladas', ic_musica_eletronica: cfg.slug === 'musica-eletronica', ic_futebol: cfg.slug === 'futebol', ic_esportes: cfg.slug === 'esportes', ic_corridas: cfg.slug === 'corridas', ic_teatro: cfg.slug === 'teatro', ic_gastronomia: cfg.slug === 'gastronomia', ic_infantil: cfg.slug === 'infantil', ic_universitario: cfg.slug === 'universitario', ic_stand_up: cfg.slug === 'stand-up', ic_feiras: cfg.slug === 'feiras',
+      heroSeed: slide.z || cfg.seed, heroCarregando: !d && !s.erro, temDestaques: slides.length > 0,
+      slide, slideNum: String(si + 1).padStart(2, '0'), slideTotal: String(slides.length).padStart(2, '0'), queue,
+      pause: () => { if (!s.paused) this.setState({ paused: true }); }, resume: () => { if (this.state.paused) this.setState({ paused: false }); if (this.restart) this.restart(); },
+      toggleStop: () => { const stopped = !this.state.stopped; this.setState({ stopped }, () => this.restart && this.restart()); },
+      stopLabel: s.stopped ? 'Retomar destaques automáticos' : 'Pausar destaques automáticos', isStopped: !!s.stopped, isRunning: !s.stopped,
+      onRailKey: e => {
+        const k = e.key; if (!slides.length || !['ArrowRight', 'ArrowDown', 'ArrowLeft', 'ArrowUp', 'Home', 'End'].includes(k)) return;
+        e.preventDefault();
+        const prox = k === 'Home' ? 0 : k === 'End' ? slides.length - 1 : (si + (k === 'ArrowRight' || k === 'ArrowDown' ? 1 : -1) + slides.length) % slides.length;
+        this.setState({ slide: prox }, () => { if (this.restart) this.restart(); const t = document.querySelectorAll('.vit-rail .vit-item')[prox]; if (t) t.focus(); });
+      },
+      temConviteSports: !!cfg.convite,
+      q: s.q, temQ: !!s.q, onQuery: e => { const v = e.target.value; this.setState({ q: v }); clearTimeout(this.tq); this.tq = setTimeout(() => this.aplicarQ(v), 200); },
+      submit: e => { e.preventDefault(); clearTimeout(this.tq); this.aplicarQ(this.state.q); const a = document.activeElement; if (a && a.blur) a.blur(); },
+      limparQ: () => { clearTimeout(this.tq); this.setState({ q: '' }, () => { this.aplicarQ(''); const c = document.getElementById('cat-q'); if (c) c.focus(); }); },
+      periodos, cidade: s.cidade, cidades: d ? d.cidades : [], onCidade: e => this.setState({ cidade: e.target.value, lotes: 1 }, () => this.anunciar()),
+      sort: s.sort, onSort: e => this.setState({ sort: e.target.value, lotes: 1 }, () => this.anunciar('Ordenado por ' + (e.target.value === 'preco' ? 'menor preço' : 'data mais próxima'))),
+      listaTitulo: jogos ? 'Todos os jogos' : 'Todos os eventos de ' + cfg.nome, buscaRotulo: jogos ? 'Buscar time, estádio ou cidade' : 'Buscar em ' + cfg.nome,
+      carregandoRotulo: 'Carregando ' + V.p, erroTitulo: 'Não conseguimos carregar os ' + V.p,
+      temFiltros, limparTudo: () => { clearTimeout(this.tq); this.setState({ q: '', periodo: '', cidade: '' }, () => { this.aplicarQ(''); const c = document.getElementById('cat-q'); if (c) c.focus(); }); },
+      contagem: !d ? 'Carregando…' : q ? plural(lista.length, 'resultado', 'resultados') + ' para “' + q + '”' : s.cidade || s.periodo ? plural(lista.length, V.s, V.p) + ' com esses filtros' : plural(lista.length, V.s, V.p),
+      anuncio: s.anuncio,
+      carregando: !d && !s.erro, temErro: s.erro, tentar: () => this.carregar(),
+      temCards: !!d && lista.length > 0, cards, skels: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], skelsMais: Array.from({ length: Math.min(LOTE, lista.length - vis.length) }, (_, i) => i),
+      carregandoMais: s.mais, temMais, lotes: s.lotes, estadoMais: s.mais ? 'carregando' : 'livre',
+      qtdVisiveis: vis.length, qtdTotal: lista.length, maisOcupado: s.mais ? 'true' : 'false', maisRotulo: s.mais ? 'Carregando…' : 'Carregar mais ' + V.p, carregarMais: () => this.maisLote(true),
+      fimDaLista: !!d && lista.length > 0 && !temMais && lista.length > LOTE, fimTexto: lista.length === total ? 'Fim da lista: você viu os ' + total + ' ' + V.p + (jogos ? '.' : ' de ' + cfg.nome + '.') : 'Fim da lista: você viu os ' + plural(lista.length, 'resultado', 'resultados') + '.',
+      temVazio: !!d && lista.length === 0, vazioTitulo: q ? 'Não achamos “' + q + '” ' + (jogos ? 'nos jogos de futebol' : 'em ' + cfg.nome) : 'Nenhum ' + V.s + ' com esses filtros',
+      topoOn: s.topo ? 'true' : 'false', topoTab: s.topo ? '0' : '-1',
+      irTopo: e => { if (e && e.preventDefault) e.preventDefault(); const r = document.documentElement.getAttribute('data-motion') === 'reduce' || (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); window.scrollTo({ top: 0, behavior: r ? 'auto' : 'smooth' }); }
+    };
+  }
+}
+</script>
+</body>
+</html>
+<!-- cat-assinatura:a31e7dcaaba9 -->

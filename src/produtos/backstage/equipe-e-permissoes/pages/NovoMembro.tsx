@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { CampoNumero } from "../../components/campo-numero";
 import { AnimatePresence, motion } from "motion/react";
-import { ArrowLeft, BarChartSquare02, CheckCircle, ChevronDown, CornerDownLeft, Settings01, Shield01, Ticket01, User01, Users01 } from "@untitledui/icons";
+import { BarChartSquare02, CheckCircle, ChevronDown, CornerDownLeft, Settings01, Shield01, Ticket01, User01, Users01 } from "@untitledui/icons";
 import { toast } from "sonner";
 import { Badge } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
@@ -15,6 +15,7 @@ import type { ProgressFeaturedIconType } from "@/components/application/progress
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
+import { CabecalhoDaPagina } from "../../components/cabecalho-da-pagina";
 import {
     MODULOS,
     RELATORIOS,
@@ -28,7 +29,6 @@ import {
     type MembroTipo,
     type RegraIngresso,
 } from "../data/membros";
-import { TITULO_PAGINA } from "@/produtos/backstage/components/titulo-pagina";
 
 const brNum = (n: number) => n.toLocaleString("pt-BR");
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -181,15 +181,7 @@ export function NovoMembro() {
         return (
             <BackstageLayout activeSection="equipe-e-permissoes">
                 <div className="flex min-w-0 flex-1 flex-col gap-6">
-                    <header className="relative flex items-center justify-between gap-3 max-md:flex-wrap">
-                        <Button size="sm" color="secondary" iconLeading={ArrowLeft} onClick={cancelar}>
-                            Cancelar
-                        </Button>
-                        <h1 className={cx(TITULO_PAGINA, "pointer-events-none md:absolute md:left-1/2 md:-translate-x-1/2 md:whitespace-nowrap max-md:order-last max-md:w-full")}>
-                            Adicionar membro à equipe
-                        </h1>
-                        <span className="w-[92px]" />
-                    </header>
+                    <CabecalhoDaPagina voltar={{ rotulo: "Equipe e Permissões", onClick: cancelar }} titulo="Adicionar membro à equipe" />
 
                     <main className="flex flex-1 flex-col items-center gap-8">
                         <p className="text-center text-md text-tertiary">Você está adicionando acesso a quem?</p>
@@ -226,17 +218,18 @@ export function NovoMembro() {
     return (
         <BackstageLayout activeSection="equipe-e-permissoes">
             <div className="flex min-w-0 flex-1 flex-col gap-6">
-                <header className="relative flex items-center justify-between gap-3 max-md:flex-wrap">
-                    <Button size="sm" color="secondary" iconLeading={ArrowLeft} onClick={voltar}>
-                        Voltar
-                    </Button>
-                    <h1 className={cx(TITULO_PAGINA, "pointer-events-none md:absolute md:left-1/2 md:-translate-x-1/2 md:whitespace-nowrap max-md:order-last max-md:w-full")}>
-                        {editMode ? "Editar membro" : "Adicionar membro"}
-                    </h1>
-                    <Button size="md" color="primary" isDisabled={!podeAvancar} onClick={avancar}>
-                        {step === 3 ? "Confirmar e Convidar" : "Avançar"}
-                    </Button>
-                </header>
+                <CabecalhoDaPagina
+                    voltar={{
+                        rotulo: step > 0 ? STEP_TITLES[step - 1] : editMode ? "Equipe e Permissões" : "Adicionar membro à equipe",
+                        onClick: voltar,
+                    }}
+                    titulo={editMode ? "Editar membro" : "Adicionar membro"}
+                    acoes={
+                        <Button size="md" color="primary" isDisabled={!podeAvancar} onClick={avancar}>
+                            {step === 3 ? "Confirmar e Convidar" : "Avançar"}
+                        </Button>
+                    }
+                />
 
                 <main className="flex flex-1 flex-col items-center gap-8">
                     <Progress.IconsWithText items={steps} size="sm" type="number" orientation="horizontal" className="max-w-[860px] max-md:hidden" />

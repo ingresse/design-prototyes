@@ -1,25 +1,28 @@
-import { useEffect, useState, type FC, type ReactNode } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 import { useLocation, useNavigate, useParams, useSearchParams } from "react-router";
-import { CoinsHand, Edit01, Plus, User01, Users01 } from "@untitledui/icons";
+import { CoinsHand, Edit01, Plus, Users01, Wallet02 } from "@untitledui/icons";
 import { Tab, TabList, TabPanel, Tabs } from "@/components/application/tabs/tabs";
 import { Badge, BadgeWithIcon } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
 import { Toggle } from "@/components/base/toggle/toggle";
 import { Surgir } from "@/components/foundations/transicao";
 import { useDoc } from "@/plataforma";
-import { TITULO_PAGINA } from "@/produtos/backstage/components/titulo-pagina";
 import { BackstageLayout } from "../../components/Backstage";
-import { CopiarLink, Secao, TD, TH, dataCurta, linkDeVenda, moeda } from "../../comissarios/components/comuns";
+import { CabecalhoDaPagina } from "../../components/cabecalho-da-pagina";
+import { RodapeDePaginacao, usePaginacao } from "../../components/rodape-de-paginacao";
+import { BarraDaLista, CabecalhoDaTabela, CarregandoTabela, CartaoDaTabela, Celula, LinhaDaTabela, SemResultados, TituloDaLinha, VazioDaTabela } from "../../components/tabela";
+import { CopiarLink, dataCurta, linkDeVenda, moeda } from "../../comissarios/components/comuns";
 import { RegistrarRepasseModal } from "../../comissarios/components/RegistrarRepasseModal";
+import { AvisoDeEscala } from "../../itens/components/escala";
 import { AbaVendas } from "../components/aba-vendas";
 import { ListaDePedidos } from "../components/lista-de-pedidos";
-import { pedidosDoGrupo } from "../data/pedidos";
 import { CartaoCanal } from "../components/cartao-canal";
 import { CodigoVendedor } from "../components/codigo-vendedor";
 import { CAMINHO_CRIAR_INGRESSOS, eventoSemItens } from "../components/formulario-canal";
 import { ModalDesativar } from "../components/modal-desativar";
 import { ModalEditarOperadores } from "../components/modal-editar-operadores";
-import { BadgeInativo, CabecalhoCotas, TemaCotas } from "../components/ui-cotas";
+import { BadgeInativo, TemaCotas, TituloSecao } from "../components/ui-cotas";
 import { GRUPO_MEMBROS_POR_ID } from "../data/membros";
 import {
     alterarGrupo,
@@ -33,7 +36,6 @@ import {
     operadoresDe,
     plural,
     ROTULO_CANAL,
-    totais,
     useEquipeDoEvento,
     type CanalGrupo,
     type DadosDoGrupo,
@@ -60,29 +62,32 @@ export function GrupoDaEquipe() {
 
     const voltar = () => navigate(BASE);
 
+    // Carregando e "não encontrado" também abrem com o cabeçalho de página (BKS-100).
     if (carregando)
         return (
             <BackstageLayout activeSection="equipe-e-comissarios" activeItem="equipe-e-comissarios">
-                <div role="status" aria-label="Carregando grupo" className="h-64 w-full animate-pulse rounded-2xl bg-secondary motion-reduce:animate-none" />
+                <TemaCotas className="gap-6">
+                    <CabecalhoDaPagina voltar={{ rotulo: "Equipe e comissários", onClick: voltar }} titulo="Grupo" />
+                    <CarregandoTabela linhas={4} rotulo="Carregando grupo" />
+                </TemaCotas>
             </BackstageLayout>
         );
 
     if (!dados)
         return (
             <BackstageLayout activeSection="equipe-e-comissarios" activeItem="equipe-e-comissarios">
-                <TemaCotas className="items-start gap-4 py-16">
-                    <h1 className={TITULO_PAGINA}>Grupo não encontrado</h1>
-                    <p className="text-md text-tertiary">Ele não é de {evento.nome}. O evento em contexto pode ter mudado.</p>
-                    <Button size="md" color="secondary" onClick={voltar}>
-                        Ver grupos do evento
-                    </Button>
+                <TemaCotas className="gap-6">
+                    <CabecalhoDaPagina
+                        voltar={{ rotulo: "Equipe e comissários", onClick: voltar }}
+                        titulo="Grupo não encontrado"
+                        subtitulo={`Este grupo não está em ${evento.nome}. Ele pode ser de outro evento ou ter saído da lista.`}
+                    />
                 </TemaCotas>
             </BackstageLayout>
         );
 
-    const { grupo, comissario, vendas, repasses } = dados;
-    // Pedidos de todos os canais do grupo (ECO-74).
-    const pedidos = pedidosDoGrupo(grupo, vendas);
+    // Pedidos de todos os canais do grupo (ECO-74) e os totais, que somam exatamente a lista (ECO-87).
+    const { grupo, comissario, vendas, repasses, pedidos, t } = dados;
     // Pedidos vem primeiro; abre por padrão com comissário ou com pedidos, senão abre a Configuração (ECO-11).
     const abasValidas: Aba[] = comissario ? ["pedidos", "configuracao", "pessoas", "repasses"] : ["pedidos", "configuracao", "pessoas"];
     const padrao: Aba = comissario || pedidos.length > 0 ? "pedidos" : "configuracao";
@@ -90,17 +95,17 @@ export function GrupoDaEquipe() {
     const pedidaNaUrl = params.get("aba");
     const pedida = (pedidaNaUrl === "vendas" ? "pedidos" : pedidaNaUrl) as Aba | null;
     const aba: Aba = pedida && abasValidas.includes(pedida) ? pedida : padrao;
-    const t = totais(vendas, repasses);
     const ligados = canaisLigados(grupo);
     const link = comissario ? linkDeVenda(slug, comissario.codigo) : "";
 
     return (
         <BackstageLayout activeSection="equipe-e-comissarios" activeItem="equipe-e-comissarios">
             <TemaCotas className="gap-6">
-                <div className="flex flex-col gap-2">
-                    <CabecalhoCotas titulo={grupo.nome} alinhamento="esquerda" onVoltar={voltar} rotuloVoltar="Equipe e Comissários" />
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                        <p className="flex flex-wrap items-center gap-2 text-md text-tertiary">
+                <CabecalhoDaPagina
+                    voltar={{ rotulo: "Equipe e comissários", onClick: voltar }}
+                    titulo={grupo.nome}
+                    subtitulo={
+                        <span className="flex flex-wrap items-center gap-2">
                             {!grupo.ativo && <BadgeInativo />}
                             {comissario && (
                                 <BadgeWithIcon size="md" type="pill-color" color="brand" iconLeading={CoinsHand}>
@@ -108,17 +113,20 @@ export function GrupoDaEquipe() {
                                 </BadgeWithIcon>
                             )}
                             {ligados.length ? ligados.map((c) => ROTULO_CANAL[c]).join(", ") : "Nenhum canal ligado"}, {plural(grupo.operadores.length, "pessoa", "pessoas")}
-                        </p>
-                        {comissario && (
-                            <div className="flex flex-wrap gap-3">
+                        </span>
+                    }
+                    acoes={
+                        comissario && (
+                            <>
                                 {ligados.includes("link") && <CopiarLink link={link} rotulo="Copiar link de venda" size="md" />}
                                 <Button color="secondary" size="md" iconLeading={Plus} onClick={() => setRepasse(true)} isDisabled={t.aRepassar <= 0}>
                                     Registrar repasse
                                 </Button>
-                            </div>
-                        )}
-                    </div>
-                </div>
+                            </>
+                        )
+                    }
+                />
+                <AvisoDeEscala />
 
                 <Tabs selectedKey={aba} onSelectionChange={(k) => setParams(k === padrao ? {} : { aba: String(k) }, { replace: true })} className="gap-6">
                     <TabList type="underline" size="sm" aria-label="Seções do grupo">
@@ -150,7 +158,7 @@ export function GrupoDaEquipe() {
                     </TabPanel>
                     {comissario && (
                         <TabPanel id="repasses">
-                            <AbaRepasses dados={dados} aRepassar={t.aRepassar} repassado={t.repassado} onRegistrar={() => setRepasse(true)} />
+                            <AbaRepasses dados={dados} aRepassar={t.aRepassar} repassado={t.repassado} />
                         </TabPanel>
                     )}
                 </Tabs>
@@ -220,18 +228,38 @@ function AbaConfiguracao({ dados, criado }: { dados: DadosDoGrupo; criado: boole
 /*  Aba Pessoas                                                        */
 /* ------------------------------------------------------------------ */
 
+type Desligando = { tipo: "pessoa" | "grupo"; id: string };
+
+/**
+ * Pessoas do grupo (ECO-22, ECO-95): os grupos de Membros com o toggle de cada um e uma tabela com
+ * todas as pessoas, com busca, contagem e paginação (BKS-110 a BKS-118). Ligar e desligar grava na hora,
+ * com toast e Desfazer (ECO-93); desligar pergunta antes.
+ */
 function AbaPessoas({ dados }: { dados: DadosDoGrupo }) {
     const { grupo, comissario } = dados;
-    const [desligando, setDesligando] = useState<{ tipo: "operador" | "grupo"; id: string } | null>(null);
+    const [desligando, setDesligando] = useState<Desligando | null>(null);
     const [editando, setEditando] = useState(false);
-    const toggleOperador = (email: string) =>
+    const [busca, setBusca] = useState("");
+
+    const alternarPessoa = (email: string) =>
         alterarGrupo(grupo.id, (g) => ({
             ...g,
             operadoresInativos: g.operadoresInativos.includes(email) ? g.operadoresInativos.filter((e) => e !== email) : [...g.operadoresInativos, email],
         }));
-    const toggleGrupoMembros = (m: string) =>
+    const alternarGrupoMembros = (m: string) =>
         alterarGrupo(grupo.id, (g) => ({ ...g, gruposInativos: g.gruposInativos.includes(m) ? g.gruposInativos.filter((x) => x !== m) : [...g.gruposInativos, m] }));
-    const avulsos = grupo.emailsAvulsos;
+    const nomeDe = (d: Desligando) => (d.tipo === "grupo" ? (GRUPO_MEMBROS_POR_ID[d.id]?.nome ?? "O grupo") : (grupo.nomes?.[d.id] ?? d.id));
+    // Grava, avisa e oferece Desfazer, que repete a troca (ECO-93).
+    const trocar = (d: Desligando, ligado: boolean, desfazendo = false) => {
+        if (d.tipo === "grupo") alternarGrupoMembros(d.id);
+        else alternarPessoa(d.id);
+        const texto =
+            d.tipo === "grupo"
+                ? `Membros de ${nomeDe(d)} ${ligado ? "voltaram a operar" : "não operam mais"} este grupo.`
+                : `${nomeDe(d)} ${ligado ? "voltou a operar" : "não opera mais"} este grupo.`;
+        toast.success(texto, desfazendo ? undefined : { action: { label: "Desfazer", onClick: () => trocar(d, !ligado, true) } });
+    };
+
     // Em grupo-comissário, toda pessoa tem o cargo Comissário; o responsável aparece como tal (ECO-24).
     const responsavel = comissario?.pessoas.find((p) => p.papel === "responsavel")?.email;
     const cargo = (email: string) => (!comissario ? undefined : email === responsavel ? "Comissário, responsável" : "Comissário");
@@ -242,73 +270,138 @@ function AbaPessoas({ dados }: { dados: DadosDoGrupo }) {
         if (codigosEmUso(lerEstadoComissarios().grupos, grupo.eventoId, { grupoId: grupo.id, email }).has(c)) return `${c} já é usado neste evento.`;
         return undefined;
     };
-    const propsDoCodigo = (email: string) => ({
-        codigo: codigoDe(email),
-        codigoEditavel: email !== responsavel,
-        validarCodigo: validarCodigo(email),
-        onCodigo: (c: string) => definirCodigoVendedor(grupo.id, email, c),
-    });
 
-    const linhaAvulsa = (email: string) => {
-        const ativo = operadorAtivo(grupo, email);
-        return (
-            <LinhaPessoa
-                key={email}
-                email={email}
-                rotulo={grupo.nomes?.[email]}
-                cargo={cargo(email)}
-                {...propsDoCodigo(email)}
-                emitidos={grupo.emitidosPorOperador[email] ?? 0}
-                ativo={ativo}
-                onChange={() => (ativo ? setDesligando({ tipo: "operador", id: email }) : toggleOperador(email))}
-            />
-        );
-    };
+    // De onde a pessoa vem: os grupos de Membros dela e/ou "Adicionada individualmente" (só quando o grupo usa grupos de Membros).
+    const origem = (email: string) =>
+        grupo.gruposMembrosIds.length === 0
+            ? ""
+            : [
+            ...grupo.gruposMembrosIds.filter((m) => GRUPO_MEMBROS_POR_ID[m]?.emails.includes(email)).map((m) => GRUPO_MEMBROS_POR_ID[m].nome),
+                  ...(grupo.emailsAvulsos.includes(email) ? ["Adicionada individualmente"] : []),
+              ].join(", ");
+    // Só por grupos de Membros desligados: o toggle trava (ECO-60).
+    const travada = (email: string) =>
+        !grupo.emailsAvulsos.includes(email) &&
+        !grupo.gruposMembrosIds.some((m) => !grupo.gruposInativos.includes(m) && GRUPO_MEMBROS_POR_ID[m]?.emails.includes(email));
+
+    const pessoas = grupo.operadores;
+    const ativas = pessoas.filter((e) => operadorAtivo(grupo, e)).length;
+    const termo = busca.trim().toLowerCase();
+    const filtradas = useMemo(
+        () => (termo ? pessoas.filter((e) => `${e} ${grupo.nomes?.[e] ?? ""} ${codigoDe(e) ?? ""}`.toLowerCase().includes(termo)) : pessoas),
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [pessoas, termo, grupo.nomes, comissario],
+    );
+    const paginacao = usePaginacao(filtradas, [termo]);
+    const gruposMembros = grupo.gruposMembrosIds.filter((m) => GRUPO_MEMBROS_POR_ID[m]);
 
     return (
-        <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-8">
+            {gruposMembros.length > 0 && (
+                <section className="flex flex-col gap-4">
+                    <TituloSecao apoio="Desligar um grupo de Membros tira todas as pessoas dele deste grupo. Elas voltam quando você ligar de novo.">Grupos de Membros</TituloSecao>
+                    <CartaoDaTabela>
+                        <ul className="flex flex-col divide-y divide-secondary">
+                            {gruposMembros.map((m) => {
+                                const membros = GRUPO_MEMBROS_POR_ID[m];
+                                const ligado = !grupo.gruposInativos.includes(m);
+                                return (
+                                    <LinhaDaTabela key={m}>
+                                        <Toggle
+                                            size="sm"
+                                            label={membros.nome}
+                                            hint={plural(membros.emails.length, "membro", "membros")}
+                                            isSelected={ligado}
+                                            onChange={() => (ligado ? setDesligando({ tipo: "grupo", id: m }) : trocar({ tipo: "grupo", id: m }, true))}
+                                        />
+                                    </LinhaDaTabela>
+                                );
+                            })}
+                        </ul>
+                    </CartaoDaTabela>
+                </section>
+            )}
 
-            <section className="flex flex-col gap-3 rounded-2xl bg-primary px-5 py-4 ring-1 ring-border-secondary ring-inset">
-                <div className="flex items-center justify-between gap-4">
-                    <h2 className="text-sm font-semibold text-primary">Pessoas</h2>
-                    <Button size="sm" color="tertiary" iconLeading={Edit01} onClick={() => setEditando(true)}>
+            <section className="flex flex-col gap-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                    <TituloSecao apoio={`${plural(pessoas.length, "pessoa", "pessoas")}, ${plural(ativas, "ativa", "ativas")}.`}>Pessoas</TituloSecao>
+                    <Button size="sm" color="secondary" iconLeading={Edit01} onClick={() => setEditando(true)}>
                         Editar pessoas
                     </Button>
                 </div>
-                <div className="flex flex-col gap-3 pb-1">
-                    {grupo.gruposMembrosIds.map((m) => {
-                        const membros = GRUPO_MEMBROS_POR_ID[m];
-                        if (!membros) return null;
-                        const ligado = !grupo.gruposInativos.includes(m);
-                        return (
-                            <BlocoPessoas
-                                key={m}
-                                icone={Users01}
-                                titulo={`${membros.nome}, ${plural(membros.emails.length, "membro", "membros")}`}
-                                toggle={{ ligado, rotulo: `${ligado ? "Desativar" : "Ativar"} o grupo ${membros.nome}`, onChange: () => (ligado ? setDesligando({ tipo: "grupo", id: m }) : toggleGrupoMembros(m)) }}
-                            >
-                                {membros.emails.map((email) => (
-                                    <LinhaPessoa
-                                        key={email}
-                                        email={email}
-                                        cargo={cargo(email)}
-                                        {...propsDoCodigo(email)}
-                                        emitidos={grupo.emitidosPorOperador[email] ?? 0}
-                                        ativo={ligado && operadorAtivo(grupo, email)}
-                                        bloqueado={!ligado}
-                                        onChange={() => (operadorAtivo(grupo, email) ? setDesligando({ tipo: "operador", id: email }) : toggleOperador(email))}
-                                    />
-                                ))}
-                            </BlocoPessoas>
-                        );
-                    })}
-                    {avulsos.length > 0 && (
-                        <BlocoPessoas icone={User01} titulo={`Adicionadas individualmente, ${plural(avulsos.length, "pessoa", "pessoas")}`}>
-                            {avulsos.map((email) => linhaAvulsa(email))}
-                        </BlocoPessoas>
-                    )}
-                    {grupo.operadores.length === 0 && <p className="text-sm text-tertiary">Nenhuma pessoa no grupo.</p>}
-                </div>
+                {pessoas.length === 0 ? (
+                    <VazioDaTabela icone={Users01} titulo="Nenhuma pessoa no grupo" texto="Adicione pessoas por grupo de Membros ou por e-mail." />
+                ) : (
+                    <>
+                        {pessoas.length > 10 && <BarraDaLista busca={{ valor: busca, onChange: setBusca, placeholder: "Buscar por nome, e-mail ou código", rotulo: "Buscar pessoa" }} />}
+                        <CartaoDaTabela>
+                            <CabecalhoDaTabela>
+                                <span className="w-12 shrink-0">Ativa</span>
+                                <span className="min-w-0 flex-1">Pessoa</span>
+                                {comissario && <span className="w-48">Cargo</span>}
+                                {comissario && <span className="w-52">Código</span>}
+                                <span className="w-24 text-right">Emitidos</span>
+                            </CabecalhoDaTabela>
+                            {filtradas.length === 0 ? (
+                                <SemResultados texto="Nenhuma pessoa encontrada com esse nome, e-mail ou código." onLimpar={() => setBusca("")} />
+                            ) : (
+                                <ul className="flex flex-col divide-y divide-secondary">
+                                    {paginacao.visiveis.map((email) => {
+                                        const ativa = operadorAtivo(grupo, email);
+                                        const codigo = codigoDe(email);
+                                        const emitidos = grupo.emitidosPorOperador[email] ?? 0;
+                                        const nome = grupo.nomes?.[email];
+                                        return (
+                                            <LinhaDaTabela key={email}>
+                                                {/* Rótulo visível do toggle: o cabeçalho "Ativa" na tabela; no cartão estreito, embaixo do toggle (UI-FRM-005). */}
+                                                <span className="flex w-12 shrink-0 flex-col items-start gap-1 pt-0.5 @min-[44rem]:pt-0">
+                                                    <Toggle
+                                                        size="sm"
+                                                        isSelected={ativa}
+                                                        isDisabled={travada(email)}
+                                                        aria-label={`${nome ?? email} ativa`}
+                                                        onChange={() => (ativa ? setDesligando({ tipo: "pessoa", id: email }) : trocar({ tipo: "pessoa", id: email }, true))}
+                                                    />
+                                                    <span aria-hidden="true" className="text-sm text-tertiary @min-[44rem]:hidden">
+                                                        Ativa
+                                                    </span>
+                                                </span>
+                                                {/* Celular: nome e e-mail na primeira linha; cargo, código e emitidos na segunda (UI-MOB-004). */}
+                                                <div className="flex min-w-0 flex-1 flex-col gap-1.5 @min-[44rem]:flex-row @min-[44rem]:items-center @min-[44rem]:gap-4">
+                                                    <TituloDaLinha titulo={nome ?? email} apoio={[nome ? email : "", origem(email)].filter(Boolean).join(", ")} />
+                                                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 @min-[44rem]:contents">
+                                                        {comissario && (
+                                                            <span className="flex @min-[44rem]:w-48">
+                                                                <Badge size="sm" type="pill-color" color="brand">
+                                                                    {cargo(email)}
+                                                                </Badge>
+                                                            </span>
+                                                        )}
+                                                        {comissario && codigo && (
+                                                            <span className="flex @min-[44rem]:w-52">
+                                                                <CodigoVendedor
+                                                                    codigo={codigo}
+                                                                    editavel={email !== responsavel}
+                                                                    validar={validarCodigo(email)}
+                                                                    onSalvar={(c) => definirCodigoVendedor(grupo.id, email, c)}
+                                                                />
+                                                            </span>
+                                                        )}
+                                                        {/* Sem emissão, a linha não diz "0 emitidos" (ECO-22). */}
+                                                        <span className="text-sm font-medium text-secondary tabular-nums @min-[44rem]:w-24 @min-[44rem]:text-right">
+                                                            {emitidos > 0 ? plural(emitidos, "emitido", "emitidos") : ""}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </LinhaDaTabela>
+                                        );
+                                    })}
+                                </ul>
+                            )}
+                            <RodapeDePaginacao {...paginacao} />
+                        </CartaoDaTabela>
+                    </>
+                )}
             </section>
 
             <ModalEditarOperadores
@@ -325,21 +418,21 @@ function AbaPessoas({ dados }: { dados: DadosDoGrupo }) {
                         gruposInativos: g.gruposInativos.filter((m) => gruposMembrosIds.includes(m)),
                     }));
                     setEditando(false);
+                    toast.success("Pessoas do grupo atualizadas.");
                 }}
             />
             <ModalDesativar
                 aberto={!!desligando}
-                titulo={desligando?.tipo === "grupo" ? "Desativar grupo de membros?" : "Desativar pessoa?"}
+                titulo={desligando?.tipo === "grupo" ? "Desativar grupo de Membros?" : "Desativar pessoa?"}
                 descricao={
                     desligando?.tipo === "grupo"
-                        ? `Ao desativar, os membros de ${GRUPO_MEMBROS_POR_ID[desligando.id]?.nome ?? "o grupo"} deixam de operar os canais deste grupo. Você pode ativar de novo quando quiser.`
-                        : `Ao desativar, ${desligando?.id ?? ""} deixa de operar os canais deste grupo. Você pode ativar de novo quando quiser.`
+                        ? `Os membros de ${nomeDe(desligando)} deixam de operar os canais deste grupo. Você pode ativar de novo quando quiser.`
+                        : `${desligando ? nomeDe(desligando) : ""} deixa de operar os canais deste grupo. Você pode ativar de novo quando quiser.`
                 }
                 acao={desligando?.tipo === "grupo" ? "Desativar grupo" : "Desativar pessoa"}
                 onCancelar={() => setDesligando(null)}
                 onConfirmar={() => {
-                    if (desligando?.tipo === "grupo") toggleGrupoMembros(desligando.id);
-                    else if (desligando) toggleOperador(desligando.id);
+                    if (desligando) trocar(desligando, false);
                     setDesligando(null);
                 }}
             />
@@ -347,112 +440,44 @@ function AbaPessoas({ dados }: { dados: DadosDoGrupo }) {
     );
 }
 
-const BlocoPessoas = ({
-    icone: Icone,
-    titulo,
-    toggle,
-    children,
-}: {
-    icone: FC<{ className?: string }>;
-    titulo: string;
-    toggle?: { ligado: boolean; rotulo: string; onChange: () => void };
-    children: ReactNode;
-}) => (
-    <section className="flex flex-col gap-3 rounded-lg bg-primary_alt px-4 pt-3 pb-4 ring-1 ring-border-secondary ring-inset">
-        <div className="flex min-h-6 items-center gap-2">
-            {toggle && <Toggle size="sm" isSelected={toggle.ligado} onChange={toggle.onChange} aria-label={toggle.rotulo} />}
-            <Icone className="size-4 shrink-0 text-fg-quaternary" aria-hidden="true" />
-            <h3 className="truncate text-sm font-medium text-secondary">{titulo}</h3>
-        </div>
-        <ul className={toggle ? "flex flex-col gap-4 pl-11" : "flex flex-col gap-4"}>{children}</ul>
-    </section>
-);
-
-const LinhaPessoa = ({
-    email,
-    rotulo,
-    cargo,
-    codigo,
-    codigoEditavel = false,
-    validarCodigo,
-    onCodigo,
-    emitidos,
-    ativo,
-    bloqueado = false,
-    onChange,
-}: {
-    email: string;
-    rotulo?: string;
-    /** Cargo da pessoa no grupo-comissário ("Comissário"). */
-    cargo?: string;
-    codigo?: string;
-    codigoEditavel?: boolean;
-    validarCodigo?: (c: string) => string | undefined;
-    onCodigo?: (c: string) => void;
-    emitidos: number;
-    ativo: boolean;
-    bloqueado?: boolean;
-    onChange: () => void;
-}) => (
-    <li className="flex items-center gap-4">
-        <span className="flex min-w-0 flex-1 items-center gap-2">
-            <Toggle size="sm" isSelected={ativo} isDisabled={bloqueado} onChange={onChange} aria-label={ativo ? `Desativar ${email}` : `Ativar ${email}`} />
-            <span className="flex min-w-0 flex-col">
-                {rotulo && <span className="truncate text-sm font-medium text-primary">{rotulo}</span>}
-                <span className="truncate text-sm text-secondary">{email}</span>
-            </span>
-            {cargo && (
-                <Badge size="sm" type="pill-color" color="brand" className="shrink-0">
-                    {cargo}
-                </Badge>
-            )}
-        </span>
-        {codigo && validarCodigo && onCodigo && <CodigoVendedor codigo={codigo} editavel={codigoEditavel} validar={validarCodigo} onSalvar={onCodigo} />}
-        {/* Sem emissão, a linha não diz "0 emitidos". */}
-        {emitidos > 0 && <span className="shrink-0 text-sm font-medium text-secondary tabular-nums">{plural(emitidos, "emitido", "emitidos")}</span>}
-    </li>
-);
-
 /* ------------------------------------------------------------------ */
 /*  Aba Repasses                                                       */
 /* ------------------------------------------------------------------ */
 
-function AbaRepasses({ dados, aRepassar, repassado, onRegistrar }: { dados: DadosDoGrupo; aRepassar: number; repassado: number; onRegistrar: () => void }) {
+/** Repasses (ECO-73). "Registrar repasse" fica só no topo da página (ECO-96); o vazio explica. */
+function AbaRepasses({ dados, aRepassar, repassado }: { dados: DadosDoGrupo; aRepassar: number; repassado: number }) {
     const lista = [...dados.repasses].sort((a, b) => b.data.localeCompare(a.data));
+    const paginacao = usePaginacao(lista);
     return (
-        <Secao
-            titulo="Repasses"
-            descricao={`O pagamento da comissão é feito por fora da Ingresse e registrado aqui. ${moeda(repassado)} já repassados, ${moeda(aRepassar)} a repassar neste evento.`}
-            acao={
-                <Button color="secondary" size="sm" iconLeading={Plus} onClick={onRegistrar} isDisabled={aRepassar <= 0}>
-                    Registrar repasse
-                </Button>
-            }
-        >
+        <section className="flex flex-col gap-4">
+            <TituloSecao apoio={`O pagamento da comissão é feito por fora da Ingresse e registrado aqui. ${repassado > 0 ? `${moeda(repassado)} já repassados, ` : ""}${moeda(aRepassar)} a repassar neste evento.`}>
+                Repasses
+            </TituloSecao>
             {lista.length === 0 ? (
-                <p className="text-sm text-tertiary">Nenhum repasse registrado neste evento.</p>
+                <VazioDaTabela
+                    icone={Wallet02}
+                    titulo="Nenhum repasse registrado neste evento"
+                    texto={aRepassar > 0 ? "Cada pagamento de comissão feito ao comissário entra aqui. Use \"Registrar repasse\", no topo da página." : "Quando houver comissão a repassar, registre aqui cada pagamento feito ao comissário, pelo \"Registrar repasse\" no topo da página."}
+                />
             ) : (
-                <div className="-mx-5 overflow-x-auto md:-mx-6">
-                    <table className="w-full">
-                        <thead className="bg-secondary">
-                            <tr>
-                                <th className={TH}>Data</th>
-                                <th className={TH}>Observação</th>
-                                <th className={`${TH} text-right`}>Valor</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-secondary">
-                            {lista.map((r) => (
-                                <tr key={r.id}>
-                                    <td className={`${TD} whitespace-nowrap tabular-nums`}>{dataCurta(r.data)}</td>
-                                    <td className={TD}>{r.observacao || "Sem observação"}</td>
-                                    <td className={`${TD} text-right font-medium text-primary tabular-nums`}>{moeda(r.valor)}</td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
+                <CartaoDaTabela>
+                    <CabecalhoDaTabela>
+                        <span className="min-w-0 flex-1">Data</span>
+                        <span className="w-32 text-right">Valor</span>
+                    </CabecalhoDaTabela>
+                    <ul className="flex flex-col divide-y divide-secondary">
+                        {paginacao.visiveis.map((r) => (
+                            <LinhaDaTabela key={r.id} className="flex-col gap-1 @min-[44rem]:flex-row @min-[44rem]:gap-4">
+                                <TituloDaLinha titulo={<span className="tabular-nums">{dataCurta(r.data)}</span>} apoio={r.observacao || "Sem observação"} />
+                                <Celula rotulo="Valor" numero className="font-medium @min-[44rem]:w-32">
+                                    {moeda(r.valor)}
+                                </Celula>
+                            </LinhaDaTabela>
+                        ))}
+                    </ul>
+                    <RodapeDePaginacao {...paginacao} />
+                </CartaoDaTabela>
             )}
-        </Secao>
+        </section>
     );
 }

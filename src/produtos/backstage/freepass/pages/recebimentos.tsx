@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { Link } from "react-router";
 import { BackstageLayout } from "../../components/Backstage";
-import { TITULO_PAGINA } from "../../components/titulo-pagina";
+import { CabecalhoDaPagina } from "../../components/cabecalho-da-pagina";
 import { Metrica } from "../components/comuns";
 import { abrirEventoNoPainel, useMinhasVendas } from "../data/minhas-vendas";
 import { dia, moeda } from "../utils/formato";
@@ -39,12 +39,14 @@ export function Recebimentos() {
     return (
         <BackstageLayout activeProducer="recebimentos" showEventContext={false}>
             <div className="flex w-full min-w-0 flex-1 flex-col gap-6">
-                <header className="flex flex-col gap-1">
-                    <h1 className={TITULO_PAGINA}>Recebimentos</h1>
-                    <p className="max-w-[60ch] text-md text-tertiary">
-                        Cada organizador paga a sua comissão direto para você, por Pix ou transferência. Aqui você confere o que já recebeu e o que falta.
-                    </p>
-                </header>
+                <CabecalhoDaPagina
+                    titulo="Recebimentos"
+                    subtitulo={
+                        <span className="block max-w-[60ch]">
+                            Cada organizador paga a sua comissão direto para você, por Pix ou transferência. Aqui você confere o que já recebeu e o que falta.
+                        </span>
+                    }
+                />
 
                 {carregando ? (
                     <span role="status" aria-label="Carregando recebimentos" className="h-64 w-full animate-pulse rounded-xl bg-secondary motion-reduce:animate-none" />

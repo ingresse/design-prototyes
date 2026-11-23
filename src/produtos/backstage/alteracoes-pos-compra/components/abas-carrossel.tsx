@@ -7,9 +7,9 @@ import { cx } from "@/utils/cx";
 /**
  * Carrossel horizontal de abas: datas da sessão e tipos de item.
  *
- * Uma fileira só, que rola por arrasto e, no desktop, por setas que aparecem
- * apenas quando há aba daquele lado. Abaixo de md as setas saem: o dedo já
- * arrasta, e o chip cortado na borda anuncia que a fila continua.
+ * No desktop, uma fileira só, que rola por arrasto e por setas que aparecem
+ * apenas quando há aba daquele lado. Abaixo de md os chips ficam numa grade de
+ * três colunas, todos à vista, sem rolagem lateral (PED-111).
  *
  * É o mesmo seletor da bilheteria, para o operador reconhecer na troca a tira
  * que já usa para vender. Cópia e não import: o repo não deixa um produto
@@ -126,7 +126,9 @@ export function AbasCarrossel({ abas, ativa, ariaLabel, onSelecionar }: AbasCarr
                 role="radiogroup"
                 aria-label={ariaLabel}
                 onScroll={sincronizarSetas}
-                className="flex min-w-0 flex-1 snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth py-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                /* Abaixo de md os chips quebram linha em vez de rolar de lado (UI-MOB-004, PED-111): a
+                   rolagem lateral escondia datas fora da tela, sem nada dizendo que havia mais. */
+                className="min-w-0 flex-1 gap-3 py-1 max-md:grid max-md:grid-cols-3 md:flex md:snap-x md:snap-mandatory md:overflow-x-auto md:scroll-smooth md:[scrollbar-width:none] md:[&::-webkit-scrollbar]:hidden"
             >
                 {abas.map((aba) => {
                     const ativo = aba.id === ativa;
@@ -140,7 +142,7 @@ export function AbasCarrossel({ abas, ativa, ariaLabel, onSelecionar }: AbasCarr
                             data-aba={aba.id}
                             onClick={() => onSelecionar(aba.id)}
                             className={cx(
-                                "flex h-[72px] min-w-[96px] shrink-0 snap-start flex-col items-center justify-center rounded-xl px-3 transition duration-100 ease-linear",
+                                "flex h-[72px] min-w-[96px] shrink-0 snap-start max-md:min-w-0 flex-col items-center justify-center rounded-xl px-3 transition duration-100 ease-linear",
                                 /*
                                   O chip escolhido inverte em relação à superfície: os tokens alpha
                                   viram branco no dark e preto no light, que é o chip do design.

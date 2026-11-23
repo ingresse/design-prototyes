@@ -1,0 +1,1989 @@
+<!doctype html>
+<html lang="pt-BR" data-pagina="pagamento" data-superficie="chao">
+<head>
+<meta charset="utf-8">
+<script src="./ponte-backstage.js" data-ponte-backstage></script>
+<script src="./transicao-evento.js" data-previa-te></script>
+<script data-previa-esportes-cedo>(function () {
+  var root = document.documentElement, qs = new URLSearchParams(location.search), v = null;
+  try {
+    if (qs.get('dados') === 'mock' || qs.get('dados') === 'bff') localStorage.setItem('previa-dados', qs.get('dados'));
+    v = localStorage.getItem('previa-dados') || 'bff'; // padrão no design-prototypes: dados do Backstage (ponte-backstage.js)
+  } catch (e) {}
+  root.setAttribute('data-dados', v === 'bff' ? 'bff' : 'mock');
+  if (v !== 'bff' || !window.fetch) return;
+  var f0 = window.fetch;
+  window.fetch = function (u, o) {
+    var url = typeof u === 'string' ? u : (u && u.url) || '', alvo = null, md;
+    if (/\/api\/eventos(\.json)?(\?|$)/.test(url)) alvo = url.replace(/\/api\/eventos(\.json)?/, '/api/bff/eventos');
+    else if ((md = /(?:^|\/)dados\/((?:busca-artistas|busca-locais|catalogo-indice|sorteio-pool|home-reais|categoria-[a-z0-9-]+)\.json)(\?|$)/.exec(url))) alvo = '/api/bff/dados/' + md[1]; // os índices e as categorias também saem do BFF
+    if (!alvo) return f0.apply(this, arguments);
+    var self = this, args = arguments;
+    return f0.call(this, alvo, o).then(function (r) {
+      if (r.ok) { root.setAttribute('data-dados-ok', ''); return r; }
+      return r.clone().json().catch(function () { return {}; }).then(function (d) { root.setAttribute('data-dados-falha', (d && d.error) || ('HTTP ' + r.status)); return f0.apply(self, args); });
+    }, function () { root.setAttribute('data-dados-falha', 'sem conexão com o servidor local'); return f0.apply(self, args); });
+  };
+})();
+(function () {
+  var root = document.documentElement, qs = new URLSearchParams(location.search), v = null;
+  try {
+    if (qs.get('esportes') === 'on' || qs.get('esportes') === 'off') localStorage.setItem('previa-esportes', qs.get('esportes'));
+    v = localStorage.getItem('previa-esportes');
+  } catch (e) {}
+  var ligado = v === 'on';
+  root.setAttribute('data-esportes', ligado ? 'on' : 'off');
+  var DESCOBERTA = ['home', 'busca', 'categoria', 'artista', 'venue', 'colecao'];
+  if (ligado || DESCOBERTA.indexOf(root.getAttribute('data-pagina')) < 0 || qs.get('escopo') === 'esportes') return;
+  root.setAttribute('data-esportes-ocultar', '');
+  var prova = function (e) { var c = (e && e.cats) || []; return c.indexOf('corridas') >= 0 || (c.indexOf('esportes') >= 0 && c.indexOf('futebol') < 0); };
+  var f0 = window.fetch;
+  if (!f0) return;
+  window.fetch = function (u) {
+    var url = typeof u === 'string' ? u : (u && u.url) || '', p = f0.apply(this, arguments);
+    if (!/\/api\/eventos(\.json)?(\?|$)/.test(url)) return p;
+    return p.then(function (r) {
+      if (!r.ok) return r;
+      return r.clone().json().then(function (d) {
+        if (!d || !d.events) return r;
+        d.events = d.events.filter(function (e) { return !prova(e); });
+        if (d.categories) d.categories = d.categories.filter(function (c) { return c.id !== 'corridas'; });
+        return new Response(JSON.stringify(d), { status: r.status, statusText: r.statusText, headers: { 'Content-Type': 'application/json' } });
+      }).catch(function () { return r; });
+    });
+  };
+})();</script>
+<script data-previa-nav-cedo>(function () {
+  try {
+    var h = document.documentElement;
+    var tema = localStorage.getItem('prototipo-theme');
+    if (tema !== 'dark' && tema !== 'light') tema = window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    if (/\/(Ingressos|Checkout|Pagamento)\.dc\.html$/.test(location.pathname) || (/\/Evento\.dc\.html$/.test(location.pathname) && sessionStorage.getItem('mov:de'))) {
+      // chegada do movimento-compra.js (ele tem o seu portão e a sua entrada): aqui só o fundo da última tela vista, que fecha o quadro
+      // branco do tema escuro entre a saída e a entrada. Sai em movimento-navegacao.js quando o portão dele abre.
+      h.setAttribute('data-mov-dona', '');
+      var bgc = localStorage.getItem('mov:bg:' + tema);
+      if (bgc) {
+        h.style.setProperty('background-color', bgc, 'important');
+        h.setAttribute('data-mov-bgcompra', '');
+        setTimeout(function () { h.removeAttribute('data-mov-bgcompra'); h.style.removeProperty('background-color'); }, 3000);
+      }
+      return;
+    }
+    var j = sessionStorage.getItem('mov:nav');
+    var o = j ? JSON.parse(j) : null;
+    // o registro vale para esta URL (ou para qualquer uma, quando a tela anterior saiu sem clique nosso: Voltar, URL digitada, recarregar)
+    if (!o || o.v !== 1 || Date.now() - o.t > 6000 || (o.para && o.para !== location.pathname)) {
+      o = { v: 1, padrao: 'direta', bg: localStorage.getItem('mov:bg:' + tema) || '' };
+    }
+    h.setAttribute('data-mov-nav', o.padrao || '');
+    h.setAttribute('data-mov-nav-gate', '');
+    var g = document.createElement('style');
+    g.id = 'mov-nav-portao';
+    // sem transições (data-mov-nav, que sai 2 quadros depois do portão abrir): os estilos chegam com a tela escondida e, sem isto, cores e bordas
+    // ainda estariam em transição de 160 ms quando ela aparece (e, em movimento reduzido, a própria visibilidade levaria um quadro para virar)
+    g.textContent = 'html[data-mov-nav-gate] #dc-root{visibility:hidden}html[data-mov-nav] #dc-root,html[data-mov-nav] #dc-root *,html[data-mov-nav] #dc-root *::before,html[data-mov-nav] #dc-root *::after{transition:none !important}';
+    (document.head || h).appendChild(g);
+    if (o.bg) h.style.setProperty('background-color', o.bg, 'important');
+    if (o.ponte && o.ponte.html) {
+      // a fonte da ponte tem nome próprio (ElzaPonte): a identidade da tela nova declara "Elza" com font-display swap e, se a ponte usasse
+      // esse nome, o texto trocaria para a fonte de sistema quando o CSS novo chegasse. Os dados (base64, guardados pela tela anterior)
+      // entram por FontFace binária, sem espera; sem eles, cai na URL (block = texto invisível até a fonte chegar).
+      var r4 = sessionStorage.getItem('mov:fonte400'), r6 = sessionStorage.getItem('mov:fonte600');
+      var bin = function (b64) { var t = atob(b64), u = new Uint8Array(t.length), i; for (i = 0; i < t.length; i++) u[i] = t.charCodeAt(i); return u.buffer; };
+      var doDados = false;
+      if (r4 && r6 && window.FontFace) {
+        // FontFace com dados binários fica pronta na hora (status "loaded" no mesmo instante): o texto da ponte já nasce na fonte certa
+        try {
+          document.fonts.add(new FontFace('ElzaPonte', bin(r4), { weight: '400 500' }));
+          document.fonts.add(new FontFace('ElzaPonte', bin(r6), { weight: '600 700' }));
+          doDados = true;
+        } catch (e) {}
+      }
+      if (!doDados) {
+        var f = document.createElement('style');
+        f.id = 'mov-ponte-fonte';
+        f.textContent = '@font-face{font-family:"ElzaPonte";src:url(./fontes/Elza-Regular.woff2) format("woff2");font-weight:400 500;font-display:block}' +
+          '@font-face{font-family:"ElzaPonte";src:url(./fontes/Elza-Semibold.woff2) format("woff2");font-weight:600 700;font-display:block}';
+        (document.head || h).appendChild(f);
+      }
+      // dentro de um shadow root: o CSS da tela nova (div, span, a, svg…) não alcança a ponte enquanto ela espera
+      var d = document.createElement('div');
+      d.id = 'mov-ponte';
+      d.setAttribute('aria-hidden', 'true');
+      d.style.cssText = 'all:initial;position:fixed;left:0;top:' + (o.ponte.top || 0) + 'px;width:' + o.ponte.w + 'px;height:' + o.ponte.h + 'px;z-index:2147483000;pointer-events:none;overflow:hidden;display:block';
+      var sr = d.attachShadow ? d.attachShadow({ mode: 'open' }) : d;
+      sr.innerHTML = o.ponte.html;
+      h.appendChild(d);
+    }
+    if (o.poster && o.poster.src) {
+      var im = document.createElement('img');
+      im.id = 'mov-ponte-poster';
+      im.alt = '';
+      im.setAttribute('aria-hidden', 'true');
+      im.src = o.poster.src;
+      im.style.cssText = 'all:initial;position:fixed;left:' + o.poster.x + 'px;top:' + o.poster.y + 'px;width:' + o.poster.w + 'px;height:' + o.poster.h + 'px;object-fit:cover;border-radius:' + (o.poster.r || '0') + ';z-index:' + (o.poster.z || 1) + ';pointer-events:none;display:block';
+      h.appendChild(im);
+    }
+    setTimeout(function () {
+      var pp = document.getElementById('mov-ponte-poster');
+      if (pp) pp.remove();
+      var p = document.getElementById('mov-ponte');
+      if (p) p.remove();
+      var s = document.getElementById('mov-ponte-fonte');
+      if (s) s.remove();
+      h.removeAttribute('data-mov-nav-gate');
+      h.removeAttribute('data-mov-nav');
+      h.style.removeProperty('background-color');
+    }, 3000);
+  } catch (e) {}
+})();</script>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#F5F4F2">
+<meta name="format-detection" content="telephone=no">
+<link rel="preload" href="./fontes/Elza-Semibold.woff2" as="font" type="font/woff2" crossorigin data-previa>
+<link rel="preload" href="./fontes/Elza-Regular.woff2" as="font" type="font/woff2" crossorigin data-previa>
+<title>Como pagar — Sorriso Eu Gosto no Pagode | Ingresse</title>
+<script data-jf-titulo>try{if(/[?&]jogo=/.test(location.search)&&window.IngresseJornadaFutebol&&window.IngresseJornadaFutebol.ativo())document.title=window.IngresseJornadaFutebol.tituloInicial(document.documentElement.getAttribute("data-pagina"))}catch(e){}</script>
+<script data-je-loader>if(/[?&]esporte=/.test(location.search)){document.write('<script src="./jornada-esporte-dados.js"><\/script><script src="./jornada-esporte.js"><\/script>')}</script>
+<script src="./produtos-dados.js" data-prd></script>
+<script src="./produtos.js" data-prd></script>
+<script data-jf-loader>if(/[?&]jogo=/.test(location.search)){document.write('<script src="./jornada-futebol-dados.js"><\/script><script src="./jornada-futebol-textos.js"><\/script><script src="./jornada-futebol-regras.js"><\/script><script src="./modal-uui.js"><\/script><script src="./vendor/qr-code-styling.js"><\/script><script src="./qr-ingresse.js"><\/script><script src="./mapa-estadio.js"><\/script><script src="./rosto.js"><\/script><script src="./dependentes.js"><\/script><script src="./jornada-futebol.js"><\/script>')}</script>
+<script src="./vendor/react.js"></script>
+<script src="./vendor/react-dom.js"></script>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<script src="./destinos.js" defer data-previa></script>
+<style>
+/* Estilos específicos desta tela. Componentes: base.css */
+.stp{padding:8px 14px;border-radius:var(--r-pill);background:var(--surface);border:1px solid var(--line);color:var(--muted)}
+.stp-on{background:var(--inverse);border-color:var(--inverse);color:#fff}
+/* Datas */
+.days{display:flex;gap:8px;overflow-x:auto;padding:2px 2px 6px;scrollbar-width:thin}
+/* Cupom */
+.coupon{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;padding:14px 16px;border:1px dashed var(--line-strong);border-radius:14px;background:var(--bg-alt)}
+.coupon-ok{display:inline-flex;align-items:center;gap:8px;font-size:14px;font-weight:700;color:#0E7C3A;background:rgba(14,124,58,.1);border-radius:999px;padding:8px 14px}
+html[data-theme="dark"] .coupon-ok{color:#5BD08A;background:rgba(91,208,138,.12)}
+.coupon-err{flex:1 1 100%;font-size:13px;color:var(--accent-ink);margin:0}
+/* Alternância lista / mapa */
+.seg{display:inline-flex;padding:4px;border-radius:999px;background:var(--surface);border:1px solid var(--line-strong)}
+/* Mapa de assentos */
+.map-wrap{display:flex;flex-direction:column;gap:20px}
+.stage{align-self:center;width:min(420px,80%);text-align:center;padding:10px 0;border-radius:0 0 80px 80px;background:var(--ink);color:var(--bg);font-size:12px;font-weight:700;letter-spacing:.3em}
+.secs{display:flex;gap:10px;justify-content:center}
+.sec{flex:1 1 0;max-width:220px;display:flex;flex-direction:column;gap:2px;align-items:flex-start;text-align:left;padding:12px 14px;border:1px solid var(--line-strong);border-radius:12px;background:var(--surface);color:var(--ink);font:inherit;cursor:pointer;transition:all .2s}
+.sec:hover{border-color:var(--inverse-line)}
+.sec[aria-pressed="true"]{border-color:#E82113;box-shadow:0 0 0 1px #E82113 inset;background:var(--accent-soft)}
+.sec-n{font-size:15px;font-weight:700}
+.sec-m{font-size:12px;color:var(--muted)}
+.grid{overflow-x:auto;padding:4px 0 8px}
+.grid-in{display:flex;flex-direction:column;gap:6px;width:max-content;margin:0 auto}
+.row-l{width:18px;font-size:12px;font-weight:700;color:var(--muted);text-align:center}
+.seat{width:26px;height:26px;padding:0;border:0;border-radius:8px 8px 5px 5px;cursor:pointer;transition:transform .12s}
+.seat:hover:not(:disabled){transform:scale(1.15)}
+.seat[data-gap="true"]{margin-left:18px}
+.seat[data-st="t1"],.lg-t1{background:#E82113}
+.seat[data-st="t2"],.lg-t2{background:#FF7A6E}
+.seat[data-st="t3"],.lg-t3{background:#FFC2BB}
+.seat[data-st="sold"],.lg-sold{background:var(--line);cursor:not-allowed}
+.seat[data-st="sel"],.lg-sel{background:var(--ink);box-shadow:0 0 0 2px var(--surface),0 0 0 4px var(--ink)}
+.legend{display:flex;flex-wrap:wrap;gap:8px 18px;justify-content:center;font-size:13px;color:var(--ink-2)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:14px;height:14px;border-radius:4px;display:inline-block}
+.best{display:flex;flex-wrap:wrap;align-items:center;gap:12px 20px;padding:18px 20px;border-radius:14px;background:var(--inverse);color:#fff}
+.best .step{background:transparent;color:#fff;border-color:rgba(255,255,255,.35)}
+.best .step:hover{background:rgba(255,255,255,.12)}
+.best-msg{flex:1 1 100%;margin:0;font-size:14px;color:rgba(255,255,255,.85)}
+
+@media (max-width:760px){.secs{flex-wrap:wrap}.sec{flex:1 1 30%}}
+</style>
+<style data-ce>
+/* checkout em etapas (checkout-etapas.mjs): perguntas do produtor e recapitulação; só tokens da identidade */
+.ce-sub { flex: 1 1 100%; margin: var(--space-2) 0 0; padding-top: var(--space-4); border-top: var(--border-width-hairline) solid var(--color-border-subtle); display: flex; flex-direction: column; gap: var(--space-1); }
+.ce-sub strong { font-size: var(--font-size-small); font-weight: 700; color: var(--color-text-primary); }
+.ce-sub span { font-size: var(--font-size-small); color: var(--color-text-tertiary); }
+.ce-q { flex: 1 1 260px; min-width: 0; display: flex; flex-direction: column; gap: var(--space-2); border: 0; margin: 0; padding: 0; }
+.ce-q.ce-largo { flex-basis: 100%; }
+.ce-q > legend { padding: 0; font-size: var(--font-size-small); font-weight: 600; line-height: 1.3; color: var(--color-text-primary); }
+.ce-opt { font-weight: 500; color: var(--color-text-tertiary); }
+.ce-ajuda { margin: 0; font-size: var(--font-size-small); color: var(--color-text-tertiary); }
+.ce-q textarea { min-height: 96px; padding: var(--space-3) var(--space-4); font-size: 16px; box-sizing: border-box; width: 100%; resize: vertical; }
+.ce-ops { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-5); }
+.ce-ops .fac { display: inline-flex; align-items: center; }
+.ce-q[data-err="true"] .err::before { display: block; }
+/* "Quem vai com você?": o controle segmentado ocupa a linha inteira no mobile (as duas opções dividem a largura e não quebram em duas linhas) */
+.ce-quando .seg { flex: 0 1 auto; flex-wrap: nowrap; max-width: 100%; }
+.ce-quando .seg button { flex: 1 1 auto; padding: 0 var(--space-3); white-space: nowrap; }
+@media (max-width: 560px) { .ce-quando { padding: 0 !important; background: transparent !important; } .ce-quando .seg { flex-basis: 100%; } }
+.ce-aviso { flex: 1 1 100%; margin: 0; padding: var(--space-3) var(--space-4); border-radius: var(--radius-base); background: var(--color-bg-secondary-alt); font-size: 14px; line-height: 1.5; color: var(--ink-2); }
+.ce-recap { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.ce-recap li { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--space-1) var(--space-4); padding: var(--space-3) 0; border-top: var(--border-width-hairline) solid var(--color-border-subtle); font-size: var(--font-size-body); }
+.ce-recap li:first-child { border-top: 0; }
+.ce-recap small { font-size: var(--font-size-small); color: var(--color-text-tertiary); }
+.ce-pend { font-weight: 600; color: var(--accent-ink-2); }
+/* Forma de pagamento em acordeão (pedido do Wander, 27/10/2026): cada meio traz os próprios campos dentro dele; abrir um fecha os outros */
+.pg-lista { display: flex; flex-direction: column; gap: var(--space-3); }
+.pg { background: var(--color-bg-surface); border: var(--border-width-hairline) solid var(--color-field-border); border-radius: var(--radius-base); transition: border-color var(--motion-duration-fast) var(--motion-ease-move), background-color var(--motion-duration-fast) var(--motion-ease-move); }
+.pg:hover { border-color: var(--color-field-border-hover); }
+.pg[data-on="true"] { border: var(--border-width-strong) solid var(--color-border-strong); background: var(--color-bg-subtle); }
+.pg > .pay, .pg > .pay[aria-checked="true"] { width: 100%; border: 0; border-radius: inherit; background: transparent; box-sizing: border-box; text-align: left; cursor: pointer; }
+.pg[data-on="true"] > .pay { padding: calc(var(--space-4) - 1px) calc(var(--space-5) - 1px); }
+.pg-pad { padding: var(--space-2) var(--space-5) var(--space-5); display: flex; flex-direction: column; gap: var(--space-4); }
+.pg[data-on="true"] .pg-pad { padding-inline: calc(var(--space-5) - 1px); padding-bottom: calc(var(--space-5) - 1px); }
+.pg-campos { display: flex; flex-wrap: wrap; gap: var(--space-3) var(--space-4); }
+.pg-campos-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); align-items: start; }
+.pg-campos .field input, .pg-campos .field select { width: 100%; box-sizing: border-box; min-height: var(--size-touch-default); }
+.pg .pay-t strong { text-wrap: balance; }
+@media (max-width: 480px) { .pg .pay .tagok { margin-left: calc(24px + var(--space-4)); } }
+.pg-nota { margin: 0; font-size: var(--font-size-small); line-height: 1.5; color: var(--color-text-secondary); }
+/* Telefone internacional: bandeira (só ela) no campo; a lista traz bandeira, DDI e nome do país */
+.tel-box { position: relative; display: block; }
+.field .tel-box > input { width: 100%; padding-left: 84px !important; box-sizing: border-box; }
+.tel-flag { position: absolute; z-index: 1; left: 0; top: 0; bottom: 0; width: 72px; display: flex; align-items: center; justify-content: center; gap: var(--space-2); padding: 0; background: transparent; border: 0; border-right: var(--border-width-hairline) solid var(--color-border-subtle); border-radius: 0 !important; color: var(--color-text-tertiary); cursor: pointer; }
+.tel-flag:hover { color: var(--color-text-primary); background: var(--color-bg-hover); }
+.tel-flag img, .tel-list img { width: 24px; height: 18px; flex: 0 0 auto; object-fit: cover; border: var(--border-width-hairline) solid var(--color-border-subtle); }
+.tel-box[data-open="true"] .tel-flag svg { transform: rotate(180deg); }
+.tel-flag svg { transition: transform var(--motion-duration-fast) var(--motion-ease-move); }
+.tel-list { position: absolute; z-index: 30; left: 0; top: calc(100% + var(--space-1)); width: min(360px, 100%); max-height: 320px; overflow-y: auto; margin: 0; padding: var(--space-1) 0; list-style: none; background: var(--color-bg-surface); border: var(--border-width-strong) solid var(--color-border-strong); border-radius: var(--radius-base); visibility: hidden; opacity: 0; transform: translateY(calc(-1 * var(--space-1))); transition: opacity var(--motion-duration-fast) var(--motion-ease-enter), transform var(--motion-duration-fast) var(--motion-ease-enter), visibility 0s linear var(--motion-duration-fast); }
+.tel-box[data-open="true"] .tel-list { visibility: visible; opacity: 1; transform: none; transition: opacity var(--motion-duration-fast) var(--motion-ease-enter), transform var(--motion-duration-fast) var(--motion-ease-enter), visibility 0s; }
+.tel-list li { display: flex; align-items: center; gap: var(--space-3); min-height: var(--size-touch-default); padding: 0 var(--space-4); font-size: var(--font-size-body); cursor: pointer; color: var(--color-text-primary); }
+.tel-list li:hover, .tel-list li:focus-visible { background: var(--color-bg-hover); }
+.tel-list li[aria-selected="true"] { background: var(--color-bg-subtle); }
+/* item do país na anatomia do SelectItem do Untitled UI: imagem, nome, texto de apoio (+DDI) e ✓ à direita no selecionado */
+.tel-nome { flex: 0 1 auto; min-width: 0; }
+.tel-ddi { flex: 1 1 auto; color: var(--color-text-tertiary); font-variant-numeric: tabular-nums; }
+.tel-ok { visibility: hidden; margin-left: auto; }
+.tel-list li[aria-selected="true"] .tel-ok { visibility: visible; }
+
+/* campo do número do cartão no padrão PaymentInput do Untitled UI: ícone de cartão à esquerda e a bandeira detectada (em tag, sem logotipo) à direita */
+.uui-input-wrap { position: relative; display: block; }
+.field .uui-input-wrap > input { width: 100%; box-sizing: border-box; padding-left: calc(var(--space-4) + var(--size-icon-md) + var(--space-3)) !important; padding-right: calc(var(--space-4) + 112px) !important; }
+.uui-input-lead { position: absolute; z-index: 1; left: var(--space-4); top: 50%; transform: translateY(-50%); display: inline-flex; color: var(--color-text-tertiary); pointer-events: none; }
+.uui-input-brand { position: absolute; z-index: 1; right: var(--space-3); top: 50%; transform: translateY(-50%); pointer-events: none; }
+</style>
+<link rel="stylesheet" href="./theme.css">
+<link rel="stylesheet" href="./base.css">
+<script src="./theme.js"></script>
+<link rel="stylesheet" href="./ux.css">
+<link rel="stylesheet" href="./ds.css">
+<script src="./ux.js" defer></script>
+<link rel="stylesheet" href="./identidade-v1.css" data-previa>
+<style data-ib>
+/* ícone animado de botão (Lottie): 24 px, o traço segue a cor do texto do botão, no claro e no escuro */
+.btn-ic { flex: 0 0 auto; width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; }
+.btn-ic svg { width: 24px; height: 24px; display: block; }
+.btn-ic [stroke]:not([stroke="none"]) { stroke: currentColor; }
+/* "Quero ir" ligado: coração cheio na cor da marca (o Lottie traz fill-opacity 0, então os dois valores) */
+/* chip e botão: o ícone respira em relação ao texto */
+.chip > .btn-ic { margin-right: var(--space-2); } /* .bs e .bp já têm gap */
+/* barra de compra móvel do Evento: com o ícone do estado o rótulo é mais largo; se não couber ao lado do preço, a barra quebra e o botão ocupa a linha de baixo (antes o botão pisava no texto do preço) */
+.mbar { flex-wrap: wrap !important; }
+html .mbar > div { flex: 1 1 9rem !important; min-width: 9rem !important; } /* inline: flex: 1; min-width: 0 */ /* o preço não encolhe abaixo de 9rem: se o botão não couber ao lado, ele desce e ocupa a linha */
+.mbar .bp:has(.btn-ic) { flex: 1 1 auto; min-width: 0; justify-content: center; }
+button[aria-pressed="true"] .btn-ic-heart { color: var(--color-fg-wish); } /* alias de fg.brand: vermelho na Ingresse, azul na Ingresse Sports (decisão de 27/10/2026) */
+button[aria-pressed="true"] .btn-ic-heart svg [stroke]:not([stroke="none"]) { fill: currentColor; fill-opacity: 1; }
+</style>
+<script src="./vendor/lottie_svg.min.js" defer data-previa></script>
+<script src="./icones-motion.js" defer data-previa></script>
+<script src="./previa.js" defer data-previa></script>
+<script src="./movimento-compra.js" defer data-previa></script>
+<script src="./movimento-navegacao.js" defer data-previa></script>
+<link rel="stylesheet" href="./jornada-esporte.css" data-previa>
+<link rel="stylesheet" href="./jornada-futebol.css" data-previa>
+<script src="./lacunas.js" defer data-previa></script>
+<link rel="stylesheet" href="./transicao-evento.css" data-previa data-previa-te>
+<script src="./movimento-sucesso.js" defer data-previa></script>
+</helmet>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div class="has-cbar" style="{{rootStyle}}">
+<!-- jf:cab -->
+<sc-if value="{{jfOff}}" hint-placeholder-val="{{true}}">
+<!-- je:cab -->
+<sc-if value="{{espOff}}" hint-placeholder-val="{{true}}">
+<header class="hdr">
+  <div style="max-width: 1280px; margin: 0 auto; padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; gap: 16px">
+    <a href="{{backHref}}" style="display: flex; align-items: center; gap: 12px; min-width: 0" aria-label="{{backAria}}">
+      <span aria-hidden="true" style="flex: 0 0 auto; width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--line-strong); display: flex; align-items: center; justify-content: center"><svg class="ico ico-16" viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></span>
+      <span style="display: flex; flex-direction: column; min-width: 0"><span style="font-size: 15px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Sorriso Eu Gosto no Pagode — São Paulo</span><span style="font-size: 13px; color: var(--muted)">{{dayLabel}} · 13h · Arena Anhembi</span></span>
+    </a>
+    <ol class="steps" style="display: flex; gap: 6px; list-style: none; margin: 0; padding: 0; font-size: 13px; font-weight: 600; flex: 0 0 auto" aria-label="Etapas da compra">
+      <li class="stp"><svg class="ico ico-14" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg><span class="st-l"> Ingressos</span></li>
+      <li class="stp"><svg class="ico ico-14" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg><span class="st-l"> Quem vai</span></li>
+      <li class="stp {{stepClass}}" aria-current="step">3<span class="st-l"> · Como pagar</span></li>
+      <li class="stp {{doneClass}}">4<span class="st-l"> · Pronto</span></li>
+    </ol>
+  </div>
+</header>
+</sc-if>
+<!-- je:cab-esp -->
+<sc-if value="{{espOn}}" hint-placeholder-val="{{false}}">
+<header class="hdr je-hdr" data-passo="{{jePasso}}">
+  <div class="je-hdr-in">
+    <div class="je-hdr-esq">
+      <a href="{{jeBack}}" class="je-voltar" aria-label="{{jeBackAria}}"><svg class="ico ico-16" viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></a>
+      <a href="{{jeLogoHref}}" class="je-logo" aria-label="Ingresse Sports, início"><span class="je-lockup" aria-hidden="true"></span></a>
+      <span class="je-evt"><strong>{{jeTitulo}}</strong><span>{{jeQuando}}</span></span>
+    </div>
+    <div class="je-fluxo" role="group" aria-label="Etapas da inscrição">
+      <ol class="je-steps">
+        <sc-for list="{{jePassos}}" as="p" hint-placeholder-count="4">
+          <li class="stp {{p.cls}}" aria-current="{{p.cur}}"><sc-if value="{{p.feito}}" hint-placeholder-val="{{false}}"><svg class="ico ico-14" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg><span class="st-l"> {{p.rot}}</span></sc-if><sc-if value="{{p.aFazer}}" hint-placeholder-val="{{true}}">{{p.n}}<span class="st-l"> · {{p.rot}}</span></sc-if></li>
+        </sc-for>
+      </ol>
+      <p class="je-mob">{{jeMob}}</p>
+      <div class="je-percurso" style="{{jeEstilo}}" data-de="{{jeDe}}" data-ate="{{jeAte}}" aria-hidden="true">
+        <span class="je-trilho"></span>
+        <span class="je-avanco"></span>
+        <sc-for list="{{jeNos}}" as="n" hint-placeholder-count="3"><span class="je-no" data-e="{{n.e}}" style="left: {{n.left}}"></span></sc-for>
+        <span class="je-bandeira" data-on="{{jeChegou}}"><svg class="ico ico-14" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 21V4m0 0h12l-2.5 4.5L17 13H5"/></svg></span>
+      </div>
+    </div>
+  </div>
+</header>
+</sc-if>
+<!-- je:cab-esp-fim -->
+<!-- je:cab-fim -->
+</sc-if>
+<!-- jf:cab-jf -->
+<sc-if value="{{jfOn}}" hint-placeholder-val="{{false}}">
+<header class="hdr jf-hdr" data-passo="{{jfPasso}}">
+  <div class="jf-hdr-in">
+    <div class="jf-hdr-esq">
+      <a href="{{jfBack}}" class="jf-voltar" aria-label="{{jfBackAria}}"><svg class="ico ico-16" viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></a>
+      <span class="jf-escudos" aria-hidden="true">
+        <span class="jf-esc"><img class="jf-esc__i jf-esc__i--claro" src="{{jfMandSrc}}" alt="" width="40" height="40"><img class="jf-esc__i jf-esc__i--escuro" src="{{jfMandSrcEsc}}" alt="" width="40" height="40"></span>
+        <span class="jf-esc"><img class="jf-esc__i jf-esc__i--claro" src="{{jfVisSrc}}" alt="" width="40" height="40"><img class="jf-esc__i jf-esc__i--escuro" src="{{jfVisSrcEsc}}" alt="" width="40" height="40"></span>
+      </span>
+      <span class="jf-evt"><strong>{{jfTitulo}}</strong><span>{{jfQuando}}</span></span>
+    </div>
+    <div class="jf-fluxo" role="group" aria-label="{{jfEtapasAria}}">
+      <ol class="jf-steps">
+        <sc-for list="{{jfPassos}}" as="p" hint-placeholder-count="4">
+          <li class="stp {{p.cls}}" aria-current="{{p.cur}}"><sc-if value="{{p.feito}}" hint-placeholder-val="{{false}}"><svg class="ico ico-14" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg><span class="st-l"> {{p.rot}}</span></sc-if><sc-if value="{{p.aFazer}}" hint-placeholder-val="{{true}}">{{p.n}}<span class="st-l"> · {{p.rot}}</span></sc-if></li>
+        </sc-for>
+      </ol>
+      <p class="jf-mob">{{jfMob}}</p>
+      <span class="jf-prog" aria-hidden="true"></span>
+    </div>
+  </div>
+</header>
+</sc-if>
+<!-- jf:cab-jf-fim -->
+<!-- jf:cab-fim -->
+
+<!-- ===== SUCESSO ===== -->
+<!-- A chegada aqui é coreografada por movimento-sucesso.js (cortina, progresso, estouro e voo do ícone); ver docs/design/MOVIMENTO-SUCESSO-PAGAMENTO.md.
+     [data-ms-slot] é onde o ícone herói pousa; .ms-w são as palavras do título; .done-* são os alvos da cascata. -->
+<sc-if value="{{isDone}}" hint-placeholder-val="{{false}}">
+<main style="max-width: 760px; margin: 0 auto; padding: 48px 24px 96px; display: flex; flex-direction: column; gap: 20px">
+  <div class="card done-burst" style="padding: 36px 32px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 14px; overflow: hidden; position: relative">
+    <span class="done-ic" data-ms-slot aria-hidden="true"></span>
+    <div class="over">Pedido {{orderId}}</div>
+    <h1 class="disp" style="font-size: clamp(32px, 6vw, 52px)" tabindex="-1" id="done-title"><span class="ms-w">Pagamento</span> <span class="ms-w">aprovado</span></h1>
+    <p style="margin: 0; max-width: 460px; font-size: 16px; line-height: 1.5; color: var(--ink-2)">{{doneLine}} Mandamos o comprovante para pessoa@exemplo.com.</p>
+    <div class="done-acoes" style="display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 8px">
+      <a href="Carteira.dc.html" class="bp" id="done-carteira"><span class="btn-ic btn-ic-carteira" aria-hidden="true" data-lottie="./assets/icones/carteira.json" data-repouso="0" data-loop="0"></span>Ver ingressos na Carteira</a>
+      <a href="{{icsHref}}" download="sorriso-eu-gosto-no-pagode.ics" class="bs" style="min-height: 48px"><span class="btn-ic btn-ic-agenda" aria-hidden="true" data-lottie="./assets/icones/agenda.json" data-repouso="0" data-loop="0"></span>Adicionar à agenda</a>
+    </div>
+  </div>
+  <sc-if value="{{hasPending}}" hint-placeholder-val="{{false}}">
+    <div class="card done-pend" style="padding: 20px 22px; display: flex; flex-wrap: wrap; gap: 14px; align-items: center; border-color: var(--accent-line); background: var(--accent-soft)">
+      <div style="flex: 1 1 260px"><div style="font-size: 16px; font-weight: 700">{{pendingTitle}}</div><div style="font-size: 14px; color: var(--ink-2)">Envie o link para as outras pessoas preencherem os próprios dados. O QR de cada ingresso fica disponível assim que o titular for definido.</div></div>
+      <button type="button" class="bs bs-ink" data-share="Bora no Sorriso Eu Gosto no Pagode? Preencha seus dados para liberar seu ingresso">Enviar link para preencher</button>
+    </div>
+  </sc-if>
+  <div class="card done-info" style="padding: 22px; display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px">
+    <div><div class="over">Quando</div><div style="font-size: 15px; font-weight: 700; margin-top: 4px">{{dayLabel}} · portões 12h</div></div>
+    <div><div class="over">Onde</div><div style="font-size: 15px; font-weight: 700; margin-top: 4px">Arena Anhembi · metrô Portuguesa-Tietê</div></div>
+    <div><div class="over">Como entrar</div><div style="font-size: 15px; font-weight: 700; margin-top: 4px">QR da Carteira, funciona sem internet</div></div>
+  </div>
+  <!-- prd:pedido -->
+<sc-if value="{{prdPedido}}" hint-placeholder-val="{{false}}">
+<section class="card prd-pedido" aria-labelledby="prd-pedido-t">
+  <div class="over" id="prd-pedido-t">Produtos do pedido</div>
+  <ul aria-label="Produtos do pedido">
+    <sc-for list="{{prdLista}}" as="i" hint-placeholder-count="2">
+      <li><span class="prd-pedido__n">{{i.linha}}</span><strong>{{i.valor}}</strong><small>{{i.retirada}}</small></li>
+    </sc-for>
+  </ul>
+</section>
+</sc-if>
+<!-- prd:pedido-fim -->
+</main>
+</sc-if>
+
+<!-- je:largada-esp -->
+<sc-if value="{{espDone}}" hint-placeholder-val="{{false}}">
+<main class="je-done" data-je-largada>
+  <div class="je-done-topo">
+    <div class="over" data-je-cascata>Pedido {{orderId}}</div>
+    <h1 class="disp je-done-t" tabindex="-1" id="done-title"><span class="ms-w">Inscrição</span> <span class="ms-w">confirmada</span></h1>
+    <p class="je-done-frase" data-je-cascata>{{jeFrase}}</p>
+    <p class="je-done-msg" data-je-cascata>{{jeMsg}}</p>
+  </div>
+
+  <div class="je-done-largada" data-je-cascata>
+    <div class="je-stat-bloco">
+      <span class="over">{{jeLargadaRotulo}}</span>
+      <span class="je-stat-hora">{{jeLargadaHora}}</span>
+      <span class="je-stat-quando">{{jeLargadaQuando}}</span>
+    </div>
+    <p class="je-faltam" aria-live="off">{{jeFaltam}}</p>
+  </div>
+
+  <div class="je-bibs">
+    <sc-for list="{{jeBibs}}" as="b" hint-placeholder-count="2">
+      <div class="je-atleta-bib" data-je-cascata data-primeiro="{{b.primeiro}}">
+        <div class="je-bib" data-primeiro="{{b.primeiro}}" data-pend="{{b.pend}}" role="group" aria-label="{{b.aria}}">
+          <span class="je-bib-faixa" aria-hidden="true"></span>
+          <div class="je-bib-topo"><strong class="je-bib-nome">{{b.nome}}</strong><span class="je-bib-dist">{{b.dist}}</span></div>
+          <div class="je-bib-centro"><span class="je-bib-rot">{{b.rotuloNum}}</span><span class="je-bib-num" aria-hidden="true"><sc-for list="{{b.digitos}}" as="d" hint-placeholder-count="5"><span class="je-d"><span>{{d.c}}</span></span></sc-for></span></div>
+          <div class="je-bib-pe"><span>{{b.prova}}</span><span>{{b.quando}}</span></div>
+        </div>
+        <div class="je-bib-st" data-pend="{{b.pend}}">
+          <span class="je-bib-sit"><sc-if value="{{b.completo}}" hint-placeholder-val="{{true}}"><svg class="ico ico-14" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg></sc-if><sc-if value="{{b.temPend}}" hint-placeholder-val="{{false}}"><svg class="ico ico-14" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8v4m0 4h.01M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10Z"/></svg></sc-if>{{b.sit}}</span>
+          <sc-if value="{{b.temPend}}" hint-placeholder-val="{{false}}">
+            <span class="je-bib-acoes">
+              <button type="button" class="bs bs-sm" onClick="{{b.copiar}}">Copiar link</button>
+              <button type="button" class="bs bs-sm" onClick="{{b.reenviar}}">Reenviar link</button>
+            </span>
+            <span class="je-bib-prazo">{{b.prazo}}</span>
+          </sc-if>
+        </div>
+      </div>
+    </sc-for>
+  </div>
+
+  <div class="je-done-acoes done-acoes" data-je-cascata>
+    <a href="{{jeCarteiraHref}}" class="bp" id="done-carteira"><span class="btn-ic btn-ic-carteira" aria-hidden="true" data-lottie="./assets/icones/carteira.json" data-repouso="0" data-loop="0"></span>Ver inscrição na Carteira</a>
+    <a href="{{icsHref}}" download="{{jeIcsNome}}" class="bs" style="min-height: 48px"><span class="btn-ic btn-ic-agenda" aria-hidden="true" data-lottie="./assets/icones/agenda.json" data-repouso="0" data-loop="0"></span>Adicionar à agenda</a>
+    <button type="button" class="bs" style="min-height: 48px" onClick="{{jeConvidar}}">Convidar pessoas</button>
+    <a href="{{jeTransferirHref}}" class="bs" style="min-height: 48px">Transferir inscrição</a>
+  </div>
+
+  <sc-if value="{{jeHaPend}}" hint-placeholder-val="{{false}}">
+    <div class="je-pend" data-je-cascata>
+      <div class="je-pend-t"><strong>{{jePendTitulo}}</strong><span>{{jePendApoio}}</span></div>
+      <button type="button" class="bs bs-ink" style="min-height: 48px" onClick="{{jeEnviarPend}}">Enviar link para preencher</button>
+    </div>
+  </sc-if>
+
+  <section class="card je-agora" data-je-cascata aria-labelledby="je-t-agora">
+    <h2 id="je-t-agora" class="je-agora-t">O que vem agora</h2>
+    <dl class="je-fatos">
+      <sc-for list="{{jeAgora}}" as="f" hint-placeholder-count="3">
+        <div class="je-fato"><dt>{{f.rot}}</dt><dd>{{f.txt}}<sc-if value="{{f.temLink}}" hint-placeholder-val="{{false}}"> <a href="{{f.linkHref}}" class="linkbtn">{{f.linkTxt}}</a></sc-if></dd></div>
+      </sc-for>
+    </dl>
+  </section>
+</main>
+</sc-if>
+<!-- je:largada-esp-fim -->
+<!-- jf:pronto-jf -->
+<sc-if value="{{jfDone}}" hint-placeholder-val="{{false}}">
+<main class="jf-done" id="jf-conteudo" data-jf-pronto>
+  <div class="jf-done-topo">
+    <div class="over" data-jf-cascata>{{jfPedido}}</div>
+    <h1 class="disp jf-done-t" tabindex="-1" id="done-title"><span class="ms-w">{{jfPalavra1}}</span> <span class="ms-w">{{jfPalavra2}}</span> <span class="ms-w">{{jfPalavra3}}</span></h1>
+    <p class="jf-done-frase" data-jf-cascata>{{jfFrase}}</p>
+    <p class="jf-done-msg" data-jf-cascata>{{jfMsg}}</p>
+  </div>
+
+  <sc-if value="{{jfNadaFalta}}" hint-placeholder-val="{{false}}">
+    <p class="jf-done-ok" data-jf-cascata><svg class="ico ico-16" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>{{jfNadaFaltaTx}}</p>
+  </sc-if>
+
+  <div class="jf-ingressos jf-ingressos--pronto">
+    <sc-for list="{{jfIngs}}" as="i" hint-placeholder-count="2">
+<article class="card jf-ingresso" data-k="{{i.k}}" data-pend="{{i.pend}}" aria-labelledby="{{i.idTit}}" data-jf-cascata>
+  <div class="jf-ingresso__faixa" aria-hidden="true"></div>
+  <header class="jf-ingresso__cab">
+    <span class="st jf-ingresso__sit" data-k="{{i.kb}}">{{i.status}}</span>
+    <h2 class="jf-ingresso__t" id="{{i.idTit}}">{{i.nome}}</h2>
+    <p class="jf-ingresso__jogo">{{i.jogoLinha}}</p>
+    <sc-if value="{{i.temPapel}}" hint-placeholder-val="{{false}}"><p class="jf-ingresso__papel">{{i.papel}}</p></sc-if>
+  </header>
+  <dl class="jf-grade">
+    <sc-for list="{{i.fatos}}" as="f" hint-placeholder-count="5"><div><dt>{{f.rot}}</dt><dd>{{f.val}}</dd></div></sc-for>
+  </dl>
+  <div class="jf-entrada" data-metodo="{{i.metodo}}">
+    <p class="jf-entrada__t"><span class="jf-ic jf-ic--16" data-ic="{{i.entradaIc}}" aria-hidden="true"></span>{{i.entradaTitulo}}</p>
+    <p class="jf-entrada__p">{{i.entradaTexto}}</p>
+    <sc-if value="{{i.qrLiberado}}" hint-placeholder-val="{{false}}">
+      <div class="jf-qr">
+        <span class="jf-qr__box" role="img" aria-label="{{i.qrAria}}"><img class="jf-qr__img" src="{{i.qrUri}}" alt="" width="168" height="168"></span>
+        <p class="jf-qr__p">{{i.qrTxt}}</p>
+      </div>
+    </sc-if>
+    <sc-if value="{{i.qrTrava}}" hint-placeholder-val="{{false}}"><p class="jf-entrada__p">{{i.qrTravaTxt}}</p></sc-if>
+  </div>
+  <sc-if value="{{i.temPend}}" hint-placeholder-val="{{false}}">
+    <div class="jf-pend" role="group">
+      <div class="jf-pend__slot" data-jf-slot="rosto-estado" data-estado="{{i.rEstado}}" data-nome="{{i.rNome}}" data-tipo="{{i.rTipo}}" data-pessoa="{{i.rPessoa}}" data-sem-conta="{{i.rSemConta}}"></div>
+      <sc-if value="{{i.pendReenviar}}" hint-placeholder-val="{{false}}"><div class="jf-pend__acoes"><button type="button" class="bs bs-sm" onClick="{{i.reenviar}}">{{i.reenviarTx}}</button></div></sc-if>
+    </div>
+  </sc-if>
+  <sc-if value="{{i.temNota}}" hint-placeholder-val="{{false}}"><p class="jf-ingresso__nota">{{i.nota}}</p></sc-if>
+  <sc-if value="{{i.temAcoes}}" hint-placeholder-val="{{false}}">
+    <div class="jf-ingresso__acoes">
+      <sc-for list="{{i.acoes}}" as="a" hint-placeholder-count="2"><button type="button" class="bs" onClick="{{a.pick}}">{{a.txt}}</button></sc-for>
+    </div>
+  </sc-if>
+</article>
+    </sc-for>
+  </div>
+
+  <section class="card jf-agora" data-jf-cascata aria-labelledby="jf-t-agora">
+    <h2 id="jf-t-agora" class="jf-agora-t">{{jfAgoraTitulo}}</h2>
+    <ul class="jf-agora-lista">
+      <sc-for list="{{jfAgora}}" as="f" hint-placeholder-count="2"><li>{{f.t}}</li></sc-for>
+    </ul>
+  </section>
+
+  <!-- prd:pedido -->
+<sc-if value="{{prdPedido}}" hint-placeholder-val="{{false}}">
+<section class="card prd-pedido" aria-labelledby="prd-pedido-t">
+  <div class="over" id="prd-pedido-t">Produtos do pedido</div>
+  <ul aria-label="Produtos do pedido">
+    <sc-for list="{{prdLista}}" as="i" hint-placeholder-count="2">
+      <li><span class="prd-pedido__n">{{i.linha}}</span><strong>{{i.valor}}</strong><small>{{i.retirada}}</small></li>
+    </sc-for>
+  </ul>
+</section>
+</sc-if>
+<!-- prd:pedido-fim -->
+
+  <div class="jf-done-acoes done-acoes" data-jf-cascata>
+    <a href="{{jfCarteiraHref}}" class="bp" id="done-carteira"><span class="btn-ic btn-ic-carteira" aria-hidden="true" data-lottie="./assets/icones/carteira.json" data-repouso="0" data-loop="0"></span>{{jfVerIngressos}}</a>
+    <button type="button" class="bs" onClick="{{jfChamar}}">{{jfChamarTx}}</button>
+  </div>
+</main>
+</sc-if>
+<!-- jf:pronto-jf-fim -->
+<!-- ===== COMO PAGAR ===== -->
+<sc-if value="{{notDone}}" hint-placeholder-val="{{true}}">
+<div style="max-width: 1280px; margin: 0 auto; padding: 40px 24px 96px; display: flex; flex-wrap: wrap; gap: 40px; align-items: flex-start">
+  <main style="flex: 999 1 620px; min-width: 0; display: flex; flex-direction: column; gap: 28px">
+    <!-- jf:tit -->
+<sc-if value="{{jfOff}}" hint-placeholder-val="{{true}}">
+<div>
+      <div class="over" style="margin-bottom: 12px">Etapa 3 de 4</div>
+      <h1 class="h1">Como pagar</h1>
+    </div>
+    <!-- prd:erro -->
+    <sc-if value="{{prdErroPag}}" hint-placeholder-val="{{false}}">
+    <div class="uui-alert uui-alert--error" role="alert" id="prd-erro-pag" tabindex="-1">
+          <span class="uui-alert__icon"><svg class="uui-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8v4m0 4h.01M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10Z"/></svg></span>
+          <div class="uui-alert__body"><p class="uui-alert__text">{{prdErroTexto}}</p><div class="uui-alert__actions"><a href="{{prdEditHref}}" class="linkbtn">Editar produtos</a></div></div>
+        </div>
+    </sc-if>
+    <!-- prd:erro-fim -->
+</sc-if>
+<!-- jf:tit-jf -->
+<sc-if value="{{jfOn}}" hint-placeholder-val="{{false}}">
+<div class="jf-topo">
+  <div class="over">{{jfOver}}</div>
+  <h1 class="h1" id="jf-h1" tabindex="-1">{{jfH1}}</h1>
+</div>
+</sc-if>
+<!-- jf:tit-jf-fim -->
+<!-- jf:tit-fim -->
+
+    <!-- O que a etapa anterior deixou -->
+    <!-- jf:recap -->
+<sc-if value="{{jfOff}}" hint-placeholder-val="{{true}}">
+<!-- je:ini -->
+<sc-if value="{{espOff}}" hint-placeholder-val="{{true}}">
+<section aria-labelledby="t-rec" class="card" style="padding: 20px 24px; display: flex; flex-direction: column; gap: 4px">
+      <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 8px">
+        <h2 id="t-rec" style="margin: 0; font-size: 18px; font-weight: 700">Quem vai</h2>
+        <a href="Checkout.dc.html" class="linkbtn">Editar</a>
+      </div>
+      <ul class="ce-recap" aria-label="Titulares dos ingressos">
+        <sc-for list="{{recap}}" as="r" hint-placeholder-count="2">
+          <li><span><strong>{{r.holder}}</strong></span><small>Ingresso {{r.n}} · {{r.label}}</small></li>
+        </sc-for>
+      </ul>
+      <sc-if value="{{hasPendingRecap}}" hint-placeholder-val="{{false}}"><p style="margin: 8px 0 0; font-size: 14px; color: var(--ink-2)">{{pendingRecap}}</p></sc-if>
+    </section>
+
+    
+</sc-if>
+<!-- je:recap-esp -->
+<sc-if value="{{espOn}}" hint-placeholder-val="{{false}}">
+<section aria-labelledby="t-rec" class="card je-recap">
+  <div class="je-recap-cab">
+    <h2 id="t-rec" class="je-recap-t">{{jeTituloQuem}}</h2>
+    <a href="{{jeEditarHref}}" class="linkbtn">Editar</a>
+  </div>
+  <ul class="ce-recap" aria-label="Participantes">
+    <sc-for list="{{jeRecap}}" as="r" hint-placeholder-count="2">
+      <li><span><strong>{{r.holder}}</strong></span><small>{{r.linha}}</small></li>
+    </sc-for>
+  </ul>
+  <sc-if value="{{jeTemPend}}" hint-placeholder-val="{{false}}"><p class="je-recap-p">{{jePendTxt}}</p></sc-if>
+</section>
+</sc-if>
+<!-- je:recap-esp-fim -->
+<sc-if value="{{espOff}}" hint-placeholder-val="{{true}}">
+<!-- Adicionais -->
+    <section aria-labelledby="t-add" style="display: flex; flex-direction: column; gap: 12px">
+      <h2 id="t-add" style="margin: 0; font-size: 22px; font-weight: 700">Adicionais <span style="font-size: 14px; font-weight: 600; color: var(--muted)">opcional</span></h2>
+      <label class="opt">
+        <input type="checkbox" checked="{{protect}}" onChange="{{toggleProtect}}">
+        <span style="flex: 1"><span style="display: block; font-size: 16px; font-weight: 700">Proteção de compra · {{protectFmt}}</span><span style="font-size: 14px; color: var(--muted); line-height: 1.45">Reembolso do valor dos ingressos se você não puder ir por doença, acidente ou outros motivos cobertos. O link de reembolso vai no seu e-mail de confirmação.</span></span>
+      </label>
+    </section>
+
+    
+</sc-if>
+<!-- je:fim -->
+</sc-if>
+<!-- jf:recap-jf -->
+<sc-if value="{{jfOn}}" hint-placeholder-val="{{false}}">
+<section aria-labelledby="t-rec" class="card jf-recap" id="jf-recap">
+  <div class="jf-recap-cab">
+    <h2 id="t-rec" class="jf-recap-t">{{jfRecapTitulo}}</h2>
+    <a href="{{jfEditarLugaresHref}}" class="linkbtn">{{jfEditarTx}}</a>
+  </div>
+  <p class="jf-recap-jogo">{{jfRecapJogo}}</p>
+  <ul class="ce-recap jf-recap-lista" aria-label="{{jfRecapAria}}">
+    <sc-for list="{{jfRecap}}" as="r" hint-placeholder-count="2">
+      <li>
+        <span class="jf-recap-pessoa"><strong>{{r.holder}}</strong><small>{{r.linha}}</small></span>
+        <span class="jf-recap-dir">
+          <sc-if value="{{r.temSelo}}" hint-placeholder-val="{{false}}"><span class="tag" data-sit="{{r.sit}}"><span class="jf-ic sit-ico" data-ic="{{r.ic}}" aria-hidden="true"></span>{{r.selo}}</span></sc-if>
+          <strong class="jf-recap-preco">{{r.preco}}</strong>
+        </span>
+      </li>
+    </sc-for>
+  </ul>
+  <div class="jf-recap-edit"><a href="{{jfEditarQuemHref}}" class="linkbtn">{{jfEditarQuemTx}}</a></div>
+  <sc-if value="{{jfPlanoAplicado}}" hint-placeholder-val="{{false}}"><p class="jf-recap-p">{{jfPlanoAplicadoTx}}</p></sc-if>
+  <sc-if value="{{jfTemPend}}" hint-placeholder-val="{{false}}">
+    <div class="uui-alert uui-alert--warning" role="status">
+      <span class="uui-alert__icon"><svg class="uui-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8v4m0 4h.01M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10Z"/></svg></span>
+      <div class="uui-alert__body"><p class="uui-alert__text">{{jfPendTx}}</p></div>
+    </div>
+  </sc-if>
+  <sc-if value="{{jfTemAvisoPag}}" hint-placeholder-val="{{false}}">
+    <div class="uui-alert uui-alert--{{jfAvisoPagVar}}" role="alert" id="jf-aviso-pag" tabindex="-1">
+      <span class="uui-alert__icon"><span class="jf-ic" data-ic="{{jfAvisoPagIc}}" aria-hidden="true"></span></span>
+      <div class="uui-alert__body"><p class="uui-alert__text">{{jfAvisoPagTx}}</p>
+        <div class="uui-alert__actions"><a href="{{jfAvisoPagHref}}" class="linkbtn">{{jfAvisoPagAcao}}</a></div></div>
+    </div>
+  </sc-if>
+</section>
+</sc-if>
+<!-- jf:recap-jf-fim -->
+<!-- jf:recap-fim -->
+<!-- Pagamento -->
+    <section id="pagamento" aria-labelledby="t-pay" class="card" style="padding: 24px; display: flex; flex-direction: column; gap: 12px; scroll-margin-top: 90px">
+      <h2 id="t-pay" style="margin: 0 0 4px; font-size: 22px; font-weight: 700">Forma de pagamento</h2>
+      <sc-if value="{{declined}}" hint-placeholder-val="{{false}}">
+        <div class="uui-alert uui-alert--error" role="alert">
+          <span class="uui-alert__icon"><svg class="uui-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8v4m0 4h.01M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10Z"/></svg></span>
+          <div class="uui-alert__body"><p class="uui-alert__title">O pagamento não foi aprovado.</p><p class="uui-alert__text">{{txtRecusa}}</p><div class="uui-alert__actions"><button type="button" class="bs" onClick="{{switchPix}}">Pagar com Pix</button></div></div>
+        </div>
+      </sc-if>
+      <div role="radiogroup" aria-label="Forma de pagamento" class="pg-lista">
+        <div class="pg" id="pg-pix" data-on="{{onPix}}">
+          <button type="button" class="pay" id="pgh-pix" role="radio" aria-checked="{{onPix}}" aria-controls="pgb-pix" tabindex="{{tabPix}}" onClick="{{pickPix}}" onKeyDown="{{keyPix}}">
+            <span class="pay-dot" aria-hidden="true"></span>
+            <span class="pay-t"><strong>Pix</strong><small>{{txtPixSub}}</small></span>
+          <span class="tagok">Mais rápido</span>
+          </button>
+          <div class="pg-body" id="pgb-pix" role="group" aria-labelledby="pgh-pix">
+            <div class="pg-in"><div class="pg-pad">
+          <p class="pg-nota">Toque em <strong>Gerar Pix</strong> para ver o QR Code e o código Pix Copia e Cola. {{txtPixSaem}}</p>
+          <sc-if value="{{isPixWait}}" hint-placeholder-val="{{false}}">
+            <div id="pix-bloco" role="group" aria-labelledby="pix-titulo" style="display: flex; flex-wrap: wrap; gap: 20px; align-items: center; padding: 20px; border-radius: 14px; border: 1px solid var(--line); background: var(--bg-alt)">
+              <div style="padding: 10px; background: #fff; border: 1px solid #E6E6E9; border-radius: 14px; opacity: {{qrOp}}; transition: opacity var(--motion-duration-base)" role="img" aria-label="{{qrLabel}}">
+                <img src="{{qrUri}}" alt="" width="160" height="160" style="display: block; width: 160px; height: 160px">
+              </div>
+              <div style="flex: 1 1 240px; display: flex; flex-direction: column; gap: 10px">
+                <div id="pix-titulo" tabindex="-1" style="font-size: 17px; font-weight: 700">Escaneie com o app do seu banco</div>
+                <sc-if value="{{pixAlive}}" hint-placeholder-val="{{true}}"><div style="font-size: 14px; color: var(--muted)">Ou copie o código e cole no Pix Copia e Cola. Expira em <strong style="color: var(--ink)">{{pixLeft}}</strong>.</div></sc-if>
+                <sc-if value="{{pixDead}}" hint-placeholder-val="{{false}}"><div class="uui-alert uui-alert--warning" role="alert">
+          <span class="uui-alert__icon"><svg class="uui-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 9v4m0 4h.01M10.615 3.892 2.39 18.098c-.456.788-.684 1.182-.65 1.506a1 1 0 0 0 .406.705c.263.191.718.191 1.629.191h16.45c.91 0 1.365 0 1.628-.191a1 1 0 0 0 .407-.705c.034-.324-.195-.718-.65-1.506L13.383 3.892c-.454-.785-.681-1.178-.978-1.31a1 1 0 0 0-.813 0c-.296.132-.523.525-.978 1.31Z"/></svg></span>
+          <div class="uui-alert__body"><p class="uui-alert__text">{{txtPixExpirou}}</p></div>
+        </div></sc-if>
+                <div class="pix-code">{{pixCode}}</div>
+                <div style="display: flex; flex-wrap: wrap; gap: 8px">
+                  <sc-if value="{{pixAlive}}" hint-placeholder-val="{{true}}"><button type="button" class="bs" onClick="{{copyPix}}">Copiar código</button>
+                  <button type="button" class="bp bp-sm pix-confirma" onClick="{{confirmPix}}">Já paguei</button></sc-if>
+                  <sc-if value="{{pixDead}}" hint-placeholder-val="{{false}}"><button type="button" class="bp bp-sm" onClick="{{newPix}}">Gerar novo Pix</button></sc-if>
+                </div>
+                <div style="font-size: 12px; color: var(--muted)">A confirmação costuma levar segundos. Pode deixar esta tela aberta.</div>
+              </div>
+            </div>
+          </sc-if>
+            </div></div>
+          </div>
+        </div>
+        <div class="pg" id="pg-saved" data-on="{{onSaved}}">
+          <button type="button" class="pay" id="pgh-saved" role="radio" aria-checked="{{onSaved}}" aria-controls="pgb-saved" tabindex="{{tabSaved}}" onClick="{{pickSaved}}" onKeyDown="{{keySaved}}">
+            <span class="pay-dot" aria-hidden="true"></span>
+            <span class="pay-t"><strong>Visa •••• 4242</strong><small>Cartão salvo · em até 6× sem juros</small></span>
+          </button>
+          <div class="pg-body" id="pgb-saved" role="group" aria-labelledby="pgh-saved">
+            <div class="pg-in"><div class="pg-pad">
+          <div class="pg-campos pg-campos-2">
+            <div class="field" data-err="{{cardCvvErrB}}">
+              <label for="cc-cvv-saved">CVV <span style="color: var(--muted); font-weight: 500">(3 dígitos no verso)</span></label>
+              <input id="cc-cvv-saved" type="text" inputmode="numeric" autocomplete="cc-csc" value="{{cardCvv}}" onInput="{{onSavedCvv}}" onKeyDown="{{onFieldKey}}" placeholder="123">
+              <span class="err" aria-live="polite">{{cardCvvErr}}</span>
+            </div>
+            <div class="field">
+              <label for="inst-saved">Parcelas</label>
+              <select id="inst-saved" value="{{inst}}" onChange="{{onInst}}" onKeyDown="{{onFieldKey}}">
+                <sc-for list="{{instOpts}}" as="o" hint-placeholder-count="6"><option value="{{o.v}}">{{o.label}}</option></sc-for>
+              </select>
+            </div>
+          </div>
+            </div></div>
+          </div>
+        </div>
+        <div class="pg" id="pg-card" data-on="{{onCard}}">
+          <button type="button" class="pay" id="pgh-card" role="radio" aria-checked="{{onCard}}" aria-controls="pgb-card" tabindex="{{tabCard}}" onClick="{{pickCard}}" onKeyDown="{{keyCard}}">
+            <span class="pay-dot" aria-hidden="true"></span>
+            <span class="pay-t"><strong>Novo cartão de crédito</strong><small>Visa, Mastercard, Elo, Amex e Hipercard</small></span>
+          </button>
+          <div class="pg-body" id="pgb-card" role="group" aria-labelledby="pgh-card">
+            <div class="pg-in"><div class="pg-pad">
+          <div class="pg-campos">
+            <div class="field" data-err="{{cardNumErrB}}" style="flex: 1 1 100%">
+              <label for="cc-num">Número do cartão</label>
+              <div class="uui-input-wrap">
+                <span class="uui-input-lead" aria-hidden="true"><svg class="uui-ico" viewBox="0 0 24 24"><path d="M22 10H2m0-1.8v7.6c0 1.12 0 1.68.218 2.108a2 2 0 0 0 .874.874C3.52 19 4.08 19 5.2 19h13.6c1.12 0 1.68 0 2.108-.218a2 2 0 0 0 .874-.874C22 17.48 22 16.92 22 15.8V8.2c0-1.12 0-1.68-.218-2.108a2 2 0 0 0-.874-.874C20.48 5 19.92 5 18.8 5H5.2c-1.12 0-1.68 0-2.108.218a2 2 0 0 0-.874.874C2 6.52 2 7.08 2 8.2Z"/></svg></span>
+                <input id="cc-num" type="text" inputmode="numeric" autocomplete="cc-number" value="{{cardNum}}" onInput="{{onCardNum}}" onKeyDown="{{onFieldKey}}" placeholder="0000 0000 0000 0000">
+                <sc-if value="{{hasBrand}}" hint-placeholder-val="{{false}}"><span class="tag uui-input-brand">{{brandName}}</span></sc-if>
+              </div>
+              <span class="err" aria-live="polite">{{cardNumErr}}</span>
+            </div>
+            <div class="pg-campos-2" style="flex: 1 1 100%">
+            <div class="field" data-err="{{cardExpErrB}}">
+              <label for="cc-exp">Validade</label>
+              <input id="cc-exp" type="text" inputmode="numeric" autocomplete="cc-exp" value="{{cardExp}}" onInput="{{onCardExp}}" onKeyDown="{{onFieldKey}}" placeholder="MM/AA">
+              <span class="err" aria-live="polite">{{cardExpErr}}</span>
+            </div>
+            <div class="field" data-err="{{cardCvvErrB}}">
+              <label for="cc-cvv">CVV <span style="color: var(--muted); font-weight: 500">(3 ou 4 dígitos)</span></label>
+              <input id="cc-cvv" type="text" inputmode="numeric" autocomplete="cc-csc" value="{{cardCvv}}" onInput="{{onCardCvv}}" onKeyDown="{{onFieldKey}}" placeholder="123">
+              <span class="err" aria-live="polite">{{cardCvvErr}}</span>
+            </div>
+            </div>
+            <div class="field" style="flex: 1 1 100%">
+              <label for="cc-name">Nome impresso no cartão</label>
+              <input id="cc-name" type="text" autocomplete="cc-name" value="{{cardName}}" onInput="{{onCardName}}" onKeyDown="{{onFieldKey}}" placeholder="NOME COMO NO CARTÃO">
+            </div>
+            <div class="field" style="flex: 1 1 100%">
+              <label for="inst-card">Parcelas</label>
+              <select id="inst-card" value="{{inst}}" onChange="{{onInst}}" onKeyDown="{{onFieldKey}}">
+                <sc-for list="{{instOpts}}" as="o" hint-placeholder-count="6"><option value="{{o.v}}">{{o.label}}</option></sc-for>
+              </select>
+            </div>
+          </div>
+            </div></div>
+          </div>
+        </div>
+        <div class="pg" id="pg-wallet" data-on="{{onWallet}}">
+          <button type="button" class="pay" id="pgh-wallet" role="radio" aria-checked="{{onWallet}}" aria-controls="pgb-wallet" tabindex="{{tabWallet}}" onClick="{{pickWallet}}" onKeyDown="{{keyWallet}}">
+            <span class="pay-dot" aria-hidden="true"></span>
+            <span class="pay-t"><strong>Apple Pay ou Google Pay</strong><small>Confirme com Face ID ou digital</small></span>
+          </button>
+          <div class="pg-body" id="pgb-wallet" role="group" aria-labelledby="pgh-wallet">
+            <div class="pg-in"><div class="pg-pad">
+          <p class="pg-nota">Toque em <strong>Pagar com Apple Pay</strong> e confirme com Face ID ou digital. Não precisa digitar nada.</p>
+            </div></div>
+          </div>
+        </div>
+      </div>
+      <!-- jf:termos -->
+<sc-if value="{{jfOff}}" hint-placeholder-val="{{true}}">
+<!-- je:termos -->
+<sc-if value="{{espOff}}" hint-placeholder-val="{{true}}">
+<p style="margin: 6px 0 0; font-size: 13px; line-height: 1.5; color: var(--muted)">Ao pagar, você concorda com os <a href="#" class="u" style="text-decoration: underline">Termos de uso</a> e as <a href="#" style="text-decoration: underline">regras de meia-entrada</a>. Ambiente seguro com criptografia e verificação do banco (3-D Secure).</p>
+</sc-if>
+<!-- je:termos-fim -->
+</sc-if>
+<!-- jf:termos-fim -->
+    </section>
+  </main>
+
+  <aside id="resumo" class="aside-sum" style="flex: 1 1 340px; min-width: 0; position: sticky; top: 96px; scroll-margin-top: 80px">
+    <div class="card" style="padding: 28px; box-shadow: 0 16px 40px rgba(10,10,11,.14)">
+      <div class="over" style="margin-bottom: 16px">Resumo do pedido</div>
+      <div class="uui-alert uui-alert--neutral hold" role="status" data-state="{{holdState}}">
+          <span class="uui-alert__icon"><svg class="uui-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6v6l4 2m6-2c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10Z"/></svg></span>
+          <div class="uui-alert__body"><p class="uui-alert__text hold-t">{{holdMsgA}} <strong>{{holdLeft}}</strong> {{holdMsgB}}<sc-if value="{{holdExpired}}" hint-placeholder-val="{{false}}"> <a href="{{ingressosHref}}" class="linkbtn">Escolher de novo</a></sc-if></p></div>
+        </div>
+      <div style="display: flex; flex-direction: column; gap: 10px; padding-bottom: 18px; border-bottom: 1px solid var(--line)">
+        <sc-for list="{{lines}}" as="l" hint-placeholder-count="2">
+          <div style="display: flex; justify-content: space-between; gap: 12px; font-size: 15px"><span style="color: var(--ink-2)">{{l.qty}}× {{l.label}}</span><span style="font-weight: 600; white-space: nowrap">{{l.total}}</span></div>
+        </sc-for>
+        <!-- prd:editar --><sc-if value="{{prdOn}}" hint-placeholder-val="{{false}}"><a href="{{prdEditHref}}" class="linkbtn prd-editar" onClick="{{prdRascunho}}">Editar produtos</a></sc-if><!-- prd:editar-fim -->
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 8px; padding: 18px 0; border-bottom: 1px solid var(--line); font-size: 15px">
+        <div class="sum-row"><span>{{lblSub}}</span><span>{{subtotal}}</span></div>
+          <!-- prd:resumo --><sc-if value="{{prdOn}}" hint-placeholder-val="{{false}}"><div class="sum-row"><span>Produtos</span><span>{{prdFmt}}</span></div></sc-if><!-- prd:resumo-fim -->
+        <sc-if value="{{hasDiscount}}" hint-placeholder-val="{{false}}"><div style="display: flex; justify-content: space-between"><span style="color: var(--muted)">Cupom {{coupon}}</span><span class="save" style="font-size: 14px">− {{discount}}</span></div></sc-if>
+        <div class="sum-row"><span>{{lblTaxa}}</span><span>{{fees}}</span></div>
+        <sc-if value="{{protectB}}" hint-placeholder-val="{{false}}"><div class="sum-row"><span>Proteção de compra</span><span>{{protectFmt}}</span></div></sc-if>
+      </div>
+      <div style="display: flex; justify-content: space-between; align-items: baseline; padding: 18px 0 4px">
+        <span style="font-size: 16px; font-weight: 600">Total</span>
+        <span class="total">{{total}}</span>
+      </div>
+      <p style="margin: 0 0 18px; text-align: right; font-size: 13px; color: var(--muted)">{{instLine}}</p>
+      <button type="button" class="bp bp-lg" style="width: 100%; box-sizing: border-box" onClick="{{pay}}" aria-disabled="{{payDisabled}}"><sc-if value="{{busy}}" hint-placeholder-val="{{false}}"><span class="spin" aria-hidden="true"></span></sc-if>{{payLabel}}</button>
+      <!-- jf:trust -->
+<sc-if value="{{jfOff}}" hint-placeholder-val="{{true}}">
+<!-- je:trust -->
+<sc-if value="{{espOff}}" hint-placeholder-val="{{true}}">
+<ul class="trust" aria-label="Garantias da compra">
+        <li>Preço final, com todas as taxas</li>
+        <li>Ingresso oficial na sua Carteira na hora</li>
+        <li>Revenda Oficial pela Ingresse, se você não puder ir</li>
+      </ul>
+</sc-if>
+<sc-if value="{{espOn}}" hint-placeholder-val="{{false}}">
+<ul class="trust" aria-label="Garantias da compra">
+        <li>Preço final, com todas as taxas</li>
+        <li>Inscrição nominal, na sua Carteira</li>
+        <li>Transferência e cancelamento pela Carteira, nos prazos da prova</li>
+      </ul>
+</sc-if>
+<!-- je:trust-fim -->
+</sc-if>
+<!-- jf:trust-jf -->
+<sc-if value="{{jfOn}}" hint-placeholder-val="{{false}}">
+<ul class="trust" aria-label="{{jfGarantiasAria}}">
+  <sc-for list="{{jfGarantias}}" as="g" hint-placeholder-count="3"><li>{{g.t}}</li></sc-for>
+</ul>
+</sc-if>
+<!-- jf:trust-jf-fim -->
+<!-- jf:trust-fim -->
+    </div>
+  </aside>
+</div>
+
+<div class="cbar" role="region" aria-label="Total e continuação">
+  <a href="#resumo" class="cbar-t" style="color: var(--ink)"><small>{{cbarNote}}</small><strong>{{total}}</strong></a>
+  <button type="button" class="bp" onClick="{{pay}}" aria-disabled="{{payDisabled}}">{{payShort}}</button>
+</div>
+
+<!-- jf:proto -->
+<sc-if value="{{jfOff}}" hint-placeholder-val="{{true}}">
+<details class="proto">
+  <summary>Protótipo</summary>
+  <div class="proto-in">
+    <div class="over">Simular resultado do cartão</div>
+    <sc-for list="{{simOpts}}" as="o" hint-placeholder-count="2"><button type="button" class="chip chip-sm" aria-pressed="{{o.on}}" onClick="{{o.pick}}">{{o.label}}</button></sc-for>
+    <!-- prd:sim -->
+    <sc-if value="{{prdTemSim}}" hint-placeholder-val="{{false}}">
+    <div class="over">Simular: produto esgotou</div>
+    <sc-for list="{{prdSimOpts}}" as="o" hint-placeholder-count="2"><button type="button" class="chip chip-sm" aria-pressed="{{o.on}}" onClick="{{o.pick}}">{{o.label}}</button></sc-for>
+    </sc-if>
+    <!-- prd:sim-fim -->
+    <div class="over">Reserva</div>
+    <button type="button" class="bs" style="min-height: 34px; font-size: 13px" onClick="{{expireNow}}">Faltar 1 min</button>
+    <button type="button" class="bs" style="min-height: 34px; font-size: 13px" onClick="{{expireAll}}">Expirar agora</button>
+  </div>
+</details>
+</sc-if>
+<!-- jf:proto-jf -->
+<sc-if value="{{jfOn}}" hint-placeholder-val="{{false}}">
+<details class="proto">
+  <summary>{{jfProtoResumo}}</summary>
+  <div class="proto-in" role="group" aria-label="{{jfProtoAria}}">
+    <div class="over">{{jfProtoTitulo}}</div>
+    <sc-for list="{{jfProtoGrupos}}" as="g" hint-placeholder-count="6">
+      <div class="over">{{g.rot}}</div>
+      <sc-for list="{{g.chips}}" as="o" hint-placeholder-count="3"><button type="button" class="chip chip-sm" aria-pressed="{{o.on}}" onClick="{{o.pick}}">{{o.label}}</button></sc-for>
+    </sc-for>
+  </div>
+</details>
+</sc-if>
+<!-- jf:proto-jf-fim -->
+<!-- jf:proto-fim -->
+</sc-if>
+<footer class="rp" aria-label="Rodapé">
+  <div class="rp-in">
+    <div class="rp-topo">
+      <a href="Main.dc.html" class="rp-marca" aria-label="Ingresse — início"><img src="./assets/8703fb5f412b57860d569f5abeea2cae.svg" alt="Ingresse"></a>
+      <div class="rp-cols">
+      <nav class="rp-col" aria-labelledby="rp-c0">
+        <h2 class="rp-col__t" id="rp-c0">A Ingresse</h2>
+        <ul class="rp-lista">
+          <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Sobre a Ingresse</a></li>
+          <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Trabalhe conosco</a></li>
+          <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Diversidade e inclusão</a></li>
+          <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Imprensa</a></li>
+        </ul>
+      </nav>
+      <nav class="rp-col" aria-labelledby="rp-c1">
+        <h2 class="rp-col__t" id="rp-c1">Ajuda</h2>
+        <ul class="rp-lista">
+          <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Central de ajuda</a></li>
+          <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Perguntas frequentes</a></li>
+          <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Pedir reembolso</a></li>
+          <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Regras de meia‑entrada</a></li>
+        </ul>
+      </nav>
+      <nav class="rp-col" aria-labelledby="rp-c2">
+        <h2 class="rp-col__t" id="rp-c2">Descubra</h2>
+        <ul class="rp-lista">
+          <li><a class="rp-link" href="Busca.dc.html?escopo=artistas">Artistas</a></li>
+          <li><a class="rp-link" href="Busca.dc.html?escopo=locais">Locais</a></li>
+          <li><a class="rp-link" href="https://revenda.ingresse.com" target="_blank" rel="noopener noreferrer" aria-label="Revenda Oficial, abre em nova aba">Revenda Oficial</a></li>
+          <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Para <span class="rp-nw">produtores<svg class="rp-ico rp-ico--sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M8 7h9v9"/></svg></span></a></li>
+        </ul>
+      </nav>
+      </div>
+    </div>
+    <div class="rp-linha">
+      <div class="rp-apps" role="group" aria-label="Baixe o app">
+        <a class="bs rp-app" href="#" data-toast="O link da App Store entra quando o app novo for publicado" aria-label="Baixar o app da Ingresse para iOS"><svg class="rp-ico" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16.37 12.83c-.02-2.3 1.88-3.4 1.97-3.46-1.07-1.57-2.74-1.78-3.33-1.8-1.42-.14-2.77.83-3.49.83-.72 0-1.83-.81-3.01-.79-1.55.02-2.98.9-3.78 2.29-1.61 2.8-.41 6.94 1.16 9.21.77 1.11 1.68 2.36 2.88 2.31 1.16-.05 1.59-.75 2.99-.75 1.4 0 1.79.75 3.01.72 1.24-.02 2.03-1.13 2.79-2.25.88-1.29 1.24-2.54 1.26-2.6-.03-.01-2.42-.93-2.45-3.71zM14.08 6.07c.64-.77 1.07-1.85.95-2.92-.92.04-2.03.61-2.69 1.38-.59.68-1.11 1.78-.97 2.83 1.02.08 2.07-.52 2.71-1.29z"/></svg><span>iOS</span></a>
+        <a class="bs rp-app" href="#" data-toast="O link do Google Play entra quando o app novo for publicado" aria-label="Baixar o app da Ingresse para Android"><svg class="rp-ico" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 18c0 .55.45 1 1 1h1v3.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5V19h2v3.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5V19h1c.55 0 1-.45 1-1V8H6v10zM3.5 8C2.67 8 2 8.67 2 9.5v7c0 .83.67 1.5 1.5 1.5S5 17.33 5 16.5v-7C5 8.67 4.33 8 3.5 8zm17 0c-.83 0-1.5.67-1.5 1.5v7c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5v-7c0-.83-.67-1.5-1.5-1.5zm-4.97-5.84l1.3-1.3c.2-.2.2-.51 0-.71-.2-.2-.51-.2-.71 0l-1.48 1.48A5.84 5.84 0 0 0 12 1c-.96 0-1.86.23-2.66.63L7.85.15c-.2-.2-.51-.2-.71 0-.2.2-.2.51 0 .71l1.31 1.31A5.98 5.98 0 0 0 6 7h12c0-1.99-.97-3.75-2.47-4.84zM10 5H9V4h1v1zm5 0h-1V4h1v1z"/></svg><span>Android</span></a>
+      </div>
+      <ul class="rp-redes" aria-label="Ingresse nas redes">
+        <li><a class="bs bs-icone rp-rede" href="https://www.instagram.com/ingresse/" target="_blank" rel="noopener noreferrer" aria-label="Ingresse no Instagram (abre em nova aba)"><svg class="rp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><path d="M17.5 6.5h.01"/></svg></a></li>
+        <li><a class="bs bs-icone rp-rede" href="https://www.tiktok.com/@ingresse" target="_blank" rel="noopener noreferrer" aria-label="Ingresse no TikTok (abre em nova aba)"><svg class="rp-ico" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16.6 5.82A4.28 4.28 0 0 1 15.54 3h-3.09v12.4a2.59 2.59 0 0 1-2.59 2.5c-1.42 0-2.6-1.16-2.6-2.6 0-1.72 1.66-3.01 3.37-2.48V9.66c-3.45-.46-6.47 2.22-6.47 5.64 0 3.33 2.76 5.7 5.69 5.7 3.14 0 5.69-2.55 5.69-5.7V9.01a7.35 7.35 0 0 0 4.3 1.38V7.3s-1.88.09-3.24-1.48z"/></svg></a></li>
+        <li><a class="bs bs-icone rp-rede" href="https://www.linkedin.com/company/ingresse/" target="_blank" rel="noopener noreferrer" aria-label="Ingresse no LinkedIn (abre em nova aba)"><svg class="rp-ico" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.45 20.45h-3.56v-5.57c0-1.33-.02-3.04-1.85-3.04-1.85 0-2.14 1.45-2.14 2.94v5.67H9.35V9h3.41v1.56h.05c.48-.9 1.64-1.85 3.37-1.85 3.6 0 4.27 2.37 4.27 5.46v6.28zM5.34 7.43a2.06 2.06 0 1 1 0-4.13 2.06 2.06 0 0 1 0 4.13zM7.12 20.45H3.56V9h3.56v11.45z"/></svg></a></li>
+      </ul>
+    </div>
+    <div class="rp-base">
+      <p class="rp-direitos">© 2026 Ingresse</p>
+      <details class="rp-idioma">
+        <summary class="rp-idioma__b" aria-haspopup="menu"><span class="sr-only">Idioma do site: </span><img class="rp-band" src="./assets/flags/br.svg" alt="" width="24" height="18" data-pv-lang-band><span data-pv-lang-nome>Português (Brasil)</span><svg class="rp-ico rp-ico--sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary>
+        <ul class="rp-idioma__lista" role="menu" aria-label="Idioma do site">
+          <li role="none"><button type="button" class="rp-idioma__op" role="menuitemradio" data-pv-lang="PT" aria-checked="true" tabindex="-1" lang="pt-BR"><img class="rp-band" src="./assets/flags/br.svg" alt="" width="24" height="18">Português (Brasil)</button></li>
+          <li role="none"><button type="button" class="rp-idioma__op" role="menuitemradio" data-pv-lang="PT-PT" aria-checked="false" tabindex="-1" lang="pt-PT"><img class="rp-band" src="./assets/flags/pt.svg" alt="" width="24" height="18">Português (Portugal)</button></li>
+          <li role="none"><button type="button" class="rp-idioma__op" role="menuitemradio" data-pv-lang="ES" aria-checked="false" tabindex="-1" lang="es"><img class="rp-band" src="./assets/flags/es.svg" alt="" width="24" height="18">Español</button></li>
+          <li role="none"><button type="button" class="rp-idioma__op" role="menuitemradio" data-pv-lang="EN" aria-checked="false" tabindex="-1" lang="en"><img class="rp-band" src="./assets/flags/us.svg" alt="" width="24" height="18">English</button></li>
+        </ul>
+      </details>
+      <ul class="rp-legais" aria-label="Termos e políticas">
+        <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Política de privacidade</a></li>
+        <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Termos de uso</a></li>
+        <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Termos de compra</a></li>
+        <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Configurações de cookies</a></li>
+      </ul>
+    </div>
+    <div class="rp-grupo">
+      <h2 class="rp-grupo__t" id="rp-grupo">Empresas do Grupo Ingresse</h2>
+      <ul class="rp-grupo__lista" aria-labelledby="rp-grupo">
+        <li><a class="rp-link" href="https://ingresse.com/" target="_blank" rel="noopener noreferrer" aria-label="Ingresse (ingresse.com, abre em nova aba)">Ingresse</a></li>
+        <li><a class="rp-link" href="https://ticketsports.com.br/" target="_blank" rel="noopener noreferrer" aria-label="TicketSports (ticketsports.com.br, abre em nova aba)">TicketSports</a></li>
+        <li><a class="rp-link" href="https://outgo.com.br/" target="_blank" rel="noopener noreferrer" aria-label="OutGo (outgo.com.br, abre em nova aba)">OutGo</a></li>
+        <li><a class="rp-link" href="https://ingressonacional.com.br/" target="_blank" rel="noopener noreferrer" aria-label="Ingresso Nacional (ingressonacional.com.br, abre em nova aba)">Ingresso Nacional</a></li>
+        <li><a class="rp-link" href="https://ingressolive.com/" target="_blank" rel="noopener noreferrer" aria-label="Ingresso Live (ingressolive.com, abre em nova aba)">Ingresso Live</a></li>
+        <li><a class="rp-link" href="https://blacktag.com.br/" target="_blank" rel="noopener noreferrer" aria-label="Blacktag (blacktag.com.br, abre em nova aba)">Blacktag</a></li>
+        <li><a class="rp-link" href="https://pixelticket.com.br/" target="_blank" rel="noopener noreferrer" aria-label="PixelTicket (pixelticket.com.br, abre em nova aba)">PixelTicket</a></li>
+        <li><a class="rp-link" href="https://meep.com.br/" target="_blank" rel="noopener noreferrer" aria-label="Meep (meep.com.br, abre em nova aba)">Meep</a></li>
+      </ul>
+    </div>
+  </div>
+</footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":2000}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    const IX = window.IX;
+    const demo = { day: 'dom', coupon: '', lines: [{ qty: 2, label: 'Dom 8 nov · Pista · Inteira', total: 'R$ 396' }],
+      holders: [{ label: 'Dom 8 nov · Pista', meia: false }, { label: 'Dom 8 nov · Pista', meia: false }], subtotal: 360, discount: 0, fees: 36, total: 396 };
+    const cart = (IX && IX.store.get('cart', null)) || demo;
+    let holdEnd = IX ? IX.store.get('holdEnd', 0) : 0;
+    if (!holdEnd || holdEnd < Date.now()) { holdEnd = Date.now() + 10 * 60 * 1000; if (IX) IX.store.set('holdEnd', holdEnd); }
+    // o que a etapa "Quem vai" deixou (titulares e respostas)
+    const guardado = (IX && IX.store.get('quemvai', null)) || null;
+    const quem = guardado && guardado.sig === JSON.stringify((cart.holders || []).map(h => h.label)) ? guardado : { later: false, f: {} };
+    this.state = { cart, holdEnd, now: Date.now(), quem, f: {}, errs: {}, method: 'pix', protect: false, inst: '1',
+      stage: 'form', sim: 'ok', pixEnd: 0, orderId: '' };
+  }
+  componentDidMount() { this.tick = setInterval(() => { if (this.state.stage !== 'done') this.setState({ now: Date.now() }); }, 1000); }
+  componentWillUnmount() { clearInterval(this.tick); clearTimeout(this.t1); if (window.MovSucesso && window.MovSucesso.cancelar) window.MovSucesso.cancelar(); }
+  renderVals() {
+    const st = this.state;
+    const IX = window.IX || { store: { get: (k, d) => d, set() {}, del() {} }, toast() {} };
+    const brl = v => { const n = Math.round(v * 100) / 100; return 'R$ ' + (Number.isInteger(n) ? String(n) : n.toFixed(2).replace('.', ',')).replace(/\B(?=(\d{3})+(?!\d))/g, '.'); };
+    const r2 = v => Math.round(v * 100) / 100;
+    const cart = st.cart;
+    const dayLabel = cart.day === 'sab' ? 'Sáb 7 nov' : 'Dom 8 nov';
+    const protectAmt = Math.round((cart.total - ((cart.produtos && cart.produtos.total) || 0)) * 0.06); /* prd: só sobre os ingressos */
+    const total = r2(cart.total + (st.protect ? protectAmt : 0));
+
+    // Máscaras e validações do cartão
+    const digits = v => (v || '').replace(/\D/g, '');
+    const maskCard = v => digits(v).slice(0, 19).replace(/(\d{4})(?=\d)/g, '$1 ');
+    const maskExp = v => { const d = digits(v).slice(0, 4); return d.length > 2 ? d.slice(0, 2) + '/' + d.slice(2) : d; };
+    const luhn = v => { const d = digits(v); if (d.length < 13) return false; let s = 0; for (let i = 0; i < d.length; i++) { let n = Number(d[d.length - 1 - i]); if (i % 2) { n *= 2; if (n > 9) n -= 9; } s += n; } return s % 10 === 0; };
+    const expOk = v => { const m = /^(\d{2})\/(\d{2})$/.exec(v || ''); if (!m) return false; const mo = Number(m[1]); if (mo < 1 || mo > 12) return false; const end = new Date(2000 + Number(m[2]), mo, 1); return end > new Date(); };
+    const brandOf = v => { const d = digits(v); return /^4/.test(d) ? 'Visa' : /^(5[1-5]|2[2-7])/.test(d) ? 'Mastercard' : /^3[47]/.test(d) ? 'Amex' : /^(636368|438935|504175|451416|636297|5067|4576|4011|506699)/.test(d) ? 'Elo' : /^(606282|3841)/.test(d) ? 'Hipercard' : ''; };
+
+    const f = st.f, errs = st.errs;
+    const setF = (k, fmt, prox, completo) => e => {
+      const v = fmt ? fmt(e.target.value) : e.target.value; const ne = { ...errs }; delete ne[k];
+      this.setState({ f: { ...f, [k]: v }, errs: ne });
+      // campo completo digitando para a frente: o foco segue para o próximo, sem precisar tocar
+      if (prox && completo && completo(v) && !completo(f[k] || '')) setTimeout(() => { const el = document.getElementById(prox); if (el) el.focus(); }, 0);
+    };
+    const cvvLen = () => (brandOf(f.cardNum) === 'Amex' ? 4 : 3);
+    const numCompleto = v => { const d = digits(v); return d.length === (/^3[47]/.test(d) ? 15 : 16) && luhn(v); };
+    const onFieldKey = e => { if (e.key === 'Enter' && e.target.tagName === 'INPUT') { e.preventDefault(); pay(); } };
+
+    // Quem vai (da etapa anterior)
+    const holdersRaw = cart.holders || [];
+    const quemF = st.quem.f || {};
+    const later = !!st.quem.later && holdersRaw.length > 1;
+    const primeiroNome = (n) => { const p = (n || '').trim().split(/\s+/); return p[0] + ' ' + (p[1] || '').charAt(0).toUpperCase() + '.'; };
+    const recap = holdersRaw.map((h, i) => ({ n: i + 1, label: h.label,
+      holder: i === 0 ? 'Pessoa E. (você)' : later || !(quemF['n' + i] || '').trim() ? 'A definir' : primeiroNome(quemF['n' + i]) }));
+    const pendingN = recap.filter((r, i) => i > 0 && r.holder === 'A definir').length;
+
+    const M = [
+      { id: 'pix', title: 'Pix', sub: 'Aprovação na hora · ingressos liberados em segundos', tag: 'Mais rápido' },
+      { id: 'saved', title: 'Visa •••• 4242', sub: 'Cartão salvo · em até 6× sem juros', tag: '' },
+      { id: 'card', title: 'Novo cartão de crédito', sub: 'Visa, Mastercard, Elo, Amex e Hipercard', tag: '' },
+      { id: 'wallet', title: 'Apple Pay ou Google Pay', sub: 'Confirme com Face ID ou digital', tag: '' }
+    ];
+    const isCardish = st.method === 'saved' || st.method === 'card';
+    // Acordeão: escolher um meio abre o painel dele, fecha os outros e leva o foco ao primeiro campo (ou à própria opção, quando não há campo)
+    const cap = id => id.charAt(0).toUpperCase() + id.slice(1);
+    const irPara = (id) => setTimeout(() => {
+      const el = document.getElementById(id === 'card' ? 'cc-num' : id === 'saved' ? 'cc-cvv-saved' : 'pgh-' + id);
+      if (el) el.focus({ preventScroll: true });
+    }, 40);
+    /* Tudo que revela conteúdo abaixo da dobra passa por IX.revelar (previa.js, seção 2b; uma implementação só, pedido 30/10 A2).
+       «Gerar Pix» (e «Gerar novo Pix»): o título do bloco vai para logo abaixo do cabeçalho e recebe o foco (grupo nomeado por ele; sem região viva,
+       então nada é anunciado duas vezes); o «Copiar código» nunca sai da tela: se não couber acima da barra de baixo do celular, ele manda. */
+    const revelar = (a, o) => { const R = window.IX && window.IX.revelar; if (R) R(a, o); };
+    const mostrarPix = () => revelar('pix-bloco', { modo: 'inicio', foco: 'pix-titulo',
+      ate: () => [...(document.querySelectorAll('#pix-bloco button') || [])].find(b => /Copiar|Gerar novo/.test(b.textContent)) });
+    // acordeão: depois da animação (300 ms), o painel aberto aparece inteiro, sem passar por baixo do cabeçalho nem da barra
+    const acomodar = (id) => revelar('pg-' + id, { espera: 320 });
+    const escolher = id => { if (st.method !== id) { this.setState({ method: id, stage: st.stage === 'declined' || st.stage === 'pix' ? 'form' : st.stage }); acomodar(id); } irPara(id); };
+    const methods = {};
+    M.forEach((m, i) => {
+      const K = cap(m.id);
+      methods['on' + K] = st.method === m.id ? 'true' : 'false';
+      methods['tab' + K] = st.method === m.id ? '0' : '-1';
+      methods['pick' + K] = () => escolher(m.id);
+      // setas trocam de opção, como em qualquer grupo de rádio
+      methods['key' + K] = e => {
+        const d = e.key === 'ArrowDown' || e.key === 'ArrowRight' ? 1 : e.key === 'ArrowUp' || e.key === 'ArrowLeft' ? -1 : 0;
+        if (!d) return;
+        e.preventDefault();
+        const prox = M[(i + d + M.length) % M.length].id;
+        this.setState({ method: prox, stage: st.stage === 'declined' || st.stage === 'pix' ? 'form' : st.stage });
+        setTimeout(() => { const h = document.getElementById('pgh-' + prox); if (h) h.focus({ preventScroll: true }); }, 40);
+      };
+    });
+    const nInst = Math.max(1, Math.min(6, Math.floor(total / 50)));
+    const instOpts = Array.from({ length: nInst }, (_, i) => ({ v: String(i + 1), label: (i + 1) + '× de ' + brl(total / (i + 1)) + (i === 0 ? ' à vista' : ' sem juros') }));
+    const inst = Math.min(Number(st.inst) || 1, nInst);
+
+    // Reserva
+    const left = Math.max(0, st.holdEnd - st.now);
+    const expired = left === 0;
+    const mm = Math.floor(left / 60000), ss = Math.floor((left % 60000) / 1000);
+
+    const validate = () => {
+      const e = {};
+      if (st.method === 'saved' && !/^\d{3,4}$/.test(f.cardCvv || '')) e.cardCvv = 'Digite o CVV do cartão salvo.';
+      if (st.method === 'card') {
+        if (!luhn(f.cardNum)) e.cardNum = 'Confira o número do cartão.';
+        if (!expOk(f.cardExp)) e.cardExp = 'Confira a validade do cartão (mês e ano, MM/AA).';
+        if (!/^\d{3,4}$/.test(f.cardCvv || '')) e.cardCvv = 'Confira o código de segurança (CVV): são 3 ou 4 números.';
+      }
+      return e;
+    };
+    const finish = () => {
+      const orderId = '#IG-' + String(Math.floor(100000 + Math.random() * 899999));
+      // O pedido vai para a Carteira: ingresso 1 no nome do comprador; os outros com o titular preenchido ou pendente.
+      const tickets = holdersRaw.map((h, i) => {
+        const sector = String(h.label || '').replace(/^.*?· /, '');
+        if (i === 0) return { sector, holder: 'Pessoa E.', k: 'ok' };
+        const name = (quemF['n' + i] || '').trim();
+        return later || !name ? { sector, holder: 'A definir', k: 'pend' } : { sector, holder: primeiroNome(name), k: 'ok' };
+      });
+      IX.store.set('order', { id: orderId, day: cart.day, tickets, total: total, method: st.method, at: Date.now(), produtos: cart.produtos || null });
+      IX.store.del('cart'); IX.store.del('holdEnd'); IX.store.del('quemvai');
+      this.setState({ stage: 'done', orderId });
+      // movimento-sucesso.js: com o filme em curso, ele leva a tela ao topo, faz o ícone pousar e leva o foco ao título;
+      // sem o filme (movimento reduzido ou script ausente) ele só troca direto, com um fade curto, e o foco vai ao título
+      const MS = window.MovSucesso;
+      if (MS && MS.aoAprovar) MS.aoAprovar(); else { window.scrollTo({ top: 0, behavior: 'smooth' }); setTimeout(() => { const t = document.getElementById('done-title'); if (t) t.focus(); }, 300); }
+    };
+    // O botão que o toque saiu (a cortina nasce dele): o clicado, ou, com Enter num campo, o visível entre a barra do celular e o resumo
+    const botaoDe = (ev, sel) => {
+      const t = ev && (ev.currentTarget && ev.currentTarget.nodeType === 1 ? ev.currentTarget : ev.target);
+      const b = t && t.closest ? t.closest('button') : null;
+      if (b && b.offsetParent) return b;
+      const lista = [].slice.call(document.querySelectorAll(sel));
+      return lista.filter(x => x.offsetParent !== null)[0] || null;
+    };
+    // O filme (cortina, progresso, estouro, voo do ícone) roda no cartão (Pagar, Apple Pay) e no "Já paguei" do Pix; "Gerar Pix" e o movimento reduzido seguem como antes.
+    const filme = (ev, sel, frases) => {
+      const MS = window.MovSucesso;
+      if (!MS || !MS.disponivel()) return false;
+      const recusa = isCardish && st.sim === 'declined';
+      MS.rodar({
+        origem: botaoDe(ev, sel), frases,
+        decidir: () => Promise.resolve(recusa ? 'recusado' : 'ok'),
+        aprovar: finish,
+        recusar: () => { this.setState({ stage: 'declined' }); revelar('pagamento', { modo: 'inicio' }); }
+      });
+      return true;
+    };
+    const pay = (ev) => {
+      if (st.stage === 'processing' || (window.MovSucesso && window.MovSucesso.ativo)) return;
+      if (expired) { IX.toast('Sua reserva expirou. Volte e escolha de novo.'); return; }
+      const e = validate();
+      if (Object.keys(e).length) {
+        this.setState({ errs: e });
+        IX.toast('Confira os campos com aviso, logo abaixo de cada um.');
+        const first = Object.keys(e)[0];
+        const id = { cardNum: 'cc-num', cardExp: 'cc-exp', cardCvv: st.method === 'saved' ? 'cc-cvv-saved' : 'cc-cvv' }[first];
+        revelar(id, { foco: true });
+        return;
+      }
+      // cartão e carteira: o filme assume (sem trocar o estado antes, para o botão de onde a cortina nasce não mudar de rótulo)
+      if (st.method !== 'pix' && filme(ev, '.cbar .bp, .aside-sum .bp-lg', ['Confirmando com o banco', 'Emitindo seus ingressos', 'Guardando na sua Carteira'])) return;
+      this.setState({ stage: 'processing' });
+      this.t1 = setTimeout(() => {
+        if (st.method === 'pix') { this.setState({ stage: 'pix', pixEnd: Date.now() + 15 * 60 * 1000 }, mostrarPix); return; }
+        if (isCardish && st.sim === 'declined') { this.setState({ stage: 'declined' }); revelar('pagamento', { modo: 'inicio' }); return; }
+        finish();
+      }, 1400);
+    };
+
+    const pixLeftMs = Math.max(0, st.pixEnd - st.now);
+    const pm = Math.floor(pixLeftMs / 60000), ps = Math.floor((pixLeftMs % 60000) / 1000);
+    const pad = n => String(n).padStart(2, '0');
+    const pixCode = '00020126580014BR.GOV.BCB.PIX0136ingresse-' + String(Math.round(total * 100)) + '-sorriso5204000053039865406' + total.toFixed(2) + '5802BR6009SAO PAULO62070503***6304A1F2';
+    // QR Code do Pix de verdade, no modelo do Untitled UI (qr-ingresse.js; o conteúdo é o próprio Pix Copia e Cola desta tela)
+    const qrUri = (window.IngresseQR && IngresseQR.uri('pix:' + pixCode, pixCode)) || '';
+
+    const evStart = cart.day === 'sab' ? '20261107T160000Z' : '20261108T160000Z';
+    const evEnd = cart.day === 'sab' ? '20261108T020000Z' : '20261109T020000Z';
+    const ics = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Ingresse//Prototipo//PT-BR', 'BEGIN:VEVENT', 'UID:' + (st.orderId || 'ig') + '@ingresse.com',
+      'DTSTAMP:20261015T120000Z', 'DTSTART:' + evStart, 'DTEND:' + evEnd, 'SUMMARY:Sorriso Eu Gosto no Pagode — São Paulo',
+      'LOCATION:Arena Anhembi\\, Av. Olavo Fontoura\\, 1209 - São Paulo', 'DESCRIPTION:Seus ingressos estão na Carteira Ingresse.', 'END:VEVENT', 'END:VCALENDAR'].join('\r\n');
+
+    const busy = st.stage === 'processing';
+    const payWord = st.method === 'pix' ? 'Gerar Pix' : st.method === 'wallet' ? 'Pagar com Apple Pay' : 'Pagar';
+    const done = st.stage === 'done';
+    return {
+      dayLabel, isDone: done, rootStyle: 'min-height:100vh;background:var(--pagina-bg);--prog:' + (done ? '100%' : '75%'), backHref: done ? 'Main.dc.html' : 'Checkout.dc.html', backAria: done ? 'Voltar para o início' : 'Voltar para quem vai', notDone: !done, orderId: st.orderId,
+      stepClass: done ? '' : 'stp-on', doneClass: done ? 'stp-on' : '',
+      doneLine: holdersRaw.length + (holdersRaw.length === 1 ? ' ingresso já está' : ' ingressos já estão') + ' na sua Carteira.',
+      hasPending: pendingN > 0, pendingTitle: pendingN + (pendingN === 1 ? ' ingresso ainda sem titular' : ' ingressos ainda sem titular'),
+      icsHref: 'data:text/calendar;charset=utf-8,' + encodeURIComponent(ics),
+      recap, hasPendingRecap: pendingN > 0,
+      pendingRecap: pendingN === 1 ? 'Um ingresso fica como “Falta titular” na sua Carteira até a pessoa preencher os dados pelo link.' : pendingN + ' ingressos ficam como “Falta titular” na sua Carteira até as pessoas preencherem os dados pelo link.',
+      protect: st.protect, protectB: st.protect, protectFmt: brl(protectAmt), toggleProtect: () => this.setState({ protect: !st.protect }),
+      ...methods, declined: st.stage === 'declined', switchPix: () => this.setState({ method: 'pix', stage: 'form' }),
+      showCardForm: st.method === 'card', showSavedCvv: st.method === 'saved', showInst: isCardish,
+      cardNum: f.cardNum || '', cardExp: f.cardExp || '', cardCvv: f.cardCvv || '', cardName: f.cardName || '', brand: brandOf(f.cardNum) ? '· ' + brandOf(f.cardNum) : '', hasBrand: !!brandOf(f.cardNum), brandName: brandOf(f.cardNum) || '',
+      onCardNum: setF('cardNum', maskCard, 'cc-exp', numCompleto), onCardExp: setF('cardExp', maskExp, 'cc-cvv', v => expOk(v) && v.length === 5), onCardCvv: setF('cardCvv', v => digits(v).slice(0, 4), 'cc-name', v => v.length === cvvLen()), onSavedCvv: setF('cardCvv', v => digits(v).slice(0, 4)), onCardName: setF('cardName', v => v.toUpperCase()), onFieldKey,
+      cardNumErr: errs.cardNum || '', cardExpErr: errs.cardExp || '', cardCvvErr: errs.cardCvv || '',
+      cardNumErrB: errs.cardNum ? 'true' : 'false', cardExpErrB: errs.cardExp ? 'true' : 'false', cardCvvErrB: errs.cardCvv ? 'true' : 'false',
+      instOpts, inst: String(inst), onInst: e => this.setState({ inst: e.target.value }),
+      instLine: isCardish ? (inst === 1 ? 'à vista no cartão' : inst + '× de ' + brl(total / inst) + ' sem juros') : st.method === 'pix' ? 'no Pix, aprovação na hora' : 'Apple Pay ou Google Pay',
+      isPixWait: st.stage === 'pix', qrUri, qrOp: pixLeftMs > 0 ? '1' : '.3', qrLabel: pixLeftMs > 0 ? 'QR Code Pix' : 'QR Code Pix expirado', pixAlive: pixLeftMs > 0, pixDead: st.stage === 'pix' && pixLeftMs <= 0, pixLeft: pm + ':' + pad(ps), pixCode,
+      newPix: () => this.setState({ pixEnd: Date.now() + 15 * 60 * 1000, now: Date.now() }, mostrarPix),
+      copyPix: () => { const done2 = () => IX.toast('Código Pix copiado.', 'ok'); if (navigator.clipboard) navigator.clipboard.writeText(pixCode).then(done2, done2); else done2(); },
+      confirmPix: (ev) => { if (st.stage === 'processing' || (window.MovSucesso && window.MovSucesso.ativo)) return; if (filme(ev, '.pix-confirma', ['Conferindo o Pix', 'Emitindo seus ingressos', 'Guardando na sua Carteira'])) return; this.setState({ stage: 'processing' }); this.t1 = setTimeout(finish, 1200); },
+      lines: cart.lines || [], subtotal: brl(cart.subtotal), discount: brl(cart.discount), hasDiscount: cart.discount > 0, coupon: cart.coupon, fees: brl(cart.fees), total: brl(total),
+      holdState: expired ? 'expired' : left < 120000 ? 'urgent' : 'ok', holdExpired: expired, holdLeft: expired ? '' : mm + ':' + pad(ss),
+      holdMsgA: expired ? 'Sua reserva expirou e os lugares voltaram para a venda.' : 'Reservados por', holdMsgB: expired ? '' : left < 120000 ? '— finalize agora.' : 'enquanto você paga.',
+      busy, pay, payDisabled: expired || busy ? 'true' : 'false',
+      payLabel: busy ? 'Processando o pagamento…' : st.stage === 'pix' ? 'Aguardando o Pix…' : payWord, payShort: busy ? 'Processando…' : payWord,
+      cbarNote: expired ? 'Reserva expirada' : 'Reservado por ' + mm + ':' + pad(ss),
+      simOpts: [['ok', 'Aprovado'], ['declined', 'Recusado']].map(([id, label]) => ({ label, on: st.sim === id ? 'true' : 'false', pick: () => this.setState({ sim: id }) })),
+      expireNow: () => this.setState({ holdEnd: Date.now() + 60000, now: Date.now() }), expireAll: () => this.setState({ holdEnd: Date.now() - 1, now: Date.now() })
+    };
+  }
+}
+/* je:script */
+Component = (function (Base) {
+  // valores neutros do fluxo de shows para as variáveis que a camada esportiva acrescentou ao modelo
+  const JE_PADRAO = { espOn: false, espOff: true, espDone: false, lblSub: 'Ingressos', lblTaxa: 'Taxa de serviço (10%)', ingressosHref: 'Ingressos.dc.html',
+    txtRecusa: 'Seus ingressos continuam reservados. Você pode tentar de novo, pagar com Pix ou usar outro cartão.', txtPixSub: 'Aprovação na hora · ingressos liberados em segundos',
+    txtPixSaem: 'Os ingressos saem em segundos.', txtPixExpirou: 'O código Pix expirou e a compra não foi concluída. Gere um novo código para pagar. Sua reserva segue valendo.' };
+  return class Component extends Base {
+    constructor(props) {
+      super(props);
+      const JE = window.JornadaEsporte;
+      if (JE && JE.ativo()) this.state = Object.assign({}, this.state, JE.estado('pagamento'));
+    }
+    componentDidMount() {
+      if (super.componentDidMount) super.componentDidMount();
+      const JE = window.JornadaEsporte;
+      if (JE && JE.ativo()) { JE.montou('pagamento', this); }
+    }
+    componentWillUnmount() { clearInterval(this.__jeTick); if (super.componentWillUnmount) super.componentWillUnmount(); }
+    renderVals() {
+      const JE = window.JornadaEsporte;
+      const v = super.renderVals();
+      if (JE && JE.ativo()) { JE.fecharPedido(this); return JE.vals('pagamento', this, v); }
+      Object.assign(v, JE_PADRAO); return v;
+    }
+  };
+})(Component);
+/* je:script-fim */
+/* prd:script */
+Component = (window.IngresseProdutos ? window.IngresseProdutos.subtipo('pagamento')(Component) : Component);
+/* prd:script-fim */
+/* jf:script */
+Component = (function (Base) {
+  // valores neutros do fluxo de shows para as variáveis que a camada de futebol acrescentou ao modelo
+  const JF_PADRAO = { jfOn: false, jfOff: true, jfDone: false };
+  return class Component extends Base {
+    constructor(props) {
+      super(props);
+      const JF = window.IngresseJornadaFutebol;
+      if (JF && JF.ativo()) this.state = Object.assign({}, this.state, JF.estado('pagamento'));
+    }
+    componentDidMount() {
+      if (super.componentDidMount) super.componentDidMount();
+      const JF = window.IngresseJornadaFutebol;
+      if (JF && JF.ativo()) { this.__jfTick = setInterval(() => { this.setState({ jfNow: Date.now() }); }, 1000); JF.montou('pagamento', this); }
+    }
+    componentDidUpdate(a, b, c) {
+      if (super.componentDidUpdate) super.componentDidUpdate(a, b, c);
+      const JF = window.IngresseJornadaFutebol;
+      if (JF && JF.ativo() && JF.atualizou) JF.atualizou('pagamento', this);
+    }
+    componentWillUnmount() { clearInterval(this.__jfTick); if (super.componentWillUnmount) super.componentWillUnmount(); }
+    renderVals() {
+      const JF = window.IngresseJornadaFutebol;
+      if (JF && JF.ativo()) { JF.fecharPedido(this); const b = super.renderVals(); return JF.vals('pagamento', this, b); }
+      const v = super.renderVals(); Object.assign(v, JF_PADRAO); return v;
+    }
+  };
+})(Component);
+/* jf:script-fim */
+</script>
+</body>
+</html>

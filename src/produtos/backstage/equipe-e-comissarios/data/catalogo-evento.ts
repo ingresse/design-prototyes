@@ -11,11 +11,11 @@
 /*  contexto mudam. `useCatalogoDaEquipe()` assina as mudanças.         */
 /* ------------------------------------------------------------------ */
 
-import { useSyncExternalStore } from "react";
-import { organizacaoDoEvento, type Evento } from "@/plataforma";
+import { useLayoutEffect, useSyncExternalStore } from "react";
+import { organizacaoDoEvento, type Evento, type ProdutoDaOrganizacao } from "@/plataforma";
 import { assinarBanco, lerBanco } from "@/plataforma/db";
 import { assinarEventoAtual, eventoAtualId } from "../../eventos/data/eventos";
-import { bibliotecaDe } from "../../itens/data/catalogo";
+import { bibliotecaDe, escalaSimulada, useCatalogo } from "../../itens/data/catalogo";
 
 export type TipoItem = "ingresso" | "produto" | "combo";
 
@@ -89,16 +89,30 @@ const rotuloDaSessao = (inicio: string) => DATA.format(new Date(inicio)).replace
 let versao = 0;
 let assinatura = "";
 const ouvintes = new Set<() => void>();
+/** Evento cujo catálogo está no espelho: o do banco ou, na simulação de escala, o simulado. */
+let eventoEspelhado: Evento | undefined;
+
+/**
+ * Simulação de escala (`?escala=N`, UI-LST-005): o catálogo vem da mesma fonte de Itens (`useCatalogo`),
+ * só na memória. Enquanto ela vale, o banco não sobrescreve o espelho.
+ */
+let simulacao: { evento: Evento; biblioteca: ProdutoDaOrganizacao[] } | null = null;
 
 function espelhar() {
+    if (simulacao) return espelharEvento(simulacao.evento, simulacao.biblioteca, `sim:${simulacao.evento.id}:${simulacao.evento.sessoes.length}`);
     const { modo, tabelas } = lerBanco();
     if (modo === "carregando") return;
     const evento = tabelas.eventos[eventoAtualId()] as Evento | undefined;
     const org = evento ? (tabelas.organizacoes as Record<string, Parameters<typeof bibliotecaDe>[0]>)[organizacaoDoEvento(evento)] : undefined;
     // Refaz só quando o evento ou o catálogo dele mudam.
     const nova = evento ? `${evento.id}:${JSON.stringify([evento.sessoes, evento.produtos, evento.combos])}` : "";
+    espelharEvento(evento, evento ? bibliotecaDe(org, organizacaoDoEvento(evento)) : [], nova);
+}
+
+function espelharEvento(evento: Evento | undefined, biblioteca: ProdutoDaOrganizacao[], nova: string) {
     if (nova === assinatura) return;
     assinatura = nova;
+    eventoEspelhado = evento;
 
     const sessoes: Sessao[] = [];
     const ingressos: Ingresso[] = [];
@@ -122,7 +136,6 @@ function espelhar() {
                 });
             }
     }
-    const biblioteca = evento ? bibliotecaDe(org, organizacaoDoEvento(evento)) : [];
     const produtos: Produto[] = (evento?.produtos ?? [])
         .filter((p) => p.ativo !== false)
         .map((p) => {
@@ -177,8 +190,24 @@ if (typeof window !== "undefined") {
     espelhar();
 }
 
-/** Assina o catálogo do evento em contexto: a tela redesenha quando ele muda. */
+/** O evento do catálogo em uso (o simulado, na simulação de escala), para o seletor de ingressos. */
+export const eventoDoCatalogo = () => eventoEspelhado;
+
+/** A simulação de escala está ligada: nada da Equipe é gravado (como em Itens). */
+export const naSimulacao = () => escalaSimulada() !== null;
+
+/**
+ * Assina o catálogo do evento em contexto: a tela redesenha quando ele muda. Com `?escala=N`, troca o
+ * espelho pelo catálogo simulado de Itens (UI-LST-005); sem, volta ao do banco.
+ */
 export function useCatalogoDaEquipe() {
+    const { simulado, evento, biblioteca } = useCatalogo();
+    useLayoutEffect(() => {
+        const nova = simulado && evento ? { evento, biblioteca } : null;
+        if (nova?.evento === simulacao?.evento) return;
+        simulacao = nova;
+        espelhar();
+    }, [simulado, evento, biblioteca]);
     return useSyncExternalStore(
         (fn) => {
             ouvintes.add(fn);

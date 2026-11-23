@@ -1,0 +1,31 @@
+/* Ajustes de layout vindos do critique (hierarquia da Home e do Evento, mapa de assentos).
+   Tokens e componentes: base.css. */
+
+/* --- Prioridades 3, 4 e 5 do critique --- */
+/* P3 Home: dois níveis de seção. Primário respira (DS: 96 px em heros); secundário compacto. */
+main > .sec-1{margin:16px 0 24px}
+.h2-lg{font-size:clamp(26px,2.6vw,36px);letter-spacing:-.015em}
+main > .sec-2{margin-top:-16px}
+main > .sec-2 .h2{font-size:20px}
+.qchips .bs{min-height:40px;font-size:14px}
+/* P3 Evento: lista de definições no lugar de 12 cards iguais */
+.facts{margin:0;display:flex;flex-direction:column}
+.facts > div{display:grid;grid-template-columns:132px minmax(0,1fr);gap:4px 16px;padding:14px 0;border-top:1px solid var(--line);font-size:15px;line-height:1.5}
+.facts > div:first-child{border-top:none}
+.facts dt{margin:0;font-size:11px;font-weight:500;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);padding-top:3px}
+.facts dd{margin:0;color:var(--ink-2)}
+.facts dd strong{color:var(--ink)}
+@media (max-width:560px){.facts > div{grid-template-columns:1fr;gap:2px}}
+.social-links{list-style:none;margin:12px 0 0;padding:0 24px;display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow-sm)}
+.social-links li{padding:12px 0;border-top:1px solid var(--line);font-size:14px;color:var(--ink-2);line-height:1.5}
+.social-links li:first-child{border-top:none}
+.social-links .over{display:inline-block;min-width:120px;margin-right:8px}
+/* P4 Mapa: segundo canal além da cor — faixas rotuladas por fila e rótulo da fila com a cor da faixa */
+.band{align-self:stretch;margin:6px 0 2px;padding:3px 8px;border-radius:0 6px 6px 0;font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2);background:var(--bg);text-align:center}
+.band[data-tier="t1"]{box-shadow:inset 3px 0 0 var(--ing-orange-hover)}
+.band[data-tier="t2"]{box-shadow:inset 3px 0 0 #FF7A6E}
+.band[data-tier="t3"]{box-shadow:inset 3px 0 0 #FFC2BB}
+.seat[data-tier="t1"]:not([data-st="sold"]):not([data-st="sel"])::after{content:"";display:block;width:8px;height:8px;margin:9px auto 0;border-radius:50%;background:rgba(255,255,255,.55)}
+.seat[data-tier="t2"]:not([data-st="sold"]):not([data-st="sel"])::after{content:"";display:block;width:10px;height:2px;margin:12px auto 0;background:rgba(255,255,255,.75)}
+.row-l[data-tier="t1"]{color:var(--ing-orange-press)}
+/* P5 Display só nos momentos: títulos de tarefa em h1 de 32 px */

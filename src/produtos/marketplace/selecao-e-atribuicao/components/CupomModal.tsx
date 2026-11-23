@@ -8,13 +8,13 @@ import { Input } from "@/components/base/input/input";
 interface CupomModalProps {
     isOpen: boolean;
     onClose: () => void;
-    /** Valida e aplica o código. Retorna true se válido (fecha o modal); false mostra erro. */
-    onAplicar: (codigo: string) => boolean;
+    /** Valida e aplica o código. `true` fecha o modal; `false` ou um texto mostra o erro. */
+    onAplicar: (codigo: string) => boolean | string;
 }
 
 export function CupomModal({ isOpen, onClose, onAplicar }: CupomModalProps) {
     const [codigo, setCodigo] = useState("");
-    const [erro, setErro] = useState(false);
+    const [erro, setErro] = useState<string | false>(false);
 
     useEffect(() => {
         if (isOpen) {
@@ -26,8 +26,8 @@ export function CupomModal({ isOpen, onClose, onAplicar }: CupomModalProps) {
     const aplicar = () => {
         if (codigo.trim() === "") return;
         const ok = onAplicar(codigo.trim());
-        if (ok) onClose();
-        else setErro(true);
+        if (ok === true) onClose();
+        else setErro(typeof ok === "string" ? ok : "Cupom inválido ou não encontrado.");
     };
 
     return (
@@ -53,9 +53,9 @@ export function CupomModal({ isOpen, onClose, onAplicar }: CupomModalProps) {
                                 setCodigo(v);
                                 if (erro) setErro(false);
                             }}
-                            isInvalid={erro}
+                            isInvalid={!!erro}
                         />
-                        {erro && <span className="text-sm text-error-primary">Cupom inválido ou não encontrado.</span>}
+                        {erro && <span className="text-sm text-error-primary">{erro}</span>}
                     </div>
 
                     <div className="-mx-6 mt-5 flex items-center gap-3 border-t border-secondary px-6 pt-5">

@@ -1,4 +1,4 @@
-import { EVENTOS as EVENTOS_SITE } from "@/produtos/novo-site/home/data/events";
+import { EVENTOS_SITE_LEGADO as EVENTOS_SITE } from "./eventos-site";
 import { CATEGORIAS } from "../categorias-catalogo";
 import type { Evento, EventoStatus, Grupo, HistoricoVendas, Organizacao, Sessao, Usuario } from "../modelo";
 import { idDaOrganizacao, siglaDe, slugificar } from "../regras";
@@ -12,7 +12,7 @@ import { idDaOrganizacao, siglaDe, slugificar } from "../regras";
 /*  existem, então nada criado por alguém é sobrescrito.               */
 /* ------------------------------------------------------------------ */
 
-export const SEED_VERSAO = "2026-11-18.1";
+export const SEED_VERSAO = "2026-11-23.1";
 
 const CRIADO = "2026-11-07T12:00:00.000Z";
 
@@ -112,7 +112,7 @@ const BACKSTAGE: { id: string; nome: string; produtora: string; capa: string; st
     { id: "2871", nome: "Laroc apresenta: RAVE THE WORLD by Alok", produtora: "Laroc", capa: "https://kraken.ingresse.com/event/posters/104600/large/1786025742.4637246.jpg", status: "publicado", data: "2026-10-17T22:00", local: "Laroc Club", cidade: "Valinhos", preco: 220 },
     { id: "3390", nome: "D-EDGE RIO apresenta IN DA CLUB W/ JUICCE", produtora: "D-EDGE", capa: "https://kraken.ingresse.com/event/posters/108467/large/1790120499.9730182.jpg", status: "publicado", data: "2026-10-02T23:00", local: "D-EDGE Rio", cidade: "Rio de Janeiro", preco: 80 },
     { id: "5518", nome: "FREAK CHIC D-EDGE SP pres.: P1: BACKFOR3. D.MARCO. MISS BELINI (BDAY). SOL", produtora: "D-EDGE", capa: "https://kraken.ingresse.com/event/posters/108847/large/1790802263.758427.jpg", status: "publicado", data: "2026-10-02T23:00", local: "D-EDGE", cidade: "São Paulo", preco: 90 },
-    { id: "4102", nome: "D-EDGE RIO apresenta INCEPTION", produtora: "D-EDGE", capa: "https://kraken.ingresse.com/event/posters/108445/large/1790030930.3048496.jpg", status: "rascunho", data: "2026-10-16T23:00", local: "D-EDGE Rio", cidade: "Rio de Janeiro", preco: 80 },
+    { id: "4102", nome: "D-EDGE RIO apresenta INCEPTION", produtora: "D-EDGE", capa: "https://kraken.ingresse.com/event/posters/108445/large/1790030930.3048496.jpg", status: "publicado", data: "2026-10-16T23:00", local: "D-EDGE Rio", cidade: "Rio de Janeiro", preco: 80 },
 ];
 
 const eventosBackstage: Evento[] = BACKSTAGE.map((b) =>
@@ -130,7 +130,7 @@ const eventosBackstage: Evento[] = BACKSTAGE.map((b) =>
     }),
 );
 
-/** Os eventos do novo site. A vitrine rica (lineup, futebol, vídeo) continua no mock do site, pelo mesmo id. */
+/** Os eventos que vieram do site antigo (eventos-site.ts). O novo site (public/novo-site) os lista pela ponte com o Backstage. */
 const eventosSite: Evento[] = EVENTOS_SITE.map((s) => {
     const inicios = diasEntre(s.data, s.dataFim, "20:00");
     return evento({
@@ -184,6 +184,8 @@ const PERFIS: Record<string, PerfilVendas> = {
     "2871": { ocupacao: 0.71, janela: 60, ritmo: 1.5, meta: 0.8, bilheteria: 0.05, cortesias: 18, seed: 7 },
     "3390": { ocupacao: 0.34, janela: 45, ritmo: 0.6, meta: 0.75, bilheteria: 0.12, cortesias: 10, seed: 13 },
     "5518": { ocupacao: 0.52, janela: 40, ritmo: 0.95, meta: 0.9, bilheteria: 0.08, cortesias: 12, seed: 29 },
+    // INCEPTION publicado e com vendas desde 23/11/2026, a pedido do Victor (Visão geral populada).
+    "4102": { ocupacao: 0.58, janela: 50, ritmo: 1.1, meta: 0.8, bilheteria: 0.09, cortesias: 14, seed: 53 },
 };
 
 function historicoDe(ev: Evento, p: PerfilVendas): HistoricoVendas {

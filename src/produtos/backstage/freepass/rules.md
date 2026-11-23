@@ -3,7 +3,7 @@
 > **Rotas:** `/freepass` (início da visualização), `/freepass/eventos`, `/freepass/vendas`, `/freepass/cortesias/eventos`, `/freepass/bilheteria/eventos`, `/freepass/recebimentos`, `/freepass/evento/vendas`; cortesia e bilheteria com as telas do Backstage em `/freepass/cortesias`, `/freepass/itens`, `/freepass/destinatarios`, `/freepass/verificacao`, `/freepass/bilheteria` (`/freepass/comissarios/*` e `/freepass/distribuicao-cortesias/*` redirecionam para Eventos)
 > **No menu:** card Freepass na seleção de produtos
 > **Versão em uso:** única (`freepass/`)
-> **Revisado em:** 2026-11-11
+> **Revisado em:** 2026-11-21
 
 Este arquivo é a fonte da verdade do comportamento da feature. Mudou uma regra no código, mude
 aqui no mesmo commit. Achou divergência entre código e este arquivo, registre em **Em aberto**
@@ -64,6 +64,7 @@ cortesias, reenvio e resgate), removido em 2026-11-11.
 - **FCO-16** Pedido cancelado aparece como "Cancelado", com a comissão estornada; cortesia aparece sem comissão. _(pages/vendas-no-evento.tsx)_
 - **FCO-17** Com o canal cortesia liberado, evento à venda e sem pausa, o resultado tem o atalho "Enviar cortesias". _(pages/vendas-no-evento.tsx)_
 - **FCO-18** O link e o cupom do topo são os da pessoa: o vendedor vê o próprio código; o responsável, o código do grupo (ECO-27). O subtítulo diz "por <grupo>, seu código <X>" quando o grupo tem mais de uma pessoa. O cartão do evento copia o link da pessoa. _(pages/vendas-no-evento.tsx, pages/eventos.tsx, data/minhas-vendas.ts)_
+- **FCO-88** O topo de Minhas vendas é o cabeçalho de página do Backstage (`CabecalhoDaPagina`, BKS-100): título "Minhas vendas" e, de subtítulo, a organização e o código (FCO-18). Até 21/11/2026 era um título próprio. _(pages/vendas-no-evento.tsx)_
 
 ### Cortesia e bilheteria
 - **FCO-70** Cortesia e Bilheteria online são as telas do Backstage, sem mudança de fluxo (COR-*, regras da bilheteria). _(../cortesias/, ../bilheteria/)_
@@ -104,6 +105,7 @@ cortesias, reenvio e resgate), removido em 2026-11-11.
 - Quem é responsável e quem é vendedor no mesmo grupo vê a mesma tela, com dados diferentes; não há tela para o responsável gerenciar os vendedores.
 - Mostrar o nome curto de quem comprou é proposta (dado pessoal do comprador): validar com jurídico.
 - Exportar as vendas (planilha) não existe.
+- A lista "Suas vendas" não segue BKS-110 a BKS-118: filtro por canal em abas (não botões segmentados), "Mostrar mais 15" no lugar da paginação do DS (FCO-15) e "Nenhuma venda…" em texto solto, não o vazio do DS. _(pages/vendas-no-evento.tsx)_
 
 ## Fontes
 

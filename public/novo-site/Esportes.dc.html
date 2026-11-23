@@ -1,0 +1,1896 @@
+<!doctype html>
+<html lang="pt-BR" data-pagina="esportes" data-marca="esportes" data-marca-fixa data-superficie="chao">
+<head>
+<meta charset="utf-8">
+<script src="./ponte-backstage.js" data-ponte-backstage></script>
+<script src="./transicao-evento.js" data-previa-te></script>
+<script data-mvp-cedo>(function () {
+  var r = document.documentElement, v = null;
+  try {
+    var m = new URLSearchParams(location.search).get('modo');
+    if (m === 'mvp' || m === 'completo') localStorage.setItem('previa-modo', m);
+    v = localStorage.getItem('previa-modo') || 'mvp'; // padrão no design-prototypes: modo MVP
+  } catch (e) {}
+  if (v === 'mvp') { r.setAttribute('data-modo', 'mvp'); window.IngresseMvp = true; }
+})();</script>
+<script data-previa-esportes-cedo>(function () {
+  var root = document.documentElement, qs = new URLSearchParams(location.search), v = null;
+  try {
+    if (qs.get('dados') === 'mock' || qs.get('dados') === 'bff') localStorage.setItem('previa-dados', qs.get('dados'));
+    v = localStorage.getItem('previa-dados') || 'bff'; // padrão no design-prototypes: dados do Backstage (ponte-backstage.js)
+  } catch (e) {}
+  root.setAttribute('data-dados', v === 'bff' ? 'bff' : 'mock');
+  if (v !== 'bff' || !window.fetch) return;
+  var f0 = window.fetch;
+  window.fetch = function (u, o) {
+    var url = typeof u === 'string' ? u : (u && u.url) || '', alvo = null, md;
+    if (/\/api\/eventos(\.json)?(\?|$)/.test(url)) alvo = url.replace(/\/api\/eventos(\.json)?/, '/api/bff/eventos');
+    else if ((md = /(?:^|\/)dados\/((?:busca-artistas|busca-locais|catalogo-indice|sorteio-pool|home-reais|categoria-[a-z0-9-]+)\.json)(\?|$)/.exec(url))) alvo = '/api/bff/dados/' + md[1]; // os índices e as categorias também saem do BFF
+    if (!alvo) return f0.apply(this, arguments);
+    var self = this, args = arguments;
+    return f0.call(this, alvo, o).then(function (r) {
+      if (r.ok) { root.setAttribute('data-dados-ok', ''); return r; }
+      return r.clone().json().catch(function () { return {}; }).then(function (d) { root.setAttribute('data-dados-falha', (d && d.error) || ('HTTP ' + r.status)); return f0.apply(self, args); });
+    }, function () { root.setAttribute('data-dados-falha', 'sem conexão com o servidor local'); return f0.apply(self, args); });
+  };
+})();
+(function () {
+  var root = document.documentElement, qs = new URLSearchParams(location.search), v = null;
+  try {
+    if (qs.get('esportes') === 'on' || qs.get('esportes') === 'off') localStorage.setItem('previa-esportes', qs.get('esportes'));
+    v = localStorage.getItem('previa-esportes');
+  } catch (e) {}
+  var ligado = v === 'on';
+  root.setAttribute('data-esportes', ligado ? 'on' : 'off');
+  var DESCOBERTA = ['home', 'busca', 'categoria', 'artista', 'venue', 'colecao'];
+  if (ligado || DESCOBERTA.indexOf(root.getAttribute('data-pagina')) < 0 || qs.get('escopo') === 'esportes') return;
+  root.setAttribute('data-esportes-ocultar', '');
+  var prova = function (e) { var c = (e && e.cats) || []; return c.indexOf('corridas') >= 0 || (c.indexOf('esportes') >= 0 && c.indexOf('futebol') < 0); };
+  var f0 = window.fetch;
+  if (!f0) return;
+  window.fetch = function (u) {
+    var url = typeof u === 'string' ? u : (u && u.url) || '', p = f0.apply(this, arguments);
+    if (!/\/api\/eventos(\.json)?(\?|$)/.test(url)) return p;
+    return p.then(function (r) {
+      if (!r.ok) return r;
+      return r.clone().json().then(function (d) {
+        if (!d || !d.events) return r;
+        d.events = d.events.filter(function (e) { return !prova(e); });
+        if (d.categories) d.categories = d.categories.filter(function (c) { return c.id !== 'corridas'; });
+        return new Response(JSON.stringify(d), { status: r.status, statusText: r.statusText, headers: { 'Content-Type': 'application/json' } });
+      }).catch(function () { return r; });
+    });
+  };
+})();</script>
+<script data-previa-nav-cedo>(function () {
+  try {
+    var h = document.documentElement;
+    var tema = localStorage.getItem('prototipo-theme');
+    if (tema !== 'dark' && tema !== 'light') tema = window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    if (/\/(Ingressos|Checkout|Pagamento)\.dc\.html$/.test(location.pathname) || (/\/Evento\.dc\.html$/.test(location.pathname) && sessionStorage.getItem('mov:de'))) {
+      // chegada do movimento-compra.js (ele tem o seu portão e a sua entrada): aqui só o fundo da última tela vista, que fecha o quadro
+      // branco do tema escuro entre a saída e a entrada. Sai em movimento-navegacao.js quando o portão dele abre.
+      h.setAttribute('data-mov-dona', '');
+      var bgc = localStorage.getItem('mov:bg:' + tema);
+      if (bgc) {
+        h.style.setProperty('background-color', bgc, 'important');
+        h.setAttribute('data-mov-bgcompra', '');
+        setTimeout(function () { h.removeAttribute('data-mov-bgcompra'); h.style.removeProperty('background-color'); }, 3000);
+      }
+      return;
+    }
+    var j = sessionStorage.getItem('mov:nav');
+    var o = j ? JSON.parse(j) : null;
+    // o registro vale para esta URL (ou para qualquer uma, quando a tela anterior saiu sem clique nosso: Voltar, URL digitada, recarregar)
+    if (!o || o.v !== 1 || Date.now() - o.t > 6000 || (o.para && o.para !== location.pathname)) {
+      o = { v: 1, padrao: 'direta', bg: localStorage.getItem('mov:bg:' + tema) || '' };
+    }
+    h.setAttribute('data-mov-nav', o.padrao || '');
+    h.setAttribute('data-mov-nav-gate', '');
+    var g = document.createElement('style');
+    g.id = 'mov-nav-portao';
+    // sem transições (data-mov-nav, que sai 2 quadros depois do portão abrir): os estilos chegam com a tela escondida e, sem isto, cores e bordas
+    // ainda estariam em transição de 160 ms quando ela aparece (e, em movimento reduzido, a própria visibilidade levaria um quadro para virar)
+    g.textContent = 'html[data-mov-nav-gate] #dc-root{visibility:hidden}html[data-mov-nav] #dc-root,html[data-mov-nav] #dc-root *,html[data-mov-nav] #dc-root *::before,html[data-mov-nav] #dc-root *::after{transition:none !important}';
+    (document.head || h).appendChild(g);
+    if (o.bg) h.style.setProperty('background-color', o.bg, 'important');
+    if (o.ponte && o.ponte.html) {
+      // a fonte da ponte tem nome próprio (ElzaPonte): a identidade da tela nova declara "Elza" com font-display swap e, se a ponte usasse
+      // esse nome, o texto trocaria para a fonte de sistema quando o CSS novo chegasse. Os dados (base64, guardados pela tela anterior)
+      // entram por FontFace binária, sem espera; sem eles, cai na URL (block = texto invisível até a fonte chegar).
+      var r4 = sessionStorage.getItem('mov:fonte400'), r6 = sessionStorage.getItem('mov:fonte600');
+      var bin = function (b64) { var t = atob(b64), u = new Uint8Array(t.length), i; for (i = 0; i < t.length; i++) u[i] = t.charCodeAt(i); return u.buffer; };
+      var doDados = false;
+      if (r4 && r6 && window.FontFace) {
+        // FontFace com dados binários fica pronta na hora (status "loaded" no mesmo instante): o texto da ponte já nasce na fonte certa
+        try {
+          document.fonts.add(new FontFace('ElzaPonte', bin(r4), { weight: '400 500' }));
+          document.fonts.add(new FontFace('ElzaPonte', bin(r6), { weight: '600 700' }));
+          doDados = true;
+        } catch (e) {}
+      }
+      if (!doDados) {
+        var f = document.createElement('style');
+        f.id = 'mov-ponte-fonte';
+        f.textContent = '@font-face{font-family:"ElzaPonte";src:url(./fontes/Elza-Regular.woff2) format("woff2");font-weight:400 500;font-display:block}' +
+          '@font-face{font-family:"ElzaPonte";src:url(./fontes/Elza-Semibold.woff2) format("woff2");font-weight:600 700;font-display:block}';
+        (document.head || h).appendChild(f);
+      }
+      // dentro de um shadow root: o CSS da tela nova (div, span, a, svg…) não alcança a ponte enquanto ela espera
+      var d = document.createElement('div');
+      d.id = 'mov-ponte';
+      d.setAttribute('aria-hidden', 'true');
+      d.style.cssText = 'all:initial;position:fixed;left:0;top:' + (o.ponte.top || 0) + 'px;width:' + o.ponte.w + 'px;height:' + o.ponte.h + 'px;z-index:2147483000;pointer-events:none;overflow:hidden;display:block';
+      var sr = d.attachShadow ? d.attachShadow({ mode: 'open' }) : d;
+      sr.innerHTML = o.ponte.html;
+      h.appendChild(d);
+    }
+    if (o.poster && o.poster.src) {
+      var im = document.createElement('img');
+      im.id = 'mov-ponte-poster';
+      im.alt = '';
+      im.setAttribute('aria-hidden', 'true');
+      im.src = o.poster.src;
+      im.style.cssText = 'all:initial;position:fixed;left:' + o.poster.x + 'px;top:' + o.poster.y + 'px;width:' + o.poster.w + 'px;height:' + o.poster.h + 'px;object-fit:cover;border-radius:' + (o.poster.r || '0') + ';z-index:' + (o.poster.z || 1) + ';pointer-events:none;display:block';
+      h.appendChild(im);
+    }
+    setTimeout(function () {
+      var pp = document.getElementById('mov-ponte-poster');
+      if (pp) pp.remove();
+      var p = document.getElementById('mov-ponte');
+      if (p) p.remove();
+      var s = document.getElementById('mov-ponte-fonte');
+      if (s) s.remove();
+      h.removeAttribute('data-mov-nav-gate');
+      h.removeAttribute('data-mov-nav');
+      h.style.removeProperty('background-color');
+    }, 3000);
+  } catch (e) {}
+})();</script>
+<script data-bu-cedo>(function(){try{var p=new URLSearchParams(location.search),t=(p.get("tipo")||"").split(",").filter(Boolean);var so=t.length>0&&t.every(function(x){return x==="corridas"||x==="esportes"});if(p.get("escopo")==="esportes"||so){document.documentElement.setAttribute("data-marca","esportes");document.title="Busca de provas | Ingresse Sports";}}catch(e){}})();</script>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, follow">
+<meta name="theme-color" content="#F5F4F2">
+<meta name="format-detection" content="telephone=no">
+<link rel="preload" href="./fontes/Elza-Semibold.woff2" as="font" type="font/woff2" crossorigin data-previa>
+<link rel="preload" href="./fontes/Elza-Regular.woff2" as="font" type="font/woff2" crossorigin data-previa>
+<title>Ingresse Sports (antiga TicketSports): provas de corrida, ciclismo e mais</title>
+<script src="./vendor/react.js"></script>
+<script src="./vendor/react-dom.js"></script>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<script src="./destinos.js" defer data-previa></script>
+<style data-esp>
+
+.hd-topo { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-3) var(--space-5); margin-bottom: var(--space-5); }
+.hd-topo .more { white-space: nowrap; flex: 0 0 auto; }
+.hd-titulo { font-size: var(--font-size-title-1); line-height: var(--font-lh-title-1); letter-spacing: var(--font-ls-title-1); font-weight: 600; margin: 0; }
+.hd-chips { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); margin-bottom: var(--space-6); }
+.hd-mais { width: var(--size-touch-default); padding: 0 !important; justify-content: center; font-size: var(--font-size-title-3, 1.25rem); font-weight: 400; }
+.oc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: var(--space-3); }
+@media (max-width: 640px) { .oc-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.oc { display: flex; align-items: center; gap: var(--space-4); min-height: 64px; padding: 0 var(--space-5); background: var(--color-bg-page); border: var(--border-width-hairline) solid var(--color-border-control); color: var(--color-text-primary); font-size: var(--font-size-body); font-weight: 600; line-height: 1.25; text-decoration: none; transition: background-color var(--motion-duration-fast) var(--motion-ease-move), border-color var(--motion-duration-fast) var(--motion-ease-move); }
+.oc:hover, .oc:focus-visible { border-color: var(--color-border-strong); border-width: 2px; padding: 0 calc(var(--space-5) - 1px); background: var(--color-bg-hover); }
+.oc-ic { flex: 0 0 auto; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; }
+.oc-ic svg { width: 28px; height: 28px; display: block; }
+.oc-t { min-width: 0; }
+@media (max-width: 640px) { .oc { padding: 0 var(--space-4); gap: var(--space-3); } .oc:hover, .oc:focus-visible { padding: 0 calc(var(--space-4) - 1px); } }
+/* ícone animado (Lottie): o traço segue a cor do texto, no claro e no escuro */
+.oc-ic [stroke]:not([stroke="none"]) { stroke: currentColor; }
+
+/* Ingresse Sports: Home da vertical e agregadoras (tools/previa/esportes-paginas.mjs; Mariana, reforço de 28/10/2026): classes esp-*, só tokens da identidade.
+   O vermelho é o da marca Ingresse (decisão do Wander, 27/10): o tema data-marca="esportes" é um gancho vazio (docs/design/TOKENS-INGRESSE-SPORTS.md §3).
+   Os ícones de modalidade e de situação são máscaras (a cor vem de currentColor, como o logotipo); os desenhos estão em esportes-paginas.mjs (ICONES). */
+html[data-pagina="esportes"] main { max-width: none !important; padding: 0 0 var(--space-section) !important; display: block; }
+.esp-wrap { max-width: calc(var(--layout-content-max) + 2 * var(--layout-margin)); margin-inline: auto; padding-inline: var(--layout-margin); box-sizing: border-box; }
+
+/* ---------- ícones (máscara) ---------- */
+.esp-ic { display: inline-block; flex: 0 0 auto; width: var(--size-icon-md); height: var(--size-icon-md); background-color: currentColor; -webkit-mask: var(--ic) center / contain no-repeat; mask: var(--ic) center / contain no-repeat; }
+.esp-ic-lg { width: var(--size-icon-lg); height: var(--size-icon-lg); }
+.esp-ic-sm { width: var(--size-icon-sm); height: var(--size-icon-sm); }
+.esp-ic[data-i="corrida"] { --ic: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Ccircle%20cx%3D%2213%22%20cy%3D%2214%22%20r%3D%227%22%2F%3E%3Cpath%20d%3D%22m13%2014%203-3M10%203h6M13%207V5M2%2011h3M3%2015h2%22%2F%3E%3C%2Fsvg%3E"); }
+.esp-ic[data-i="trail-run"] { --ic: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22m3%2020%206-11%204%206%202-3%206%208H3Z%22%2F%3E%3Cpath%20d%3D%22M15%206h.01%22%2F%3E%3C%2Fsvg%3E"); }
+.esp-ic[data-i="caminhada"] { --ic: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M8%203c2%200%203%202%203%204.5S10%2012%208%2012%205%2010%205%207.5%206%203%208%203Z%22%2F%3E%3Cpath%20d%3D%22M7%2015.5h2.5%22%2F%3E%3Cpath%20d%3D%22M16%209c2%200%203%202%203%204.5S18%2018%2016%2018s-3-2-3-4.5S14%209%2016%209Z%22%2F%3E%3Cpath%20d%3D%22M15%2021h2.5%22%2F%3E%3C%2Fsvg%3E"); }
+.esp-ic[data-i="corrida-de-aventura"] { --ic: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%229%22%2F%3E%3Cpath%20d%3D%22m15.5%208.5-2%205-5%202%202-5%205-2Z%22%2F%3E%3C%2Fsvg%3E"); }
+.esp-ic[data-i="ciclismo"] { --ic: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Ccircle%20cx%3D%226%22%20cy%3D%2216%22%20r%3D%223.5%22%2F%3E%3Ccircle%20cx%3D%2218%22%20cy%3D%2216%22%20r%3D%223.5%22%2F%3E%3Cpath%20d%3D%22m6%2016%204-8h5M10%208l2%208M15%208l3%208M9%205.5h3%22%2F%3E%3C%2Fsvg%3E"); }
+.esp-ic[data-i="mountain-bike"] { --ic: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Ccircle%20cx%3D%226%22%20cy%3D%2217%22%20r%3D%224%22%2F%3E%3Ccircle%20cx%3D%2218%22%20cy%3D%2217%22%20r%3D%224%22%2F%3E%3Cpath%20d%3D%22m6%2017%204-8h5M10%209l2%208M15%209l3%208M9%206.5h3%22%2F%3E%3C%2Fsvg%3E"); }
+.esp-ic[data-i="triathlon"] { --ic: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%229%22%2F%3E%3Cpath%20d%3D%22M12%203v9l-7.8%204.5M12%2012l7.8%204.5%22%2F%3E%3C%2Fsvg%3E"); }
+.esp-ic[data-i="natacao"] { --ic: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M2%208c2.5%200%202.5%202%205%202s2.5-2%205-2%202.5%202%205%202%202.5-2%205-2M2%2014c2.5%200%202.5%202%205%202s2.5-2%205-2%202.5%202%205%202%202.5-2%205-2M2%2020c2.5%200%202.5-2%205-2s2.5%202%205%202%202.5-2%205-2%202.5%202%205%202%22%2F%3E%3C%2Fsvg%3E"); }
+.esp-ic[data-i="beach-tennis"] { --ic: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cellipse%20cx%3D%229.5%22%20cy%3D%229.5%22%20rx%3D%225.5%22%20ry%3D%226.5%22%20transform%3D%22rotate(-45%209.5%209.5)%22%2F%3E%3Cpath%20d%3D%22m13.5%2013.5%207%207%22%2F%3E%3Ccircle%20cx%3D%2219%22%20cy%3D%226%22%20r%3D%222%22%2F%3E%3C%2Fsvg%3E"); }
+.esp-ic[data-i="futevolei"] { --ic: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%229%22%2F%3E%3Cpath%20d%3D%22M12%203c3%203%203%2015%200%2018M3.5%209c5%201%2012%201%2017%200M3.5%2015c5-1%2012-1%2017%200%22%2F%3E%3C%2Fsvg%3E"); }
+.esp-ic[data-i="canoagem-va-a"] { --ic: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M2%2014c3%203%2017%203%2020%200l-3-3H5l-3%203Z%22%2F%3E%3Cpath%20d%3D%22m8%205%208%206%22%2F%3E%3Cpath%20d%3D%22M2%2020c2.5%200%202.5-1%205-1s2.5%201%205%201%202.5-1%205-1%202.5%201%205%201%22%2F%3E%3C%2Fsvg%3E"); }
+.esp-ic[data-i="perto-de-voce"] { --ic: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M12%2022c4-4%208-7.582%208-12a8%208%200%201%200-16%200c0%204.418%204%208%208%2012Z%22%2F%3E%3Cpath%20d%3D%22M12%2013a3%203%200%201%200%200-6%203%203%200%200%200%200%206Z%22%2F%3E%3C%2Fsvg%3E"); }
+.esp-ic[data-i="distancia"] { --ic: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22m3%2017%2014-14%204%204L7%2021l-4-4Z%22%2F%3E%3Cpath%20d%3D%22m7%2013%202%202m1-5%202%202m1-5%202%202%22%2F%3E%3C%2Fsvg%3E"); }
+.esp-ic[data-i="s-pre"] { --ic: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22m12%203%202.7%205.6%206.1.9-4.4%204.3%201%206.1L12%2017l-5.4%202.9%201-6.1-4.4-4.3%206.1-.9L12%203Z%22%2F%3E%3C%2Fsvg%3E"); }
+.esp-ic[data-i="s-ainda"] { --ic: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M4%205h16v15H4ZM4%2010h16M8%203v4M16%203v4%22%2F%3E%3C%2Fsvg%3E"); }
+.esp-ic[data-i="s-esgotado"] { --ic: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M21%2012a9%209%200%201%201-18%200%209%209%200%200%201%2018%200ZM8%2012h8%22%2F%3E%3C%2Fsvg%3E"); }
+.esp-ic[data-i="s-cancelado"] { --ic: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M21%2012a9%209%200%201%201-18%200%209%209%200%200%201%2018%200Zm-12-3%206%206m0-6-6%206%22%2F%3E%3C%2Fsvg%3E"); }
+.esp-ic[data-i="s-encerrado"] { --ic: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M21%2012a9%209%200%201%201-18%200%209%209%200%200%201%2018%200ZM9%2012l2%202%204-4%22%2F%3E%3C%2Fsvg%3E"); }
+.esp-ic[data-i="s-adiado"] { --ic: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M4%205h16v15H4ZM4%2010h16M8%203v4M16%203v4M9%2015h6m-2-2%202%202-2%202%22%2F%3E%3C%2Fsvg%3E"); }
+.esp-ic[data-i="s-ultimas"] { --ic: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M21%2012a9%209%200%201%201-18%200%209%209%200%200%201%2018%200ZM12%207v5l3%202%22%2F%3E%3C%2Fsvg%3E"); }
+.esp-ic[data-i="s-lote"] { --ic: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22m12%203%209%205-9%205-9-5%209-5ZM3%2013l9%205%209-5%22%2F%3E%3C%2Fsvg%3E"); }
+
+/* o cabeçalho (logo, navegação e volta à Ingresse) é de tools/previa/esportes/cabecalho.css, compartilhado com a página de evento */
+
+/* ---------- hero (ilha escura) ---------- */
+.esp-hero { position: relative; isolation: isolate; overflow: hidden; width: 100vw; margin-left: calc(50% - 50vw); box-sizing: border-box; padding: var(--space-hero-y) max(var(--layout-margin), calc((100vw - var(--layout-content-max)) / 2)); background: var(--color-bg-island); color: var(--color-text-primary); }
+.esp-hero-in { position: relative; z-index: 1; max-width: 880px; display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-4); }
+.esp-antiga { margin: 0; font-size: var(--font-size-small); line-height: var(--font-lh-small); color: var(--color-text-secondary); }
+.esp-h1 { margin: 0; font-size: var(--font-size-title-1); line-height: var(--font-lh-title-1); letter-spacing: var(--font-ls-title-1); font-weight: 600; color: var(--color-text-primary); text-wrap: balance; }
+.esp-hero-ag .esp-h1 { font-size: var(--font-size-title-2); line-height: var(--font-lh-title-2); letter-spacing: var(--font-ls-title-2); }
+.esp-apoio, .esp-intro { margin: 0; max-width: 60ch; font-size: var(--font-size-body); line-height: var(--font-lh-body); color: var(--color-text-secondary); text-wrap: pretty; }
+.esp-total { margin: 0; font-size: var(--font-size-small); color: var(--color-text-secondary); font-variant-numeric: tabular-nums; }
+.esp-total strong { color: var(--color-text-primary); font-size: var(--font-size-body); font-weight: 600; }
+.esp-trilha ol { display: flex; flex-wrap: wrap; align-items: center; gap: 0 var(--space-2); list-style: none; margin: 0; padding: 0; font-size: var(--font-size-small); }
+.esp-trilha li { display: inline-flex; align-items: center; gap: var(--space-2); color: var(--color-text-secondary); }
+.esp-trilha li + li::before { content: "/"; color: var(--color-text-tertiary); }
+.esp-trilha a { display: inline-flex; align-items: center; min-height: var(--size-touch-min); min-width: var(--size-touch-min); color: var(--color-text-secondary); text-decoration: none; }
+.esp-trilha a:hover { color: var(--color-text-primary); text-decoration: underline; text-underline-offset: 4px; }
+.esp-trilha [aria-current] { color: var(--color-text-primary); font-weight: 600; }
+/* cymatics (categoria.js): linhas de no máximo 20 % de opacidade, mais fracas atrás do texto; sem desfoque */
+.cat-cym { position: absolute; inset: 0; z-index: 0; width: 100%; height: 100%; pointer-events: none; opacity: 0; transition: opacity var(--motion-duration-hero) var(--motion-ease-move);
+  -webkit-mask-image: linear-gradient(90deg, rgba(0,0,0,.42) 0%, rgba(0,0,0,.42) 46%, rgba(0,0,0,.8) 74%, #000 100%); mask-image: linear-gradient(90deg, rgba(0,0,0,.42) 0%, rgba(0,0,0,.42) 46%, rgba(0,0,0,.8) 74%, #000 100%); }
+.cat-cym.is-on { opacity: 1; }
+@media (max-width: 1024px) { .cat-cym { -webkit-mask-image: linear-gradient(rgba(0,0,0,.5), rgba(0,0,0,.5)); mask-image: linear-gradient(rgba(0,0,0,.5), rgba(0,0,0,.5)); } }
+
+/* busca da Home */
+.esp-busca { width: min(760px, 100%); display: flex; align-items: center; gap: var(--space-3); box-sizing: border-box; padding: var(--space-2) var(--space-2) var(--space-2) var(--space-5); background: var(--color-field-bg); border: var(--border-width-strong) solid var(--color-field-border); border-radius: var(--radius-base); transition: border-color var(--motion-duration-fast) var(--motion-ease-move); }
+.esp-busca:hover { border-color: var(--color-field-border-hover); }
+.esp-busca:focus-within { border-color: var(--color-field-border-focus); outline: var(--focus-width) solid var(--color-focus-ring); outline-offset: var(--focus-offset); }
+.esp-busca-c { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: var(--space-3); color: var(--color-field-placeholder); }
+.esp-busca-c svg { flex: 0 0 auto; width: var(--size-icon-md); height: var(--size-icon-md); }
+.esp-busca-c input { flex: 1 1 auto; min-width: 0; min-height: var(--size-control-lg); border: 0 !important; background: transparent !important; outline: none !important; box-shadow: none !important; padding: 0; font-size: var(--font-size-body); color: var(--color-field-fg); -webkit-appearance: none; appearance: none; }
+.esp-busca-c input::placeholder { color: var(--color-field-placeholder); opacity: 1; }
+.esp-busca-c input::-webkit-search-cancel-button { -webkit-appearance: none; display: none; }
+.esp-busca .bp { flex: 0 0 auto; }
+.esp-ajuda { margin: 0; font-size: var(--font-size-small); color: var(--color-text-secondary); }
+.esp-perto { gap: var(--space-2); }
+.esp-perto svg { width: var(--size-icon-md); height: var(--size-icon-md); }
+@media (max-width: 640px) {
+  .esp-busca { flex-wrap: wrap; padding: var(--space-2); }
+  .esp-busca-c { flex: 1 1 100%; padding-left: var(--space-3); }
+  .esp-busca .bp { flex: 1 1 100%; }
+}
+
+/* ---------- seções da Home ---------- */
+.esp-sec { max-width: calc(var(--layout-content-max) + 2 * var(--layout-margin)); margin-inline: auto; padding: var(--space-8) var(--layout-margin) 0; box-sizing: border-box; }
+.esp-sec > .hd-topo { margin-bottom: var(--space-5); }
+.esp-sec .h2 { margin: 0; }
+.esp-sec-sub { margin: var(--space-2) 0 var(--space-5); font-size: var(--font-size-small); color: var(--color-text-secondary); }
+/* por modalidade: caixinhas pequenas (ícone, nome e contagem); no celular viram um carrossel curto de rolagem com encaixe */
+.esp-mods { display: grid; grid-template-columns: repeat(auto-fill, minmax(calc(var(--size-touch-default) * 3), 1fr)); gap: var(--space-2); list-style: none; margin: 0; padding: 0; }
+.esp-mod { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-1); box-sizing: border-box; height: 100%; min-height: calc(var(--size-touch-default) * 1.75); padding: var(--space-3); background: var(--color-bg-page); border: var(--border-width-hairline) solid var(--color-border-subtle); color: var(--color-text-primary); text-decoration: none; transition: border-color var(--motion-duration-fast) var(--motion-ease-move), background-color var(--motion-duration-fast) var(--motion-ease-move); }
+.esp-mod:hover { border-color: var(--color-border-strong); background: var(--color-bg-hover); }
+.esp-mod .esp-lic, .esp-mod .esp-ic { width: var(--size-icon-md); height: var(--size-icon-md); }
+.esp-mod-t { font-size: var(--font-size-small); font-weight: 600; line-height: 1.25; }
+.esp-mod-n { font-size: var(--font-size-small); line-height: 1.2; color: var(--color-text-tertiary); font-variant-numeric: tabular-nums; }
+@media (max-width: 760px) {
+  .esp-mods { display: flex; overflow-x: auto; gap: var(--space-2); scroll-snap-type: x proximity; scroll-padding-inline: var(--layout-margin); margin-inline: calc(var(--layout-margin) * -1); padding: 0 var(--layout-margin) var(--space-2); scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+  .esp-mods::-webkit-scrollbar { display: none; }
+  .esp-mods li { flex: 0 0 calc(var(--size-touch-default) * 2.5); scroll-snap-align: start; }
+}
+a.chip { text-decoration: none; }
+/* "sem inventário" e "escolher cidade" (ES-HS-11 e ES-HS-19) */
+.esp-aviso { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-4) var(--space-6); padding: var(--space-card-pad); border: var(--border-width-hairline) solid var(--color-border-control); background: var(--color-bg-subtle); }
+.esp-aviso p { margin: 0; max-width: 60ch; font-size: var(--font-size-body); line-height: var(--font-lh-body); }
+.esp-aviso-a { display: flex; flex-wrap: wrap; gap: var(--space-3); }
+/* blocos de convite: grupos, assistir, aprenda */
+.esp-bloco { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-4) var(--space-6); padding: var(--space-card-pad); border: var(--border-width-strong) solid var(--color-border-strong); background: var(--color-bg-page); }
+.esp-bloco-t { min-width: 0; flex: 1 1 320px; display: flex; flex-direction: column; gap: var(--space-2); }
+.esp-bloco-t h2, .esp-bloco-t h3 { margin: 0; font-size: var(--font-size-title-3); line-height: var(--font-lh-title-3); font-weight: 600; letter-spacing: 0; }
+.esp-bloco-t p { margin: 0; max-width: 60ch; font-size: var(--font-size-body); line-height: var(--font-lh-body); color: var(--color-text-secondary); }
+.esp-aprenda-l { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: var(--space-3); list-style: none; margin: var(--space-5) 0 0; padding: 0; }
+.esp-aprenda-l a { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); box-sizing: border-box; height: 100%; min-height: calc(var(--size-touch-default) * 1.5); padding: var(--space-4); border: var(--border-width-hairline) solid var(--color-border-subtle); color: var(--color-text-primary); font-size: var(--font-size-body); font-weight: 600; line-height: 1.3; text-decoration: none; transition: border-color var(--motion-duration-fast) var(--motion-ease-move), background-color var(--motion-duration-fast) var(--motion-ease-move); }
+.esp-aprenda-l a:hover { border-color: var(--color-border-strong); background: var(--color-bg-hover); }
+.esp-aprenda-l svg { flex: 0 0 auto; width: var(--size-icon-md); height: var(--size-icon-md); }
+.esp-faq { display: flex; flex-direction: column; gap: 0; margin: 0 0 var(--space-6); border-top: var(--border-width-hairline) solid var(--color-border-subtle); }
+.esp-faq details { border-bottom: var(--border-width-hairline) solid var(--color-border-subtle); }
+.esp-faq summary { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); min-height: var(--size-control-lg); padding: var(--space-3) 0; cursor: pointer; font-size: var(--font-size-body); font-weight: 600; list-style: none; }
+.esp-faq summary::-webkit-details-marker { display: none; }
+.esp-faq summary svg { flex: 0 0 auto; width: var(--size-icon-md); height: var(--size-icon-md); transition: transform var(--motion-duration-fast) var(--motion-ease-move); }
+.esp-faq details[open] summary svg { transform: rotate(180deg); }
+.esp-faq details p { margin: 0 0 var(--space-4); max-width: 70ch; font-size: var(--font-size-body); line-height: var(--font-lh-body); color: var(--color-text-secondary); }
+
+/* hero: a capa quadrada do destaque (o cartão de prova é o cartão de evento único, cartao-evento.css; o bloco esp-cartao saiu em 30/10/2026) */
+.esp-poster { position: relative; display: block; aspect-ratio: var(--size-sport-cover-ratio); background: var(--color-sport-poster-bg); overflow: hidden; }
+.esp-poster img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transition: opacity var(--motion-duration-slow) var(--motion-ease-enter), scale var(--motion-duration-slow) var(--motion-ease-move); }
+/* a capa entra com fade quando termina de carregar (previa.js §9c marca data-ok; sem o script a imagem aparece direto) */
+html.esp-capas-js .esp-capa:not([data-ok]) { opacity: 0; }
+@media (prefers-reduced-motion: reduce) { .esp-poster img { transition: opacity var(--motion-duration-reduced-fade) var(--motion-ease-enter); } }
+.esp-grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(var(--size-sport-card-min), 1fr)); gap: var(--space-card-gap) var(--space-5); }
+@media (max-width: 640px) {
+  /* no celular o cartão segue vertical, com a capa de largura total (a de 104 px da linha de agenda não cabe numa capa quadrada); a grade vira uma coluna */
+  .esp-grade { grid-template-columns: 1fr; gap: var(--space-4); }
+}
+
+/* ---------- agregadora: facetas e resultados ---------- */
+.esp-lista { max-width: calc(var(--layout-content-max) + 2 * var(--layout-margin)); margin-inline: auto; padding: var(--space-8) var(--layout-margin) 0; box-sizing: border-box; }
+.esp-campo { width: min(760px, 100%); display: flex; align-items: center; gap: var(--space-3); box-sizing: border-box; padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4); border: var(--border-width-hairline) solid var(--color-field-border); background: var(--color-field-bg); border-radius: var(--radius-base); transition: border-color var(--motion-duration-fast) var(--motion-ease-move); }
+.esp-campo:hover { border-color: var(--color-field-border-hover); }
+.esp-campo:focus-within { outline: var(--focus-width) solid var(--color-focus-ring); outline-offset: var(--focus-offset); }
+.esp-campo > svg { flex: 0 0 auto; width: var(--size-icon-md); height: var(--size-icon-md); stroke: var(--color-field-placeholder); }
+.esp-campo label { flex: 1; display: flex; min-width: 0; }
+.esp-campo input { flex: 1; width: 100%; min-width: 0; padding: 0; min-height: var(--size-touch-default); border: 0 !important; background: transparent !important; box-shadow: none; font-size: var(--font-size-body) !important; color: var(--color-field-fg); -webkit-appearance: none; appearance: none; }
+.esp-campo input::placeholder { color: var(--color-field-placeholder); opacity: 1; }
+.esp-campo input:focus, .esp-campo input:focus-visible { outline: none !important; box-shadow: none !important; border: 0 !important; }
+.esp-campo input[type="search"]::-webkit-search-cancel-button { display: none; }
+.esp-campo .bp { flex: 0 0 auto; }
+.esp-limpar { flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; width: var(--size-touch-default); height: var(--size-touch-default); padding: 0; border: 0; background: transparent; color: var(--color-text-tertiary); cursor: pointer; }
+.esp-limpar:hover { color: var(--color-text-primary); background: var(--color-bg-hover); }
+.esp-limpar svg { width: var(--size-icon-md); height: var(--size-icon-md); stroke-width: 2; }
+.esp-ordem select { max-width: 100%; font-weight: 400; cursor: pointer; }
+.esp-fim, .esp-faq, .esp-faq details { border-radius: 0 !important; }
+.esp-barra { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-3) var(--space-5); }
+.esp-cont { margin: 0; font-size: var(--font-size-small); color: var(--color-text-secondary); font-variant-numeric: tabular-nums; }
+.esp-ordem { display: flex; align-items: center; gap: var(--space-3); font-size: var(--font-size-small); font-weight: 600; margin-left: auto; }
+.esp-incl-fim { margin-top: var(--space-6); }
+.esp-incl { display: flex; align-items: center; gap: var(--space-3); min-height: var(--size-touch-default); font-size: var(--font-size-small); cursor: pointer; }
+.esp-sentinela { height: 1px; margin-top: var(--space-6); }
+.esp-mais { display: flex; flex-direction: column; align-items: center; gap: var(--space-3); padding: var(--space-6) 0 0; }
+.esp-mais-t, .esp-fim p { margin: 0; font-size: var(--font-size-small); color: var(--color-text-tertiary); font-variant-numeric: tabular-nums; }
+.esp-mais-b { min-height: var(--size-touch-default); padding: 0 var(--space-6); }
+.esp-mais-b[aria-disabled="true"] { cursor: progress; }
+.esp-fim { display: flex; flex-direction: column; align-items: center; gap: var(--space-3); padding: var(--space-8) 0 0; margin-top: var(--space-8); text-align: center; border-top: var(--border-width-hairline) solid var(--color-border-subtle); }
+/* estado vazio com sugestões (relaxamentos com contagem maior que zero) */
+.esp-vazio { display: flex; flex-direction: column; align-items: center; gap: var(--space-5); width: 100%; max-width: 640px; margin-inline: auto; padding: var(--space-8) 0; text-align: center; }
+.esp-vazio h2 { margin: 0; font-size: var(--font-size-title-3); line-height: var(--font-lh-title-3); font-weight: 600; letter-spacing: 0; text-wrap: balance; }
+.esp-vazio > p { margin: 0; font-size: var(--font-size-body); color: var(--color-text-secondary); }
+.esp-sug { display: flex; flex-direction: column; gap: var(--space-3); width: 100%; list-style: none; margin: 0; padding: 0; }
+.esp-sug li { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-3) var(--space-5); padding: var(--space-3) var(--space-4); border: var(--border-width-hairline) solid var(--color-border-subtle); text-align: left; }
+.esp-sug li span { font-size: var(--font-size-body); }
+.esp-vazio-a { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-3); }
+button.esp-topo.bs { position: fixed; right: var(--space-5); bottom: var(--space-5); z-index: 20; width: var(--size-touch-default); min-width: var(--size-touch-default); height: var(--size-touch-default); padding: 0 !important; justify-content: center; background: var(--color-bg-page) !important; opacity: 0; visibility: hidden; transform: translateY(var(--motion-distance-md)); transition: opacity var(--motion-duration-base) var(--motion-ease-move), transform var(--motion-duration-base) var(--motion-ease-move), visibility 0s linear var(--motion-duration-base); }
+button.esp-topo.bs[data-on="true"] { opacity: 1; visibility: visible; transform: none; transition: opacity var(--motion-duration-base) var(--motion-ease-enter), transform var(--motion-duration-base) var(--motion-ease-enter), visibility 0s; }
+.esp-topo svg { width: var(--size-icon-md); height: var(--size-icon-md); stroke-width: 2; }
+
+/* ---------- celular e tablet: facetas em folha cheia ---------- */
+@media (max-width: 1023px) {
+  .esp-ordem { margin-left: 0; }
+  .esp-ordem select { max-width: 60vw; }
+  .esp-campo { width: 100%; }
+}
+@media (max-width: 640px) {
+  .esp-lista { padding-top: var(--space-7); }
+  .esp-sec { padding-top: var(--space-7); }
+  .esp-campo { flex-wrap: wrap; padding: var(--space-2); }
+  .esp-campo label { flex: 1 1 calc(100% - var(--size-touch-default) * 2 - var(--space-6)); }
+  .esp-campo .bp { flex: 1 1 100%; }
+}
+
+/* cabeçalho de seção com "Ver todas" (o mesmo desenho da Home) */
+.esp-sec .hd-topo { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-3) var(--space-5); }
+.esp-sec .hd-topo .more { white-space: nowrap; flex: 0 0 auto; }
+
+/* ícones Lottie (Iconly Motion) das modalidades: parados no quadro de repouso, um gesto no hover e no foco (icones-motion.js); o traço segue a cor do texto */
+.esp-lic { display: inline-flex; flex: 0 0 auto; align-items: center; justify-content: center; width: var(--size-icon-md); height: var(--size-icon-md); color: inherit; }
+.esp-lic.esp-ic-lg { width: var(--size-icon-lg); height: var(--size-icon-lg); }
+.esp-lic svg { width: 100%; height: 100%; display: block; }
+.esp-lic [stroke]:not([stroke="none"]) { stroke: currentColor; }
+.esp-h2-ic { display: flex; align-items: center; gap: var(--space-3); }
+.esp-perto .esp-lic, .esp-perto .esp-ic { margin-right: var(--space-2); }
+
+/* linhas de separação retas (regra do Wander: linha reta e cinza, sem ponta arredondada); o raio global de 8 px só vale para quem tem as quatro bordas */
+
+
+/* ---------- hero: provas em destaque (curadoria) ---------- */
+.esp-dest { position: relative; isolation: isolate; overflow: hidden; width: 100vw; margin-left: calc(50% - 50vw); box-sizing: border-box; padding: var(--space-8) max(var(--layout-margin), calc((100vw - var(--layout-content-max)) / 2)) var(--space-6); background: var(--color-bg-island); color: var(--color-text-primary); }
+.esp-dest-in { position: relative; z-index: 1; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, calc(var(--size-touch-default) * 10)); align-items: center; gap: var(--space-8); }
+.esp-dest-txt { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-4); min-width: 0; }
+.esp-dest-kicker { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); margin: 0; font-size: var(--font-size-label); line-height: var(--font-lh-label); letter-spacing: var(--font-ls-label); text-transform: uppercase; font-weight: 600; color: var(--color-text-secondary); }
+.esp-dest-sel { display: inline-flex; align-items: center; min-height: var(--space-6); padding: 0 var(--space-3); background: var(--color-text-primary); color: var(--color-bg-island); }
+.esp-dest-nome { margin: 0; font-size: var(--font-size-title-1); line-height: var(--font-lh-title-1); letter-spacing: var(--font-ls-title-1); font-weight: 600; text-wrap: balance; }
+.esp-dest-nome a { display: inline-block; min-height: var(--size-touch-default); color: inherit; text-decoration: none; } /* título de uma linha no celular ficava com 43 px: alvo de toque */
+.esp-dest-nome a:hover { text-decoration: underline; text-underline-offset: 6px; text-decoration-thickness: var(--border-width-accent); }
+.esp-dest-meta { margin: 0; font-size: var(--font-size-body); line-height: var(--font-lh-body); color: var(--color-text-secondary); }
+.esp-dest-selo { display: inline-flex; align-items: center; gap: var(--space-2); margin: 0; font-size: var(--font-size-small); font-weight: 600; }
+.esp-dest-acoes { display: flex; flex-wrap: wrap; gap: var(--space-3); margin-top: var(--space-2); }
+.esp-dest-poster { display: block; width: 100%; max-width: calc(var(--size-touch-default) * 10); justify-self: end; color: inherit; text-decoration: none; border: var(--border-width-hairline) solid var(--color-border-subtle); }
+.esp-dest-ctl { position: relative; z-index: 1; display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); margin-top: var(--space-6); }
+.esp-dest-pontos { display: flex; align-items: center; }
+.esp-dest-ponto { display: inline-flex; align-items: center; justify-content: center; width: var(--size-touch-default); height: var(--size-touch-default); padding: 0; background: transparent; border: 0; cursor: pointer; }
+.esp-dest-ponto span { display: block; width: var(--space-6); height: var(--border-width-accent); background: var(--color-border-control); border-radius: 0 !important; transition: background-color var(--motion-duration-base) var(--motion-ease-move), width var(--motion-duration-base) var(--motion-ease-move); }
+.esp-dest-ponto[aria-selected="true"] span { background: var(--color-text-primary); width: calc(var(--space-6) * 1.75); }
+.esp-dest-botoes { display: flex; gap: var(--space-2); }
+.esp-dest-b { display: inline-flex; align-items: center; justify-content: center; width: var(--size-touch-default); height: var(--size-touch-default); padding: 0; background: transparent; color: var(--color-text-primary); border: var(--border-width-hairline) solid var(--color-border-control); cursor: pointer; transition: border-color var(--motion-duration-fast) var(--motion-ease-move), background-color var(--motion-duration-fast) var(--motion-ease-move); }
+.esp-dest-b:hover { border-color: var(--color-border-strong); background: var(--color-bg-hover); }
+.esp-dest-b svg { width: var(--size-icon-md); height: var(--size-icon-md); }
+.esp-dest-b .ico { stroke: currentColor; fill: none; }
+@media (max-width: 760px) {
+  .esp-dest { padding-top: var(--space-6); }
+  .esp-dest-in { grid-template-columns: minmax(0, 1fr); gap: var(--space-5); }
+  .esp-dest-poster { order: -1; justify-self: stretch; max-width: none; }
+  .esp-dest-ctl { margin-top: var(--space-4); }
+  .esp-dest-b[aria-label^="Destaque anterior"], .esp-dest-b[aria-label^="Próximo destaque"] { display: none; } /* no celular: deslize e pontos (a pausa continua) */
+}
+
+/* ---------- busca, logo abaixo do hero ---------- */
+.esp-busca-sec { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-3); }
+.esp-busca-sec .esp-antiga { color: var(--color-text-secondary); }
+.esp-busca-sec .esp-h1 { font-size: var(--font-size-title-2); line-height: var(--font-lh-title-2); letter-spacing: var(--font-ls-title-2); }
+.esp-busca-ap { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3) var(--space-5); }
+
+/* ---------- carrosséis com chips (o componente do «Descubra o que viver agora») ---------- */
+.esp-car .ev-scroll > * { flex: 0 0 min(var(--size-sport-card-carousel), 78%); } /* o cartão do carrossel tem a largura do token (288), não os 240 do pôster */
+.esp-trilho > .esp-sk { pointer-events: none; }
+
+/* ---------- «perto de mim»: de onde vem a origem e o botão de localização (só depois de um clique) ---------- */
+.esp-geo { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2) var(--space-5); margin: 0 0 var(--space-5); padding: var(--space-3) var(--space-4); border: var(--border-width-hairline) solid var(--color-border-subtle); background: var(--color-bg-subtle); }
+.esp-geo-t { margin: 0; flex: 1 1 280px; min-width: 0; font-size: var(--font-size-small); line-height: var(--font-lh-small); color: var(--color-text-secondary); }
+.esp-geo-a { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-4); }
+.esp-geo-b { gap: var(--space-2); }
+.esp-geo-esp { font-size: var(--font-size-small); color: var(--color-text-secondary); }
+
+
+/* filtros.css: O componente de filtros do site (fonte única; Mariana, 29/10/2026, pedido do Wander: «o lance dos filtros das buscas é um erro de consistência»).
+   Usado pela Busca «Tudo», pela Busca «Ingresse Sports» e pela agregadora Esportes.dc.html; preparado para a Categoria, Artistas e Locais.
+   Markup em filtros.html / filtros-abrir.html / filtros-ativos.html; lógica dos grupos em filtros-logica.js (FLT). NÃO crie outra implementação:
+   precisa de outro grupo? Acrescente um tipo ao FLT, não uma regra paralela (docs/design/FILTROS-COMPONENTE.md). */
+.flt-lay { display: grid; grid-template-columns: var(--size-sport-facets) minmax(0, 1fr); gap: var(--space-7); align-items: start; }
+.flt-res { min-width: 0; display: flex; flex-direction: column; gap: var(--space-5); }
+.flt { position: sticky; top: calc(var(--size-header) + var(--space-4)); max-height: calc(100vh - var(--size-header) - var(--space-6)); overflow-y: auto; display: flex; flex-direction: column; background: var(--color-bg-page); }
+.flt-topo, .flt-rodape { display: none; }
+.flt-corpo { display: flex; flex-direction: column; }
+.flt-grupo { border-bottom: var(--border-width-hairline) solid var(--color-border-subtle); }
+.flt-grupo-h { margin: 0; }
+.flt-grupo-b { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); width: 100%; min-height: var(--size-touch-default); padding: var(--space-2) 0; background: transparent; border: 0; color: var(--color-text-primary); font: inherit; font-size: var(--font-size-body); font-weight: 600; text-align: left; cursor: pointer; }
+.flt-grupo-b:hover > span:first-child { text-decoration: underline; text-underline-offset: var(--space-1); } /* hover: o painel é cartão branco sobre chão cinza, então o fundo NÃO muda (nada de cinza); o sinal é o título sublinhado (pedido do Wander, 30/10) */
+.flt-grupo-b:hover { background: transparent; }
+.flt-grupo-b svg { flex: 0 0 auto; width: var(--size-icon-md); height: var(--size-icon-md); transition: transform var(--motion-duration-fast) var(--motion-ease-move); }
+.flt-grupo-b[aria-expanded="true"] svg { transform: rotate(180deg); }
+.flt-grupo-r { margin-left: auto; margin-right: var(--space-2); font-size: var(--font-size-small); font-weight: 400; color: var(--color-text-tertiary); }
+.flt-grupo-c { display: flex; flex-direction: column; gap: var(--space-3); padding: 0 0 var(--space-4); }
+.flt .fac { display: flex; align-items: center; gap: var(--space-3); width: 100%; box-sizing: border-box; cursor: pointer; }
+.flt .fac[data-zero="true"] { cursor: not-allowed; }
+.flt-ic-vazio { flex: 0 0 auto; width: var(--size-icon-md); height: var(--size-icon-md); } /* a opção sem ícone alinha o texto com as que têm (grupos onde só parte das opções tem ícone) */
+.flt-n { margin-left: auto; font-size: var(--font-size-small); color: var(--color-text-tertiary); font-variant-numeric: tabular-nums; }
+.flt-chips { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.flt-faixa { display: flex; align-items: flex-end; gap: var(--space-3); }
+.flt-faixa label { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: var(--space-1); font-size: var(--font-size-small); font-weight: 600; }
+.flt-faixa input { width: 100%; box-sizing: border-box; min-height: var(--size-touch-default); padding: 0 var(--space-4); font-size: var(--font-size-body); font-weight: 400 !important; border-radius: var(--radius-base); }
+.flt-apoio { margin: 0; font-size: var(--font-size-small); color: var(--color-text-secondary); }
+.flt-mais { align-self: flex-start; min-height: var(--size-touch-default); padding: 0; }
+.bs.flt-abrir { display: none; gap: var(--space-2); }
+.flt-ativos { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); }
+.flt-ativos:empty { display: none; }
+.flt-chip { gap: var(--space-2); padding-right: var(--space-3); }
+.flt-chip svg { width: var(--size-icon-sm); height: var(--size-icon-sm); stroke-width: 2; }
+.flt .fac .esp-lic, .flt .fac .esp-ic { color: var(--color-text-primary) !important; }
+/* linhas de separação retas (regra do Wander: linha reta e cinza, sem ponta arredondada) */
+.flt-grupo, .flt-topo, .flt-rodape { border-radius: 0 !important; }
+
+/* ---------- celular e tablet: o painel vira folha cheia (a gaveta) ---------- */
+@media (max-width: 1023px) {
+  .flt-lay { display: block; }
+  .bs.flt-abrir { display: inline-flex; }
+  .flt { display: none; }
+  .flt[data-aberta="true"] { display: flex; position: fixed; inset: 0; z-index: calc(var(--zIndex-header) + 5); max-height: none; overflow: hidden; background: var(--color-bg-page); }
+  .flt-topo { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); padding: var(--space-2) var(--layout-margin); border-bottom: var(--border-width-hairline) solid var(--color-border-subtle); min-height: var(--size-header); box-sizing: border-box; }
+  .flt-t { margin: 0; font-size: var(--font-size-title-4); font-weight: 600; letter-spacing: 0; }
+  .flt-fechar { display: inline-flex; align-items: center; justify-content: center; width: var(--size-touch-default); height: var(--size-touch-default); padding: 0; border: 0; background: transparent; color: var(--color-text-primary); cursor: pointer; }
+  .flt-fechar:hover { background: transparent; } /* sem cinza no hover; o foco por teclado mantém o anel de 2 px */
+  .flt-fechar svg { width: var(--size-icon-md); height: var(--size-icon-md); stroke-width: 2; }
+  .flt-corpo { flex: 1 1 auto; overflow-y: auto; padding: 0 var(--layout-margin); }
+  .flt-rodape { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-3); padding: var(--space-3) var(--layout-margin); border-top: var(--border-width-hairline) solid var(--color-border-subtle); background: var(--color-bg-page); }
+  .flt-rodape .bp { flex: 1 1 200px; }
+  html[data-flt-folha] { overflow: hidden; }
+}
+
+</style>
+<style data-pb>
+/* lupa de busca do menu (pilula-busca.mjs) */
+.hdr-search.hdr-lupa { flex: 0 0 auto !important; display: inline-flex !important; align-items: center; justify-content: center; width: var(--size-touch-default); height: var(--size-touch-default); min-height: var(--size-touch-default) !important; padding: 0 !important; margin: 0 0 0 auto !important; max-width: none; border-radius: var(--radius-base); color: var(--color-text-primary) !important; cursor: pointer; }
+.hdr-search.hdr-lupa svg { stroke: currentColor; }
+.hdr .crumbs { min-width: 0; flex: 0 1 auto; overflow: hidden; }
+.hdr .crumbs .crumb-cur, .hdr .crumbs [aria-current] { overflow: hidden; text-overflow: ellipsis; }
+</style>
+<link rel="stylesheet" href="./theme.css">
+<link rel="stylesheet" href="./base.css">
+<script src="./theme.js"></script>
+<script src="./scroller.js" defer></script>
+<link rel="stylesheet" href="./ux.css">
+<link rel="stylesheet" href="./ds.css">
+<script src="./ux.js" defer></script>
+<script src="./vendor/lottie_svg.min.js" defer data-previa></script>
+<script src="./icones-motion.js" defer data-previa></script>
+<script src="./categoria.js" defer data-previa></script>
+<link rel="stylesheet" href="./esportes-cabecalho.css" data-previa>
+<script src="./esportes-geo.js" defer data-previa></script>
+<script src="./esportes-cabecalho.js" defer data-previa></script>
+<link rel="stylesheet" href="./identidade-v1.css" data-previa>
+<script src="./previa.js" defer data-previa></script>
+<script src="./movimento-compra.js" defer data-previa></script>
+<script src="./movimento-navegacao.js" defer data-previa></script>
+<link rel="stylesheet" href="./cidade-cabecalho.css" data-previa>
+<script src="./modal-uui.js" defer data-previa></script>
+<script src="./lugares-consulta.js" defer data-previa></script>
+<script src="./local.js" defer data-previa></script>
+<script src="./local-ui.js" defer data-previa></script>
+<script src="./cidade-cabecalho.js" defer data-previa></script>
+<link rel="stylesheet" href="./chips-caixinha.css" data-previa>
+<script src="./chips-caixinha.js" defer data-previa></script>
+<link rel="stylesheet" href="./lembretes.css" data-previa>
+<script src="./lembretes.js" defer data-previa></script>
+<link rel="stylesheet" href="./menu-conta.css" data-previa>
+<script src="./menu-conta.js" defer data-previa></script>
+<script src="./cartao-evento.js" defer data-previa></script>
+<script src="./lacunas.js" defer data-previa></script>
+<link rel="stylesheet" href="./transicao-evento.css" data-previa data-previa-te>
+</helmet>
+
+<div style="min-height: 100vh; background: var(--pagina-bg)">
+<header class="hdr">
+  <div class="hdr-row esp-hdr-row" style="max-width: 1280px; margin: 0 auto; padding: 14px 24px; display: flex; align-items: center; gap: 24px; flex-wrap: wrap">
+    <a href="Main.dc.html" class="esp-volta" aria-label="Voltar para a Ingresse"><svg class="ico ico-16" viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg><span>Ingresse</span></a>
+    <a href="Esportes.dc.html" aria-label="Ingresse Sports, início" class="hdr-logo esp-hlogo"><span class="esp-logo" role="img" aria-label="Ingresse Sports"></span></a>
+    <nav class="esp-nav" aria-label="Ingresse Sports">
+      <ul class="esp-sub-links">
+        <li class="esp-volta-li"><a href="Main.dc.html" class="esp-sub-a esp-volta-m" aria-label="Voltar para a Ingresse"><svg class="ico ico-16" viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg>Ingresse</a></li>
+        <sc-for list="{{barra}}" as="b" hint-placeholder-count="6"><li><a href="{{b.href}}" class="esp-sub-a" aria-current="{{b.cur}}">{{b.label}}</a></li></sc-for>
+      </ul>
+    </nav>
+    <a href="Busca.dc.html?escopo=esportes" class="hdr-search hdr-lupa" aria-label="Buscar provas, eventos e cidades">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+    </a>
+    <span class="cid" data-cidade>
+      <button type="button" class="bs cid-btn" data-cidade-btn data-marcado="true" aria-haspopup="dialog" aria-expanded="false" aria-label="Cidade: São Paulo. Trocar">
+        <span class="btn-ic cid-pin" aria-hidden="true" data-lottie="./assets/icones/esp-perto-de-voce.json" data-repouso="0" data-loop="0"></span>
+        <span class="cid-nome" data-cidade-nome>São Paulo</span>
+        <svg class="cid-chev ico ico-14" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+      </button>
+    </span>
+    <!-- mc:ini --><button type="button" class="avatar-hdr mc-av" data-menu-conta data-conta="true" aria-haspopup="menu" aria-expanded="false" aria-label="Minha conta"><span class="uui-avatar uui-avatar--lg" aria-hidden="true"><span class="uui-avatar__content"><span class="mc-ini" aria-hidden="true">PE</span><svg class="mc-gen" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 21a8 8 0 0 0-16 0"/><path d="M12 13a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"/></svg><img src="./assets/pessoas/pessoa-exemplo.jpg" srcset="./assets/pessoas/pessoa-exemplo.jpg 96w, ./assets/pessoas/pessoa-exemplo@2x.jpg 192w" sizes="48px" width="48" height="48" alt=""></span></span><span class="mc-n" data-mc-n data-vazio="true" aria-hidden="true">0</span></button><!-- mc:fim -->
+  </div>
+</header>
+
+<main class="esp" data-esp-estado="{{estado}}" data-esp-vista="{{vista}}">
+
+  <!-- ====================================================== HOME DA VERTICAL ====================================================== -->
+  <sc-if value="{{isHome}}" hint-placeholder-val="{{true}}">
+
+  <!-- hero: provas em destaque (curadoria; esportes/destaques.json) -->
+  <sc-if value="{{temDest}}" hint-placeholder-val="{{true}}">
+  <section class="esp-dest ilha cat-hero" data-cym="categoria" data-seed="{{heroSeed}}" data-estilo="{{heroEstilo}}" data-cor="255,39,26" aria-roledescription="carrossel" aria-label="Provas em destaque" onMouseEnter="{{destPausar}}" onMouseLeave="{{destRetomar}}" onFocus="{{destPausar}}" onBlur="{{destRetomar}}">
+    <div class="esp-dest-in">
+      <div class="esp-dest-txt" data-dest="txt" aria-live="{{destLive}}" aria-atomic="true">
+        <p class="esp-dest-kicker"><span class="esp-dest-sel">Em destaque</span><span class="esp-dest-ctx">{{dest.kicker}}</span></p>
+        <h2 class="esp-dest-nome"><a href="{{dest.cHref}}" aria-label="{{dest.cAria}}">{{dest.cNome}}</a></h2>
+        <p class="esp-dest-meta">{{dest.meta}}</p>
+        <sc-if value="{{dest.cTemEstado}}" hint-placeholder-val="{{false}}"><p class="esp-dest-selo"><span class="ev-ic" data-i="{{dest.cEstadoIcone}}" aria-hidden="true"></span>{{dest.cEstado}}</p></sc-if>
+        <div class="esp-dest-acoes"><a href="{{dest.cHref}}" class="bp bp-lg">Ver prova</a><a href="{{dest.verHref}}" class="bs bs-lg esp-dest-ver">{{dest.verRotulo}}</a></div>
+      </div>
+      <a href="{{dest.cHref}}" class="esp-dest-poster" data-dest="poster" tabindex="-1" aria-hidden="true" aria-label="{{dest.cAria}}">
+        <div class="esp-poster"><img class="esp-capa" src="{{dest.cImg}}" srcset="{{dest.cSrcset}}" sizes="(max-width: 640px) 100vw, 480px" alt="" width="480" height="480" decoding="async">
+        </div>
+      </a>
+    </div>
+    <div class="esp-dest-ctl">
+      <div class="esp-dest-pontos" role="tablist" aria-label="Escolher destaque">
+        <sc-for list="{{destPontos}}" as="d" hint-placeholder-count="5"><button type="button" role="tab" class="esp-dest-ponto" aria-selected="{{d.sel}}" aria-label="{{d.aria}}" onClick="{{d.ir}}"><span></span></button></sc-for>
+      </div>
+      <div class="esp-dest-botoes">
+        <sc-if value="{{destTemPausa}}" hint-placeholder-val="{{true}}"><button type="button" class="esp-dest-b" onClick="{{destAlternar}}" aria-label="{{destPausaRotulo}}" title="{{destPausaRotulo}}"><sc-if value="{{destParado}}" hint-placeholder-val="{{false}}"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg></sc-if><sc-if value="{{destRodando}}" hint-placeholder-val="{{true}}"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 5h4v14H7zM13 5h4v14h-4z"/></svg></sc-if></button></sc-if>
+        <button type="button" class="esp-dest-b" onClick="{{destAnterior}}" aria-label="Destaque anterior"><svg class="ico ico-16" viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></button>
+        <button type="button" class="esp-dest-b" onClick="{{destProximo}}" aria-label="Próximo destaque"><svg class="ico ico-16" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button>
+      </div>
+    </div>
+  </section>
+  </sc-if>
+
+  <!-- busca: logo abaixo do hero -->
+  <section class="esp-sec esp-busca-sec" aria-labelledby="esp-h1">
+    <p class="esp-antiga">Antiga TicketSports</p>
+    <h1 class="esp-h1" id="esp-h1">Qual é a sua próxima prova?</h1>
+    <form role="search" class="esp-busca" onSubmit="{{buscarHome}}" aria-label="Buscar provas">
+      <label class="esp-busca-c"><span class="sr-only">Prova, cidade ou distância</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+        <input type="search" id="esp-q" value="{{qHome}}" onInput="{{onQHome}}" enterkeyhint="search" autocomplete="off" placeholder="Prova, cidade ou distância"></label>
+      <button type="submit" class="bp">Buscar provas</button>
+    </form>
+    <div class="esp-busca-ap"><p class="esp-ajuda">Experimente «10 km em Curitiba em abril».</p>
+    <button type="button" class="bs esp-perto" onClick="{{pertoHome}}"><sc-if value="{{icPerto.temLottie}}" hint-placeholder-val="{{false}}"><span class="esp-lic " data-lottie="{{icPerto.lottie}}" data-repouso="{{icPerto.repouso}}" data-loop="{{icPerto.laco}}" aria-hidden="true"></span></sc-if><sc-if value="{{icPerto.semLottie}}" hint-placeholder-val="{{true}}"><span class="esp-ic " data-i="{{icPerto.slug}}" aria-hidden="true"></span></sc-if>Perto de mim</button>
+    </div>
+  </section>
+
+  <sc-if value="{{carregando}}" hint-placeholder-val="{{false}}">
+    <section class="esp-sec" aria-busy="true" aria-label="Carregando provas">
+      <div class="esp-grade"><sc-for list="{{skels}}" as="k" hint-placeholder-count="4"><div class="ev-card ev-card--esqueleto" data-tipo="prova" aria-hidden="true"><div class="ev-card__caixa"><span class="ev-card__midia sk"></span><span class="ev-card__corpo"><span class="sk" data-l="titulo"></span><span class="sk" data-l="meta"></span><span class="sk" data-l="meta"></span></span></div></div></sc-for></div>
+    </section>
+  </sc-if>
+
+  <sc-if value="{{temErro}}" hint-placeholder-val="{{false}}">
+    <section class="esp-sec">
+      <div class="uui-empty-state" role="alert">
+        <span class="uui-empty-state__icon"><svg class="uui-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8v4m0 4h.01M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10Z"/></svg></span>
+        <div class="uui-empty-state__header"><h2 class="uui-empty-state__title">Não conseguimos carregar as provas</h2><p class="uui-empty-state__text">Confira a conexão e tente de novo.</p></div>
+        <div class="uui-empty-state__actions"><button type="button" class="bp" onClick="{{tentar}}">Tentar de novo</button></div>
+      </div>
+    </section>
+  </sc-if>
+
+  <sc-if value="{{temDados}}" hint-placeholder-val="{{true}}">
+  <section class="esp-sec" id="modalidades" aria-labelledby="esp-mod-h">
+    <div class="hd-topo"><h2 class="h2 hd-titulo" id="esp-mod-h">Por modalidade</h2></div>
+    <ul class="esp-mods">
+      <sc-for list="{{mods}}" as="m" hint-placeholder-count="11"><li><a href="{{m.href}}" class="esp-mod"><sc-if value="{{m.temLottie}}" hint-placeholder-val="{{false}}"><span class="esp-lic esp-ic-lg" data-lottie="{{m.lottie}}" data-repouso="{{m.repouso}}" data-loop="{{m.laco}}" aria-hidden="true"></span></sc-if><sc-if value="{{m.semLottie}}" hint-placeholder-val="{{true}}"><span class="esp-ic esp-ic-lg" data-i="{{m.slug}}" aria-hidden="true"></span></sc-if><span class="esp-mod-t">{{m.rotulo}}</span><span class="esp-mod-n">{{m.n}}</span></a></li></sc-for>
+    </ul>
+  </section>
+
+  <!-- carrosséis com chips (o componente do "Descubra o que viver agora"): próximas provas; perto de você (raio); distância, formato e para quem -->
+  <sc-for list="{{carrosseisA}}" as="k" hint-placeholder-count="4">
+  <section class="esp-sec esp-car" id="{{k.id}}" aria-labelledby="{{k.hid}}">
+    <div class="hd-topo">
+      <h2 class="h2 hd-titulo" id="{{k.hid}}">{{k.titulo}}</h2>
+      <a href="{{k.ver}}" class="more">Ver todas <svg class="ico ico-16" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></a>
+    </div>
+    <div class="hd-chips" role="group" aria-label="{{k.grupoRotulo}}">
+      <sc-for list="{{k.chips}}" as="t" hint-placeholder-count="4">
+        <button type="button" class="chip" onClick="{{t.pick}}" aria-pressed="{{t.pressed}}">{{t.label}}</button>
+      </sc-for>
+      <sc-if value="{{k.temMais}}" hint-placeholder-val="{{false}}"><button type="button" class="chip hd-mais" onClick="{{k.toggleMais}}" aria-expanded="{{k.maisOpen}}" aria-label="{{k.maisLabel}}"><span aria-hidden="true">{{k.maisSinal}}</span></button></sc-if>
+      <sc-for list="{{k.extras}}" as="t" hint-placeholder-count="3">
+        <button type="button" class="chip" onClick="{{t.pick}}" aria-pressed="{{t.pressed}}">{{t.label}}</button>
+      </sc-for>
+    </div>
+    <p class="sr-only" role="status" aria-live="polite">{{k.anuncio}}</p>
+    <sc-if value="{{k.temCards}}" hint-placeholder-val="{{true}}">
+    <div class="scr-wrap"><button type="button" class="scr-btn" data-dir="-1" aria-label="Ver provas anteriores"><svg class="ico ico-16" viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></button><button type="button" class="scr-btn" data-dir="1" aria-label="Ver mais provas"><svg class="ico ico-16" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button><div class="ev-scroll esp-trilho" data-scroller data-car="{{k.id}}" aria-label="{{k.titulo}}">
+      <sc-for list="{{k.cards}}" as="e" hint-placeholder-count="4">
+          <article class="ev-card" data-tipo="prova" data-situacao="{{e.cSit}}" data-quieto="{{e.cQuieto}}" data-ini="{{e.cIni}}" data-sem-sincronia="1">
+          <div class="ev-card__caixa">
+            <a class="ev-card__link" href="{{e.cHref}}" target="{{e.cTarget}}" rel="{{e.cRel}}" aria-label="{{e.cAria}}">
+            <span class="ev-card__midia">
+              <img class="ev-card__img esp-capa" src="{{e.cImg}}" srcset="{{e.cSrcset}}" sizes="(max-width: 640px) 78vw, 18rem" alt="" loading="lazy" decoding="async" width="480" height="480">
+              <span class="ev-card__ver ilha" aria-hidden="true">Ver detalhes</span>
+            </span>
+            <span class="ev-card__corpo">
+              <sc-if value="{{e.cTemEstado}}" hint-placeholder-val="{{false}}"><span class="tag ev-card__estado" data-sit="{{e.cSit}}"><span class="ev-ic" data-i="{{e.cEstadoIcone}}" aria-hidden="true"></span>{{e.cEstado}}</span></sc-if>
+              <h3 class="ev-card__titulo">{{e.cNome}}</h3>
+              <span class="ev-card__meta"><span class="ev-card__data">{{e.cData}}</span><span class="ev-card__local">{{e.cLocal}}</span></span>
+            </span>
+            </a>
+            <sc-if value="{{e.cCtaTem}}" hint-placeholder-val="{{true}}"><a class="bs bs-ink ev-card__cta" href="{{e.cCtaHref}}" target="{{e.cCtaTarget}}" rel="{{e.cCtaRel}}" aria-label="{{e.cCtaAria}}"><span class="ev-card__cta-t">{{e.cCtaRotulo}}</span><svg class="ico ev-card__seta" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M8 7h9v9"/></svg></a></sc-if>
+          </div>
+        </article>
+      </sc-for>
+    </div></div>
+    </sc-if>
+    <sc-if value="{{k.vazio}}" hint-placeholder-val="{{false}}"><div class="esp-aviso"><p>{{k.vazioTexto}}</p><div class="esp-aviso-a"><a href="{{k.ver}}" class="bs">Ver todas as provas</a></div></div></sc-if>
+  </section>
+  </sc-for>
+  <section class="esp-sec esp-car" id="perto" aria-labelledby="esp-perto-h">
+    <div class="hd-topo"><h2 class="h2 hd-titulo" id="esp-perto-h">Provas perto de você</h2><sc-if value="{{temPerto}}" hint-placeholder-val="{{true}}"><a href="{{pertoVer}}" class="more">Ver todas <svg class="ico ico-16" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></a></sc-if></div>
+    <sc-if value="{{temPerto}}" hint-placeholder-val="{{true}}">
+    <div class="hd-chips" role="group" aria-label="Distância da sua cidade">
+      <sc-for list="{{raios}}" as="c" hint-placeholder-count="4"><button type="button" class="chip" onClick="{{c.pick}}" aria-pressed="{{c.pressed}}">{{c.label}}</button></sc-for>
+    </div>
+    </sc-if>
+    <sc-if value="{{pertoEstimando}}" hint-placeholder-val="{{false}}"><div class="scr-wrap"><div class="ev-scroll esp-trilho" aria-busy="true" aria-label="Procurando provas perto de você"><sc-for list="{{skels}}" as="k" hint-placeholder-count="4"><div class="ev-card ev-card--esqueleto" data-tipo="prova" aria-hidden="true"><div class="ev-card__caixa"><span class="ev-card__midia sk"></span><span class="ev-card__corpo"><span class="sk" data-l="titulo"></span><span class="sk" data-l="meta"></span><span class="sk" data-l="meta"></span></span></div></div></sc-for></div></div></sc-if>
+    <sc-if value="{{pertoLinha}}" hint-placeholder-val="{{true}}"><div class="esp-geo" data-geo="{{geoModo}}"><p class="esp-geo-t">{{geoTexto}}</p><div class="esp-geo-a"><sc-if value="{{geoPodePedir}}" hint-placeholder-val="{{true}}"><button type="button" class="bs bs-sm esp-geo-b" onClick="{{usarLocal}}"><span class="esp-ic" data-i="perto-de-voce" aria-hidden="true"></span>Usar minha localização</button></sc-if><sc-if value="{{geoPedindo}}" hint-placeholder-val="{{false}}"><span class="esp-geo-esp" role="status">Procurando a sua localização…</span></sc-if><sc-if value="{{geoPodeTrocar}}" hint-placeholder-val="{{true}}"><button type="button" class="linkbtn esp-geo-b" onClick="{{escolherCidade}}">Escolher outra cidade</button></sc-if></div></div></sc-if>
+    <sc-if value="{{semCidade}}" hint-placeholder-val="{{false}}">
+      <div class="esp-aviso"><p>Escolha a sua cidade para ver as provas perto de você.</p><div class="esp-aviso-a"><button type="button" class="bp" onClick="{{escolherCidade}}">Escolher cidade</button></div></div>
+    </sc-if>
+    <sc-if value="{{semInventario}}" hint-placeholder-val="{{false}}">
+      <div class="esp-aviso"><p>{{semInventarioTexto}}</p><div class="esp-aviso-a"><button type="button" class="bp" onClick="{{ampliarRaioHome}}">Ampliar o raio</button><button type="button" class="bs" onClick="{{escolherCidade}}">Escolher cidade</button></div></div>
+    </sc-if>
+    <sc-if value="{{temPerto}}" hint-placeholder-val="{{true}}">
+    <div class="scr-wrap"><button type="button" class="scr-btn" data-dir="-1" aria-label="Ver provas anteriores"><svg class="ico ico-16" viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></button><button type="button" class="scr-btn" data-dir="1" aria-label="Ver mais provas"><svg class="ico ico-16" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button><div class="ev-scroll esp-trilho" data-scroller data-car="perto" aria-label="Provas perto de você">
+      <sc-for list="{{perto}}" as="e" hint-placeholder-count="4">
+          <article class="ev-card" data-tipo="prova" data-situacao="{{e.cSit}}" data-quieto="{{e.cQuieto}}" data-ini="{{e.cIni}}" data-sem-sincronia="1">
+          <div class="ev-card__caixa">
+            <a class="ev-card__link" href="{{e.cHref}}" target="{{e.cTarget}}" rel="{{e.cRel}}" aria-label="{{e.cAria}}">
+            <span class="ev-card__midia">
+              <img class="ev-card__img esp-capa" src="{{e.cImg}}" srcset="{{e.cSrcset}}" sizes="(max-width: 640px) 78vw, 18rem" alt="" loading="lazy" decoding="async" width="480" height="480">
+              <span class="ev-card__ver ilha" aria-hidden="true">Ver detalhes</span>
+            </span>
+            <span class="ev-card__corpo">
+              <sc-if value="{{e.cTemEstado}}" hint-placeholder-val="{{false}}"><span class="tag ev-card__estado" data-sit="{{e.cSit}}"><span class="ev-ic" data-i="{{e.cEstadoIcone}}" aria-hidden="true"></span>{{e.cEstado}}</span></sc-if>
+              <h3 class="ev-card__titulo">{{e.cNome}}</h3>
+              <span class="ev-card__meta"><span class="ev-card__data">{{e.cData}}</span><span class="ev-card__local">{{e.cLocal}}</span></span>
+            </span>
+            </a>
+            <sc-if value="{{e.cCtaTem}}" hint-placeholder-val="{{true}}"><a class="bs bs-ink ev-card__cta" href="{{e.cCtaHref}}" target="{{e.cCtaTarget}}" rel="{{e.cCtaRel}}" aria-label="{{e.cCtaAria}}"><span class="ev-card__cta-t">{{e.cCtaRotulo}}</span><svg class="ico ev-card__seta" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M8 7h9v9"/></svg></a></sc-if>
+          </div>
+        </article>
+      </sc-for>
+    </div></div>
+    </sc-if>
+  </section>
+  <sc-for list="{{carrosseisB}}" as="k" hint-placeholder-count="4">
+  <section class="esp-sec esp-car" id="{{k.id}}" aria-labelledby="{{k.hid}}">
+    <div class="hd-topo">
+      <h2 class="h2 hd-titulo" id="{{k.hid}}">{{k.titulo}}</h2>
+      <a href="{{k.ver}}" class="more">Ver todas <svg class="ico ico-16" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></a>
+    </div>
+    <div class="hd-chips" role="group" aria-label="{{k.grupoRotulo}}">
+      <sc-for list="{{k.chips}}" as="t" hint-placeholder-count="4">
+        <button type="button" class="chip" onClick="{{t.pick}}" aria-pressed="{{t.pressed}}">{{t.label}}</button>
+      </sc-for>
+      <sc-if value="{{k.temMais}}" hint-placeholder-val="{{false}}"><button type="button" class="chip hd-mais" onClick="{{k.toggleMais}}" aria-expanded="{{k.maisOpen}}" aria-label="{{k.maisLabel}}"><span aria-hidden="true">{{k.maisSinal}}</span></button></sc-if>
+      <sc-for list="{{k.extras}}" as="t" hint-placeholder-count="3">
+        <button type="button" class="chip" onClick="{{t.pick}}" aria-pressed="{{t.pressed}}">{{t.label}}</button>
+      </sc-for>
+    </div>
+    <p class="sr-only" role="status" aria-live="polite">{{k.anuncio}}</p>
+    <sc-if value="{{k.temCards}}" hint-placeholder-val="{{true}}">
+    <div class="scr-wrap"><button type="button" class="scr-btn" data-dir="-1" aria-label="Ver provas anteriores"><svg class="ico ico-16" viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></button><button type="button" class="scr-btn" data-dir="1" aria-label="Ver mais provas"><svg class="ico ico-16" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button><div class="ev-scroll esp-trilho" data-scroller data-car="{{k.id}}" aria-label="{{k.titulo}}">
+      <sc-for list="{{k.cards}}" as="e" hint-placeholder-count="4">
+          <article class="ev-card" data-tipo="prova" data-situacao="{{e.cSit}}" data-quieto="{{e.cQuieto}}" data-ini="{{e.cIni}}" data-sem-sincronia="1">
+          <div class="ev-card__caixa">
+            <a class="ev-card__link" href="{{e.cHref}}" target="{{e.cTarget}}" rel="{{e.cRel}}" aria-label="{{e.cAria}}">
+            <span class="ev-card__midia">
+              <img class="ev-card__img esp-capa" src="{{e.cImg}}" srcset="{{e.cSrcset}}" sizes="(max-width: 640px) 78vw, 18rem" alt="" loading="lazy" decoding="async" width="480" height="480">
+              <span class="ev-card__ver ilha" aria-hidden="true">Ver detalhes</span>
+            </span>
+            <span class="ev-card__corpo">
+              <sc-if value="{{e.cTemEstado}}" hint-placeholder-val="{{false}}"><span class="tag ev-card__estado" data-sit="{{e.cSit}}"><span class="ev-ic" data-i="{{e.cEstadoIcone}}" aria-hidden="true"></span>{{e.cEstado}}</span></sc-if>
+              <h3 class="ev-card__titulo">{{e.cNome}}</h3>
+              <span class="ev-card__meta"><span class="ev-card__data">{{e.cData}}</span><span class="ev-card__local">{{e.cLocal}}</span></span>
+            </span>
+            </a>
+            <sc-if value="{{e.cCtaTem}}" hint-placeholder-val="{{true}}"><a class="bs bs-ink ev-card__cta" href="{{e.cCtaHref}}" target="{{e.cCtaTarget}}" rel="{{e.cCtaRel}}" aria-label="{{e.cCtaAria}}"><span class="ev-card__cta-t">{{e.cCtaRotulo}}</span><svg class="ico ev-card__seta" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M8 7h9v9"/></svg></a></sc-if>
+          </div>
+        </article>
+      </sc-for>
+    </div></div>
+    </sc-if>
+    <sc-if value="{{k.vazio}}" hint-placeholder-val="{{false}}"><div class="esp-aviso"><p>{{k.vazioTexto}}</p><div class="esp-aviso-a"><a href="{{k.ver}}" class="bs">Ver todas as provas</a></div></div></sc-if>
+  </section>
+  </sc-for>
+
+  <section class="esp-sec" id="circuitos" aria-labelledby="esp-circ-h">
+    <div class="hd-topo"><h2 class="h2" id="esp-circ-h">Circuitos</h2><a href="{{hrefCircuitos}}" class="more">Ver todos <svg class="ico ico-16" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></a></div>
+    <div class="scr-wrap"><button type="button" class="scr-btn" data-dir="-1" aria-label="Ver circuitos anteriores"><svg class="ico ico-16" viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></button><button type="button" class="scr-btn" data-dir="1" aria-label="Ver mais circuitos"><svg class="ico ico-16" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button><div class="ev-scroll" data-scroller aria-label="Circuitos de provas">
+      <sc-for list="{{circuitos}}" as="c" hint-placeholder-count="4">
+        <article class="ev-card" data-tipo="turne" data-situacao="{{c.cSit}}" data-quieto="{{c.cQuieto}}" data-ini="{{c.cIni}}" data-sem-sincronia="1">
+          <div class="ev-card__caixa">
+            <a class="ev-card__link" href="{{c.cHref}}" target="{{c.cTarget}}" rel="{{c.cRel}}" aria-label="{{c.cAria}}">
+            <span class="ev-card__midia">
+              <img class="ev-card__img esp-capa" src="{{c.cImg}}" srcset="{{c.cSrcset}}" sizes="(max-width: 640px) 78vw, 20rem" alt="" loading="lazy" decoding="async" width="480" height="480">
+              <span class="ev-card__ver ilha" aria-hidden="true">Ver detalhes</span>
+            </span>
+            <span class="ev-card__corpo">
+              <sc-if value="{{c.cTemEstado}}" hint-placeholder-val="{{false}}"><span class="tag ev-card__estado" data-sit="{{c.cSit}}"><span class="ev-ic" data-i="{{c.cEstadoIcone}}" aria-hidden="true"></span>{{c.cEstado}}</span></sc-if>
+              <h3 class="ev-card__titulo">{{c.cNome}}</h3>
+              <span class="ev-card__meta"><span class="ev-card__data">{{c.cData}}</span><span class="ev-card__local">{{c.cLocal}}</span></span>
+            </span>
+            </a>
+            <sc-if value="{{c.cCtaTem}}" hint-placeholder-val="{{true}}"><a class="bs bs-ink ev-card__cta" href="{{c.cCtaHref}}" target="{{c.cCtaTarget}}" rel="{{c.cCtaRel}}" aria-label="{{c.cCtaAria}}"><span class="ev-card__cta-t">{{c.cCtaRotulo}}</span><svg class="ico ev-card__seta" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M8 7h9v9"/></svg></a></sc-if>
+          </div>
+        </article>
+      </sc-for>
+    </div></div>
+  </section>
+
+  <section class="esp-sec" id="grupos" aria-labelledby="esp-grp-h">
+    <div class="esp-bloco">
+      <div class="esp-bloco-t"><h2 id="esp-grp-h">Grupos e assessorias</h2><p>Para grupos, clubes e assessorias.</p></div>
+      <a href="{{hrefGrupos}}" class="bs">Ver provas</a>
+    </div>
+  </section>
+
+  <section class="esp-sec" id="assistir" aria-label="Para assistir">
+    <div class="esp-bloco">
+      <div class="esp-bloco-t"><h2>Para assistir</h2><p>Quer assistir a um jogo? Veja futebol e campeonatos.</p></div>
+      <a href="Categoria.dc.html?c=futebol" class="bs">Ver futebol</a>
+    </div>
+  </section>
+
+  <section class="esp-sec" id="aprenda" aria-labelledby="esp-apr-h">
+    <div class="esp-bloco">
+      <div class="esp-bloco-t"><h2 id="esp-apr-h">Treino e preparação</h2><p>Escolha a distância, a data e o ritmo antes de se inscrever.</p></div>
+      <a href="{{hrefAprenda}}" class="bs">Ver todos os conteúdos</a>
+    </div>
+  </section>
+
+  <!-- outras categorias do grupo Ingresse (o mesmo componente de "Explorar por categoria" da Home da Ingresse) -->
+  <section class="esp-sec" id="categorias" aria-labelledby="esp-cat-h">
+    <div class="hd-topo"><h2 class="h2 hd-titulo" id="esp-cat-h">Outras categorias da Ingresse</h2><a href="Main.dc.html" class="more">Ir para a Ingresse <svg class="ico ico-16" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></a></div>
+    <div class="oc-grid">
+      <a href="Categoria.dc.html?c=shows" class="oc"><span class="oc-ic" aria-hidden="true" data-lottie="./assets/icones/cat-shows.json" data-repouso="0" data-loop="0"></span><span class="oc-t">Shows</span></a>
+      <a href="Categoria.dc.html?c=festivais" class="oc"><span class="oc-ic" aria-hidden="true" data-lottie="./assets/icones/cat-festivais.json" data-repouso="0" data-loop="0"></span><span class="oc-t">Festivais</span></a>
+      <a href="Categoria.dc.html?c=baladas" class="oc"><span class="oc-ic" aria-hidden="true" data-lottie="./assets/icones/cat-festa-e-balada.json" data-repouso="0" data-loop="1"></span><span class="oc-t">Festa e balada</span></a>
+      <a href="Categoria.dc.html?c=musica-eletronica" class="oc"><span class="oc-ic" aria-hidden="true" data-lottie="./assets/icones/cat-musica-eletronica.json" data-repouso="0" data-loop="0"></span><span class="oc-t">Música eletrônica</span></a>
+      <a href="Categoria.dc.html?c=futebol" class="oc"><span class="oc-ic" aria-hidden="true" data-lottie="./assets/icones/cat-futebol.json" data-repouso="0" data-loop="0"></span><span class="oc-t">Futebol</span></a>
+      <a href="Categoria.dc.html?c=teatro" class="oc"><span class="oc-ic" aria-hidden="true" data-lottie="./assets/icones/cat-teatro.json" data-repouso="0" data-loop="0"></span><span class="oc-t">Teatro</span></a>
+      <a href="Categoria.dc.html?c=gastronomia" class="oc"><span class="oc-ic" aria-hidden="true" data-lottie="./assets/icones/cat-gastronomia.json" data-repouso="0" data-loop="0"></span><span class="oc-t">Gastronomia</span></a>
+      <a href="Categoria.dc.html?c=infantil" class="oc"><span class="oc-ic" aria-hidden="true" data-lottie="./assets/icones/cat-kids.json" data-repouso="0" data-loop="0"></span><span class="oc-t">Kids</span></a>
+      <a href="Categoria.dc.html?c=universitario" class="oc"><span class="oc-ic" aria-hidden="true" data-lottie="./assets/icones/cat-mvp-universitario.json" data-repouso="0" data-loop="0"></span><span class="oc-t">Universitário</span></a>
+      <a href="Categoria.dc.html?c=stand-up" class="oc"><span class="oc-ic" aria-hidden="true" data-lottie="./assets/icones/cat-mvp-stand-up.json" data-repouso="0" data-loop="0"></span><span class="oc-t">Stand-up</span></a>
+      <a href="Categoria.dc.html?c=feiras" class="oc"><span class="oc-ic" aria-hidden="true" data-lottie="./assets/icones/mvp-cat-feiras.json" data-repouso="0" data-loop="0"></span><span class="oc-t">Feiras e Exposições</span></a>
+    </div>
+  </section>
+  </sc-if>
+  </sc-if>
+
+  <!-- ====================================================== AGREGADORAS ====================================================== -->
+  <sc-if value="{{isAgreg}}" hint-placeholder-val="{{false}}">
+  <section class="esp-hero esp-hero-ag ilha cat-hero" data-cym="categoria" data-seed="{{heroSeed}}" data-estilo="{{heroEstilo}}" data-cor="255,39,26" aria-labelledby="esp-h1">
+    <div class="esp-hero-in">
+      <nav class="esp-trilha" aria-label="Trilha da página"><ol>
+        <sc-for list="{{trilha}}" as="t" hint-placeholder-count="3"><li><sc-if value="{{t.link}}" hint-placeholder-val="{{true}}"><a href="{{t.href}}">{{t.label}}</a></sc-if><sc-if value="{{t.atual}}" hint-placeholder-val="{{false}}"><span aria-current="page">{{t.label}}</span></sc-if></li></sc-for>
+      </ol></nav>
+      <h1 class="esp-h1" id="esp-h1">{{h1}}</h1>
+      <p class="esp-intro">{{intro}}</p>
+      <sc-if value="{{temEditorial}}" hint-placeholder-val="{{false}}"><p class="esp-intro">{{editorial}}</p></sc-if>
+      <sc-if value="{{temTotal}}" hint-placeholder-val="{{true}}"><p class="esp-total"><strong>{{totalNum}}</strong> {{totalPal}}</p></sc-if>
+    </div>
+  </section>
+
+  <section class="esp-lista" aria-labelledby="esp-lista-h">
+    <h2 class="sr-only" id="esp-lista-h">Provas</h2>
+
+    <sc-if value="{{temFaq}}" hint-placeholder-val="{{false}}">
+      <div class="esp-faq">
+        <sc-for list="{{faq}}" as="q" hint-placeholder-count="2"><details><summary>{{q.p}}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><p>{{q.r}}</p></details></sc-for>
+      </div>
+    </sc-if>
+
+    <div class="flt-lay">
+      <aside class="flt" id="flt" data-aberta="{{folhaAberta}}" aria-label="Filtros">
+        <div class="flt-topo"><h2 class="flt-t">{{filtrosTitulo}}</h2><button type="button" class="flt-fechar" onClick="{{fecharFolha}}" aria-label="Fechar filtros"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+        <div class="flt-corpo">
+          <sc-for list="{{facetas}}" as="g" hint-placeholder-count="8">
+          <section class="flt-grupo">
+            <h3 class="flt-grupo-h"><button type="button" class="flt-grupo-b" aria-expanded="{{g.aberto}}" onClick="{{g.alternar}}"><span>{{g.titulo}}</span><span class="flt-grupo-r">{{g.resumo}}</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button></h3>
+            <sc-if value="{{g.mostrar}}" hint-placeholder-val="{{true}}">
+            <div class="flt-grupo-c">
+              <sc-if value="{{g.isLista}}" hint-placeholder-val="{{true}}">
+                <sc-for list="{{g.opcoes}}" as="o" hint-placeholder-count="4"><label class="fac" data-zero="{{o.zero}}"><input type="checkbox" checked="{{o.on}}" disabled="{{o.zero}}" onChange="{{o.toggle}}"><sc-if value="{{o.temIcone}}" hint-placeholder-val="{{false}}"><sc-if value="{{o.temLottie}}" hint-placeholder-val="{{false}}"><span class="esp-lic " data-lottie="{{o.lottie}}" data-repouso="{{o.repouso}}" data-loop="{{o.laco}}" aria-hidden="true"></span></sc-if><sc-if value="{{o.semLottie}}" hint-placeholder-val="{{true}}"><span class="esp-ic " data-i="{{o.slug}}" aria-hidden="true"></span></sc-if></sc-if><sc-if value="{{o.temEspaco}}" hint-placeholder-val="{{false}}"><span class="flt-ic-vazio" aria-hidden="true"></span></sc-if> {{o.label}}<span class="flt-n">{{o.n}}</span></label></sc-for>
+                <sc-if value="{{g.temMais}}" hint-placeholder-val="{{false}}"><button type="button" class="linkbtn flt-mais" aria-expanded="{{g.maisAberto}}" onClick="{{g.alternarMais}}">{{g.maisRotulo}}</button></sc-if>
+              </sc-if>
+              <sc-if value="{{g.isDist}}" hint-placeholder-val="{{false}}">
+                <sc-if value="{{g.temBandas}}" hint-placeholder-val="{{true}}"><div class="flt-chips" role="group" aria-label="Faixas de distância"><sc-for list="{{g.opcoes}}" as="o" hint-placeholder-count="4"><button type="button" class="chip" aria-pressed="{{o.on}}" onClick="{{o.toggle}}">{{o.label}}</button></sc-for></div></sc-if>
+                <div class="flt-faixa"><label>Mínimo (km)<input type="number" inputmode="decimal" min="0" value="{{g.dmin}}" onChange="{{g.onDmin}}" placeholder="0"></label><label>Máximo (km)<input type="number" inputmode="decimal" min="0" value="{{g.dmax}}" onChange="{{g.onDmax}}" placeholder="Sem limite"></label></div>
+              </sc-if>
+              <sc-if value="{{g.isChips}}" hint-placeholder-val="{{false}}">
+                <div class="flt-chips" role="group" aria-label="{{g.chipsRotulo}}"><sc-for list="{{g.opcoes}}" as="o" hint-placeholder-count="6"><button type="button" class="chip" aria-pressed="{{o.on}}" disabled="{{o.zero}}" onClick="{{o.toggle}}">{{o.label}}</button></sc-for></div>
+                <sc-if value="{{g.temApoio}}" hint-placeholder-val="{{false}}"><p class="flt-apoio">{{g.apoio}}</p></sc-if>
+              </sc-if>
+            </div>
+            </sc-if>
+          </section>
+          </sc-for>
+        </div>
+        <div class="flt-rodape"><button type="button" class="linkbtn" onClick="{{limparTudo}}">Limpar filtros</button><button type="button" class="bp" onClick="{{fecharFolha}}">{{verRotulo}}</button></div>
+      </aside>
+
+      <div class="flt-res">
+        <form role="search" class="esp-campo" onSubmit="{{submitLista}}" aria-label="Buscar provas">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+          <label><span class="sr-only">Prova, cidade ou distância</span>
+            <input type="search" id="esp-q" value="{{q}}" onInput="{{onQuery}}" enterkeyhint="search" autocomplete="off" placeholder="Prova, cidade ou distância"></label>
+          <sc-if value="{{temQ}}" hint-placeholder-val="{{false}}"><button type="button" class="esp-limpar" onClick="{{limparQ}}" aria-label="Limpar busca"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button></sc-if>
+          <button type="submit" class="bp bp-sm">Buscar provas</button>
+        </form>
+
+        <div class="esp-barra">
+          <button type="button" class="bs flt-abrir" onClick="{{abrirFolha}}" aria-haspopup="dialog" aria-controls="flt"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M7 12h10M10 18h4"/></svg>{{filtrosRotulo}}</button>
+          <p class="esp-cont" id="esp-cont">{{contagem}}</p>
+          <label class="esp-ordem">Ordenar por
+            <select value="{{ordem}}" onChange="{{onOrdem}}"><option value="proximas">Data mais próxima</option><option value="procuradas">Com mais inscrições na semana</option><option value="preco">Menor preço</option><sc-if value="{{temPertoOrdem}}" hint-placeholder-val="{{false}}"><option value="distancia-de-mim">Mais perto de mim</option></sc-if></select>
+          </label>
+        </div>
+
+        <sc-if value="{{temGeoLinha}}" hint-placeholder-val="{{false}}"><div class="esp-geo" data-geo="{{geoModo}}"><p class="esp-geo-t">{{geoTexto}}</p><div class="esp-geo-a"><sc-if value="{{geoPodePedir}}" hint-placeholder-val="{{true}}"><button type="button" class="bs bs-sm esp-geo-b" onClick="{{usarLocal}}"><span class="esp-ic" data-i="perto-de-voce" aria-hidden="true"></span>Usar minha localização</button></sc-if><sc-if value="{{geoPedindo}}" hint-placeholder-val="{{false}}"><span class="esp-geo-esp" role="status">Procurando a sua localização…</span></sc-if><sc-if value="{{geoPodeTrocar}}" hint-placeholder-val="{{true}}"><button type="button" class="linkbtn esp-geo-b" onClick="{{escolherCidade}}">Escolher outra cidade</button></sc-if></div></div></sc-if>
+        <div class="flt-ativos">
+          <sc-for list="{{chips}}" as="c" hint-placeholder-count="2"><button type="button" class="chip flt-chip" onClick="{{c.remover}}" aria-label="Remover filtro: {{c.label}}" data-track-filtro="busca">{{c.label}}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button></sc-for>
+          <sc-if value="{{temFiltros}}" hint-placeholder-val="{{false}}"><button type="button" class="linkbtn" onClick="{{limparTudo}}">Limpar filtros</button></sc-if>
+        </div>
+
+        <p class="sr-only" role="status" aria-live="polite" aria-atomic="true">{{anuncio}}</p>
+
+        <sc-if value="{{carregando}}" hint-placeholder-val="{{false}}">
+          <div class="esp-grade" aria-busy="true" aria-label="Carregando provas"><sc-for list="{{skels}}" as="k" hint-placeholder-count="12"><div class="ev-card ev-card--esqueleto" data-tipo="prova" aria-hidden="true"><div class="ev-card__caixa"><span class="ev-card__midia sk"></span><span class="ev-card__corpo"><span class="sk" data-l="titulo"></span><span class="sk" data-l="meta"></span><span class="sk" data-l="meta"></span></span></div></div></sc-for></div>
+        </sc-if>
+
+        <sc-if value="{{temErro}}" hint-placeholder-val="{{false}}">
+          <div class="uui-empty-state" role="alert">
+            <span class="uui-empty-state__icon"><svg class="uui-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8v4m0 4h.01M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10Z"/></svg></span>
+            <div class="uui-empty-state__header"><h2 class="uui-empty-state__title">Não conseguimos carregar as provas</h2><p class="uui-empty-state__text">Confira a conexão e tente de novo.</p></div>
+            <div class="uui-empty-state__actions"><button type="button" class="bp" onClick="{{tentar}}">Tentar de novo</button></div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{temCards}}" hint-placeholder-val="{{true}}">
+          <div class="esp-grade" id="esp-grade">
+            <sc-for list="{{cards}}" as="e" hint-placeholder-count="12">
+          <article class="ev-card" data-tipo="prova" data-situacao="{{e.cSit}}" data-quieto="{{e.cQuieto}}" data-ini="{{e.cIni}}" data-sem-sincronia="1">
+          <div class="ev-card__caixa">
+            <a class="ev-card__link" href="{{e.cHref}}" target="{{e.cTarget}}" rel="{{e.cRel}}" aria-label="{{e.cAria}}">
+            <span class="ev-card__midia">
+              <img class="ev-card__img esp-capa" src="{{e.cImg}}" srcset="{{e.cSrcset}}" sizes="(max-width: 640px) 78vw, 18rem" alt="" loading="lazy" decoding="async" width="480" height="480">
+              <span class="ev-card__ver ilha" aria-hidden="true">Ver detalhes</span>
+            </span>
+            <span class="ev-card__corpo">
+              <sc-if value="{{e.cTemEstado}}" hint-placeholder-val="{{false}}"><span class="tag ev-card__estado" data-sit="{{e.cSit}}"><span class="ev-ic" data-i="{{e.cEstadoIcone}}" aria-hidden="true"></span>{{e.cEstado}}</span></sc-if>
+              <h3 class="ev-card__titulo">{{e.cNome}}</h3>
+              <span class="ev-card__meta"><span class="ev-card__data">{{e.cData}}</span><span class="ev-card__local">{{e.cLocal}}</span></span>
+            </span>
+            </a>
+            <sc-if value="{{e.cCtaTem}}" hint-placeholder-val="{{true}}"><a class="bs bs-ink ev-card__cta" href="{{e.cCtaHref}}" target="{{e.cCtaTarget}}" rel="{{e.cCtaRel}}" aria-label="{{e.cCtaAria}}"><span class="ev-card__cta-t">{{e.cCtaRotulo}}</span><svg class="ico ev-card__seta" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M8 7h9v9"/></svg></a></sc-if>
+          </div>
+        </article>
+            </sc-for>
+            <sc-if value="{{carregandoMais}}" hint-placeholder-val="{{false}}">
+              <sc-for list="{{skelsMais}}" as="k" hint-placeholder-count="12"><div class="ev-card ev-card--esqueleto" data-tipo="prova" aria-hidden="true"><div class="ev-card__caixa"><span class="ev-card__midia sk"></span><span class="ev-card__corpo"><span class="sk" data-l="titulo"></span><span class="sk" data-l="meta"></span><span class="sk" data-l="meta"></span></span></div></div></sc-for>
+            </sc-if>
+          </div>
+          <sc-if value="{{temMais}}" hint-placeholder-val="{{true}}">
+            <div id="cat-sentinela" class="esp-sentinela" data-lotes="{{lotes}}" data-estado="{{estadoMais}}" aria-hidden="true"></div>
+            <div class="esp-mais">
+              <p class="esp-mais-t">Mostrando {{qtdVisiveis}} de {{qtdTotal}}</p>
+              <button type="button" class="bs esp-mais-b" onClick="{{carregarMais}}" aria-disabled="{{maisOcupado}}">{{maisRotulo}}</button>
+            </div>
+          </sc-if>
+          <sc-if value="{{fimDaLista}}" hint-placeholder-val="{{false}}">
+            <div class="esp-fim"><p>{{fimTexto}}</p><a href="#esp-lista-h" class="linkbtn" onClick="{{irTopo}}">Voltar ao topo</a></div>
+          </sc-if>
+        </sc-if>
+
+        <sc-if value="{{temVazio}}" hint-placeholder-val="{{false}}">
+          <div class="esp-vazio" role="status">
+            <span class="uui-empty-state__icon"><svg class="uui-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="m21 21-3.5-3.5m2.5-6a8.5 8.5 0 1 1-17 0 8.5 8.5 0 0 1 17 0Z"/></svg></span>
+            <h2>{{vazioTitulo}}</h2>
+            <sc-if value="{{temSugestoes}}" hint-placeholder-val="{{false}}">
+              <ul class="esp-sug"><sc-for list="{{sugestoes}}" as="s" hint-placeholder-count="3"><li><span>{{s.texto}}</span><button type="button" class="bs bs-sm" onClick="{{s.aplicar}}">{{s.acao}}</button></li></sc-for></ul>
+            </sc-if>
+            <div class="esp-vazio-a">
+              <a href="{{vazioVerTodas}}" class="bp">{{vazioVerTodasRotulo}}</a>
+              <button type="button" class="bs" onClick="{{limparTudo}}">Limpar filtros</button>
+            </div>
+            <p>Quer ser avisado quando abrir uma prova assim?</p>
+            <button type="button" class="bs" aria-pressed="{{avisoOn}}" onClick="{{avisar}}">{{avisoRotulo}}</button>
+          </div>
+        </sc-if>
+
+        <!-- «Incluir provas encerradas e canceladas»: no FIM da lista (a mesma regra da Busca) -->
+        <label class="esp-incl esp-incl-fim"><input type="checkbox" checked="{{encerradas}}" onChange="{{onEncerradas}}"> Incluir provas encerradas e canceladas</label>
+      </div>
+    </div>
+  </section>
+  </sc-if>
+</main>
+
+<button type="button" class="esp-topo bs" data-on="{{topoOn}}" tabindex="{{topoTab}}" onClick="{{irTopo}}" aria-label="Voltar ao topo"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M12 19V5m0 0-7 7m7-7 7 7"/></svg></button>
+<footer class="rp" aria-label="Rodapé">
+  <div class="rp-in">
+    <div class="rp-topo">
+      <a href="Main.dc.html" class="rp-marca" aria-label="Ingresse — início"><img src="./assets/8703fb5f412b57860d569f5abeea2cae.svg" alt="Ingresse"></a>
+      <div class="rp-cols">
+      <nav class="rp-col" aria-labelledby="rp-c0">
+        <h2 class="rp-col__t" id="rp-c0">A Ingresse</h2>
+        <ul class="rp-lista">
+          <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Sobre a Ingresse</a></li>
+          <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Trabalhe conosco</a></li>
+          <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Diversidade e inclusão</a></li>
+          <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Imprensa</a></li>
+        </ul>
+      </nav>
+      <nav class="rp-col" aria-labelledby="rp-c1">
+        <h2 class="rp-col__t" id="rp-c1">Ajuda</h2>
+        <ul class="rp-lista">
+          <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Central de ajuda</a></li>
+          <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Perguntas frequentes</a></li>
+          <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Pedir reembolso</a></li>
+          <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Regras de meia‑entrada</a></li>
+        </ul>
+      </nav>
+      <nav class="rp-col" aria-labelledby="rp-c2">
+        <h2 class="rp-col__t" id="rp-c2">Descubra</h2>
+        <ul class="rp-lista">
+          <li><a class="rp-link" href="Busca.dc.html?escopo=artistas">Artistas</a></li>
+          <li><a class="rp-link" href="Busca.dc.html?escopo=locais">Locais</a></li>
+          <li><a class="rp-link" href="https://revenda.ingresse.com" target="_blank" rel="noopener noreferrer" aria-label="Revenda Oficial, abre em nova aba">Revenda Oficial</a></li>
+          <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Para <span class="rp-nw">produtores<svg class="rp-ico rp-ico--sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M8 7h9v9"/></svg></span></a></li>
+        </ul>
+      </nav>
+      </div>
+    </div>
+    <div class="rp-linha">
+      <div class="rp-apps" role="group" aria-label="Baixe o app">
+        <a class="bs rp-app" href="#" data-toast="O link da App Store entra quando o app novo for publicado" aria-label="Baixar o app da Ingresse para iOS"><svg class="rp-ico" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16.37 12.83c-.02-2.3 1.88-3.4 1.97-3.46-1.07-1.57-2.74-1.78-3.33-1.8-1.42-.14-2.77.83-3.49.83-.72 0-1.83-.81-3.01-.79-1.55.02-2.98.9-3.78 2.29-1.61 2.8-.41 6.94 1.16 9.21.77 1.11 1.68 2.36 2.88 2.31 1.16-.05 1.59-.75 2.99-.75 1.4 0 1.79.75 3.01.72 1.24-.02 2.03-1.13 2.79-2.25.88-1.29 1.24-2.54 1.26-2.6-.03-.01-2.42-.93-2.45-3.71zM14.08 6.07c.64-.77 1.07-1.85.95-2.92-.92.04-2.03.61-2.69 1.38-.59.68-1.11 1.78-.97 2.83 1.02.08 2.07-.52 2.71-1.29z"/></svg><span>iOS</span></a>
+        <a class="bs rp-app" href="#" data-toast="O link do Google Play entra quando o app novo for publicado" aria-label="Baixar o app da Ingresse para Android"><svg class="rp-ico" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 18c0 .55.45 1 1 1h1v3.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5V19h2v3.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5V19h1c.55 0 1-.45 1-1V8H6v10zM3.5 8C2.67 8 2 8.67 2 9.5v7c0 .83.67 1.5 1.5 1.5S5 17.33 5 16.5v-7C5 8.67 4.33 8 3.5 8zm17 0c-.83 0-1.5.67-1.5 1.5v7c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5v-7c0-.83-.67-1.5-1.5-1.5zm-4.97-5.84l1.3-1.3c.2-.2.2-.51 0-.71-.2-.2-.51-.2-.71 0l-1.48 1.48A5.84 5.84 0 0 0 12 1c-.96 0-1.86.23-2.66.63L7.85.15c-.2-.2-.51-.2-.71 0-.2.2-.2.51 0 .71l1.31 1.31A5.98 5.98 0 0 0 6 7h12c0-1.99-.97-3.75-2.47-4.84zM10 5H9V4h1v1zm5 0h-1V4h1v1z"/></svg><span>Android</span></a>
+      </div>
+      <ul class="rp-redes" aria-label="Ingresse nas redes">
+        <li><a class="bs bs-icone rp-rede" href="https://www.instagram.com/ingresse/" target="_blank" rel="noopener noreferrer" aria-label="Ingresse no Instagram (abre em nova aba)"><svg class="rp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><path d="M17.5 6.5h.01"/></svg></a></li>
+        <li><a class="bs bs-icone rp-rede" href="https://www.tiktok.com/@ingresse" target="_blank" rel="noopener noreferrer" aria-label="Ingresse no TikTok (abre em nova aba)"><svg class="rp-ico" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16.6 5.82A4.28 4.28 0 0 1 15.54 3h-3.09v12.4a2.59 2.59 0 0 1-2.59 2.5c-1.42 0-2.6-1.16-2.6-2.6 0-1.72 1.66-3.01 3.37-2.48V9.66c-3.45-.46-6.47 2.22-6.47 5.64 0 3.33 2.76 5.7 5.69 5.7 3.14 0 5.69-2.55 5.69-5.7V9.01a7.35 7.35 0 0 0 4.3 1.38V7.3s-1.88.09-3.24-1.48z"/></svg></a></li>
+        <li><a class="bs bs-icone rp-rede" href="https://www.linkedin.com/company/ingresse/" target="_blank" rel="noopener noreferrer" aria-label="Ingresse no LinkedIn (abre em nova aba)"><svg class="rp-ico" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.45 20.45h-3.56v-5.57c0-1.33-.02-3.04-1.85-3.04-1.85 0-2.14 1.45-2.14 2.94v5.67H9.35V9h3.41v1.56h.05c.48-.9 1.64-1.85 3.37-1.85 3.6 0 4.27 2.37 4.27 5.46v6.28zM5.34 7.43a2.06 2.06 0 1 1 0-4.13 2.06 2.06 0 0 1 0 4.13zM7.12 20.45H3.56V9h3.56v11.45z"/></svg></a></li>
+      </ul>
+    </div>
+    <div class="rp-base">
+      <p class="rp-direitos">© 2026 Ingresse</p>
+      <details class="rp-idioma">
+        <summary class="rp-idioma__b" aria-haspopup="menu"><span class="sr-only">Idioma do site: </span><img class="rp-band" src="./assets/flags/br.svg" alt="" width="24" height="18" data-pv-lang-band><span data-pv-lang-nome>Português (Brasil)</span><svg class="rp-ico rp-ico--sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary>
+        <ul class="rp-idioma__lista" role="menu" aria-label="Idioma do site">
+          <li role="none"><button type="button" class="rp-idioma__op" role="menuitemradio" data-pv-lang="PT" aria-checked="true" tabindex="-1" lang="pt-BR"><img class="rp-band" src="./assets/flags/br.svg" alt="" width="24" height="18">Português (Brasil)</button></li>
+          <li role="none"><button type="button" class="rp-idioma__op" role="menuitemradio" data-pv-lang="PT-PT" aria-checked="false" tabindex="-1" lang="pt-PT"><img class="rp-band" src="./assets/flags/pt.svg" alt="" width="24" height="18">Português (Portugal)</button></li>
+          <li role="none"><button type="button" class="rp-idioma__op" role="menuitemradio" data-pv-lang="ES" aria-checked="false" tabindex="-1" lang="es"><img class="rp-band" src="./assets/flags/es.svg" alt="" width="24" height="18">Español</button></li>
+          <li role="none"><button type="button" class="rp-idioma__op" role="menuitemradio" data-pv-lang="EN" aria-checked="false" tabindex="-1" lang="en"><img class="rp-band" src="./assets/flags/us.svg" alt="" width="24" height="18">English</button></li>
+        </ul>
+      </details>
+      <ul class="rp-legais" aria-label="Termos e políticas">
+        <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Política de privacidade</a></li>
+        <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Termos de uso</a></li>
+        <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Termos de compra</a></li>
+        <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Configurações de cookies</a></li>
+      </ul>
+    </div>
+    <div class="rp-grupo">
+      <h2 class="rp-grupo__t" id="rp-grupo">Empresas do Grupo Ingresse</h2>
+      <ul class="rp-grupo__lista" aria-labelledby="rp-grupo">
+        <li><a class="rp-link" href="https://ingresse.com/" target="_blank" rel="noopener noreferrer" aria-label="Ingresse (ingresse.com, abre em nova aba)">Ingresse</a></li>
+        <li><a class="rp-link" href="https://ticketsports.com.br/" target="_blank" rel="noopener noreferrer" aria-label="TicketSports (ticketsports.com.br, abre em nova aba)">TicketSports</a></li>
+        <li><a class="rp-link" href="https://outgo.com.br/" target="_blank" rel="noopener noreferrer" aria-label="OutGo (outgo.com.br, abre em nova aba)">OutGo</a></li>
+        <li><a class="rp-link" href="https://ingressonacional.com.br/" target="_blank" rel="noopener noreferrer" aria-label="Ingresso Nacional (ingressonacional.com.br, abre em nova aba)">Ingresso Nacional</a></li>
+        <li><a class="rp-link" href="https://ingressolive.com/" target="_blank" rel="noopener noreferrer" aria-label="Ingresso Live (ingressolive.com, abre em nova aba)">Ingresso Live</a></li>
+        <li><a class="rp-link" href="https://blacktag.com.br/" target="_blank" rel="noopener noreferrer" aria-label="Blacktag (blacktag.com.br, abre em nova aba)">Blacktag</a></li>
+        <li><a class="rp-link" href="https://pixelticket.com.br/" target="_blank" rel="noopener noreferrer" aria-label="PixelTicket (pixelticket.com.br, abre em nova aba)">PixelTicket</a></li>
+        <li><a class="rp-link" href="https://meep.com.br/" target="_blank" rel="noopener noreferrer" aria-label="Meep (meep.com.br, abre em nova aba)">Meep</a></li>
+      </ul>
+    </div>
+  </div>
+</footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":2400}}'>
+/* Esportes.dc.html: lógica da Home da Ingresse Sports e das agregadoras (fonte: tools/previa/esportes/esportes-logica.js; o gerador a embute na tela).
+   Contrato de URLs e de combinação: INGRESSE-SPORTS-ESCOPO-E-IA.md §2.2 a 2.6. OU dentro de uma faceta, E entre facetas (exceção: serviços, que são E).
+   Dados: ./dados/esportes-lista.json (esportes-paginas.mjs, a partir de esportes.json). Textos: docs/conteudo/INGRESSE-SPORTS-VOZ-E-MICROCOPY.md (ES-HS, ES-AG, ES-CA);
+   o que a Luíza não definiu está listado em docs/produto/ESPORTES-PROTOTIPO.md (seção "Textos provisórios"). */
+/* filtros-logica.js: a lógica COMUM dos grupos do componente de filtros (FLT). Fonte única; o gerador a embute no lugar de `@@FILTROS_LOGICA@@`
+   (Esportes.dc.html pelo esportes-paginas.mjs; Busca.dc.html pelo busca-unica.mjs). Cada tela monta a lista de grupos com estas funções e entrega ao MESMO
+   markup (filtros.html). Cada grupo tem: id, titulo, resumo (quantos marcados), aberto/mostrar (colapso), alternar; e um tipo: lista (caixas com ícone opcional e
+   contagem), chips (faixas, quando, preço) ou dist (faixas + mínimo e máximo). Cidade e «Perto de mim» NÃO são filtro: o lugar vem do seletor do cabeçalho (lugarAtual, abaixo). `ctx` = { abertas: {id: bool}, set(mapa) }:
+   quem chama guarda o mapa no estado dele. Os TRÊS primeiros grupos de cada escopo abrem (`padrao`); os demais ficam recolhidos. Abre sozinho o grupo que tem escolha; fora isso vale `padrao` (os mais prováveis abertos, os outros recolhidos). */
+const FLT = {
+  vazio: { temIcone: false, temLottie: false, semLottie: true, lottie: '', repouso: '0', laco: '0', slug: '', temEspaco: false },
+  marcado: o => o.on === true || o.on === 'true',
+  /** ícone de opção: { lottie, repouso, laco } (Iconly Motion) ou { slug } (máscara provisória); sem argumento, sem ícone */
+  icone(i) {
+    if (!i) return {};
+    if (i.lottie) return { temIcone: true, temLottie: true, semLottie: false, lottie: i.lottie, repouso: String(i.repouso || 0), laco: String(i.laco || 0), slug: i.slug || '' };
+    if (i.slug) return { temIcone: true, temLottie: false, semLottie: true, slug: i.slug };
+    return {};
+  },
+  base(ctx, id, titulo, tem, padrao, qtd) {
+    const op = ctx.abertas[id] !== undefined ? ctx.abertas[id] : (tem || !!padrao);
+    return {
+      id, titulo, resumo: tem ? String(qtd == null ? 1 : qtd) : '', aberto: op ? 'true' : 'false', mostrar: op,
+      isLista: false, isDist: false, isChips: false,
+      alternar: () => ctx.set({ ...ctx.abertas, [id]: !op })
+    };
+  },
+  /** opcoes: [{ label, on, n, zero, toggle, ...FLT.icone(...) }]; quando só parte das opções tem ícone, as outras ganham um espaço do mesmo tamanho.
+      `limite`: só as primeiras N aparecem e «Mostrar mais opções» abre o resto (o que estiver marcado nunca fica escondido). */
+  lista(ctx, id, titulo, opcoes, padrao, limite) {
+    const sel = opcoes.filter(FLT.marcado).length, algum = opcoes.some(o => o.temIcone);
+    const chaveMais = id + ':mais', maisAberto = !!ctx.abertas[chaveMais] || (limite != null && opcoes.slice(limite).some(FLT.marcado));
+    const visiveis = limite != null && !maisAberto ? opcoes.slice(0, limite) : opcoes;
+    const temMais = limite != null && opcoes.length > limite;
+    return {
+      ...FLT.base(ctx, id, titulo, sel > 0, padrao, sel), isLista: true, opcoes: visiveis.map(o => ({ ...FLT.vazio, ...o, temEspaco: algum && !o.temIcone })),
+      temMais, maisRotulo: maisAberto ? 'Mostrar menos opções' : 'Mostrar mais opções', maisAberto: maisAberto ? 'true' : 'false',
+      alternarMais: () => ctx.set({ ...ctx.abertas, [chaveMais]: !maisAberto })
+    };
+  },
+  /** opcoes: [{ label, on ('true'|'false'), zero, toggle }] */
+  chips(ctx, id, titulo, opcoes, rotulo, padrao, apoio) {
+    const sel = opcoes.filter(FLT.marcado).length;
+    return { ...FLT.base(ctx, id, titulo, sel > 0, padrao, sel), isChips: true, chipsRotulo: rotulo, opcoes, temApoio: !!apoio, apoio: apoio || '' };
+  }
+};
+
+/* ---------- o LUGAR (pedido do Wander, 29/10/2026): a cidade vem do seletor do cabeçalho, não do painel de filtros ----------
+   `lugarAtual()` é a ÚNICA função que lê o lugar. Hoje lê o seletor de cidade do cabeçalho (cidade-cabecalho.js: só vale quando a pessoa ESCOLHEU; sem escolha, sem recorte);
+   quando o Edu entregar `window.IngresseLocal`, ele passa a mandar (get() devolve { nivel: 'pais'|'regiao'|'estado'|'cidade', nome, pais, regiao, uf, cidade, lat, lng }; evento `ingresse:local`).
+   Quem lista evento (Busca, agregadoras, Categoria, Home, Coleção) usa `lugarAtual()` e `noLugar()`; nenhuma tela lê o seletor por conta própria. Hierárquico: estado inclui as cidades dele, região os estados, país tudo. */
+const UF_REGIAO = { AC: 'norte', AP: 'norte', AM: 'norte', PA: 'norte', RO: 'norte', RR: 'norte', TO: 'norte', AL: 'nordeste', BA: 'nordeste', CE: 'nordeste', MA: 'nordeste', PB: 'nordeste', PE: 'nordeste', PI: 'nordeste', RN: 'nordeste', SE: 'nordeste', DF: 'centro-oeste', GO: 'centro-oeste', MT: 'centro-oeste', MS: 'centro-oeste', ES: 'sudeste', MG: 'sudeste', RJ: 'sudeste', SP: 'sudeste', PR: 'sul', RS: 'sul', SC: 'sul' };
+const UF_NOME = { AC: 'Acre', AL: 'Alagoas', AP: 'Amapá', AM: 'Amazonas', BA: 'Bahia', CE: 'Ceará', DF: 'Distrito Federal', ES: 'Espírito Santo', GO: 'Goiás', MA: 'Maranhão', MT: 'Mato Grosso', MS: 'Mato Grosso do Sul', MG: 'Minas Gerais', PA: 'Pará', PB: 'Paraíba', PR: 'Paraná', PE: 'Pernambuco', PI: 'Piauí', RJ: 'Rio de Janeiro', RN: 'Rio Grande do Norte', RS: 'Rio Grande do Sul', RO: 'Rondônia', RR: 'Roraima', SC: 'Santa Catarina', SP: 'São Paulo', SE: 'Sergipe', TO: 'Tocantins' };
+function lugarAtual() {
+  try {
+    if (window.IngresseLocal && window.IngresseLocal.get) { const l = window.IngresseLocal.get(); return l && l.nivel ? l : null; } // o IngresseLocal (Edu) sempre devolve um lugar (o padrão, ou a escolha, ou a localização)
+    const C = window.IngresseCidade;
+    if (C && C.explicita && C.explicita()) { const c = C.atual(); return c ? { nivel: 'cidade', nome: c.nome, pais: 'Brasil', cidade: c.nome, uf: UF_NOME[c.id] ? c.id : '' } : null; }
+  } catch (e) {}
+  return null; // sem seletor e sem escolha: todo o Brasil
+}
+const lugarNorm = s => (s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+/** o evento (ou o objeto com `id`, `lg`, `venue`, `state`/`u`, `city`/`c`) está dentro do lugar? Sem lugar, sempre. Com o IngresseLocal, quem decide é o `contem` dele (a consulta da Iara: evento sem lugar, os virtuais, vale em qualquer escolha);
+    sem ele, a regra por nome da cidade e UF (`ev._cid`/`c`/`cidade` e `ev._uf`/`u`/`uf`). */
+function noLugar(l, ev) {
+  if (!l) return true;
+  if (window.IngresseLocal && window.IngresseLocal.contem && ev) { try { return !!window.IngresseLocal.contem(ev, l); } catch (e) {} }
+  const cidade = ev._cid || ev.cidade || ev.c || ev.city || '', u = String(ev._uf || ev.uf || ev.u || '').toUpperCase();
+  switch (l.nivel) {
+    case 'cidade': return lugarNorm(cidade) === lugarNorm(l.cidade || l.nome) && (!l.uf || !u || l.uf === u);
+    case 'estado': return !!u && u === (l.uf || '').toUpperCase();
+    case 'regiao': return !!u && UF_REGIAO[u] === lugarNorm(l.regiao || l.nome);
+    case 'pais': return /^brasil$/i.test(l.pais || l.nome || '');
+  }
+  return true;
+}
+/** texto curto do lugar para o topo dos resultados */
+function lugarRotulo(l) { return l ? (l.nivel === 'estado' ? 'o estado de ' : l.nivel === 'regiao' ? 'a região ' : '') + (l.nome || l.cidade || '') : 'todo o Brasil'; }
+
+const LOTE = 12;
+const CONFIAVEL = true; // contagem só quando o inventário é confiável (Helena 2.6): o dado sintético é completo; em produção o sinal vem do serviço
+const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+const MESES_CURTO = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+const SEMANA = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+// r: rótulo; h1: nome no plural (ES-AG-01); est: estilo de cymatics (frequência e simetria, nunca matiz); esc: escala de distância
+const MODS = {
+  'corrida': { r: 'Corrida', h1: 'Corridas de rua', est: 'faixas', esc: 'corrida' },
+  'trail-run': { r: 'Trail run', h1: 'Provas de trail run', est: 'trilha', esc: 'corrida' },
+  'caminhada': { r: 'Caminhada', h1: 'Caminhadas', est: 'trilha', esc: 'corrida' },
+  'corrida-de-aventura': { r: 'Corrida de aventura', h1: 'Provas de corrida de aventura', est: 'trilha', esc: null },
+  'ciclismo': { r: 'Ciclismo', h1: 'Provas de ciclismo', est: 'estrada', esc: 'pedal' },
+  'mountain-bike': { r: 'Mountain bike', h1: 'Provas de mountain bike', est: 'estrada', esc: 'pedal' },
+  'triathlon': { r: 'Triathlon', h1: 'Triathlon', est: 'onda', esc: 'tri', intro: 'provas de triathlon' },
+  'natacao': { r: 'Natação', h1: 'Provas de natação', est: 'onda', esc: 'nat' },
+  'beach-tennis': { r: 'Beach tennis', h1: 'Provas de beach tennis', est: 'quadra', esc: null },
+  'futevolei': { r: 'Futevôlei', h1: 'Provas de futevôlei', est: 'quadra', esc: null },
+  'canoagem-va-a': { r: "Canoagem Va'a", h1: "Provas de canoagem Va'a", est: 'onda', esc: null }
+};
+const ORDEM_MODS = Object.keys(MODS);
+const ESCALAS = {
+  corrida: [['ate-4k', 'Até 4 km'], ['5-10k', '5 a 10 km'], ['11-20k', '11 a 20 km'], ['21k', 'Meia maratona'], ['22-41k', 'De 22 a 41 km'], ['42k', 'Maratona'], ['ultra', 'Ultra']],
+  pedal: [['pedal-ate-25k', 'Até 25 km'], ['pedal-25-50k', '25 a 50 km'], ['pedal-50-100k', '50 a 100 km'], ['pedal-100-200k', '100 a 200 km'], ['pedal-200k-mais', 'Mais de 200 km']],
+  tri: [['super-sprint', 'Super sprint'], ['sprint', 'Sprint'], ['olimpico', 'Olímpico'], ['70-3', '70.3'], ['longa-distancia', 'Longa distância']],
+  nat: [['nat-ate-1k', 'Até 1 km'], ['nat-1-5-3k', '1,5 a 3 km'], ['nat-3-5k', '3 a 5 km'], ['nat-5k-mais', 'Mais de 5 km']]
+};
+const BANDA_ROT = { '5k': '5 km', '10k': '10 km' };
+Object.keys(ESCALAS).forEach(k => ESCALAS[k].forEach(([id, r]) => { BANDA_ROT[id] = r; }));
+// como a banda entra numa frase ("Há 6 de 22 a 41 km")
+const BANDA_FRASE = { 'ate-4k': 'até 4 km', '5-10k': 'de 5 a 10 km', '11-20k': 'de 11 a 20 km', '21k': 'de meia maratona', '22-41k': 'de 22 a 41 km', '42k': 'de maratona', 'ultra': 'de ultramaratona', '5k': 'de 5 km', '10k': 'de 10 km' };
+const TERRENOS = [['rua', 'Rua'], ['trilha', 'Trilha'], ['montanha-e-subida', 'Montanha e subida'], ['praia', 'Praia'], ['agua-aberta', 'Água aberta'], ['piscina', 'Piscina'], ['misto', 'Misto']];
+const PUBLICOS = [['feminino', 'Provas femininas'], ['kids', 'Kids'], ['inclusivo', 'Inclusivas (PcD)'], ['estreantes', 'Para estreantes']];
+const FORMATOS = [['prova-unica', 'Prova única'], ['noturna', 'Noturnas'], ['circuito', 'Circuitos'], ['virtual', 'Desafios virtuais']];
+const SERVICOS = [['aceita-grupos', 'Aceita grupos e assessorias'], ['transporte-de-bike', 'Transporte da bike'], ['kit-pelo-correio', 'Kit enviado pelo correio']];
+const rot = (lista, v) => { const x = lista.find(p => p[0] === v); return x ? x[1] : v; };
+const ehValido = (lista, v) => lista.some(p => p[0] === v);
+const ORDENS = ['proximas', 'procuradas', 'preco', 'distancia-de-mim'];
+const RAIOS = [25, 50, 100, 200];
+// textos editoriais definidos pela Luíza (ES-AG-09 a 13); o resto da página é a introdução gerada (ES-AG-08)
+const EDITORIAL = {
+  'trail-run': 'Trail run é corrida em trilhas de terra e pedra, quase sempre com subidas. Compare a subida total de cada prova antes de escolher.',
+  'triathlon': 'Triathlon junta natação, ciclismo e corrida numa só prova. Escolha pelo formato, do sprint à longa distância.',
+  'estreantes': 'Provas indicadas para quem está começando. Cada uma mostra a distância, o tipo de percurso e o que está incluso na inscrição.',
+  'kids': 'Provas para crianças, com a faixa de idade definida por cada organizador.'
+};
+// "Aprenda": perguntas do SEO (docs/produto/ingresse-sports-seo.json, origem [E]); a validação da Luíza e de uma pessoa do esporte está pendente
+const FAQ_APRENDA = [
+  { p: 'Qual é a diferença entre 5 km, 10 km, meia maratona e maratona?', r: 'São quatro distâncias-padrão: 5 km, 10 km, meia maratona (21,1 km) e maratona (42,2 km). Quem está começando costuma partir dos 5 km ou dos 10 km.' },
+  { p: 'Como escolher a minha primeira corrida?', r: 'Escolha a distância que você já consegue completar caminhando e correndo, uma data com pelo menos oito semanas de treino e uma cidade de fácil acesso. Use os filtros de distância e de data desta página.' },
+  { p: 'Quando abrem as inscrições da próxima prova?', r: 'Cada prova que ainda não abriu mostra a data de abertura no cartão. Veja as que abrem em breve.' }
+];
+
+const norm = t => (t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+const uniq = a => [...new Set(a)];
+const plural = (n, a, b) => n + ' ' + (n === 1 ? a : b);
+const NUM_EXT_F = ['zero', 'uma', 'duas', 'três', 'quatro', 'cinco', 'seis', 'sete', 'oito', 'nove', 'dez'];
+const NUM_EXT_M = ['zero', 'um', 'dois', 'três', 'quatro', 'cinco', 'seis', 'sete', 'oito', 'nove', 'dez'];
+const numTexto = (n, fem) => (n <= 10 ? (fem ? NUM_EXT_F : NUM_EXT_M)[n] : String(n)); // guia: dígitos a partir de 11
+const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
+const mesRotulo = ym => { const [a, m] = ym.split('-').map(Number); return MESES[m - 1] + ' de ' + a; };
+const mesCurto = ym => { const [a, m] = ym.split('-').map(Number); return cap(MESES_CURTO[m - 1]) + ' ' + a; };
+const diaMes = iso => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso || ''); return m ? Number(m[3]) + ' ' + MESES_CURTO[Number(m[2]) - 1] : ''; };
+const hashNum = s => { let h = 2166136261; for (const c of s) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return (h >>> 0) % 90000 + 1000; };
+const R$ = n => 'R$ ' + n.toLocaleString('pt-BR');
+/* capa do cartão: miniatura QUADRADA dos carrosséis da home da TicketSports, 480 px (previa/assets/ticketsports/quadradas/, só no protótipo interno); sem capa, o pôster esportivo gerado por código */
+const capaDe = (cv, id) => cv
+  ? { img: './assets/ticketsports/' + cv + '.webp', srcset: './assets/ticketsports/' + cv + '.webp 480w' }
+  : { img: './cymatics-cat/' + id + '.png', srcset: '' };
+
+/* ---------- filtros: estado, URL e correspondência ---------- */
+function vazioF() { return { modalidade: [], distancia: [], dmin: null, dmax: null, cidade: [], mes: '', terreno: [], publico: [], formato: [], servico: [], perto: false, raio: 50, q: '', ordem: '', encerradas: false, tipo: '', circuito: '' }; }
+function lerUrl(search) {
+  const qs = new URLSearchParams(search), f = vazioF();
+  const lista = k => (qs.get(k) || '').split(',').map(s => s.trim()).filter(Boolean);
+  const num = k => { const v = parseFloat((qs.get(k) || '').replace(',', '.')); return isFinite(v) && v >= 0 ? v : null; };
+  f.modalidade = lista('modalidade').filter(v => MODS[v]);
+  f.distancia = lista('distancia').filter(v => BANDA_ROT[v]);
+  f.dmin = num('dmin'); f.dmax = num('dmax');
+  f.cidade = []; // cidade, «Perto de mim» e raio NÃO são filtro (pedido do Wander, 29/10): o lugar vem do seletor do cabeçalho (lugarAtual); `cidade=`, `perto=` e `raio=` na URL são ignorados
+  f.mes = /^\d{4}-(0[1-9]|1[0-2])$/.test(qs.get('mes') || '') ? qs.get('mes') : '';
+  f.terreno = lista('terreno').filter(v => ehValido(TERRENOS, v));
+  f.publico = lista('publico').filter(v => ehValido(PUBLICOS, v));
+  f.formato = lista('formato').filter(v => ehValido(FORMATOS, v));
+  f.servico = lista('servico').filter(v => ehValido(SERVICOS, v));
+  f.q = (qs.get('q') || '').trim();
+  f.ordem = ORDENS.includes(qs.get('ordem')) ? qs.get('ordem') : '';
+  f.encerradas = qs.get('encerradas') === '1';
+  f.tipo = qs.get('tipo') === 'aprenda' ? 'aprenda' : '';
+  f.circuito = qs.get('circuito') || '';
+  return f; // valor desconhecido é ignorado, nunca erro
+}
+function temParametro(search) { for (const k of new URLSearchParams(search).keys()) if (k !== 'pagina') return true; return false; }
+function paraQuery(f) {
+  const p = [];
+  if (f.circuito) p.push(['circuito', f.circuito]);
+  if (f.dmax != null) p.push(['dmax', String(f.dmax)]);
+  if (f.dmin != null) p.push(['dmin', String(f.dmin)]);
+  if (f.distancia.length) p.push(['distancia', f.distancia.slice().sort().join(',')]);
+  if (f.encerradas) p.push(['encerradas', '1']);
+  if (f.formato.length) p.push(['formato', f.formato.slice().sort().join(',')]);
+  if (f.mes) p.push(['mes', f.mes]);
+  if (f.modalidade.length) p.push(['modalidade', f.modalidade.slice().sort().join(',')]);
+  if (f.ordem && f.ordem !== 'proximas') p.push(['ordem', f.ordem]);
+  if (f.publico.length) p.push(['publico', f.publico.slice().sort().join(',')]);
+  if (f.q) p.push(['q', f.q]);
+  if (f.servico.length) p.push(['servico', f.servico.slice().sort().join(',')]);
+  if (f.terreno.length) p.push(['terreno', f.terreno.slice().sort().join(',')]);
+  if (f.tipo) p.push(['tipo', f.tipo]);
+  return p.map(([k, v]) => k + '=' + encodeURIComponent(v).replace(/%2C/g, ',')).join('&');
+}
+const hrefAg = f => 'Esportes.dc.html' + (paraQuery(f) ? '?' + paraQuery(f) : '?ordem=proximas');
+const hrefComFiltro = patch => hrefAg({ ...vazioF(), ...patch });
+
+function matchDist(e, v) {
+  if (v === '5k') return e.rd.some(m => m >= 4500 && m < 5500);
+  if (v === '10k') return e.rd.some(m => m >= 9500 && m < 10600);
+  return e.db.includes(v);
+}
+function haversine(a, b) {
+  const R = 6371, rad = x => x * Math.PI / 180;
+  const dLat = rad(b[0] - a[0]), dLon = rad(b[1] - a[1]);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a[0])) * Math.cos(rad(b[0])) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+const distMim = (e, o) => (!o || !o.g || !e.g ? Infinity : Math.round(haversine(o.g, e.g)));
+/* uma prova casa se passa por todas as facetas (menos `fora`, usada na contagem de cada opção) */
+function casa(e, f, ctx, fora) {
+  if (!f.encerradas && e.fim) return false;
+  if (f.tipo === 'aprenda' && !e.et.includes('aprenda')) return false;
+  if (f.circuito && !(e.ci && e.ci.id === f.circuito)) return false;
+  if (fora !== 'modalidade' && f.modalidade.length && !f.modalidade.some(v => e.mod.includes(v))) return false;
+  if (fora !== 'distancia') {
+    if (f.dmin != null || f.dmax != null) { // a faixa livre vence as faixas prontas (Helena 2.3)
+      const a = (f.dmin || 0) * 1000, b = f.dmax != null ? f.dmax * 1000 : Infinity;
+      if (!e.rd.some(m => m >= a && m <= b)) return false;
+    } else if (f.distancia.length && !f.distancia.some(v => matchDist(e, v))) return false;
+  }
+  if (ctx.lugar && !ctx.lugar(e)) return false; // o lugar do seletor do cabeçalho (lugarAtual), não um filtro do painel
+  if (fora !== 'mes' && f.mes && e.mes !== f.mes) return false;
+  if (fora !== 'terreno' && f.terreno.length && !f.terreno.some(v => e.tr.includes(v))) return false;
+  if (fora !== 'publico' && f.publico.length && !f.publico.some(v => e.pu.includes(v))) return false;
+  if (fora !== 'formato' && f.formato.length && !f.formato.some(v => e.fm.includes(v))) return false;
+  if (fora !== 'servico' && f.servico.length && !f.servico.every(v => e.sv.includes(v))) return false; // serviços são E
+  if (ctx.qt.length && !ctx.qt.every(t => e.busca.includes(t))) return false;
+  return true;
+}
+const contarCom = (ev, f, ctx, chave, valor) => {
+  const g = { ...f };
+  if (chave === 'servico') g.servico = uniq(f.servico.concat(valor));
+  else if (chave === 'mes') g.mes = valor;
+  else if (chave === 'distancia') { g.distancia = [valor]; g.dmin = null; g.dmax = null; }
+  else g[chave] = [valor];
+  return ev.filter(e => casa(e, g, ctx)).length;
+};
+
+/* ---------- busca textual: "10 km em Curitiba em abril" vira chips ---------- */
+function distPorKm(k) {
+  if (k >= 4.9 && k < 5.1) return '5k';
+  if (k >= 9.9 && k < 10.1) return '10k';
+  if (k >= 21 && k < 22) return '21k';
+  if (k >= 42 && k < 43) return '42k';
+  if (k < 5) return 'ate-4k';
+  if (k < 11) return '5-10k';
+  if (k < 21) return '11-20k';
+  if (k < 42) return '22-41k';
+  return 'ultra';
+}
+const ALIAS_MOD = [
+  ['corrida-de-aventura', /\b(corridas? de aventura|aventura)\b/], ['trail-run', /\b(trail( run)?|trilha)\b/], ['mountain-bike', /\b(mountain bike|mtb)\b/],
+  ['ciclismo', /\b(ciclismo|pedal|pedais)\b/], ['triathlon', /\b(triathlon|triatlo)\b/], ['natacao', /\b(natacao|travessias?)\b/], ['beach-tennis', /\bbeach tennis\b/],
+  ['futevolei', /\bfutevolei\b/], ['canoagem-va-a', /\b(canoagem|va'?a|vaa)\b/], ['caminhada', /\bcaminhadas?\b/], ['corrida', /\bcorridas?\b/]
+];
+function interpretar(texto, cidades, hoje) {
+  let t = ' ' + norm(texto).replace(/[“”"«»]/g, ' ') + ' ';
+  const r = { modalidade: [], distancia: [], cidade: [], mes: '', publico: [], formato: [], terreno: [], resto: '' };
+  const tira = re => { const m = t.match(re); if (m) t = t.replace(re, ' '); return m; };
+  if (tira(/\bmeia( maratonas?)?\b/)) r.distancia.push('21k');
+  if (tira(/\bultra(maratonas?)?\b/)) r.distancia.push('ultra');
+  if (tira(/\bmaratonas?\b/)) r.distancia.push('42k');
+  let m;
+  while ((m = t.match(/\b(\d+(?:[.,]\d+)?)\s*(?:k|km|quilometros?)\b/))) { t = t.replace(m[0], ' '); r.distancia.push(distPorKm(parseFloat(m[1].replace(',', '.')))); }
+  ALIAS_MOD.forEach(([id, re]) => { if (tira(re)) r.modalidade.push(id); });
+  if (tira(/\bfeminin[oa]s?\b/)) r.publico.push('feminino');
+  if (tira(/\bkids?\b/)) r.publico.push('kids');
+  if (tira(/\binclusiv[oa]s?\b/)) r.publico.push('inclusivo');
+  if (tira(/\bestreantes?\b/)) r.publico.push('estreantes');
+  if (tira(/\b(noturn[oa]s?|night run)\b/)) r.formato.push('noturna');
+  if (tira(/\bvirtua(l|is)\b/)) r.formato.push('virtual');
+  if (tira(/\bpraia\b/)) r.terreno.push('praia');
+  if (tira(/\buphill\b/)) r.terreno.push('montanha-e-subida');
+  const mesesN = MESES.map(norm);
+  mesesN.forEach((nome, i) => {
+    if (r.mes) return;
+    const re = new RegExp('\\b(em )?(' + nome + '|' + MESES_CURTO[i] + ')\\b');
+    if (tira(re)) { const a = hoje.getFullYear() + (i < hoje.getMonth() ? 1 : 0); r.mes = a + '-' + String(i + 1).padStart(2, '0'); }
+  });
+  r.resto = t.split(/\s+/).filter(w => w && !['em', 'de', 'da', 'do', 'na', 'no', 'para', 'prova', 'provas', 'e', 'a', 'o', 'perto'].includes(w)).join(' ');
+  return r;
+}
+
+/* ---------- movimento (tokens motion.* de :root; movimento reduzido: nada anima) ---------- */
+function ehReduzido() { return document.documentElement.getAttribute('data-motion') === 'reduce' || !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); }
+function movTokens() {
+  if (ehReduzido()) return { fast: 0, base: 0, slow: 0, st: 0, sm: 0, md: 0, enter: 'linear', exit: 'linear', move: 'linear' };
+  const cs = getComputedStyle(document.documentElement);
+  const ms = (n, d) => { const v = cs.getPropertyValue(n).trim(), x = parseFloat(v); return isNaN(x) ? d : (/ms$/.test(v) || !/s$/.test(v) ? x : x * 1000); };
+  return { fast: ms('--motion-duration-fast', 160), base: ms('--motion-duration-base', 280), slow: ms('--motion-duration-slow', 480), st: ms('--motion-stagger', 40), sm: ms('--motion-distance-sm', 8), md: ms('--motion-distance-md', 16),
+    enter: cs.getPropertyValue('--motion-ease-enter').trim() || 'cubic-bezier(.2,.7,.2,1)', exit: cs.getPropertyValue('--motion-ease-exit').trim() || 'cubic-bezier(.4,0,1,1)', move: cs.getPropertyValue('--motion-ease-move').trim() || 'cubic-bezier(.4,0,.2,1)' };
+}
+const DEST_MS = 7000; // rotação automática do hero (pausável; nunca com movimento reduzido)
+
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    const f0 = lerUrl(location.search);
+    let salvo = null;
+    try { const nav = performance.getEntriesByType('navigation')[0]; if (nav && nav.type === 'back_forward') salvo = JSON.parse(sessionStorage.getItem('esp:' + location.search) || 'null'); } catch (e) {}
+    this.state = { dados: null, erro: false, f: f0, vista: temParametro(location.search) ? 'ag' : 'home', qCampo: f0.q, qHome: '', lotes: salvo ? salvo.lotes : 1, mais: false, anuncio: '', folha: false, abertas: {}, avisoOn: false, raioHome: 50, dest: 0, destParado: ehReduzido(), sel: { prox: 'todas', dist: '10k', form: 'noturna', pub: 'estreantes' }, maisCar: {}, anunciaCar: '', estimando: true, geoPedindo: false, geoTick: 0, dminTxt: null, dmaxTxt: null, topo: false, tick: 0 };
+    this.restaurarY = salvo && salvo.y > 0 ? salvo.y : 0;
+    this.y = 0;
+  }
+  componentDidMount() {
+    this.carregar();
+    this.aoMais = () => this.maisLote(false);
+    document.addEventListener('cat:mais', this.aoMais);
+    this.cidMuda = () => this.setState({ tick: this.state.tick + 1, lotes: 1 });
+    document.addEventListener('previa:cidade', this.cidMuda);
+    this.aoRolar = () => {
+      this.y = window.scrollY;
+      const topo = this.y > 720;
+      if (topo !== this.state.topo) this.setState({ topo });
+      clearTimeout(this.tg); this.tg = setTimeout(() => this.guardar(), 150);
+    };
+    window.addEventListener('scroll', this.aoRolar, { passive: true });
+    this.aoSair = () => this.guardar();
+    window.addEventListener('pagehide', this.aoSair);
+    this.aoTecla = e => {
+      if (!this.state.folha) return;
+      if (e.key === 'Escape') { e.preventDefault(); this.fecharFolha(); return; }
+      if (e.key !== 'Tab') return; // a folha cheia prende o foco enquanto está aberta
+      const fac = document.getElementById('flt');
+      if (!fac) return;
+      const alvos = [...fac.querySelectorAll('button:not([disabled]), input:not([disabled]), select, a[href]')].filter(x => x.offsetParent !== null);
+      if (!alvos.length) return;
+      const a = alvos[0], z = alvos[alvos.length - 1];
+      if (e.shiftKey && document.activeElement === a) { e.preventDefault(); z.focus(); }
+      else if (!e.shiftKey && document.activeElement === z) { e.preventDefault(); a.focus(); }
+      else if (!fac.contains(document.activeElement)) { e.preventDefault(); a.focus(); }
+    };
+    document.addEventListener('keydown', this.aoTecla);
+    if (history.scrollRestoration) history.scrollRestoration = 'manual';
+    // hero de destaques: rotação automática (WCAG 2.2.2: há botão de pausa; pausa ao pairar, focar e com a aba oculta) e deslize no celular
+    let tent = 0; // o script de geolocalização é carregado com defer: espera até 2 s por ele; sem ele, a Home segue sem a espera
+    const estimar = () => { if (window.IngresseGeo) window.IngresseGeo.estimar().then(() => this.setState({ estimando: false })); else if (tent++ < 20) setTimeout(estimar, 100); else this.setState({ estimando: false }); };
+    estimar();
+    this.aoGeo = () => this.setState({ geoTick: this.state.geoTick + 1 });
+    document.addEventListener('previa:geo', this.aoGeo);
+    this.destTimer = setInterval(() => {
+      const s = this.state;
+      if (s.vista !== 'home' || !s.dados || s.destParado || this.destHover || document.hidden || !this.nDest || this.destSaindo) return;
+      this.irDest((s.dest + 1) % this.nDest, true);
+    }, DEST_MS);
+    this.aoToque1 = e => { const h = e.target.closest && e.target.closest('.esp-dest'); this.toqueX = h && e.touches[0] ? e.touches[0].clientX : null; };
+    this.aoToque2 = e => {
+      if (this.toqueX == null || !e.changedTouches[0] || !this.nDest) return;
+      const dx = e.changedTouches[0].clientX - this.toqueX; this.toqueX = null;
+      if (Math.abs(dx) < 50) return;
+      const n = this.nDest, i = this.state.dest;
+      this.irDest(dx < 0 ? (i + 1) % n : (i - 1 + n) % n);
+    };
+    document.addEventListener('touchstart', this.aoToque1, { passive: true });
+    document.addEventListener('touchend', this.aoToque2, { passive: true });
+  }
+  componentWillUnmount() {
+    clearTimeout(this.tm); clearTimeout(this.tq); clearTimeout(this.tg); clearInterval(this.destTimer);
+    document.removeEventListener('previa:geo', this.aoGeo); document.removeEventListener('touchstart', this.aoToque1); document.removeEventListener('touchend', this.aoToque2);
+    document.removeEventListener('cat:mais', this.aoMais); document.removeEventListener('previa:cidade', this.cidMuda); document.removeEventListener('keydown', this.aoTecla);
+    window.removeEventListener('scroll', this.aoRolar); window.removeEventListener('pagehide', this.aoSair);
+  }
+  componentDidUpdate() {
+    this.guardar();
+    const d = document.documentElement;
+    if (this.state.folha) d.setAttribute('data-flt-folha', ''); else d.removeAttribute('data-flt-folha');
+    if (this.titulo && document.title !== this.titulo) document.title = this.titulo;
+    this.entradasAnimadas();
+  }
+  /* troca de destaque e de chip: o que sai se despede (160 ms), o que chega entra (280 ms, 40 ms entre cartões); só opacity e transform */
+  entradasAnimadas() {
+    const T = movTokens();
+    if (this.animarDest) {
+      this.animarDest = false;
+      (this.saidas || []).forEach(a => { try { a.cancel(); } catch (e) {} }); this.saidas = [];
+      if (T.fast && !document.hidden) ['txt', 'poster'].forEach((k, i) => { const el = document.querySelector('[data-dest="' + k + '"]'); if (el && el.animate) el.animate([{ opacity: 0, transform: 'translateX(' + (this.destDir || 1) * T.md + 'px)' }, { opacity: 1, transform: 'none' }], { duration: T.base, delay: i * T.st, easing: T.enter, fill: 'backwards' }); });
+    }
+    if (this.animarCar) {
+      const id = this.animarCar; this.animarCar = null;
+      (this.saidaCar || []).forEach(a => { try { a.cancel(); } catch (e) {} }); this.saidaCar = [];
+      const tr = document.querySelector('[data-car="' + id + '"]');
+      if (tr && T.fast && !document.hidden) { tr.scrollLeft = 0; [...tr.children].slice(0, 8).forEach((c, i) => c.animate && c.animate([{ opacity: 0, transform: 'translateY(' + T.sm + 'px)' }, { opacity: 1, transform: 'none' }], { duration: T.base, delay: i * T.st, easing: T.enter, fill: 'backwards' })); }
+    }
+  }
+  irDest(n, auto) {
+    const s = this.state, T = movTokens();
+    if (n === s.dest || this.destSaindo) return;
+    this.destDir = auto || n > s.dest ? 1 : -1;
+    const feito = () => { this.destSaindo = false; this.animarDest = true; this.setState({ dest: n }); };
+    const alvos = ['txt', 'poster'].map(k => document.querySelector('[data-dest="' + k + '"]')).filter(Boolean);
+    if (!T.fast || document.hidden || !alvos.length || !alvos[0].animate) { this.animarDest = false; this.setState({ dest: n }); return; }
+    this.destSaindo = true; this.saidas = alvos.map(el => el.animate([{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translateX(' + (-this.destDir * T.sm) + 'px)' }], { duration: T.fast, easing: T.exit, fill: 'forwards' }));
+    setTimeout(feito, T.fast);
+  }
+  trocarCar(id, patch) {
+    const T = movTokens(), tr = document.querySelector('[data-car="' + id + '"]');
+    const aplicar = () => { this.animarCar = id; this.setState(patch); };
+    if (!T.fast || document.hidden || !tr || !tr.animate) { this.animarCar = null; this.setState(patch); return; }
+    this.saidaCar = [tr.animate([{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translateY(-' + T.sm + 'px)' }], { duration: T.fast, easing: T.exit, fill: 'forwards' })];
+    setTimeout(aplicar, T.fast);
+  }
+  guardar() {
+    const s = this.state;
+    if (!s.dados || s.vista !== 'ag') return;
+    try { sessionStorage.setItem('esp:' + location.search, JSON.stringify({ lotes: s.lotes, y: Math.round(this.y || window.scrollY) })); } catch (e) {}
+  }
+  carregar() {
+    this.setState({ erro: false });
+    fetch('./dados/esportes-lista.json').then(r => r.ok ? r.json() : Promise.reject(r.status)).then(d => {
+      const anoAgora = new Date().getFullYear();
+      const ev = d.e.map(x => {
+        const fim = x.s === 'encerrado' || x.s === 'cancelado';
+        const modTxt = x.m.map(m => (MODS[m] || { r: m }).r).join(' ');
+        return {
+          id: x.i, nome: x.n, t: x.t || 8e15, semData: !x.t, iso: x.iso, mes: x.mes, cs: x.cs, c: x.c, u: x.u, g: x.g, local: x.l, sit: x.s, p: x.p, sl: x.sl, sd: x.sd, ab: x.ab, fe: x.fe, nv: x.nv,
+          mod: x.m, db: x.db, tr: x.tr, pu: x.pu, fm: x.fm, sv: x.sv, et: x.et, rd: x.rd, kd: x.kd, ku: x.ku, ks: x.ks, vir: !!x.v, ci: x.ci, pop: x.pop, dq: x.dq || 0, cv: x.cv || '', org: x.org,
+          ano: x.iso ? Number(x.iso.slice(0, 4)) : anoAgora, fim: fim ? 1 : 0,
+          busca: norm([x.n, x.l, x.c, x.u, x.org, x.ci ? x.ci.nome : '', modTxt, x.fm.includes('noturna') ? 'night run noturna' : '', x.pu.includes('kids') ? 'kids' : '', x.pu.includes('feminino') ? 'feminina femininas' : ''].join(' '))
+        };
+      });
+      const porCidade = new Map();
+      const centros = {};
+      ev.forEach(e => { if (!e.cs) return; if (!porCidade.has(e.cs)) porCidade.set(e.cs, { cs: e.cs, nome: e.c, u: e.u, n: 0 }); if (e.g && !centros[e.cs]) centros[e.cs] = e.g; });
+      const cidades = [...porCidade.values()];
+      const meses = uniq(ev.filter(e => e.mes && !e.vir).map(e => e.mes)).sort();
+      this.setState({ dados: { ev, cidades, centros, meses, atalhos: d.atalhos, lottie: d.lottie || {} } }, () => {
+        // `?q=`: a frase é lida como no envio (chips, restante do texto em `q`, URL reescrita), em vez de ficar só como texto (BUSCA-UNIFICADA-DECISAO.md, passo 1)
+        if (this.state.vista === 'ag' && this.state.f.q && !this.qCanonizado) {
+          this.qCanonizado = true;
+          const f0 = this.state.f, g = this.aplicarBusca(f0.q, f0), k = x => JSON.stringify([x.modalidade, x.distancia, x.cidade, x.mes, x.publico, x.formato, x.terreno, x.q]);
+          if (k(g) !== k(f0)) this.setF({ modalidade: g.modalidade, distancia: g.distancia, cidade: g.cidade, mes: g.mes, publico: g.publico, formato: g.formato, terreno: g.terreno, q: g.q });
+        }
+        if (this.restaurarY) { const y = this.restaurarY; this.restaurarY = 0; requestAnimationFrame(() => requestAnimationFrame(() => window.scrollTo(0, y))); }
+        else if (location.hash) { const el = document.getElementById(location.hash.slice(1)); if (el) requestAnimationFrame(() => el.scrollIntoView()); }
+      });
+    }).catch(() => this.setState({ erro: true }));
+  }
+
+  /* ----- origem de "perto de mim": a cidade do cabeçalho (o protótipo nunca pede a localização do aparelho nem chama rede) ----- */
+  origem() {
+    const d = this.state.dados, c = window.IngresseCidade && window.IngresseCidade.atual && window.IngresseCidade.atual();
+    const geo = window.IngresseGeo ? window.IngresseGeo.estado() : null;
+    if (d && geo && geo.status === 'precisa' && geo.g) return { nome: 'a sua localização', cs: '', g: geo.g, precisa: true };
+    if (!c || !d) return null;
+    const alvo = norm(c.nome), cid = d.cidades.find(x => norm(x.nome) === alvo);
+    return { nome: c.nome, cs: cid ? cid.cs : '', g: cid ? d.centros[cid.cs] || null : null };
+  }
+  /* linha de «Perto de mim» (Home e lista): de onde vem a origem e o que a pessoa pode fazer; sem insistir depois de uma negativa */
+  geoLinha(o) {
+    const geo = window.IngresseGeo ? window.IngresseGeo.estado() : { status: 'sem-suporte', podePedir: false };
+    const cidade = o && !o.precisa ? o.nome : '';
+    let texto;
+    if (geo.status === 'precisa') texto = 'Pela sua localização.';
+    else if (geo.status === 'negada') texto = 'Sem a sua localização, mostramos as provas perto de ' + (cidade || 'a sua cidade') + '.';
+    else if (geo.status === 'sem-suporte') texto = 'Este aparelho não informa a localização. Mostramos as provas perto de ' + (cidade || 'a sua cidade') + '.';
+    else texto = 'Aproximado pela sua rede' + (cidade ? ': ' + cidade : '') + '. Use a sua localização para ver as provas mais perto de você.';
+    const pedir = !!geo.podePedir && !this.state.geoPedindo;
+    return { geoModo: geo.status, geoTexto: texto, geoPodePedir: pedir, geoPedindo: !!this.state.geoPedindo, geoPodeTrocar: geo.status !== 'precisa', usarLocal: () => this.usarLocal(), geoBotao: this.state.geoPedindo ? 'Procurando…' : 'Usar minha localização' };
+  }
+  usarLocal() {
+    if (!window.IngresseGeo || this.state.geoPedindo) return;
+    this.setState({ geoPedindo: true });
+    window.IngresseGeo.pedir().then(() => this.trocarCar('perto', { geoPedindo: false, geoTick: this.state.geoTick + 1 }), () => this.setState({ geoPedindo: false, geoTick: this.state.geoTick + 1 }));
+  }
+  abrirSeletorDeCidade() { const b = document.querySelector('[data-cidade-btn]'); if (b) b.click(); }
+
+  /* ----- alterar filtros (e a URL, para o endereço poder ser compartilhado) ----- */
+  setF(patch, aviso) {
+    const f = { ...this.state.f, ...patch };
+    try { const u = new URL(location.href); const q = paraQuery(f); u.search = q ? '?' + q : ''; u.hash = ''; history.replaceState(history.state, '', u); } catch (e) {}
+    this.setState({ f, lotes: 1, qCampo: patch.q !== undefined ? patch.q : this.state.qCampo, dminTxt: null, dmaxTxt: null }, () => { if (aviso !== false) this.anunciar(); });
+  }
+  anunciar(msg) {
+    if (msg) { this.setState({ anuncio: msg }); return; }
+    const n = this.filtrar().length;
+    this.setState({ anuncio: n === 0 ? 'Nenhuma prova encontrada' : plural(n, 'prova', 'provas') });
+  }
+  alternar(chave, valor) {
+    const f = this.state.f, atual = f[chave];
+    this.setF({ [chave]: atual.includes(valor) ? atual.filter(v => v !== valor) : atual.concat(valor) });
+  }
+  ctx(f) { const d = this.state.dados, l = lugarAtual(); return { o: this.origem(), qt: norm(f.q).split(/\s+/).filter(Boolean), d, lugar: l ? e => noLugar(l, e) : null }; }
+  filtrar(fx) {
+    const s = this.state, d = s.dados, f = fx || s.f;
+    if (!d) return [];
+    const ctx = this.ctx(f);
+    const lista = d.ev.filter(e => casa(e, f, ctx));
+    const ordem = f.ordem || 'proximas';
+    const porData = (a, b) => a.fim - b.fim || a.vir - b.vir || a.t - b.t || a.nome.localeCompare(b.nome, 'pt-BR');
+    let cmp = porData;
+    if (ordem === 'procuradas') cmp = (a, b) => a.fim - b.fim || b.pop - a.pop || porData(a, b);
+    else if (ordem === 'preco') cmp = (a, b) => a.fim - b.fim || (!a.p) - (!b.p) || a.p - b.p || porData(a, b);
+    else if (ordem === 'distancia-de-mim' && f.perto) cmp = (a, b) => a.fim - b.fim || distMim(a, ctx.o) - distMim(b, ctx.o) || porData(a, b);
+    return lista.sort(cmp);
+  }
+  maisLote(porBotao) {
+    const s = this.state;
+    if (s.mais || !s.dados || s.vista !== 'ag') return;
+    const total = this.filtrar().length, vis = s.lotes * LOTE;
+    if (vis >= total) return;
+    this.setState({ mais: true });
+    clearTimeout(this.tm);
+    this.tm = setTimeout(() => {
+      const n = Math.min(LOTE, total - vis);
+      this.setState({ lotes: this.state.lotes + 1, mais: false, anuncio: n + (n === 1 ? ' prova a mais' : ' provas a mais') }, () => {
+        if (porBotao) { const novo = document.querySelector('.ev-card[data-ini="true"] .ev-card__link'); if (novo) { novo.focus({ preventScroll: true }); novo.scrollIntoView({ block: 'nearest' }); } }
+      });
+    }, 260);
+  }
+  abrirFolha() { this.setState({ folha: true }, () => { const b = document.querySelector('.flt-fechar'); if (b) b.focus(); }); }
+  fecharFolha() { this.setState({ folha: false }, () => { const b = document.querySelector('.flt-abrir'); if (b && b.offsetParent !== null) b.focus(); }); }
+
+  /* ----- cartão esportivo: o cartão único (window.IngresseCartao.prova, tools/previa/cartao-evento.js). Sem preço, sem «Inscrições abertas», sem «a N km», sem «Últimas vagas» nem «Lote esgotado»:
+     só o estado que muda a ação (Esgotada, Cancelada, Adiada, Inscrições fechadas, Ainda não abriu / Abre em …). A distância da PROVA fica na linha da data (é conteúdo do evento). ----- */
+  cartao(e, o, opc) {
+    return window.IngresseCartao.prova({ id: e.id, nome: e.nome, iso: e.iso, semData: e.semData, vir: e.vir, ks: e.ks, kd: e.kd, ku: e.ku, local: e.local, c: e.c, sit: e.sit, ab: e.ab, nv: e.nv, ...capaDe(e.cv, e.id) }, { ini: !!(opc && opc.ini) });
+  }
+
+  /* ícone de modalidade: o Lottie do Bessa quando o arquivo existe (o gerador diz pela lista); senão a máscara provisória */
+  icone(slug) {
+    const l = ((this.state.dados || {}).lottie || {})[slug];
+    return l ? { slug, temLottie: true, semLottie: false, lottie: l.src, repouso: String(l.repouso), laco: String(l.laco) } : { slug, temLottie: false, semLottie: true, lottie: '', repouso: '0', laco: '0' };
+  }
+
+  /* ----- facetas ----- */
+  escalaAtual(f) {
+    if (!f.modalidade.length) return 'corrida';
+    const es = uniq(f.modalidade.map(m => MODS[m].esc || '-'));
+    return es.length === 1 && es[0] !== '-' ? es[0] : null;
+  }
+  facetas(f, ctx) {
+    const d = this.state.dados, ev = d.ev, s = this.state;
+    const cx = { abertas: s.abertas, set: m => this.setState({ abertas: m }) }; // colapso: FLT (filtros-logica.js), o mesmo da Busca «Tudo»
+    const out = [], ab = () => out.length < 3; // os três primeiros grupos abrem, os demais ficam recolhidos (a mesma regra dos dois componentes)
+    const lista = (id, titulo, chave, pares, padrao) => FLT.lista(cx, id, titulo,
+      pares.map(([v, r]) => { const on = f[chave].includes(v), n = contarCom(ev, f, ctx, chave, v); return { ...(chave === 'modalidade' ? FLT.icone(this.icone(v)) : {}), label: r, on, n: CONFIAVEL ? n : '', zero: n === 0 && !on, toggle: () => this.alternar(chave, v) }; }), padrao);
+    // pedido do Wander (29/10): Modalidade, Quando, Distância, Para quem, Formato, Terreno. Cidade e «Perto de mim» saíram (o lugar vem do cabeçalho) e «O que a prova oferece» também.
+    out.push(lista('modalidade', 'Modalidade', 'modalidade', ORDEM_MODS.map(m => [m, MODS[m].r]), ab()));
+    out.push(FLT.chips(cx, 'quando', 'Quando',
+      d.meses.map(m => ({ m, on: f.mes === m, n: contarCom(ev, f, ctx, 'mes', m) })).filter(x => x.n > 0 || x.on).map(({ m, on }) => ({ label: mesCurto(m), on: on ? 'true' : 'false', zero: false, toggle: () => this.setF({ mes: on ? '' : m }) })) /* mês sem prova nem aparece (chip desabilitado seria outra família) */,
+      'Quando', ab()));
+    // distância: as faixas da escala da(s) modalidade(s); sem escala (beach tennis, futevôlei, aventura, Va'a) o controle some; escalas misturadas: só mínimo e máximo
+    const esc = this.escalaAtual(f);
+    const semControle = f.modalidade.length > 0 && f.modalidade.every(m => !MODS[m].esc) && !f.modalidade.some(m => m === 'canoagem-va-a');
+    if (!semControle) {
+      const tem = f.distancia.length > 0 || f.dmin != null || f.dmax != null;
+      out.push({
+        ...FLT.base(cx, 'distancia', 'Distância', tem, ab(), 1), isDist: true, temBandas: !!esc,
+        opcoes: (esc ? ESCALAS[esc] : []).map(([v, r]) => ({ label: r, on: f.distancia.includes(v) ? 'true' : 'false', toggle: () => this.setF({ distancia: f.distancia.includes(v) ? f.distancia.filter(x => x !== v) : f.distancia.concat(v), dmin: null, dmax: null }) })),
+        dmin: s.dminTxt !== null ? s.dminTxt : (f.dmin != null ? String(f.dmin) : ''), dmax: s.dmaxTxt !== null ? s.dmaxTxt : (f.dmax != null ? String(f.dmax) : ''),
+        onDmin: e => { const v = e.target.value, n = parseFloat(v.replace(',', '.')); this.setState({ dminTxt: v }); this.setF({ dmin: isFinite(n) && n >= 0 ? n : null, distancia: [] }, false); this.setState({ dminTxt: v }); },
+        onDmax: e => { const v = e.target.value, n = parseFloat(v.replace(',', '.')); this.setState({ dmaxTxt: v }); this.setF({ dmax: isFinite(n) && n >= 0 ? n : null, distancia: [] }, false); this.setState({ dmaxTxt: v }); }
+      });
+    }
+    out.push(lista('publico', 'Para quem', 'publico', PUBLICOS, ab()));
+    out.push(lista('formato', 'Formato', 'formato', FORMATOS, ab()));
+    out.push(lista('terreno', 'Terreno', 'terreno', TERRENOS, ab()));
+    return out;
+  }
+
+  /* ----- chips dos filtros aplicados ----- */
+  chipsAtivos(f) {
+    const c = [], d = this.state.dados;
+    const add = (label, patch) => c.push({ label, remover: () => this.setF(patch) });
+    f.modalidade.forEach(v => add(MODS[v].r, { modalidade: f.modalidade.filter(x => x !== v) }));
+    if (f.dmin != null || f.dmax != null) add(f.dmin != null && f.dmax != null ? 'De ' + f.dmin + ' a ' + f.dmax + ' km' : f.dmin != null ? 'A partir de ' + f.dmin + ' km' : 'Até ' + f.dmax + ' km', { dmin: null, dmax: null });
+    else f.distancia.forEach(v => add(BANDA_ROT[v], { distancia: f.distancia.filter(x => x !== v) }));
+    if (f.mes) add(cap(mesRotulo(f.mes)), { mes: '' });
+    f.terreno.forEach(v => add(rot(TERRENOS, v), { terreno: f.terreno.filter(x => x !== v) }));
+    f.publico.forEach(v => add(rot(PUBLICOS, v), { publico: f.publico.filter(x => x !== v) }));
+    f.formato.forEach(v => add(rot(FORMATOS, v), { formato: f.formato.filter(x => x !== v) }));
+    f.servico.forEach(v => add(rot(SERVICOS, v), { servico: f.servico.filter(x => x !== v) }));
+    if (f.circuito) { const x = d && d.ev.find(e => e.ci && e.ci.id === f.circuito); add(x ? x.ci.nome : f.circuito, { circuito: '' }); }
+    if (f.tipo) add('Treino e preparação', { tipo: '' });
+    if (f.q) add('“' + f.q + '”', { q: '' });
+    return c;
+  }
+
+  /* ----- título, introdução, trilha ----- */
+  periodo(lista) {
+    const anos = uniq(lista.filter(e => !e.semData).map(e => e.ano)).sort();
+    return anos.length === 0 ? String(new Date().getFullYear()) : anos.length === 1 ? String(anos[0]) : anos[0] + ' e ' + anos[anos.length - 1];
+  }
+  base(f) {
+    // nome da lista: o texto de H1 da proposta de SEO (ingresse-sports-seo.json, modelos M02 a M10) e do microcopy (ES-AG-01 a 05)
+    if (f.tipo) return { h1: 'Treino e preparação', semLoc: true, fem: true };
+    if (f.circuito) { const x = this.state.dados.ev.find(e => e.ci && e.ci.id === f.circuito); return { h1: x ? x.ci.nome : 'Etapas do circuito', intro: 'etapas do circuito', semLoc: true, fem: true }; }
+    if (f.servico.length === 1 && f.servico[0] === 'aceita-grupos' && !f.modalidade.length && !f.publico.length && !f.formato.length && !f.terreno.length && !f.distancia.length) return { h1: 'Provas que aceitam grupos e assessorias', semLoc: true, fem: true, semAno: true };
+    const mod = f.modalidade.length === 1 ? MODS[f.modalidade[0]] : null;
+    if (mod) {
+      if (f.modalidade[0] === 'corrida' && f.distancia.length === 1 && f.dmin == null && f.dmax == null) {
+        const k = { '5k': 'Corridas de 5 km', '10k': 'Corridas de 10 km', '21k': 'Meias maratonas (21 km)', '42k': 'Maratonas (42 km)', 'ultra': 'Ultramaratonas', 'ate-4k': 'Corridas de até 4 km', '5-10k': 'Corridas de 5 a 10 km', '11-20k': 'Corridas de 11 a 20 km', '22-41k': 'Corridas de 22 a 41 km' }[f.distancia[0]];
+        if (k) return { h1: k, intro: k.toLowerCase(), fem: true };
+      }
+      return { h1: mod.h1, intro: mod.intro || mod.h1.toLowerCase(), fem: true };
+    }
+    if (f.publico.length === 1) return { h1: { feminino: 'Provas femininas', kids: 'Provas kids', inclusivo: 'Provas inclusivas', estreantes: 'Provas para estreantes' }[f.publico[0]], fem: true };
+    if (f.formato.length === 1) { const v = f.formato[0]; return { h1: { noturna: 'Provas noturnas (night run)', virtual: 'Desafios virtuais', circuito: 'Etapas de circuitos', 'prova-unica': 'Provas de etapa única' }[v], semLoc: v === 'virtual', fem: v !== 'virtual' }; }
+    if (f.terreno.length === 1) return { h1: { rua: 'Provas de rua', trilha: 'Provas em trilha', 'montanha-e-subida': 'Provas de uphill', praia: 'Provas na praia', 'agua-aberta': 'Provas em águas abertas', piscina: 'Provas em piscina', misto: 'Provas em terreno misto' }[f.terreno[0]], fem: true };
+    if (f.servico.length === 1) return { h1: { 'aceita-grupos': 'Provas que aceitam grupos e assessorias', 'transporte-de-bike': 'Provas com transporte da bike', 'kit-pelo-correio': 'Provas com kit enviado pelo correio' }[f.servico[0]], fem: true };
+    return { h1: 'Provas esportivas', fem: true };
+  }
+  textos(f, lista, o) {
+    const b = this.base(f), d = this.state.dados;
+    const per = f.mes && !f.tipo ? mesRotulo(f.mes) : this.periodo(lista);
+    const cid = f.cidade.length === 1 ? d.cidades.find(c => c.cs === f.cidade[0]) : null;
+    const loc = b.semLoc ? '' : f.perto ? ' perto de você' : cid ? ' em ' + cid.nome : ' no Brasil';
+    const h1 = f.tipo || f.circuito ? b.h1 : b.semAno ? b.h1 : f.mes && !f.modalidade.length && !f.cidade.length && !f.publico.length && !f.formato.length && !f.terreno.length && !f.servico.length && !f.distancia.length ? 'Provas em ' + per : b.h1 + loc + ' em ' + per;
+    // introdução gerada (ES-AG-08): "18 meias maratonas em São Paulo em 2027, de março a dezembro. Escolha pela data, pelo terreno ou pelo público."
+    const n = lista.length, datados = lista.filter(e => !e.semData && !e.vir).map(e => e.mes).sort();
+    let intro;
+    if (f.tipo) intro = 'Clínicas, aulas e treinos com inscrição. Para escolher a distância certa, comece pelas perguntas abaixo.';
+    else if (n === 0) intro = 'Escolha pela data, pelo terreno ou pelo público.';
+    else {
+      const nome = (b.intro || b.h1.toLowerCase());
+      const fem = b.fem !== false;
+      const meses = f.mes || !datados.length ? '' : (datados[0] === datados[datados.length - 1] ? ', em ' + MESES[Number(datados[0].slice(5)) - 1] : ', de ' + MESES[Number(datados[0].slice(5)) - 1] + ' a ' + MESES[Number(datados[datados.length - 1].slice(5)) - 1]);
+      const lugar = f.perto ? ' perto de você' : cid ? ' em ' + cid.nome : '';
+      if (n === 1) intro = (fem ? 'Uma prova' : 'Um desafio virtual') + lugar + ' em ' + per + meses + '.';
+      else intro = cap(numTexto(n, fem)) + ' ' + nome + lugar + ' em ' + per + meses + '. Escolha pela data, pelo terreno ou pelo público.';
+    }
+    let editorial = '';
+    if (!f.tipo) {
+      if (f.modalidade.length === 1 && f.modalidade[0] === 'corrida' && !f.distancia.length) {
+        const ds = uniq(d.ev.filter(e => e.mod.includes('corrida') && !e.fim).flatMap(e => e.rd)).sort((a, c) => a - c);
+        if (ds.length) editorial = 'Corridas de rua acontecem nas ruas e avenidas da cidade. Há provas de ' + (ds[0] / 1000).toLocaleString('pt-BR') + ' a ' + (ds[ds.length - 1] / 1000).toLocaleString('pt-BR') + ' km: escolha pela distância, pela data e pelo percurso.';
+      } else if (f.modalidade.length === 1 && EDITORIAL[f.modalidade[0]]) editorial = EDITORIAL[f.modalidade[0]];
+      else if (!f.modalidade.length && f.publico.length === 1 && EDITORIAL[f.publico[0]]) editorial = EDITORIAL[f.publico[0]];
+    }
+    return { h1, intro, editorial };
+  }
+  trilha(f) {
+    const d = this.state.dados, itens = [{ label: 'Ingresse Sports', href: 'Esportes.dc.html' }];
+    const acum = vazioF();
+    const push = (label, patch) => { Object.assign(acum, patch); itens.push({ label, href: hrefAg(acum) }); };
+    if (f.tipo) itens.push({ label: 'Aprenda', href: '' });
+    else if (f.circuito) itens.push({ label: 'Circuitos', href: hrefAg({ ...vazioF(), formato: ['circuito'] }) }); /* dt: o circuito é uma coleção esportiva; a lista dos circuitos é a agregadora de formato, não a turnê do Sorriso (28/10) */
+    if (f.modalidade.length === 1) push(MODS[f.modalidade[0]].r, { modalidade: f.modalidade });
+    else if (f.modalidade.length > 1) push(f.modalidade.map(m => MODS[m].r).join(' e '), { modalidade: f.modalidade });
+    if (f.distancia.length === 1 && f.dmin == null && f.dmax == null) push(BANDA_ROT[f.distancia[0]], { distancia: f.distancia });
+    else if (f.dmin != null || f.dmax != null) push('De ' + (f.dmin || 0) + ' a ' + (f.dmax != null ? f.dmax : 'mais') + ' km', { dmin: f.dmin, dmax: f.dmax });
+    f.publico.forEach(v => push(rot(PUBLICOS, v), { publico: [v] }));
+    f.formato.forEach(v => push(rot(FORMATOS, v), { formato: [v] }));
+    f.terreno.forEach(v => push(rot(TERRENOS, v), { terreno: [v] }));
+    f.servico.forEach(v => push(rot(SERVICOS, v), { servico: [v] }));
+    if (f.mes) push(cap(mesRotulo(f.mes)), { mes: f.mes });
+    const ult = itens.length - 1;
+    return itens.map((t, i) => ({ label: t.label, href: t.href, link: i < ult && !!t.href, atual: i === ult }));
+  }
+
+  /* ----- estado vazio: relaxamentos em ordem, até três, só com contagem maior que zero ----- */
+  sugestoes(f, ctx) {
+    const d = this.state.dados, ev = d.ev, out = [];
+    const conta = g => ev.filter(e => casa(e, g, ctx)).length;
+    const add = (n, texto, acao, g) => { if (n > 0 && out.length < 3) out.push({ texto, acao, aplicar: () => this.setF(g) }); };
+    if (f.mes) {
+      const prox = d.meses.filter(m => m > f.mes);
+      for (const m of prox) { const n = conta({ ...f, mes: m }); if (n > 0) { add(n, 'Há ' + n + ' em ' + MESES[Number(m.slice(5)) - 1] + '.', 'Ver ' + MESES[Number(m.slice(5)) - 1], { mes: m }); break; } }
+    }
+    if (f.distancia.length && f.dmin == null && f.dmax == null) {
+      const esc = Object.values(ESCALAS).find(l => l.some(([id]) => id === f.distancia[0]));
+      if (esc) {
+        const i = esc.findIndex(([id]) => id === f.distancia[0]);
+        [esc[i + 1], esc[i - 1]].filter(Boolean).forEach(([id]) => { const n = conta({ ...f, distancia: [id] }); add(n, 'Há ' + n + ' ' + BANDA_FRASE[id] + '.', 'Ver ' + BANDA_ROT[id].toLowerCase(), { distancia: [id] }); });
+      }
+    }
+    [['publico', PUBLICOS, 'Para quem'], ['terreno', TERRENOS, 'Terreno'], ['formato', FORMATOS, 'Formato'], ['servico', SERVICOS, 'O que a prova oferece']].forEach(([k, pares]) => {
+      f[k].forEach(v => { const n = conta({ ...f, [k]: f[k].filter(x => x !== v) }); add(n, 'Há ' + n + ' sem o filtro “' + rot(pares, v) + '”.', 'Tirar filtro', { [k]: f[k].filter(x => x !== v) }); });
+    });
+    if (f.q) { const n = conta({ ...f, q: '' }); add(n, 'Há ' + n + ' sem o texto “' + f.q + '”.', 'Limpar a busca', { q: '' }); }
+    return out;
+  }
+  tituloVazio(f) {
+    if (f.q) return 'Não achamos “' + f.q + '”' + (f.modalidade.length === 1 ? ' em ' + MODS[f.modalidade[0]].r.toLowerCase() : '') + '.';
+    const d = this.state.dados;
+    let t = 'Não encontramos provas';
+    const comDist = f.distancia.length && f.dmin == null && f.dmax == null;
+    if (f.modalidade.length && !(comDist && f.modalidade.length === 1 && f.modalidade[0] === 'corrida')) t += ' de ' + f.modalidade.map(m => MODS[m].r.toLowerCase()).join(' ou ');
+    if (comDist) t += ' ' + f.distancia.map(v => BANDA_FRASE[v]).join(' ou ');
+    if (f.mes) t += ' em ' + MESES[Number(f.mes.slice(5)) - 1];
+    if (f.publico.length || f.terreno.length || f.formato.length || f.servico.length) t += ' com esses filtros';
+    return t + '.';
+  }
+
+  /* ----- busca textual (Home e agregadora) ----- */
+  aplicarBusca(texto, base) {
+    const d = this.state.dados, r = interpretar(texto, d ? d.cidades.map(c => ({ nome: c.nome, cs: c.cs })) : [], new Date());
+    const f = { ...base };
+    f.modalidade = uniq(f.modalidade.concat(r.modalidade));
+    f.distancia = uniq(f.distancia.concat(r.distancia));
+    if (r.distancia.length && !f.modalidade.length) f.modalidade = ['corrida']; // os marcos (5k, 10k, meia, maratona) são da corrida
+    f.cidade = uniq(f.cidade.concat(r.cidade));
+    if (r.mes) f.mes = r.mes;
+    f.publico = uniq(f.publico.concat(r.publico)); f.formato = uniq(f.formato.concat(r.formato)); f.terreno = uniq(f.terreno.concat(r.terreno));
+    f.q = r.resto;
+    return f;
+  }
+
+  renderVals() {
+    const s = this.state, d = s.dados, f = s.f, hoje = new Date();
+    const o = d ? this.origem() : null;
+    const ctx = { o, qt: norm(f.q).split(/\s+/).filter(Boolean) };
+    const isHome = s.vista === 'home', isAgreg = !isHome;
+    const base = {
+      estado: s.erro ? 'erro' : !d ? 'carregando' : 'pronto', vista: s.vista, isHome, isAgreg, temDados: !!d, carregando: !d && !s.erro, temErro: s.erro, tentar: () => this.carregar(),
+      skels: [1, 2, 3, 4], skelsMais: [], anuncio: s.anuncio, topoOn: s.topo ? 'true' : 'false', topoTab: s.topo ? '0' : '-1',
+      irTopo: e => { if (e && e.preventDefault) e.preventDefault(); const r = document.documentElement.getAttribute('data-motion') === 'reduce' || (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); window.scrollTo({ top: 0, behavior: r ? 'auto' : 'smooth' }); },
+      escolherCidade: () => this.abrirSeletorDeCidade()
+    };
+    // navegação do cabeçalho: SÓ as modalidades (decisão do Wander, 28/10/2026), na ordem da Home; cada uma leva à agregadora da modalidade
+    const barra = ORDEM_MODS.map(m => ({ label: MODS[m].r, href: hrefComFiltro({ modalidade: [m] }), cur: isAgreg && f.modalidade.length === 1 && f.modalidade[0] === m ? 'page' : undefined }));
+    const sementeBase = isHome ? 'esportes' : 'esp:' + paraQuery(f);
+    const estiloAg = f.modalidade.length ? MODS[f.modalidade[0]].est : f.formato.includes('virtual') || f.formato.includes('circuito') || f.circuito ? 'circuito' : f.terreno.includes('praia') ? 'onda' : f.terreno.includes('montanha-e-subida') ? 'trilha' : 'faixas';
+    const comum = { ...base, barra, heroSeed: hashNum(sementeBase), heroEstilo: isHome ? 'faixas' : estiloAg };
+
+    /* =========================== HOME =========================== */
+    if (isHome) {
+      const home = { ...comum, qHome: s.qHome, onQHome: e => this.setState({ qHome: e.target.value }) };
+      home.buscarHome = e => {
+        e.preventDefault();
+        const g = this.aplicarBusca(s.qHome, vazioF());
+        location.assign(hrefAg(g));
+      };
+      home.pertoHome = () => { if (!o) { this.abrirSeletorDeCidade(); return; } location.assign(hrefAg({ ...vazioF(), perto: true })); };
+      if (!d) return { ...home, hrefCircuitos: hrefComFiltro({ formato: ['circuito'] }), icPerto: this.icone('perto-de-voce'), mods: [], carrosseisA: [], carrosseisB: [], raios: [], perto: [], circuitos: [], temPerto: false, semCidade: false, semInventario: false, temDest: false, destPontos: [], pertoEstimando: false, ...this.geoLinha(null) };
+      const ev = d.ev, abertas = ev.filter(e => !e.fim);
+      const atalhos = d.atalhos;
+      const ehMod = a => a.filtro && Object.keys(a.filtro).length === 1 && a.filtro.modalidade;
+      home.icPerto = this.icone('perto-de-voce');
+      home.mods = atalhos.filter(ehMod).map(a => ({ ...this.icone(a.filtro.modalidade), id: a.filtro.modalidade, rotulo: a.rotulo, href: hrefComFiltro({ modalidade: [a.filtro.modalidade] }), n: CONFIAVEL ? plural(abertas.filter(e => e.mod.includes(a.filtro.modalidade)).length, 'prova', 'provas') : '' }));
+
+      // ---- hero: provas em destaque (curadoria; esportes/destaques.json), na ordem do operador
+      const dests = ev.filter(e => e.dq && !e.fim).sort((a, b) => a.dq - b.dq);
+      this.nDest = dests.length;
+      const idx = Math.min(s.dest, Math.max(dests.length - 1, 0)), de = dests[idx];
+      home.temDest = dests.length > 0;
+      if (de) {
+        const dc = this.cartao(de, o), m1 = MODS[de.mod[0]] || { r: de.mod[0] };
+        home.dest = { ...dc, kicker: m1.r + (de.c ? ' · ' + de.c : ''), meta: dc.cData + (de.vir ? '' : ' · ' + dc.cLocal), verHref: hrefComFiltro({ modalidade: [de.mod[0]] }), verRotulo: 'Ver provas de ' + m1.r.toLowerCase() };
+      }
+      home.destPontos = dests.map((e, i) => ({ sel: i === idx ? 'true' : 'false', aria: 'Destaque ' + (i + 1) + ' de ' + dests.length + ': ' + e.nome, ir: () => this.irDest(i) }));
+      const reduz = ehReduzido();
+      home.destTemPausa = !reduz && dests.length > 1;
+      home.destParado = !!s.destParado; home.destRodando = !s.destParado;
+      home.destPausaRotulo = s.destParado ? 'Retomar destaques automáticos' : 'Pausar destaques automáticos';
+      home.destLive = s.destParado || reduz ? 'polite' : 'off';
+      home.destAlternar = () => this.setState({ destParado: !s.destParado });
+      home.destPausar = () => { this.destHover = true; }; home.destRetomar = () => { this.destHover = false; };
+      home.destAnterior = () => this.irDest((s.dest - 1 + dests.length) % dests.length);
+      home.destProximo = () => this.irDest((s.dest + 1) % dests.length);
+
+      // ---- carrosséis com chips (o componente do «Descubra o que viver agora»): o chip troca o conteúdo E o «Ver todas»
+      const cx = { o, qt: [] };
+      const lista = patch => abertas.filter(e => casa(e, { ...vazioF(), ...patch }, cx)).sort((a, b) => a.fim - b.fim || a.vir - b.vir || a.t - b.t || a.nome.localeCompare(b.nome, 'pt-BR'));
+      const mkCar = ({ id, titulo, grupoRotulo, chips, extras, vazioTexto, verPadrao }) => {
+        const sel = s.sel[id], aberto = !!s.maisCar[id];
+        const cs = [...chips, ...(extras || [])].map(c => ({ ...c, itens: lista(c.patch) })).filter(c => c.itens.length > 0 || c.id === sel);
+        const atual = cs.find(c => c.id === sel) || cs[0];
+        const nChips = chips.filter(c => cs.some(x => x.id === c.id)).length;
+        const btn = c => ({ label: c.rotulo, pressed: atual && c.id === atual.id ? 'true' : 'false', pick: () => { if (atual && c.id === atual.id) return; this.trocarCar(id, { sel: { ...this.state.sel, [id]: c.id }, anunciaCar: id }); } });
+        const base = cs.filter(c => chips.some(x => x.id === c.id)), ext = cs.filter(c => !chips.some(x => x.id === c.id));
+        const mostrarExt = aberto || (atual && ext.some(c => c.id === atual.id));
+        const itens = atual ? atual.itens.slice(0, 16) : [];
+        return {
+          id, hid: id + '-h', titulo, grupoRotulo, ver: atual ? atual.ver : verPadrao, chips: base.map(btn), temMais: ext.length > 0, maisOpen: mostrarExt ? 'true' : 'false', maisLabel: mostrarExt ? 'Mostrar menos filtros' : 'Mostrar mais filtros', maisSinal: mostrarExt ? '−' : '+',
+          toggleMais: () => { this.setState({ maisCar: { ...this.state.maisCar, [id]: !aberto } }); }, extras: mostrarExt ? ext.map(btn) : [],
+          anuncio: s.anunciaCar === id && atual ? plural(atual.itens.length, 'prova', 'provas') + ': ' + atual.rotulo : '',
+          cards: itens.map(e => this.cartao(e, o)), temCards: itens.length > 0, vazio: itens.length === 0, vazioTexto
+        };
+      };
+      const hoje0 = hoje.getFullYear() + '-' + String(hoje.getMonth() + 1).padStart(2, '0');
+      const mesesAbertos = uniq(abertas.filter(e => e.mes && !e.vir).map(e => e.mes)).sort().filter(m => m >= hoje0).slice(0, 5);
+      const carProx = mkCar({
+        id: 'proximas', titulo: 'Próximas provas', grupoRotulo: 'Quando', verPadrao: hrefAg(vazioF()), vazioTexto: 'Não há provas abertas agora.',
+        chips: [{ id: 'todas', rotulo: 'Todas', patch: {}, ver: hrefAg(vazioF()) }, ...mesesAbertos.map(m => ({ id: m, rotulo: mesCurto(m), patch: { mes: m }, ver: hrefComFiltro({ mes: m }) }))]
+      });
+      const dist = [['5k', '5 km'], ['10k', '10 km'], ['21k', 'Meia maratona'], ['42k', 'Maratona']], distExtra = [['ate-4k', 'Até 4 km'], ['11-20k', '11 a 20 km'], ['22-41k', '22 a 41 km'], ['ultra', 'Ultra']];
+      const dchip = ([v, r]) => ({ id: v, rotulo: r, patch: { modalidade: ['corrida'], distancia: [v] }, ver: hrefComFiltro({ modalidade: ['corrida'], distancia: [v] }) });
+      const carDist = mkCar({ id: 'distancias', titulo: 'Por distância', grupoRotulo: 'Distância', verPadrao: hrefComFiltro({ modalidade: ['corrida'] }), vazioTexto: 'Não há provas dessa distância agora.', chips: dist.map(dchip), extras: distExtra.map(dchip) });
+      const fchip = (v, r, patch) => ({ id: v, rotulo: r, patch, ver: hrefComFiltro(patch) });
+      const carForm = mkCar({
+        id: 'formato', titulo: 'Por formato', grupoRotulo: 'Formato', verPadrao: hrefComFiltro({ formato: ['noturna'] }), vazioTexto: 'Não há provas nesse formato agora.',
+        chips: [fchip('noturna', 'Noturnas', { formato: ['noturna'] }), fchip('circuito', 'Circuitos', { formato: ['circuito'] }), fchip('virtual', 'Desafios virtuais', { formato: ['virtual'] })], extras: [fchip('prova-unica', 'Prova única', { formato: ['prova-unica'] })]
+      });
+      const carPub = mkCar({
+        id: 'publico', titulo: 'Para quem', grupoRotulo: 'Para quem', verPadrao: hrefComFiltro({ publico: ['estreantes'] }), vazioTexto: 'Não há provas para esse público agora.',
+        chips: [fchip('estreantes', 'Para estreantes', { publico: ['estreantes'] }), fchip('feminino', 'Provas femininas', { publico: ['feminino'] }), fchip('kids', 'Kids', { publico: ['kids'] }), fchip('inclusivo', 'Inclusivas (PcD)', { publico: ['inclusivo'] })], extras: [fchip('grupos', 'Grupos e assessorias', { servico: ['aceita-grupos'] })]
+      });
+      home.carrosseisA = [carProx]; home.carrosseisB = [carDist, carForm, carPub];
+
+      // ---- perto de você: a estimativa por geo IP (cidade do cabeçalho) na hora; a localização precisa só depois do clique em «Usar minha localização»
+      const pertoLista = o && o.g ? abertas.filter(e => !e.vir && e.g && distMim(e, o) <= s.raioHome).sort((a, b) => distMim(a, o) - distMim(b, o) || a.t - b.t) : [];
+      home.pertoEstimando = !!s.estimando;
+      home.semCidade = !o && !s.estimando; home.temPerto = !!o && !s.estimando && pertoLista.length > 0;
+      home.semInventario = !!o && !s.estimando && pertoLista.length === 0;
+      const prox2 = RAIOS.find(r => r > s.raioHome);
+      home.semInventarioTexto = o ? 'Não encontramos provas ' + (o.precisa ? 'perto da sua localização' : 'em ' + o.nome) + ' agora. Veja as provas num raio de ' + (prox2 || 200) + ' km ou escolha outra cidade.' : '';
+      home.ampliarRaioHome = () => this.trocarCar('perto', { raioHome: prox2 || 200 });
+      home.raios = [25, 50, 100, 200].map(r => ({ label: 'Até ' + r + ' km', pressed: s.raioHome === r ? 'true' : 'false', pick: () => { if (s.raioHome !== r) this.trocarCar('perto', { raioHome: r }); } }));
+      home.perto = pertoLista.slice(0, 16).map(e => this.cartao(e, o, { perto: true }));
+      home.pertoVer = hrefAg({ ...vazioF(), perto: true, raio: s.raioHome });
+      Object.assign(home, this.geoLinha(o)); home.pertoLinha = !!o && !s.estimando;
+      // circuitos: coleção do tipo circuito (a página de cada circuito é a Coleção)
+      const porCirc = new Map();
+      ev.forEach(e => { if (!e.ci) return; if (!porCirc.has(e.ci.id)) porCirc.set(e.ci.id, { ci: e.ci, ev: [] }); porCirc.get(e.ci.id).ev.push(e); });
+      home.circuitos = [...porCirc.values()].map(({ ci, ev: es }) => {
+        es.sort((a, b) => a.t - b.t);
+        const cs = uniq(es.map(e => e.c).filter(Boolean));
+        const m1 = es[0].mes, m2 = es[es.length - 1].mes, quando = m1 && m2 ? (m1 === m2 ? mesCurto(m1) : MESES_CURTO[Number(m1.slice(5)) - 1] + ' a ' + MESES_CURTO[Number(m2.slice(5)) - 1] + ' ' + m2.slice(0, 4)) : '';
+        const etapas = ci.etapas + (ci.etapas === 1 ? ' etapa' : ' etapas');
+        return { ...window.IngresseCartao.circuito({ href: 'Esportes.dc.html?circuito=' + encodeURIComponent(ci.id), nome: ci.nome, locais: cs.length > 1 ? cs.slice(0, -1).join(', ') + ' e ' + cs[cs.length - 1] : cs[0] || '', etapas, quando, datas: es.map(e => e.iso).filter(Boolean), ...capaDe(es[0].cv, es[0].id) }) }; // o circuito é uma coleção: o cartão único de tipo turnê (sem «a partir de»)
+      });
+      home.hrefGrupos = hrefComFiltro({ servico: ['aceita-grupos'] });
+      home.hrefCircuitos = hrefComFiltro({ formato: ['circuito'] }); /* dt (28/10): «Ver todos» dos circuitos leva à agregadora de circuitos */
+      home.hrefAprenda = hrefComFiltro({ tipo: 'aprenda' });
+      this.titulo = 'Ingresse Sports (antiga TicketSports): provas de corrida, ciclismo e mais';
+      return home;
+    }
+
+    /* =========================== AGREGADORA =========================== */
+    const ag = { ...comum };
+    if (!d) return { ...ag, h1: 'Provas esportivas', intro: '', temEditorial: false, trilha: [{ label: 'Ingresse Sports', href: 'Esportes.dc.html', link: false, atual: true }], temTotal: false, facetas: [], chips: [], cards: [], temCards: false, temVazio: false, q: s.q, qCampo: s.qCampo, ordem: 'proximas', skels: Array.from({ length: 12 }, (_, i) => i), filtrosTitulo: 'Filtrar provas', filtrosRotulo: 'Filtros', verRotulo: 'Ver provas', contagem: 'Carregando…', temFaq: false, faq: [] };
+    const lista = this.filtrar();
+    const vis = lista.slice(0, s.lotes * LOTE), temMais = vis.length < lista.length;
+    const tx = this.textos(f, lista, o);
+    const chips = this.chipsAtivos(f);
+    const nF = chips.filter(c => !c.label.startsWith('“')).length + (f.q ? 1 : 0);
+    const temFiltros = chips.length > 0;
+    const cards = vis.map((e, k) => this.cartao(e, o, { perto: f.perto, ini: s.lotes > 1 && k === (s.lotes - 1) * LOTE }));
+    const estado = lista.length === 0 ? 'vazio' : 'pronto';
+    this.titulo = tx.h1 + ': datas e inscrições | Ingresse Sports';
+    const sugs = lista.length === 0 ? this.sugestoes(f, ctx) : [];
+    const mod1 = f.modalidade.length === 1 ? f.modalidade[0] : '';
+    return {
+      ...ag, ...this.geoLinha(o), temGeoLinha: f.perto, estado, h1: tx.h1, intro: tx.intro, editorial: tx.editorial, temEditorial: !!tx.editorial, trilha: this.trilha(f),
+      temTotal: CONFIAVEL, totalNum: lista.length, totalPal: lista.length === 1 ? 'prova' : 'provas',
+      temFaq: !!f.tipo, faq: f.tipo ? FAQ_APRENDA : [],
+      facetas: this.facetas(f, ctx), folhaAberta: s.folha ? 'true' : 'false', abrirFolha: () => this.abrirFolha(), fecharFolha: () => this.fecharFolha(),
+      filtrosTitulo: 'Filtrar provas', filtrosRotulo: 'Filtros' + (nF ? ' (' + nF + ')' : ''), verRotulo: lista.length ? 'Ver ' + plural(lista.length, 'prova', 'provas') : 'Ver provas',
+      q: s.qCampo, temQ: !!s.qCampo, onQuery: e => { const v = e.target.value; this.setState({ qCampo: v }); },
+      submitLista: e => { e.preventDefault(); const g = this.aplicarBusca(this.state.qCampo, this.state.f); this.setF({ modalidade: g.modalidade, distancia: g.distancia, cidade: g.cidade, mes: g.mes, publico: g.publico, formato: g.formato, terreno: g.terreno, q: g.q }); const a = document.activeElement; if (a && a.blur) a.blur(); },
+      limparQ: () => { this.setState({ qCampo: '' }); this.setF({ q: '' }); const c = document.getElementById('esp-q'); if (c) c.focus(); },
+      contagem: !temFiltros && !f.encerradas ? plural(lista.length, 'prova', 'provas') : plural(lista.length, 'prova', 'provas') + ' com esses filtros',
+      ordem: f.ordem || 'proximas', onOrdem: e => this.setF({ ordem: e.target.value }, false) || this.anunciar('Ordenado por ' + ({ proximas: 'data mais próxima', procuradas: 'inscrições na semana', preco: 'menor preço', 'distancia-de-mim': 'mais perto de mim' }[e.target.value])),
+      temPertoOrdem: f.perto, chips, temFiltros, limparTudo: () => { this.setState({ qCampo: '' }); this.setF({ ...vazioF(), encerradas: f.encerradas, ordem: '', tipo: '', circuito: '' }); },
+      encerradas: f.encerradas, onEncerradas: () => this.setF({ encerradas: !f.encerradas }),
+      carregando: false, temErro: s.erro, cards, temCards: lista.length > 0, skelsMais: Array.from({ length: Math.min(LOTE, lista.length - vis.length) }, (_, i) => i),
+      carregandoMais: s.mais, temMais, lotes: s.lotes, estadoMais: s.mais ? 'carregando' : 'livre', qtdVisiveis: vis.length, qtdTotal: lista.length,
+      maisOcupado: s.mais ? 'true' : 'false', maisRotulo: s.mais ? 'Carregando…' : 'Carregar mais provas', carregarMais: () => this.maisLote(true),
+      fimDaLista: lista.length > LOTE && !temMais, fimTexto: 'Fim da lista: você viu ' + (lista.length === 1 ? 'a prova' : 'as ' + lista.length + ' provas') + (mod1 ? ' de ' + MODS[mod1].r.toLowerCase() : '') + '.',
+      temVazio: lista.length === 0, vazioTitulo: this.tituloVazio(f), sugestoes: sugs, temSugestoes: sugs.length > 0, semSugestoes: sugs.length === 0,
+      semSugestoesTexto: 'Veja todas as provas' + (mod1 ? ' de ' + MODS[mod1].r.toLowerCase() : '') + '.',
+      vazioVerTodas: mod1 ? hrefComFiltro({ modalidade: [mod1] }) : 'Esportes.dc.html', vazioVerTodasRotulo: mod1 ? 'Ver todas as provas de ' + MODS[mod1].r.toLowerCase() : 'Voltar à Ingresse Sports',
+      avisoOn: s.avisoOn ? 'true' : 'false', avisoRotulo: s.avisoOn ? 'Aviso ativado' : 'Me avisar', avisar: () => this.setState({ avisoOn: !s.avisoOn })
+    };
+  }
+}
+
+</script>
+</body>
+</html>
+<!-- esp-assinatura:add283fc541f -->

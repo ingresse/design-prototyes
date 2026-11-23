@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
-import { Download01, Menu02, Minus, Plus, Printer, RefreshCcw01, XClose } from "@untitledui/icons";
+import { Minus, Plus, Printer, XClose } from "@untitledui/icons";
+import { ButtonUtility } from "@/components/base/buttons/button-utility";
 
 const EVENT_NAME = "{Nome do evento muito longo e com várias linhas de texto}";
 const TICKET_GROUP = "{Grupo do ingresso}";
@@ -16,36 +17,33 @@ export function IngressoPdf() {
     const navigate = useNavigate();
     const [zoom, setZoom] = useState(100);
 
+    // Título da aba do navegador (antes ficava o do app, "Multi-Date Ticket Selection Flow").
+    useEffect(() => {
+        const anterior = document.title;
+        document.title = `Ingresso em PDF, pedido ${SERIE}`;
+        return () => {
+            document.title = anterior;
+        };
+    }, []);
+
     return (
-        <div className="flex min-h-screen flex-col bg-[#535353]">
-            <header className="flex items-center gap-4 bg-[#3c3c3c] px-4 py-3 text-base-white">
-                <Menu02 className="size-5 shrink-0" aria-hidden="true" />
-                <p className="flex-1 truncate text-md">ingressos-pedido-{SERIE}.pdf</p>
-                <div className="flex items-center gap-2 max-md:hidden">
-                    <span className="rounded-xs bg-[#1f1f1f] px-2 py-0.5 text-sm tabular-nums">1</span>
-                    <span className="text-sm text-white/70">/ 2</span>
+        <div className="flex min-h-screen flex-col bg-tertiary print:bg-white">
+            {/* Moldura do visualizador com as peças do DS; só Imprimir, zoom e Fechar, que funcionam (BIL-70). */}
+            <header className="flex items-center gap-2 border-b border-secondary bg-primary px-4 py-2 print:hidden">
+                <h1 className="min-w-0 flex-1 truncate text-md font-medium text-primary">ingressos-pedido-{SERIE}.pdf</h1>
+                <div className="flex items-center gap-1 max-md:hidden">
+                    <ButtonUtility size="sm" color="tertiary" icon={Minus} tooltip="Diminuir zoom" isDisabled={zoom <= 50} onClick={() => setZoom((z) => Math.max(50, z - 10))} />
+                    <span className="min-w-12 text-center text-sm text-secondary tabular-nums">{zoom}%</span>
+                    <ButtonUtility size="sm" color="tertiary" icon={Plus} tooltip="Aumentar zoom" isDisabled={zoom >= 200} onClick={() => setZoom((z) => Math.min(200, z + 10))} />
                 </div>
-                <div className="flex items-center gap-2 max-md:hidden">
-                    <button type="button" aria-label="Diminuir zoom" onClick={() => setZoom((z) => Math.max(50, z - 10))}>
-                        <Minus className="size-5" aria-hidden="true" />
-                    </button>
-                    <span className="rounded-xs bg-[#1f1f1f] px-2 py-0.5 text-sm tabular-nums">{zoom}%</span>
-                    <button type="button" aria-label="Aumentar zoom" onClick={() => setZoom((z) => Math.min(200, z + 10))}>
-                        <Plus className="size-5" aria-hidden="true" />
-                    </button>
-                    <RefreshCcw01 className="ml-2 size-5" aria-hidden="true" />
-                </div>
-                <div className="flex items-center gap-3">
-                    <Download01 className="size-5" aria-hidden="true" />
-                    <Printer className="size-5" aria-hidden="true" />
-                    <button type="button" aria-label="Fechar visualização" onClick={() => navigate(-1)}>
-                        <XClose className="size-5" aria-hidden="true" />
-                    </button>
-                </div>
+                {/* Imprimir abre a impressão do navegador, que também salva em PDF. */}
+                <ButtonUtility size="sm" color="tertiary" icon={Printer} tooltip="Imprimir ou salvar em PDF" onClick={() => window.print()} />
+                <ButtonUtility size="sm" color="tertiary" icon={XClose} tooltip="Fechar visualização" onClick={() => navigate(-1)} />
             </header>
 
-            <div className="flex flex-1 justify-center overflow-auto p-6">
-                <div style={{ width: 595 * (zoom / 100), minHeight: 842 * (zoom / 100) }} className="shrink-0 bg-white shadow-2xl">
+            {/* mx-auto em vez de justify-center: a folha mais larga que a tela rola até a borda esquerda (390 px). */}
+            <div className="flex flex-1 overflow-auto p-6 max-md:p-4 print:p-0">
+                <div style={{ width: 595 * (zoom / 100), minHeight: 842 * (zoom / 100) }} className="mx-auto shrink-0 bg-white shadow-2xl print:shadow-none">
                     <div
                         style={{
                             width: 595,

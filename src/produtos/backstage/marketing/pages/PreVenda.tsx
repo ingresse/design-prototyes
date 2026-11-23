@@ -1,18 +1,21 @@
 import { useMemo, useState, type FC } from "react";
-import { I18nProvider, type DateValue, type Key } from "react-aria-components";
-import { AlertCircle, ArrowDown, ArrowLeft, ArrowUp, ChevronDown, Eye, HelpCircle, Plus, SearchLg, Star01, Star06, Ticket01, Trash01, User01 } from "@untitledui/icons";
+import { I18nProvider, type DateValue } from "react-aria-components";
+import { AlertCircle, ArrowDown, ArrowUp, ChevronDown, Eye, HelpCircle, Plus, Star01, Star06, Ticket01, Trash01, User01 } from "@untitledui/icons";
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip as RechartsTooltip, XAxis, YAxis } from "recharts";
 import { Badge, BadgeWithDot, BadgeWithIcon } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
+import { ButtonGroup, ButtonGroupItem } from "@/components/base/button-group/button-group";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
 import { CheckboxBase } from "@/components/base/checkbox/checkbox";
 import { Input } from "@/components/base/input/input";
 import { InputDate } from "@/components/base/input/input-date";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { Tooltip, TooltipTrigger } from "@/components/base/tooltip/tooltip";
-import { LoadingIndicator } from "@/components/application/loading-indicator/loading-indicator";
 import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
+import { CabecalhoDaPagina } from "../../components/cabecalho-da-pagina";
+import { RodapeDePaginacao, usePaginacao } from "../../components/rodape-de-paginacao";
+import { BarraDaLista, CabecalhoDaTabela, CarregandoTabela, CartaoDaTabela, Celula, LinhaDaTabela, SemResultados, TituloDaLinha, VazioDaTabela } from "../../components/tabela";
 import { SelecionarItensSlideOut } from "../components/SelecionarItensSlideOut";
 import { CompartilharValorModal } from "../components/CompartilharValorModal";
 import { RemoverItemModal } from "../components/RemoverItemModal";
@@ -20,15 +23,6 @@ import { ComoFuncionaModal } from "../components/ComoFuncionaModal";
 import { type ItemTipo } from "../data/pre-venda-itens";
 import { showErrorToast } from "../utils/toast";
 import ticketsEmpty from "../assets/tickets-empty.png";
-import radar1 from "../assets/radar/item-1.png";
-import radar2 from "../assets/radar/item-2.png";
-import radar3 from "../assets/radar/item-3.png";
-import radar4 from "../assets/radar/item-4.png";
-import radar5 from "../assets/radar/item-5.png";
-import radar6 from "../assets/radar/item-6.png";
-import radar7 from "../assets/radar/item-7.png";
-import radar8 from "../assets/radar/item-8.png";
-import { TITULO_PAGINA } from "@/produtos/backstage/components/titulo-pagina";
 
 const currencyFormatter = new Intl.NumberFormat("pt-BR", {
     style: "currency",
@@ -48,38 +42,37 @@ const TAB_OPTIONS: { id: TabKey; label: string }[] = [
     { id: "combos", label: "Combos" },
 ];
 
-/** Segmented control 36px de altura, largura hug — alinhado com o input de busca. */
-const SegmentedTabs = ({ value, onChange }: { value: TabKey; onChange: (v: TabKey) => void }) => (
-    <div className="inline-flex h-9 shrink-0 items-center gap-1 rounded-lg bg-secondary_alt p-1 ring-1 ring-secondary ring-inset">
-        {TAB_OPTIONS.map((tab) => {
-            const active = value === tab.id;
-            return (
-                <button
-                    key={tab.id}
-                    type="button"
-                    onClick={() => onChange(tab.id)}
-                    className={cx(
-                        "flex h-7 items-center rounded-md px-2.5 text-sm font-semibold whitespace-nowrap transition duration-100 ease-linear",
-                        active
-                            ? "bg-primary_alt text-secondary shadow-xs ring-1 ring-primary ring-inset"
-                            : "text-quaternary hover:text-secondary",
-                    )}
-                >
-                    {tab.label}
-                </button>
-            );
-        })}
-    </div>
+/** Filtro por tipo: botões segmentados do DS, à direita da busca (BKS-111). */
+const FiltroDeTipo = ({ value, onChange }: { value: TabKey; onChange: (v: TabKey) => void }) => (
+    <ButtonGroup
+        size="sm"
+        aria-label="Tipo do item"
+        disallowEmptySelection
+        selectedKeys={[value]}
+        onSelectionChange={(keys) => {
+            const [k] = [...keys];
+            if (k !== undefined) onChange(String(k) as TabKey);
+        }}
+        className="w-full sm:w-max"
+    >
+        {TAB_OPTIONS.map((tab) => (
+            <ButtonGroupItem key={tab.id} id={tab.id} className="flex-1 justify-center sm:flex-none">
+                {tab.label}
+            </ButtonGroupItem>
+        ))}
+    </ButtonGroup>
 );
 
 export function PreVenda() {
     const [step, setStep] = useState<Step>("empty");
     const [transitioning, setTransitioning] = useState(false);
+    const [proximo, setProximo] = useState<Step>("empty");
     const [draft, setDraft] = useState<PreVendaDraft | null>(null);
     const [savedItens, setSavedItens] = useState<ConfiguredItem[]>([]);
 
     // Exibe um loading de página sempre que transiciona entre etapas.
     const goToStep = (next: Step) => {
+        setProximo(next);
         setTransitioning(true);
         setTimeout(() => {
             setStep(next);
@@ -91,7 +84,7 @@ export function PreVenda() {
         <BackstageLayout showEventContext={false} showLayoutSwitcher={false}>
             <div className="flex min-w-0 flex-1 flex-col gap-6">
                 {transitioning ? (
-                    <PageTransitionLoading />
+                    <PageTransitionLoading titulo={proximo === "config" ? "Configuração de pré-venda" : "Pré-venda"} />
                 ) : (
                     <>
                         {step === "empty" && <EmptyState onCriar={() => goToStep("config")} />}
@@ -117,52 +110,11 @@ export function PreVenda() {
     );
 }
 
-/** Bloco base do skeleton — superfície com pulso. */
-const Skeleton = ({ className }: { className?: string }) => (
-    <div className={cx("animate-pulse rounded-md bg-tertiary", className)} />
-);
-
-/** Skeleton loading exibido na transição entre etapas da pré-venda. */
-const PageTransitionLoading = () => (
-    <div className="flex flex-1 flex-col gap-6" aria-busy="true" aria-label="Carregando">
-        {/* Header */}
-        <div className="flex items-center justify-between gap-4">
-            <Skeleton className="h-8 w-52" />
-            <Skeleton className="h-10 w-32 rounded-lg" />
-        </div>
-
-        <div className="flex flex-1 flex-col gap-6">
-            {/* Bloco de configurações / alerta */}
-            <div className="flex flex-col gap-4 rounded-xl bg-primary p-6 ring-1 ring-border-secondary">
-                <Skeleton className="h-5 w-40" />
-                <div className="grid gap-4 md:grid-cols-2">
-                    <Skeleton className="h-10 w-full rounded-lg" />
-                    <Skeleton className="h-10 w-full rounded-lg" />
-                </div>
-                <Skeleton className="h-16 w-full rounded-lg" />
-            </div>
-
-            {/* Card com cabeçalho + linhas (tabela) */}
-            <div className="overflow-hidden rounded-xl bg-primary ring-1 ring-border-secondary">
-                <div className="flex items-center justify-between gap-4 border-b border-secondary px-6 py-4">
-                    <div className="flex flex-col gap-2">
-                        <Skeleton className="h-5 w-44" />
-                        <Skeleton className="h-4 w-64" />
-                    </div>
-                    <Skeleton className="h-9 w-24 rounded-lg" />
-                </div>
-                <div className="flex flex-col">
-                    {Array.from({ length: 5 }).map((_, i) => (
-                        <div key={i} className="flex items-center gap-4 border-b border-secondary px-6 py-4 last:border-b-0">
-                            <Skeleton className="h-4 flex-1" />
-                            <Skeleton className="h-4 w-24" />
-                            <Skeleton className="h-4 w-24" />
-                            <Skeleton className="h-4 w-28" />
-                        </div>
-                    ))}
-                </div>
-            </div>
-        </div>
+/** Carregando entre etapas: o cabeçalho da etapa seguinte e as linhas pulsando (BKS-100, BKS-116). */
+const PageTransitionLoading = ({ titulo }: { titulo: string }) => (
+    <div className="flex flex-1 flex-col gap-6">
+        <CabecalhoDaPagina titulo={titulo} />
+        <CarregandoTabela linhas={5} />
     </div>
 );
 
@@ -220,15 +172,16 @@ const CreationStep = ({ initial, onBack, onSalvar }: CreationStepProps) => {
 
     return (
         <>
-            <header className="sticky top-6 z-20 flex items-center justify-between gap-4 bg-primary pb-3 shadow-[0_-24px_0_0_var(--color-bg-primary)]">
-                <div className="flex items-center gap-3">
-                    <ButtonUtility icon={ArrowLeft} color="tertiary" size="lg" tooltip="Voltar" onClick={onBack} />
-                    <h1 className={TITULO_PAGINA}>Configuração de pré-venda</h1>
-                </div>
-                <Button size="lg" color="primary" onClick={handleSalvar}>
-                    Salvar
-                </Button>
-            </header>
+            <CabecalhoDaPagina
+                className="sticky top-6 z-20 bg-primary pb-3 shadow-[0_-24px_0_0_var(--color-bg-primary)]"
+                voltar={{ rotulo: "Pré-venda", onClick: onBack }}
+                titulo="Configuração de pré-venda"
+                acoes={
+                    <Button size="md" color="primary" onClick={handleSalvar}>
+                        Salvar
+                    </Button>
+                }
+            />
 
             <main className="flex flex-1 flex-col gap-6">
                 {/* Configurações gerais */}
@@ -277,37 +230,25 @@ const CreationStep = ({ initial, onBack, onSalvar }: CreationStepProps) => {
                 </section>
 
                 {/* Itens participantes */}
-                <section
-                    className={cx(
-                        "flex max-h-[632px] flex-col overflow-clip rounded-xl bg-primary transition duration-100 ease-linear",
-                        itensInvalid ? "ring-2 ring-error" : "ring-1 ring-border-secondary",
-                    )}
-                >
-                    <header className="flex shrink-0 items-start justify-between gap-4 border-b border-secondary px-4 py-4 md:px-6">
-                        <div className="flex flex-col gap-0.5">
-                            <div className="flex items-center gap-2">
-                                <h3 className="text-md font-semibold text-primary">Itens participantes</h3>
-                                {hasItens && (
-                                    <Badge size="sm" type="modern" color="gray">
-                                        {itens.length}
-                                    </Badge>
-                                )}
-                            </div>
-                            <p className="text-sm text-tertiary">
-                                Adicione e gerencie os itens que participarão da pré-venda aqui
-                            </p>
-                        </div>
-                        {hasItens && (
-                            <Button size="md" color="secondary" onClick={() => setSlideoutOpen(true)}>
-                                Editar
-                            </Button>
-                        )}
-                    </header>
+                <section className="flex flex-col gap-4">
+                    <CabecalhoDosItens quantidade={hasItens ? itens.length : undefined} onEditar={hasItens ? () => setSlideoutOpen(true) : undefined} />
 
                     {itensLoading ? (
-                        <ItensLoading />
+                        <CarregandoTabela linhas={4} rotulo="Atualizando seus itens…" />
                     ) : itens.length === 0 ? (
-                        <ItensRadarEmptyState onSelecionar={() => setSlideoutOpen(true)} />
+                        // Salvar sem itens destaca o bloco em vermelho (MKT-21).
+                        <div className={cx("overflow-hidden rounded-2xl transition duration-100 ease-linear", itensInvalid ? "ring-2 ring-error" : "ring-1 ring-secondary")}>
+                            <VazioDaTabela
+                                icone={Ticket01}
+                                titulo="Quais itens estarão na pré-venda?"
+                                texto="Clique no botão abaixo e selecione os itens participantes da pré-venda."
+                                acao={
+                                    <Button size="md" color="primary" iconLeading={Plus} onClick={() => setSlideoutOpen(true)}>
+                                        Selecionar itens
+                                    </Button>
+                                }
+                            />
+                        </div>
                     ) : (
                         <ItensConfigTable
                             items={selectedItens}
@@ -380,88 +321,26 @@ const CompartilharCard = ({
     </div>
 );
 
-/* ------------------------------------------------------------------ */
-/*  Empty state dos itens — ilustração de radar                       */
-/* ------------------------------------------------------------------ */
-
-const RADAR_RINGS = [96, 160, 224, 288, 352];
-
-const RADAR_AVATARS: { left: number; top: number; size: number; img: string; bg: string }[] = [
-    { left: 185, top: 156, size: 32, img: radar1, bg: "#e9dcbb" },
-    { left: 288, top: 180, size: 32, img: radar2, bg: "#c7d1b0" },
-    { left: 367, top: 206, size: 28, img: radar3, bg: "#dfc2c0" },
-    { left: 101, top: 158, size: 28, img: radar4, bg: "#d9d4cc" },
-    { left: 102, top: 294, size: 28, img: radar5, bg: "#e5ddce" },
-    { left: 386, top: 152, size: 24, img: radar6, bg: "#d9d4cc" },
-    { left: 53, top: 228, size: 24, img: radar7, bg: "#dadcd6" },
-    { left: 359, top: 279, size: 28, img: radar7, bg: "#e9dcbb" },
-    { left: 152, top: 251, size: 32, img: radar8, bg: "#ddc0ce" },
-];
-
-const ItensRadar = ({ className }: { className?: string }) => (
-    <div
-        aria-hidden="true"
-        className={cx(
-            "size-[480px] [mask-image:radial-gradient(circle_at_center,black_42%,transparent_80%)]",
-            className,
-        )}
-    >
-        {RADAR_RINGS.map((s) => (
-            <div
-                key={s}
-                className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border border-secondary"
-                style={{ width: s, height: s }}
-            />
-        ))}
-        {RADAR_AVATARS.map((a, i) => (
-            <div
-                key={i}
-                className="absolute overflow-hidden rounded-full ring-2 ring-bg-primary"
-                style={{ left: a.left, top: a.top, width: a.size, height: a.size, backgroundColor: a.bg }}
-            >
-                <img src={a.img} alt="" className="size-full object-cover" />
+/** Título da seção de itens: nome, quantidade e "Editar" (abre o painel de seleção). */
+const CabecalhoDosItens = ({ quantidade, onEditar }: { quantidade?: number; onEditar?: () => void }) => (
+    <header className="flex items-start justify-between gap-4">
+        <div className="flex min-w-0 flex-col gap-0.5">
+            <div className="flex items-center gap-2">
+                <h2 className="text-md font-semibold text-primary">Itens participantes</h2>
+                {quantidade !== undefined && (
+                    <Badge size="sm" type="modern" color="gray">
+                        {quantidade}
+                    </Badge>
+                )}
             </div>
-        ))}
-    </div>
-);
-
-const ItensRadarEmptyState = ({ onSelecionar }: { onSelecionar: () => void }) => (
-    <div className="relative flex min-h-[460px] flex-col items-center justify-center overflow-hidden px-6 py-12">
-        <div className="relative isolate flex flex-col items-center">
-            <div className="relative flex items-center justify-center">
-                <ItensRadar className="pointer-events-none absolute left-1/2 top-1/2 z-0 -translate-x-1/2 -translate-y-1/2" />
-                <FeaturedIcon className="relative z-10" icon={Ticket01} color="gray" theme="modern" size="lg" />
-            </div>
-            <div className="relative z-10 mt-16 flex max-w-[352px] flex-col items-center gap-1 text-center">
-                <p className="text-md font-semibold text-primary">
-                    Quais itens estarão na pré-venda?
-                </p>
-                <p className="text-sm text-tertiary">
-                    Clique no botão abaixo e selecione os itens participantes da pré-venda
-                </p>
-            </div>
-            <Button
-                size="md"
-                color="primary"
-                iconLeading={Plus}
-                className="relative z-10 mt-6"
-                onClick={onSelecionar}
-            >
-                Selecionar itens
-            </Button>
+            <p className="text-sm text-tertiary">Adicione e gerencie os itens que participarão da pré-venda aqui</p>
         </div>
-    </div>
-);
-
-/* ------------------------------------------------------------------ */
-/*  Loading dos itens                                                 */
-/* ------------------------------------------------------------------ */
-
-const ItensLoading = () => (
-    <div className="flex min-h-[460px] flex-col items-center justify-center gap-4 px-6 py-16">
-        <LoadingIndicator type="line-spinner" size="md" />
-        <p className="text-sm text-tertiary">Atualizando seus itens…</p>
-    </div>
+        {onEditar && (
+            <Button size="md" color="secondary" onClick={onEditar} className="shrink-0">
+                Editar
+            </Button>
+        )}
+    </header>
 );
 
 /* ------------------------------------------------------------------ */
@@ -558,20 +437,24 @@ const maskValue = (raw: string, mask: "currency" | "integer") => {
 const CellInput = ({
     placeholder,
     mask,
+    rotulo,
     value,
     onChange,
     onShare,
 }: {
     placeholder: string;
     mask: "currency" | "integer";
+    /** Nome do campo para leitor de tela. */
+    rotulo: string;
     value: string;
     onChange: (value: string) => void;
     onShare?: () => void;
 }) => (
-    <div className="flex w-full items-center rounded-lg bg-primary shadow-xs ring-1 ring-primary transition-shadow duration-100 ease-linear focus-within:ring-2 focus-within:ring-brand">
+    <div className="flex w-full min-w-0 flex-1 items-center rounded-lg bg-primary shadow-xs ring-1 ring-primary transition-shadow duration-100 ease-linear focus-within:ring-2 focus-within:ring-brand">
         <input
             type="text"
             inputMode="numeric"
+            aria-label={rotulo}
             placeholder={placeholder}
             value={value}
             onChange={(e) => onChange(maskValue(e.target.value, mask))}
@@ -590,48 +473,14 @@ const CellInput = ({
     </div>
 );
 
-/** Empty state quando a aba (Ingressos/Combos) não possui itens — padronizado com a busca. */
-const ItensTipoEmptyState = ({
-    tipo,
-    onLimpar,
-}: {
-    tipo: "ingresso" | "combo";
-    onLimpar: () => void;
-}) => (
-    <div className="flex min-h-[400px] flex-col items-center justify-center gap-6 border-t border-secondary px-6 py-10 text-center">
-        <div className="flex flex-col items-center gap-4">
-            <FeaturedIcon icon={SearchLg} color="gray" theme="modern" size="lg" />
-            <div className="flex max-w-[352px] flex-col gap-1">
-                <p className="text-md font-semibold text-primary">Nenhum item encontrado</p>
-                <p className="text-sm text-tertiary">
-                    Sua pré-venda não possui {tipo === "combo" ? "combos" : "ingressos"} selecionados.
-                </p>
-            </div>
-        </div>
-        <Button size="md" color="secondary" onClick={onLimpar}>
-            Limpar busca
-        </Button>
-    </div>
-);
+/** Busca ou filtro sem resultado, dentro do cartão (BKS-118, MKT-40). */
+const textoSemResultado = (query: string, tab: TabKey) =>
+    query
+        ? `Nenhum item encontrado para “${query}”.`
+        : `Nenhum item encontrado: sua pré-venda não possui ${tab === "combos" ? "combos" : "ingressos"} selecionados.`;
 
-/** Empty state quando a busca não retorna itens. */
-const ItensBuscaEmptyState = ({ query, onLimpar }: { query: string; onLimpar: () => void }) => (
-    <div className="flex min-h-[400px] flex-col items-center justify-center gap-6 border-t border-secondary px-6 py-10 text-center">
-        <div className="flex flex-col items-center gap-4">
-            <FeaturedIcon icon={SearchLg} color="gray" theme="modern" size="lg" />
-            <div className="flex max-w-[352px] flex-col gap-1">
-                <p className="text-md font-semibold text-primary">Nenhum item encontrado</p>
-                <p className="text-sm text-tertiary">
-                    Não encontramos resultados para “{query}”. Verifique a digitação e tente
-                    novamente.
-                </p>
-            </div>
-        </div>
-        <Button size="md" color="secondary" onClick={onLimpar}>
-            Limpar busca
-        </Button>
-    </div>
-);
+/** Larguras das colunas no modo tabela (cartão com 704 px ou mais, BKS-115). */
+const COL = { valor: "@min-[44rem]:w-48", limite: "@min-[44rem]:w-40", ofertas: "@min-[44rem]:w-24", ticket: "@min-[44rem]:w-48", valorLido: "@min-[44rem]:w-32", limiteLido: "@min-[44rem]:w-24" };
 
 interface ItensConfigTableProps {
     items: SelectedItem[];
@@ -692,99 +541,75 @@ const ItensConfigTable = ({
             return true;
         });
     }, [items, activeTab, search]);
+    // Busca, filtro ou tamanho novo voltam à página 1 (BKS-114).
+    const paginacao = usePaginacao(filtered, [activeTab, search]);
 
     return (
         <>
-            <div className="flex shrink-0 flex-col gap-3 px-4 py-3 md:flex-row md:items-center md:justify-between md:px-6">
-                <SegmentedTabs value={activeTab} onChange={setActiveTab} />
-                <div className="md:w-80">
-                    <Input
-                        size="sm"
-                        aria-label="Buscar"
-                        icon={SearchLg}
-                        placeholder="Buscar"
-                        value={search}
-                        onChange={setSearch}
-                    />
-                </div>
-            </div>
-
-            <div className="min-h-0 flex-1 overflow-auto">
-            {filtered.length === 0 ? (
-                search.trim() ? (
-                    <ItensBuscaEmptyState query={search.trim()} onLimpar={() => setSearch("")} />
-                ) : (
-                    <ItensTipoEmptyState
-                        tipo={activeTab === "combos" ? "combo" : "ingresso"}
-                        onLimpar={() => setActiveTab("todos")}
-                    />
-                )
-            ) : (
-                <table className="w-full min-w-[820px] table-fixed border-separate border-spacing-0">
-                    <colgroup>
-                        {/* Nome / Valor mínimo / Limite / Ação */}
-                        <col className="w-[52%]" />
-                        <col className="w-[22%]" />
-                        <col className="w-[20%]" />
-                        <col className="w-[6%]" />
-                    </colgroup>
-                    <thead className="sticky top-0 z-10">
-                        <tr className="bg-secondary text-left [&>th]:border-b [&>th]:border-secondary [&>th]:bg-secondary">
-                            <Th>Nome</Th>
-                            <Th hint="O valor em que as ofertas devem iniciar.">Valor mínimo</Th>
-                            <Th hint="O número máximo de emissões deste ingresso que deve ocorrer durante a pré-venda">
-                                Limite
-                            </Th>
-                            <th className="px-4 py-3 md:px-6" aria-hidden="true" />
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {filtered.map((item, i) => (
-                            <tr
-                                key={item.id}
-                                className={cx(
-                                    "transition duration-100 ease-linear hover:bg-primary_hover",
-                                    i !== filtered.length - 1 && "[&>td]:border-b [&>td]:border-secondary",
-                                )}
-                            >
-                                <td className="px-4 py-4 md:px-6">
-                                    <div className="flex flex-col">
-                                        <span className="truncate text-sm font-medium text-primary">{item.nome}</span>
-                                        <span className="truncate text-sm text-tertiary">{item.grupo}</span>
+            <div className="flex flex-col gap-4">
+                <BarraDaLista busca={{ valor: search, onChange: setSearch, placeholder: "Buscar por nome ou grupo", rotulo: "Buscar item" }} filtro={<FiltroDeTipo value={activeTab} onChange={setActiveTab} />} />
+                <CartaoDaTabela>
+                    <CabecalhoDaTabela ordenavel>
+                        <span className="min-w-0 flex-1">Nome</span>
+                        <span className={cx("inline-flex items-center gap-1", COL.valor)}>
+                            Valor mínimo
+                            <Dica texto="O valor em que as ofertas devem iniciar." />
+                        </span>
+                        <span className={cx("inline-flex items-center gap-1", COL.limite)}>
+                            Limite
+                            <Dica texto="O número máximo de emissões deste ingresso que deve ocorrer durante a pré-venda" />
+                        </span>
+                        <span className="w-8" />
+                    </CabecalhoDaTabela>
+                    {filtered.length === 0 ? (
+                        <SemResultados
+                            texto={textoSemResultado(search.trim(), activeTab)}
+                            onLimpar={() => {
+                                setSearch("");
+                                setActiveTab("todos");
+                            }}
+                        />
+                    ) : (
+                        <ul className="flex flex-col divide-y divide-secondary">
+                            {paginacao.visiveis.map((item) => (
+                                <LinhaDaTabela key={item.id} interativa>
+                                    <div className="flex min-w-0 flex-1 flex-col gap-2 @min-[44rem]:flex-row @min-[44rem]:items-center @min-[44rem]:gap-4">
+                                        <TituloDaLinha titulo={item.nome} apoio={item.grupo} />
+                                        <Celula rotulo="Valor mínimo" className={cx("flex-col items-stretch gap-1.5", COL.valor)}>
+                                            <CellInput
+                                                placeholder="R$ 0,00"
+                                                mask="currency"
+                                                rotulo={`Valor mínimo de ${item.nome}, ${item.grupo}`}
+                                                value={valores[item.id] ?? ""}
+                                                onChange={(v) => setValores((prev) => ({ ...prev, [item.id]: v }))}
+                                                onShare={() => setShare({ kind: "valor", sourceId: item.id })}
+                                            />
+                                        </Celula>
+                                        <Celula rotulo="Limite" className={cx("flex-col items-stretch gap-1.5", COL.limite)}>
+                                            <CellInput
+                                                placeholder="0"
+                                                mask="integer"
+                                                rotulo={`Limite de ${item.nome}, ${item.grupo}`}
+                                                value={limites[item.id] ?? ""}
+                                                onChange={(v) => setLimites((prev) => ({ ...prev, [item.id]: v }))}
+                                                onShare={() => setShare({ kind: "limite", sourceId: item.id })}
+                                            />
+                                        </Celula>
                                     </div>
-                                </td>
-                                <td className="px-4 py-4 md:px-6">
-                                    <CellInput
-                                        placeholder="R$ 0,00"
-                                        mask="currency"
-                                        value={valores[item.id] ?? ""}
-                                        onChange={(v) => setValores((prev) => ({ ...prev, [item.id]: v }))}
-                                        onShare={() => setShare({ kind: "valor", sourceId: item.id })}
-                                    />
-                                </td>
-                                <td className="px-4 py-4 md:px-6">
-                                    <CellInput
-                                        placeholder="0"
-                                        mask="integer"
-                                        value={limites[item.id] ?? ""}
-                                        onChange={(v) => setLimites((prev) => ({ ...prev, [item.id]: v }))}
-                                        onShare={() => setShare({ kind: "limite", sourceId: item.id })}
-                                    />
-                                </td>
-                                <td className="px-2 py-4 text-right md:px-4">
                                     <ButtonUtility
                                         size="sm"
                                         color="tertiary"
                                         icon={Trash01}
                                         tooltip="Remover item"
                                         onClick={() => setRemoveId(item.id)}
+                                        className="shrink-0"
                                     />
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            )}
+                                </LinhaDaTabela>
+                            ))}
+                        </ul>
+                    )}
+                    <RodapeDePaginacao {...paginacao} />
+                </CartaoDaTabela>
             </div>
 
             <CompartilharValorModal
@@ -813,9 +638,7 @@ const EmptyState = ({ onCriar }: { onCriar: () => void }) => {
     const [comoFuncionaOpen, setComoFuncionaOpen] = useState(false);
     return (
     <>
-        <header>
-            <h1 className={TITULO_PAGINA}>Pré-venda</h1>
-        </header>
+        <CabecalhoDaPagina titulo="Pré-venda" />
         <main className="relative flex flex-1 flex-col items-center justify-center overflow-hidden pb-40">
             <div className="z-10 flex flex-col items-center gap-6 text-center">
                 <div className="flex flex-col items-center">
@@ -864,49 +687,52 @@ const EmptyState = ({ onCriar }: { onCriar: () => void }) => {
 const Header = ({ emAndamento, onIniciar, onEditar }: { emAndamento: boolean; onIniciar: () => void; onEditar: () => void }) => {
     const publicado = false;
     return (
-    <header className="sticky top-6 z-20 flex flex-col gap-4 bg-primary pb-6 shadow-[0_-24px_0_0_var(--color-bg-primary)] md:flex-row md:items-start md:justify-between">
-        <div className="flex flex-col gap-1.5">
-            <div className="flex items-center gap-3">
-                <h1 className={TITULO_PAGINA}>Pré-venda</h1>
-                {!publicado ? (
-                    <BadgeWithDot size="sm" type="pill-color" color="gray">
-                        Rascunho
+    <CabecalhoDaPagina
+        className="sticky top-6 z-20 bg-primary pb-6 shadow-[0_-24px_0_0_var(--color-bg-primary)]"
+        titulo="Pré-venda"
+        selo={
+            !publicado ? (
+                <BadgeWithDot size="sm" type="pill-color" color="gray">
+                    Rascunho
+                </BadgeWithDot>
+            ) : emAndamento ? (
+                <BadgeWithDot size="sm" type="pill-color" color="success">
+                    Em andamento
+                </BadgeWithDot>
+            ) : (
+                <button
+                    type="button"
+                    onClick={onIniciar}
+                    title="Simular pré-venda em andamento"
+                    className="cursor-pointer rounded-full outline-none transition duration-100 ease-linear hover:opacity-80 focus-visible:ring-2 focus-visible:ring-brand"
+                >
+                    <BadgeWithDot size="sm" type="pill-color" color="orange">
+                        Agendada
                     </BadgeWithDot>
-                ) : emAndamento ? (
-                    <BadgeWithDot size="sm" type="pill-color" color="success">
-                        Em andamento
-                    </BadgeWithDot>
-                ) : (
-                    <button
-                        type="button"
-                        onClick={onIniciar}
-                        title="Simular pré-venda em andamento"
-                        className="cursor-pointer rounded-full outline-none transition duration-100 ease-linear hover:opacity-80 focus-visible:ring-2 focus-visible:ring-brand"
-                    >
-                        <BadgeWithDot size="sm" type="pill-color" color="orange">
-                            Agendada
-                        </BadgeWithDot>
-                    </button>
-                )}
-            </div>
-            <p className="text-md text-tertiary">
+                </button>
+            )
+        }
+        subtitulo={
+            <>
                 Disponível entre{" "}
                 <span className="font-semibold text-secondary">01/02/2026 às 10:00</span> e{" "}
                 <span className="font-semibold text-secondary">07/02/2026 às 10:00</span>.
-            </p>
-        </div>
-        <div className="flex items-center gap-3">
-            {/* Uma vez em andamento, a pré-venda não pode mais ser cancelada. */}
-            {!emAndamento && (
-                <Button size="md" color="secondary">
-                    Cancelar pré-venda
+            </>
+        }
+        acoes={
+            <>
+                {/* Uma vez em andamento, a pré-venda não pode mais ser cancelada. */}
+                {!emAndamento && (
+                    <Button size="md" color="secondary">
+                        Cancelar pré-venda
+                    </Button>
+                )}
+                <Button size="md" color="secondary" onClick={onEditar}>
+                    Editar
                 </Button>
-            )}
-            <Button size="md" color="secondary" onClick={onEditar}>
-                Editar
-            </Button>
-        </div>
-    </header>
+            </>
+        }
+    />
     );
 };
 
@@ -1161,221 +987,114 @@ const ItensParticipantesCard = ({
         return sort.dir === "desc" ? arr.reverse() : arr;
     }, [filtered, sort, emAndamento]);
 
-    const onTabChange = (key: Key) => {
-        setActiveTab(key as TabKey);
-    };
+    // Busca, filtro ou tamanho novo voltam à página 1 (BKS-114).
+    const paginacao = usePaginacao(sorted, [activeTab, search]);
 
     return (
-        <section className="flex max-h-[632px] flex-col overflow-clip rounded-xl bg-primary ring-1 ring-border-secondary">
-            {/* Card header */}
-            <header className="flex shrink-0 flex-col gap-4 border-b border-secondary px-4 py-4 md:flex-row md:items-start md:justify-between md:px-6">
-                <div className="flex flex-col gap-0.5">
-                    <div className="flex items-center gap-2">
-                        <h3 className="text-md font-semibold text-primary">Itens participantes</h3>
-                        <Badge size="sm" type="modern" color="gray">
-                            {items.length}
-                        </Badge>
-                    </div>
-                    <p className="text-sm text-tertiary">
-                        Adicione e gerencie os itens que participarão da pré-venda aqui
-                    </p>
-                </div>
-                <Button size="md" color="secondary" onClick={onEditar}>
-                    Editar
-                </Button>
-            </header>
-
-            {/* Filters bar */}
-            <div className="flex shrink-0 flex-col gap-3 px-4 py-3 md:flex-row md:items-center md:justify-between md:px-6">
-                <SegmentedTabs value={activeTab} onChange={onTabChange} />
-                <div className="md:w-80">
-                    <Input
-                        size="sm"
-                        aria-label="Buscar"
-                        icon={SearchLg}
-                        placeholder="Buscar"
-                        value={search}
-                        onChange={setSearch}
-                    />
-                </div>
-            </div>
-
-            <div className="min-h-0 flex-1 overflow-auto">
+        <section className="flex flex-col gap-4">
+            <CabecalhoDosItens quantidade={items.length} onEditar={onEditar} />
+            <BarraDaLista busca={{ valor: search, onChange: setSearch, placeholder: "Buscar por nome ou grupo", rotulo: "Buscar item" }} filtro={<FiltroDeTipo value={activeTab} onChange={setActiveTab} />} />
+            <CartaoDaTabela>
+                <CabecalhoDaTabela ordenavel>
+                    <BotaoOrdenar label="Nome" sortKey="nome" sort={sort} onSort={handleSort} className="min-w-0 flex-1" />
+                    <BotaoOrdenar label="Ofertas" sortKey="ofertas" sort={sort} onSort={handleSort} className={cx("justify-end", COL.ofertas)} />
+                    <BotaoOrdenar label="Ticket médio" sortKey="ticket" hint="Valor médio das ofertas recebidas durante a pré-venda." sort={sort} onSort={handleSort} className={cx("justify-end", COL.ticket)} />
+                    <BotaoOrdenar label="Valor mínimo" sortKey="valor" hint="O valor em que as ofertas devem iniciar." sort={sort} onSort={handleSort} className={cx("justify-end", COL.valorLido)} />
+                    <BotaoOrdenar label="Limite" sortKey="limite" sort={sort} onSort={handleSort} className={cx("justify-end", COL.limiteLido)} />
+                </CabecalhoDaTabela>
                 {filtered.length === 0 ? (
-                    <TabelaSemResultado query={search.trim()} onLimpar={() => setSearch("")} />
+                    <SemResultados
+                        texto={textoSemResultado(search.trim(), activeTab)}
+                        onLimpar={() => {
+                            setSearch("");
+                            setActiveTab("todos");
+                        }}
+                    />
                 ) : (
-                    <table className="w-full min-w-[820px] table-fixed border-separate border-spacing-0">
-                        <colgroup>
-                            {/* Nome / Ofertas / Ticket médio / Valor mínimo / Limite — proporções do Figma (430/112/230/160/112) */}
-                            <col className="w-[41%]" />
-                            <col className="w-[11%]" />
-                            <col className="w-[22%]" />
-                            <col className="w-[15%]" />
-                            <col className="w-[11%]" />
-                        </colgroup>
-                        <thead className="sticky top-0 z-10">
-                            <tr className="bg-secondary text-left [&>th]:border-b [&>th]:border-secondary [&>th]:bg-secondary">
-                                <SortableTh label="Nome" sortKey="nome" sort={sort} onSort={handleSort} />
-                                <SortableTh label="Ofertas" sortKey="ofertas" sort={sort} onSort={handleSort} />
-                                <SortableTh
-                                    label="Ticket médio"
-                                    sortKey="ticket"
-                                    hint="Valor médio das ofertas recebidas durante a pré-venda."
-                                    sort={sort}
-                                    onSort={handleSort}
-                                />
-                                <SortableTh
-                                    label="Valor mínimo"
-                                    sortKey="valor"
-                                    hint="O valor em que as ofertas devem iniciar."
-                                    sort={sort}
-                                    onSort={handleSort}
-                                />
-                                <SortableTh label="Limite" sortKey="limite" sort={sort} onSort={handleSort} />
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {sorted.map((item, i) => (
-                                <ItemRow
-                                    key={item.id}
-                                    item={item}
-                                    isLast={i === sorted.length - 1}
-                                    emAndamento={emAndamento}
-                                />
-                            ))}
-                        </tbody>
-                    </table>
+                    <ul className="flex flex-col divide-y divide-secondary">
+                        {paginacao.visiveis.map((item) => (
+                            <ItemRow key={item.id} item={item} emAndamento={emAndamento} />
+                        ))}
+                    </ul>
                 )}
-            </div>
+                <RodapeDePaginacao {...paginacao} />
+            </CartaoDaTabela>
         </section>
     );
 };
 
-/** Empty state da busca na tabela da pré-venda criada (espelha o do slideout de criação/edição). */
-const TabelaSemResultado = ({ query, onLimpar }: { query: string; onLimpar: () => void }) => (
-    <div className="flex flex-col items-center justify-center gap-6 px-4 py-16 text-center">
-        <div className="flex flex-col items-center gap-4">
-            <FeaturedIcon icon={SearchLg} color="gray" theme="modern" size="lg" />
-            <div className="flex max-w-[352px] flex-col gap-1">
-                <p className="text-md font-semibold text-primary">Nenhum item encontrado</p>
-                <p className="text-sm text-tertiary">
-                    {query
-                        ? `Não encontramos resultados para “${query}”. Verifique a digitação e tente novamente.`
-                        : "Nenhum item participante nesta categoria."}
-                </p>
-            </div>
-        </div>
-        {query && (
-            <Button size="md" color="secondary" onClick={onLimpar}>
-                Limpar busca
-            </Button>
-        )}
-    </div>
+/** Ícone de ajuda com a explicação da coluna. */
+const Dica = ({ texto }: { texto: string }) => (
+    <Tooltip title={texto} placement="top">
+        <TooltipTrigger aria-label={texto} className="cursor-help text-fg-quaternary transition duration-100 ease-linear hover:text-fg-quaternary_hover">
+            <HelpCircle className="size-3.5" />
+        </TooltipTrigger>
+    </Tooltip>
 );
 
-interface ThProps {
-    children: React.ReactNode;
-    /** `true` mostra o ícone de ajuda; uma string mostra o ícone com tooltip. */
-    hint?: boolean | string;
-}
-
-const Th = ({ children, hint }: ThProps) => (
-    <th className="whitespace-nowrap px-4 py-3 text-xs font-semibold text-tertiary md:px-6">
-        <span className="inline-flex items-center gap-1">
-            {children}
-            {typeof hint === "string" ? (
-                <Tooltip title={hint} placement="top">
-                    <TooltipTrigger className="cursor-help text-fg-quaternary transition duration-100 ease-linear hover:text-fg-quaternary_hover">
-                        <HelpCircle className="size-3.5" />
-                    </TooltipTrigger>
-                </Tooltip>
-            ) : (
-                hint && <HelpCircle className="size-3.5 text-fg-quaternary" aria-hidden="true" />
-            )}
-        </span>
-    </th>
-);
-
-/** Cabeçalho ordenável — clique alterna asc/desc; mostra a seta da direção ativa. */
-const SortableTh = ({
+/** Coluna ordenável — clique alterna asc/desc; a seta aparece só na coluna ativa (BKS-112). */
+const BotaoOrdenar = ({
     label,
     sortKey,
     hint,
     sort,
     onSort,
+    className,
 }: {
     label: string;
     sortKey: SortKey;
     hint?: string;
     sort: { key: SortKey; dir: "asc" | "desc" } | null;
     onSort: (key: SortKey) => void;
+    className?: string;
 }) => {
     const active = sort?.key === sortKey;
     const Arrow = active && sort?.dir === "desc" ? ArrowDown : ArrowUp;
     return (
-        <th className="whitespace-nowrap px-4 py-3 text-xs font-semibold text-tertiary md:px-6">
-            <span className="inline-flex items-center gap-1">
-                <button
-                    type="button"
-                    onClick={() => onSort(sortKey)}
-                    aria-label={`Ordenar por ${label}`}
-                    className="inline-flex cursor-pointer items-center gap-1 rounded outline-none transition duration-100 ease-linear hover:text-secondary focus-visible:ring-2 focus-visible:ring-brand"
-                >
-                    {label}
-                    {/* A seta aparece apenas na coluna ativa (ordenada). */}
-                    {active && <Arrow className="size-3.5 text-fg-secondary" aria-hidden="true" />}
-                </button>
-                {hint && (
-                    <Tooltip title={hint} placement="top">
-                        <TooltipTrigger className="cursor-help text-fg-quaternary transition duration-100 ease-linear hover:text-fg-quaternary_hover">
-                            <HelpCircle className="size-3.5" />
-                        </TooltipTrigger>
-                    </Tooltip>
-                )}
-            </span>
-        </th>
+        <span className={cx("inline-flex items-center gap-1", className)}>
+            <button
+                type="button"
+                onClick={() => onSort(sortKey)}
+                aria-label={`Ordenar por ${label}`}
+                className="inline-flex cursor-pointer items-center gap-1 rounded outline-none transition duration-100 ease-linear hover:text-secondary focus-visible:ring-2 focus-visible:ring-brand"
+            >
+                {label}
+                {active && <Arrow className="size-3.5 text-fg-secondary" aria-hidden="true" />}
+            </button>
+            {hint && <Dica texto={hint} />}
+        </span>
     );
 };
 
-const ItemRow = ({
-    item,
-    isLast,
-    emAndamento,
-}: {
-    item: ConfiguredItem;
-    isLast: boolean;
-    emAndamento: boolean;
-}) => {
+/** Item da pré-venda criada: tabela a partir de 704 px de cartão; abaixo, bloco com rótulos (BKS-115). */
+const ItemRow = ({ item, emAndamento }: { item: ConfiguredItem; emAndamento: boolean }) => {
     const oferta = emAndamento ? getOfertaData(item) : null;
     return (
-    <tr className={cx("transition duration-100 ease-linear hover:bg-primary_hover", !isLast && "[&>td]:border-b [&>td]:border-secondary")}>
-        <td className="px-4 py-4 md:px-6">
-            <div className="flex flex-col">
-                <span className="text-sm font-medium text-primary">{item.nome}</span>
-                <span className="text-sm text-tertiary">{item.grupo}</span>
+        <LinhaDaTabela interativa>
+            <div className="flex min-w-0 flex-1 flex-col gap-1.5 @min-[44rem]:flex-row @min-[44rem]:items-center @min-[44rem]:gap-4">
+                <TituloDaLinha titulo={item.nome} apoio={item.grupo} />
+                <Celula rotulo="Ofertas" numero className={COL.ofertas}>
+                    {oferta ? thousandsFormatter.format(oferta.ofertas) : "0"}
+                </Celula>
+                <Celula rotulo="Ticket médio" numero className={COL.ticket}>
+                    {oferta ? (
+                        <span className="@min-[44rem]:block">
+                            <span className="block">{currencyFormatter.format(oferta.ticket)}</span>
+                            <span className="block text-tertiary">
+                                Faixa: {currencyFormatter.format(oferta.faixaMin)} a {currencyFormatter.format(oferta.faixaMax)}
+                            </span>
+                        </span>
+                    ) : (
+                        <span className="text-tertiary">Sem ofertas</span>
+                    )}
+                </Celula>
+                <Celula rotulo="Valor mínimo" numero className={COL.valorLido}>
+                    {item.valorMinimo || "—"}
+                </Celula>
+                <Celula rotulo="Limite" numero className={COL.limiteLido}>
+                    {item.limite || "—"}
+                </Celula>
             </div>
-        </td>
-        <td className="whitespace-nowrap px-4 py-4 text-sm text-tertiary md:px-6">
-            {oferta ? thousandsFormatter.format(oferta.ofertas) : "0"}
-        </td>
-        <td className="whitespace-nowrap px-4 py-4 md:px-6">
-            {oferta ? (
-                <div className="flex flex-col">
-                    <span className="text-sm text-secondary">{currencyFormatter.format(oferta.ticket)}</span>
-                    <span className="text-xs text-tertiary">
-                        Faixa: {currencyFormatter.format(oferta.faixaMin)} a {currencyFormatter.format(oferta.faixaMax)}
-                    </span>
-                </div>
-            ) : (
-                <span className="text-sm text-tertiary">Sem ofertas</span>
-            )}
-        </td>
-        <td className="whitespace-nowrap px-4 py-4 text-sm text-tertiary md:px-6">
-            {item.valorMinimo || "—"}
-        </td>
-        <td className="whitespace-nowrap px-4 py-4 text-sm text-tertiary md:px-6">
-            {item.limite || "—"}
-        </td>
-    </tr>
+        </LinhaDaTabela>
     );
 };

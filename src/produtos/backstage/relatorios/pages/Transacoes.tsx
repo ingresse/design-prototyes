@@ -4,7 +4,6 @@ import {
     CheckCircle,
     ClockFastForward,
     CreditCard02,
-    CurrencyDollarCircle,
     Edit02,
     RefreshCcw01,
     SearchLg,
@@ -14,7 +13,7 @@ import {
 import { toast } from "sonner";
 import { Badge } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
-import { MetricsIcon03 } from "@/components/application/metrics/metrics";
+import { EmptyState } from "@/components/application/empty-state/empty-state";
 import { PaginationCardAdvanced } from "@/components/application/pagination/pagination";
 import { Input } from "@/components/base/input/input";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
@@ -24,11 +23,16 @@ import { DEFAULT_SELECTED, ManageColumnsModal } from "../components/ManageColumn
 import { ExportMenu, RelatorioPageHeader } from "../components/RelatorioPageHeader";
 import { RelatorioFiltersProvider, matchRow, inDateRange, useRelatorioFilters, type FilterFieldDef } from "../components/relatorio-filters";
 import { SortableHeader } from "../components/SortableHeader";
-import { DetalhesDaLinha, ListaDaTabela, useLinhaAberta } from "../components/TabelaLista";
+import { DetalhesDaLinha, ListaDaTabela } from "../components/TabelaLista";
+import { CarregandoRelatorio, useItemNaUrl, useRelatorioCarregando } from "../components/estado-dos-relatorios";
+import { MetricaDoRelatorio, PainelDeMetricas } from "../components/visual-dos-relatorios";
 import { TransacionadoChartCard, type ChartPoint } from "../components/TransacionadoChart";
 import { useSortableTable } from "../utils/useSortableTable";
-import { EVENT, currencyFormatter, numberFormatter, parseEventDate } from "../data/event";
-import { EVENTO, GRUPOS, PERIODO_PADRAO } from "@/reports/event-dataset";
+import { EVENT, currencyFormatter, numberFormatter, parseEventDate, useEventoDosRelatorios } from "../data/event";
+import { useBanco, type Evento as EventoBanco, type HistoricoVendas, type Pedido as PedidoBanco } from "@/plataforma";
+import { eventos as eventosDaOrganizacao, useEventoAtual } from "../../eventos/data/eventos";
+import { useTodosOsEventos } from "../../components/escopo-dos-relatorios";
+import { periodoCompleto } from "../components/relatorio-filters";
 import { EXPORT_FIELD_GROUPS } from "../data/export-fields";
 
 /* ------------------------------------------------------------------ */
@@ -87,6 +91,8 @@ interface Transacao {
     ultimaAtualizacao: string;
     status: StatusTransacao;
     nomeIngresso: string;
+    /** Ingresso, Produto e/ou Combo, separados por vírgula: o filtro "Tipo de produto" compara com isto (REL-233). */
+    tipoProduto: string;
     setor: string;
     modalidade: string;
     lote: string;
@@ -161,14 +167,6 @@ interface Transacao {
     perguntaNumeracaoCalcado: string;
 }
 
-// Setores e tipos de ingresso derivados dos grupos do evento (src/reports).
-const t = (nome: string, valor: number) => ({ nome, valor, lote: nome });
-const CATALOGO = GRUPOS.filter((g) => g.categoria === "Ingressos").map((g) => ({
-    setor: g.nome,
-    peso: g.capacidade ?? 1,
-    tipos: [t("Inteira", g.precoMedio), t("Meia-entrada", Math.round(g.precoMedio / 2))],
-}));
-
 const PRIMEIROS = ["Adriano", "Mariana", "Pedro", "Camila", "Roberto", "Larissa", "Vinicius", "Davi", "Beatriz", "Gustavo", "Fernanda", "Rafael", "Juliana", "Bruno", "Aline", "Thiago", "Patrícia", "Lucas", "Carolina", "Felipe"];
 const SOBRENOMES = ["Albuquerque", "Lopes Ferreira", "Henrique Costa", "Rodrigues", "Santos Júnior", "Almeida", "Cayres", "Marinho da Silva", "Oliveira", "Souza", "Pereira", "Carvalho", "Ribeiro", "Gomes", "Martins", "Araújo", "Barbosa", "Nunes"];
 const LOCAIS = [
@@ -221,17 +219,12 @@ const formatDuracao = (totalMinutos: number): string => {
 // Meios de pagamento (online), alinhados à distribuição do dataset.
 const MEIOS_PAGAMENTO: { nome: string; peso: number; isento?: boolean }[] = [
     { nome: "Pix", peso: 0.63 },
-    { nome: "Cartão de Crédito", peso: 0.27 },
-    { nome: "Cartão de Débito", peso: 0.06 },
+    { nome: "Cartão de crédito", peso: 0.27 },
+    { nome: "Cartão de débito", peso: 0.06 },
     { nome: "Isento", peso: 0.04, isento: true },
 ];
 
 /** dd/mm/aaaa a partir de um offset (em dias) sobre a data de início de vendas. */
-const SALES_START_DATE = parseEventDate(EVENTO.vendasInicio)!;
-const SALES_TOTAL_DAYS =
-    Math.round((parseEventDate(EVENTO.vendasFim)!.getTime() - SALES_START_DATE.getTime()) / 86_400_000) + 1;
-const SESSAO_ID = "reveillon-31-12";
-
 const pad = (n: number, size = 2) => String(n).padStart(size, "0");
 const fmtDateTime = (d: Date) =>
     `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} às ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
@@ -247,8 +240,33 @@ function mulberry32(seed: number) {
     };
 }
 
-const transacoes: Transacao[] = (() => {
-    const rng = mulberry32(20260615);
+/** O que o gerador precisa de um evento: catálogo com peso de venda, sessões e o dia a dia do histórico. */
+interface ContextoDeGeracao {
+    catalogo: { setor: string; peso: number; tipos: { nome: string; valor: number; lote: string }[] }[];
+    sessoes: string[];
+    /** Primeiro dia da série (00:00). */
+    inicio: Date;
+    /** Peso de venda de cada dia a partir de `inicio` (ingressos vendidos no dia). */
+    pesoDoDia: number[];
+    quantidade: number;
+    semente: number;
+}
+
+/**
+ * Transações fictícias que reproduzem o histórico de vendas do evento (anterior ao gêmeo): mesmos
+ * setores, preços, dias e volume. Os pedidos reais do banco entram à parte (`transacoesDosPedidos`).
+ */
+function gerarTransacoes({ catalogo, sessoes, inicio, pesoDoDia, quantidade, semente }: ContextoDeGeracao): Transacao[] {
+    if (quantidade <= 0 || catalogo.length === 0 || pesoDoDia.length === 0) return [];
+    const CATALOGO = catalogo;
+    const rng = mulberry32(semente);
+    const acumulado = pesoDoDia.reduce<number[]>((acc, p) => [...acc, (acc[acc.length - 1] ?? 0) + Math.max(0, p)], []);
+    const totalPeso = acumulado[acumulado.length - 1] || 1;
+    const diaSorteado = () => {
+        const r = rng() * totalPeso;
+        const i = acumulado.findIndex((a) => a >= r);
+        return i < 0 ? pesoDoDia.length - 1 : i;
+    };
     const pick = <T,>(arr: T[]) => arr[Math.floor(rng() * arr.length)];
     const pickWeighted = <T extends { peso: number }>(arr: T[]): T => {
         const total = arr.reduce((s, x) => s + x.peso, 0);
@@ -260,16 +278,10 @@ const transacoes: Transacao[] = (() => {
         return arr[arr.length - 1];
     };
     const rows: Transacao[] = [];
-    const COUNT = 12500;
-    for (let i = 0; i < COUNT; i++) {
-        // Data enviesada para o fim da janela (rampa em direção ao evento), com pico no anúncio.
-        let dayOffset: number;
-        if (rng() < 0.16) {
-            dayOffset = Math.floor(rng() * 8); // pico de anúncio (1ª semana)
-        } else {
-            dayOffset = Math.floor((SALES_TOTAL_DAYS - 1) * Math.pow(rng(), 0.55));
-        }
-        const created = new Date(SALES_START_DATE);
+    for (let i = 0; i < quantidade; i++) {
+        // Dia sorteado pelo peso de venda de cada dia do histórico.
+        const dayOffset = diaSorteado();
+        const created = new Date(inicio);
         created.setDate(created.getDate() + dayOffset);
         created.setHours(Math.floor(rng() * 24), Math.floor(rng() * 60), Math.floor(rng() * 60));
         const updated = new Date(created.getTime() + Math.floor(rng() * 30) * 60_000);
@@ -361,14 +373,15 @@ const transacoes: Transacao[] = (() => {
 
         rows.push({
             id: `${pad(Math.floor(rng() * 9e7), 8)}-${pad(Math.floor(rng() * 9000), 4)}-4${pad(Math.floor(rng() * 900), 3)}-${pad(Math.floor(rng() * 9000), 4)}`,
-            sessaoId: SESSAO_ID,
+            sessaoId: pick(sessoes),
             dataCriacao: fmtDateTime(created),
             ultimaAtualizacao: fmtDateTime(updated),
             status,
-            nomeIngresso: distanciaProva,
-            setor: categoriaCompeticao,
-            modalidade,
-            lote,
+            nomeIngresso: tipo.nome,
+            tipoProduto: "Ingresso",
+            setor: cat.setor,
+            modalidade: "—",
+            lote: tipo.lote,
             comprador: nome,
             tipoDocumentoComprador,
             cpf,
@@ -408,18 +421,137 @@ const transacoes: Transacao[] = (() => {
             grupoDataNascLider: compraEmGrupo ? dataNascimentoComprador : "—",
             ...perguntas,
         });
+        void modalidade;
+        void lote;
     }
     // Ordena do mais recente para o mais antigo (como uma lista de transações real).
-    rows.sort((a, b) => (parseEventDate(b.dataCriacao)?.getTime() ?? 0) - (parseEventDate(a.dataCriacao)?.getTime() ?? 0));
     return rows;
-})();
+}
+
+const STATUS_DO_PEDIDO: Record<PedidoBanco["status"], StatusTransacao> = { pago: "aprovado", "aguardando-pagamento": "pendente", cancelado: "cancelado" };
+const MEIO_DO_PEDIDO: Record<string, string> = { pix: "Pix", credito: "Cartão de crédito", debito: "Cartão de débito", dinheiro: "Dinheiro", saldo: "Isento", cortesia: "Isento" };
+const CANAL_DO_PEDIDO: Record<PedidoBanco["canal"], string> = { site: "Online", link: "Online", app: "Online", bilheteria: "Bilheteria", cortesia: "Cortesia" };
+const TIPO_DO_ITEM: Record<string, string> = { ingresso: "Ingresso", produto: "Produto", combo: "Combo" };
+
+/** Pedidos do banco (checkout, bilheteria, cortesias) como transações, com o comprador real. */
+function transacoesDosPedidos(pedidos: PedidoBanco[], eventos: Map<string, EventoBanco>): Transacao[] {
+    return pedidos.flatMap((p) => {
+        const ev = eventos.get(p.eventoId);
+        if (!ev) return [];
+        const primeiro = p.itens[0];
+        const grupo = ev.sessoes.find((x) => x.id === primeiro?.sessaoId)?.grupos.find((g) => g.id === primeiro?.grupoId);
+        const qtd = p.itens.reduce((n, i) => n + i.quantidade, 0);
+        const sem = "—";
+        const linha: Record<string, unknown> = {};
+        for (const k of PERGUNTA_KEYS) linha[k] = sem;
+        return [{
+            ...(linha as Pick<Transacao, (typeof PERGUNTA_KEYS)[number]>),
+            id: p.id,
+            sessaoId: primeiro?.sessaoId ?? ev.sessoes[0]?.id ?? "",
+            dataCriacao: fmtDateTime(new Date(p.criadoEm)),
+            ultimaAtualizacao: fmtDateTime(new Date(p.atualizadoEm)),
+            status: STATUS_DO_PEDIDO[p.status],
+            nomeIngresso: primeiro?.nome ?? sem,
+            tipoProduto: [...new Set(p.itens.map((i) => TIPO_DO_ITEM[i.tipo] ?? "Ingresso"))].join(","),
+            setor: grupo?.nome ?? sem,
+            modalidade: sem,
+            lote: primeiro?.tipo === "ingresso" ? (primeiro.detalhe ?? sem) : sem,
+            comprador: p.comprador.nome,
+            tipoDocumentoComprador: sem,
+            cpf: sem,
+            telefone: sem,
+            email: p.comprador.email,
+            dataNascimentoComprador: sem,
+            canal: CANAL_DO_PEDIDO[p.canal],
+            tipoPagamento: p.pagamento ? (MEIO_DO_PEDIDO[p.pagamento.metodo] ?? p.pagamento.metodo) : sem,
+            estado: sem,
+            cidade: sem,
+            operadorVendas: p.bilheteria?.emissor ?? p.envio?.emissor ?? sem,
+            valor: p.subtotal,
+            valorUnitario: primeiro?.face ?? 0,
+            cupom: p.cupom?.codigo ?? sem,
+            valorDesconto: p.cupom?.desconto ?? 0,
+            valorFinal: p.total,
+            qtdItem: qtd,
+            passkey: sem,
+            pdv: p.canal === "bilheteria",
+            bundle: false,
+            bundleDinamico: false,
+            itemCodigo: sem,
+            idInscricao: sem,
+            atletaNome: p.atribuicoes[0]?.nome ?? p.comprador.nome,
+            atletaTipoDocumento: sem,
+            atletaDocumento: sem,
+            atletaEmail: p.atribuicoes[0]?.email ?? p.comprador.email,
+            atletaTelefone: sem,
+            atletaDataNascimento: sem,
+            grupoCompraEmGrupo: "Não",
+            grupoNomeGrupo: sem,
+            grupoLiderGrupo: sem,
+            grupoTelefoneLider: sem,
+            grupoEmailLider: sem,
+            grupoDocLider: sem,
+            grupoNumDocLider: sem,
+            grupoDataNascLider: sem,
+        }];
+    });
+}
+
+const PERGUNTA_KEYS = [
+    "perguntaPace", "perguntaDistanciaProva", "perguntaTempoEstimado", "perguntaJaCorreuProva", "perguntaCategoriaParticipacao",
+    "perguntaTamanhoCamisa", "perguntaFaixaEtaria", "perguntaConvenioMedico", "perguntaComoConheceuEvento", "perguntaMetaTempo",
+    "perguntaAnoInicioCorrida", "perguntaTermoResponsabilidade", "perguntaContatoEmergencia", "perguntaMelhorTempoPessoal",
+    "perguntaQtdParticipacoes", "perguntaAssessoriaEsportiva", "perguntaFederadoCBAt", "perguntaGrupoPace", "perguntaEquipeRevezamento",
+    "perguntaFuncaoRevezamento", "perguntaRetiradaKitTerceiros", "perguntaMedicacaoContinua", "perguntaDoencaPreExistente",
+    "perguntaPeso", "perguntaNumeracaoCalcado",
+] as const;
+
+/** Até quantas transações fictícias por evento (o histórico pode ter dezenas de milhares de ingressos). */
+const MAXIMO_POR_EVENTO = 6000;
+
+function contextoDoEvento(ev: EventoBanco, historico: HistoricoVendas | undefined): ContextoDeGeracao | null {
+    if (!historico) return null;
+    const vendidos = (loteIds: string[]) => loteIds.reduce((n, id) => n + (historico.porLote[id] ?? 0), 0);
+    const catalogo = ev.sessoes.flatMap((sessao) =>
+        sessao.grupos
+            .map((g) => ({
+                setor: g.nome,
+                peso: vendidos(g.ingressos.flatMap((t) => t.lotes.map((l) => l.id))),
+                tipos: g.ingressos.flatMap((t) => t.lotes.filter((l) => (historico.porLote[l.id] ?? 0) > 0).map((l) => ({ nome: t.nome, valor: l.preco, lote: l.nome }))),
+            }))
+            .filter((g) => g.peso > 0 && g.tipos.length > 0),
+    );
+    const ingressos = Object.values(historico.porLote).reduce((a, b) => a + b, 0);
+    const hoje = new Date();
+    const inicio = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() - historico.serie.length);
+    const semente = [...ev.id].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7);
+    return { catalogo, sessoes: ev.sessoes.map((x) => x.id), inicio, pesoDoDia: historico.serie.map(([i]) => i), quantidade: Math.min(MAXIMO_POR_EVENTO, Math.round(ingressos / 1.25)), semente };
+}
+
+/** Transações do evento em contexto, ou de todos os eventos da organização (BKS-27), refeitas quando o banco muda. */
+function useTransacoes(): Transacao[] {
+    const ctx = useEventoAtual();
+    const todos = useTodosOsEventos();
+    const { tabelas } = useBanco();
+    return useMemo(() => {
+        const ids = todos ? eventosDaOrganizacao.map((e) => e.id) : [ctx.id];
+        const eventos = new Map(ids.map((id) => [id, tabelas.eventos[id]] as const).filter((x): x is [string, EventoBanco] => !!x[1]));
+        const ficticias = [...eventos.values()].flatMap((ev) => {
+            const c = contextoDoEvento(ev, tabelas.historico[ev.id]);
+            return c ? gerarTransacoes(c) : [];
+        });
+        const reais = transacoesDosPedidos(Object.values(tabelas.pedidos).filter((p) => eventos.has(p.eventoId)), eventos);
+        return [...reais, ...ficticias].sort((a, b) => (parseEventDate(b.dataCriacao)?.getTime() ?? 0) - (parseEventDate(a.dataCriacao)?.getTime() ?? 0));
+    }, [ctx.id, todos, tabelas.eventos, tabelas.historico, tabelas.pedidos]);
+}
 
 /** Dia (00:00) da transação mais recente do dataset — usado como "hoje" para o filtro
  * "Aprovados hoje", já que os dados são gerados numa janela fixa que pode não coincidir
  * com a data real. */
+/** "Hoje": as vendas do histórico vão até ontem e os pedidos reais chegam hoje. */
 const ULTIMO_DIA_MS = (() => {
-    const d = parseEventDate(transacoes[0]?.dataCriacao ?? "");
-    return d ? new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime() : 0;
+    const d = new Date();
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
 })();
 const isMesmoDia = (dataStr: string, diaMs: number): boolean => {
     const d = parseEventDate(dataStr);
@@ -445,14 +577,14 @@ const CANAL_OPTIONS = [
     { id: "Online", label: "Online" },
 ];
 const TIPO_PRODUTO_OPTIONS = [
-    { id: "Inscrição", label: "Inscrição" },
+    { id: "Ingresso", label: "Ingresso" },
     { id: "Produto", label: "Produto" },
     { id: "Combo", label: "Combo" },
 ];
 const MEIO_PAGAMENTO_OPTIONS = [
     { id: "Pix", label: "Pix" },
-    { id: "Cartão de Crédito", label: "Cartão de Crédito" },
-    { id: "Cartão de Débito", label: "Cartão de Débito" },
+    { id: "Cartão de crédito", label: "Cartão de crédito" },
+    { id: "Cartão de débito", label: "Cartão de débito" },
     { id: "Apple Pay", label: "Apple Pay" },
     { id: "Google Pay", label: "Google Pay" },
     { id: "Dinheiro", label: "Dinheiro" },
@@ -492,7 +624,8 @@ function getFieldValue(t: Transacao, field: string): string {
         case "setor":
             return t.setor;
         case "tipoIngresso":
-            return t.nomeIngresso;
+            // Antes comparava com o nome do ingresso (Inteira, Meia...) e nunca casava (REL-233).
+            return t.tipoProduto;
         case "idTransacao":
             return t.id;
         case "cupom":
@@ -507,13 +640,16 @@ function getFieldValue(t: Transacao, field: string): string {
 /* ------------------------------------------------------------------ */
 
 export function Transacoes() {
+    // Assina o evento dos relatórios: a janela de vendas muda com o evento e o escopo, e o período inicial acompanha.
+    const ev = useEventoDosRelatorios();
+    const carregando = useRelatorioCarregando();
     return (
         <BackstageLayout activeSection="relatorios" activeItem="transacoes">
-            <RelatorioFiltersProvider fields={FILTER_FIELDS} initialDateRange={PERIODO_PADRAO}>
+            <RelatorioFiltersProvider fields={FILTER_FIELDS} key={`${ev.salesStart}|${ev.salesEnd}`} initialDateRange={periodoCompleto()}>
                 <div className="flex min-w-0 flex-1 flex-col">
                     <main className="flex flex-1 flex-col gap-6">
                         <RelatorioPageHeader title="Transações" />
-                        <TransacoesBody />
+                        {carregando ? <CarregandoRelatorio rotulo="Carregando transações" /> : <TransacoesBody />}
                     </main>
                 </div>
             </RelatorioFiltersProvider>
@@ -523,6 +659,7 @@ export function Transacoes() {
 
 const TransacoesBody = () => {
     const { dateRange, sessao, filters } = useRelatorioFilters();
+    const transacoes = useTransacoes();
 
     const filtered = useMemo(() => {
         const validFilters = filters.filter((f) => f.field && f.value);
@@ -532,9 +669,10 @@ const TransacoesBody = () => {
             if (!matchRow(t, validFilters, getFieldValue)) return false;
             return true;
         });
-    }, [dateRange, sessao, filters]);
+    }, [transacoes, dateRange, sessao, filters]);
 
     const totalFinal = useMemo(() => filtered.reduce((s, t) => s + t.valorFinal, 0), [filtered]);
+    const totalIngressos = useMemo(() => filtered.reduce((s, t) => s + t.qtdItem, 0), [filtered]);
 
     const statusRows = useMemo<IngressoStatusRow[]>(() => {
         const order: StatusTransacao[] = ["aprovado", "pendente", "cancelado", "estornado", "reembolso"];
@@ -557,7 +695,7 @@ const TransacoesBody = () => {
     const meiosRows = useMemo<MeioPagamentoRow[]>(() => {
         const defs = [
             { id: "pix", nome: "Pix", icon: Bank, match: "Pix" },
-            { id: "cartao", nome: "Cartão de Crédito", icon: CreditCard02, match: "Cartão de Crédito" },
+            { id: "cartao", nome: "Cartão de crédito", icon: CreditCard02, match: "Cartão de crédito" },
         ];
         const totalTx = filtered.length || 1;
         const totalIng = filtered.reduce((s, r) => s + r.qtdItem, 0) || 1;
@@ -597,49 +735,36 @@ const TransacoesBody = () => {
         }
         return [...byDay.values()]
             .sort((a, b) => a.d.getTime() - b.d.getTime())
-            .map((x) => ({ data: `${x.d.getDate()}/${x.d.getMonth() + 1}`, quantidade: x.quantidade, total: Math.round(x.total) }));
+            .map((x) => ({ data: `${x.d.getDate()}/${x.d.getMonth() + 1}`, quantidade: x.quantidade, total: x.total }));
     }, [filtered]);
 
     return (
         <>
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-                <TotalTransacionadoCard total={totalFinal} />
-            </div>
+            {/* O painel de métricas comum dos relatórios (REL-221). */}
+            <PainelDeMetricas rotulo="Resumo das transações" className="sm:grid-cols-3 xl:grid-cols-3">
+                <MetricaDoRelatorio rotulo="Total transacionado" valor={currencyFormatter.format(totalFinal)} destaque />
+                <MetricaDoRelatorio rotulo="Transações" valor={numberFormatter.format(filtered.length)} />
+                <MetricaDoRelatorio rotulo="Ingressos" valor={numberFormatter.format(totalIngressos)} />
+            </PainelDeMetricas>
             <div className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-2">
                 <IngressosValorPorStatusCard rows={statusRows} />
                 <MeioPagamentosCard rows={meiosRows} />
             </div>
             <TransacionadoChartCard
                 data={chartData}
-                title="Total transacionado e número de inscrições"
-                subtitle="Distribuição diária de transações e inscrições vendidas"
+                title="Total transacionado e número de ingressos"
+                subtitle="Distribuição diária de transações e ingressos vendidos"
             />
             <TransacionadoChartCard
                 data={chartData}
                 acumulado
-                title="Total transacionado e número de inscrições acumuladas"
-                subtitle="Evolução acumulada de transações e inscrições vendidas"
+                title="Total transacionado e número de ingressos acumulados"
+                subtitle="Evolução acumulada de transações e ingressos vendidos"
             />
             <ListaTransacoesCard rows={filtered} />
         </>
     );
 };
-
-/* ------------------------------------------------------------------ */
-/*  Total transacionado (big number)                                  */
-/* ------------------------------------------------------------------ */
-
-const TotalTransacionadoCard = ({ total }: { total: number }) => (
-    <MetricsIcon03
-        icon={CurrencyDollarCircle}
-        title={currencyFormatter.format(total)}
-        subtitle="Total transacionado"
-        change={null}
-        changeTrend="positive"
-        actions={false}
-        className="h-full [&_p+div]:hidden"
-    />
-);
 
 /* ------------------------------------------------------------------ */
 /*  Quantidade de ingressos e valor por status                        */
@@ -648,7 +773,7 @@ const TotalTransacionadoCard = ({ total }: { total: number }) => (
 const IngressosValorPorStatusCard = ({ rows }: { rows: IngressoStatusRow[] }) => {
     if (rows.length === 0) {
         return (
-            <Card title="Quantidade de Inscrições e Valor por status">
+            <Card title="Quantidade de ingressos e valor por status">
                 <div className="px-4 py-12 text-center text-sm text-tertiary">Nenhum status corresponde aos filtros.</div>
             </Card>
         );
@@ -656,15 +781,13 @@ const IngressosValorPorStatusCard = ({ rows }: { rows: IngressoStatusRow[] }) =>
     const totalValor = rows.reduce((s, r) => s + r.total, 0);
     const pctOf = (v: number) => (totalValor === 0 ? 0 : Math.round((v / totalValor) * 100));
     return (
-        <Card title="Quantidade de Inscrições e Valor por status">
+        <Card title="Quantidade de ingressos e valor por status">
             <div className="flex flex-col gap-6 px-4 py-5 md:px-5">
                 {/* Barra horizontal segmentada por status (largura ∝ valor) */}
-                <div className="flex w-full items-start gap-1">
+                <div aria-hidden="true" className="flex w-full items-start gap-1">
                     {rows.map((row) => (
-                        <div key={row.id} className="flex min-w-[52px] flex-col gap-1.5" style={{ flexGrow: row.total, flexBasis: 0 }}>
-                            <div className="h-10 rounded-md" style={{ backgroundColor: STATUS_FILL[row.status] }} />
-                            <span className="text-sm font-semibold text-secondary tabular-nums">{pctOf(row.total)}%</span>
-                        </div>
+                        // Largura proporcional de verdade (antes, mínimo de 52 px distorcia as fatias pequenas); o % fica na tabela (REL-235).
+                        <div key={row.id} title={`${STATUS_META[row.status].label}: ${pctOf(row.total)}%`} className="h-10 min-w-1 rounded-md" style={{ flexGrow: row.total, flexBasis: 0, backgroundColor: STATUS_FILL[row.status] }} />
                     ))}
                 </div>
 
@@ -673,7 +796,7 @@ const IngressosValorPorStatusCard = ({ rows }: { rows: IngressoStatusRow[] }) =>
                     <thead>
                         <tr className="border-b border-secondary">
                             <th className="py-2 pr-4 text-left text-sm font-semibold text-tertiary" />
-                            <th className="hidden px-4 py-2 text-right text-sm font-semibold text-tertiary sm:table-cell">Total inscrições</th>
+                            <th className="hidden px-4 py-2 text-right text-sm font-semibold text-tertiary sm:table-cell">Total de ingressos</th>
                             <th className="py-2 pl-4 text-right text-sm font-semibold text-tertiary">Total</th>
                         </tr>
                     </thead>
@@ -687,7 +810,7 @@ const IngressosValorPorStatusCard = ({ rows }: { rows: IngressoStatusRow[] }) =>
                                         <span className="truncate text-sm text-secondary">{STATUS_META[row.status].label}</span>
                                     </div>
                                     {/* Celular: a contagem desce para baixo do nome, sem rolagem lateral (UI-MOB-005). */}
-                                    <span className="mt-0.5 block pl-5.5 text-sm text-tertiary tabular-nums sm:hidden">{numberFormatter.format(row.totalIngressos)} inscrições</span>
+                                    <span className="mt-0.5 block pl-5.5 text-sm text-tertiary tabular-nums sm:hidden">{numberFormatter.format(row.totalIngressos)} ingressos</span>
                                 </td>
                                 <td className="hidden px-4 py-3 text-right text-sm font-medium text-primary tabular-nums sm:table-cell">{numberFormatter.format(row.totalIngressos)}</td>
                                 <td className="py-3 pl-4 text-right text-sm font-semibold text-primary tabular-nums">{currencyFormatter.format(row.total)}</td>
@@ -702,35 +825,34 @@ const IngressosValorPorStatusCard = ({ rows }: { rows: IngressoStatusRow[] }) =>
 
 
 /* ------------------------------------------------------------------ */
-/*  Meio de Pagamentos                                                */
+/*  Meios de pagamento                                                */
 /* ------------------------------------------------------------------ */
 
+// Meio de pagamento é categoria, não status: sem verde (sucesso). As duas primeiras cores da paleta
+// categórica dos relatórios, validada para daltonismo (REL-214); o texto ao lado fica neutro.
 const MEIO_FILL: Record<string, string> = {
-    pix: "var(--color-utility-green-500)",
-    cartao: "var(--color-utility-blue-500)",
+    pix: "var(--color-utility-blue-500)",
+    cartao: "var(--color-utility-orange-600)",
 };
 
 const MeioPagamentosCard = ({ rows }: { rows: MeioPagamentoRow[] }) => {
     if (rows.length === 0) {
         return (
-            <Card title="Meio de Pagamentos">
+            <Card title="Meios de pagamento">
                 <div className="px-4 py-12 text-center text-sm text-tertiary">Nenhum meio corresponde aos filtros.</div>
             </Card>
         );
     }
-    const fillFor = (id: string) => MEIO_FILL[id] ?? "var(--color-utility-gray-400)";
+    const fillFor = (id: string) => MEIO_FILL[id] ?? "var(--color-utility-neutral-400)";
     const totalValor = rows.reduce((s, r) => s + r.valor, 0);
     const pctOf = (v: number) => (totalValor === 0 ? 0 : Math.round((v / totalValor) * 100));
     return (
-        <Card title="Meio de Pagamentos">
+        <Card title="Meios de pagamento">
             <div className="flex flex-col gap-6 px-4 py-5 md:px-5">
                 {/* Barra horizontal segmentada por meio (largura ∝ valor) */}
-                <div className="flex w-full items-start gap-1">
+                <div aria-hidden="true" className="flex w-full items-start gap-1">
                     {rows.map((row) => (
-                        <div key={row.id} className="flex min-w-[52px] flex-col gap-1.5" style={{ flexGrow: row.valor, flexBasis: 0 }}>
-                            <div className="h-10 rounded-md" style={{ backgroundColor: fillFor(row.id) }} />
-                            <span className="text-sm font-semibold text-secondary tabular-nums">{pctOf(row.valor)}%</span>
-                        </div>
+                        <div key={row.id} title={`${row.nome}: ${pctOf(row.valor)}%`} className="h-10 min-w-1 rounded-md" style={{ flexGrow: row.valor, flexBasis: 0, backgroundColor: fillFor(row.id) }} />
                     ))}
                 </div>
 
@@ -739,7 +861,7 @@ const MeioPagamentosCard = ({ rows }: { rows: MeioPagamentoRow[] }) => {
                     <thead>
                         <tr className="border-b border-secondary">
                             <th className="py-2 pr-4 text-left text-sm font-semibold text-tertiary" />
-                            <th className="hidden px-4 py-2 text-right text-sm font-semibold text-tertiary sm:table-cell">Total inscrições</th>
+                            <th className="hidden px-4 py-2 text-right text-sm font-semibold text-tertiary sm:table-cell">Total de ingressos</th>
                             <th className="py-2 pl-4 text-right text-sm font-semibold text-tertiary">Total</th>
                         </tr>
                     </thead>
@@ -752,7 +874,7 @@ const MeioPagamentosCard = ({ rows }: { rows: MeioPagamentoRow[] }) => {
                                         <span className="shrink-0 text-sm font-semibold text-primary tabular-nums">{pctOf(row.valor)}%</span>
                                         <span className="truncate text-sm text-secondary">{row.nome}</span>
                                     </div>
-                                    <span className="mt-0.5 block pl-5.5 text-sm text-tertiary tabular-nums sm:hidden">{numberFormatter.format(row.quantidadeIngressos)} inscrições</span>
+                                    <span className="mt-0.5 block pl-5.5 text-sm text-tertiary tabular-nums sm:hidden">{numberFormatter.format(row.quantidadeIngressos)} ingressos</span>
                                 </td>
                                 <td className="hidden px-4 py-3 text-right text-sm font-medium text-primary tabular-nums sm:table-cell">{numberFormatter.format(row.quantidadeIngressos)}</td>
                                 <td className="py-3 pl-4 text-right text-sm font-semibold text-primary tabular-nums">{currencyFormatter.format(row.valor)}</td>
@@ -895,7 +1017,11 @@ const ListaTransacoesCard = ({ rows }: { rows: Transacao[] }) => {
     const [search, setSearch] = useState("");
     const [isManageColumnsOpen, setIsManageColumnsOpen] = useState(false);
     const [selectedFields, setSelectedFields] = useState<string[]>(DEFAULT_SELECTED);
-    const linha = useLinhaAberta<Transacao>();
+    // Transação aberta na URL (?item=<id>, REL-223). Abre no desktop e no celular, com as colunas escolhidas (REL-236).
+    const aberta = useItemNaUrl();
+    const linhaAberta = useMemo(() => (aberta.id ? (rows.find((t) => t.id === aberta.id) ?? null) : null), [rows, aberta.id]);
+    const { filters, clear } = useRelatorioFilters();
+    const temFiltro = filters.some((f) => f.field && f.value);
 
     const visibleColumns = useMemo(
         () => selectedFields.map((fieldId) => COLUMN_BY_FIELD_ID.get(fieldId)).filter((col): col is NonNullable<typeof col> => Boolean(col)),
@@ -968,32 +1094,62 @@ const ListaTransacoesCard = ({ rows }: { rows: Transacao[] }) => {
                 onExport={(fields) => toast.success("Exportação concluída", { description: `${fields.length} colunas foram exportadas.` })}
             />
 
+            {/* Sem resultado: o vazio do DS na largura visível do cartão (antes, centrado numa célula de 2.790 px, fora da tela), com a ação de limpar (BKS-118, REL-217). */}
+            {visibleRows.length === 0 && (
+                <div className="px-4 py-10">
+                    <EmptyState size="sm">
+                        <EmptyState.Header pattern="none">
+                            <EmptyState.FeaturedIcon icon={SearchLg} color="gray" theme="modern" />
+                        </EmptyState.Header>
+                        <EmptyState.Content>
+                            <EmptyState.Title>Nenhuma transação encontrada</EmptyState.Title>
+                            <EmptyState.Description>
+                                {search.trim() ? `Nenhuma transação corresponde a “${search.trim()}” com os filtros aplicados.` : "Nenhuma transação corresponde aos filtros aplicados."}
+                            </EmptyState.Description>
+                        </EmptyState.Content>
+                        {(search.trim() || temFiltro) && (
+                            <EmptyState.Footer>
+                                <Button
+                                    size="md"
+                                    color="secondary"
+                                    onClick={() => {
+                                        setSearch("");
+                                        if (temFiltro) clear();
+                                    }}
+                                >
+                                    {temFiltro ? "Limpar filtros" : "Limpar busca"}
+                                </Button>
+                            </EmptyState.Footer>
+                        )}
+                    </EmptyState>
+                </div>
+            )}
+
             {/* Celular: tabela-lista; o toque abre as colunas escolhidas em "Editar colunas" (UI-MOB-005). */}
             <ListaDaTabela
                 rotulo="Transações"
                 itens={visibleRows}
                 chave={(t) => t.id}
                 titulo={(t) => t.atletaNome || t.comprador}
-                apoio={(t) => `${t.id} · ${t.dataCriacao}`}
+                apoio={(t) => `${t.id}, ${t.dataCriacao}`}
                 destaque={(t) => (
                     <>
                         <span className="font-medium">{currencyFormatter.format(t.valorFinal)}</span>
                         <span className="text-tertiary">{STATUS_META[t.status].label}</span>
                     </>
                 )}
-                onAbrir={linha.abrir}
-                vazio="Nenhuma transação corresponde aos filtros aplicados."
+                onAbrir={(t) => aberta.abrir(t.id)}
             />
-            {linha.aberta && (
+            {linhaAberta && (
                 <DetalhesDaLinha
-                    titulo={linha.aberta.atletaNome || linha.aberta.comprador}
-                    subtitulo={`Pedido ${linha.aberta.id}`}
-                    grupos={[{ campos: visibleColumns.map((col) => ({ rotulo: col.label, valor: renderTransacaoCell(linha.aberta!, col.key) })) }]}
-                    onFechar={linha.fechar}
+                    titulo={linhaAberta.atletaNome || linhaAberta.comprador}
+                    subtitulo={`Pedido ${linhaAberta.id}`}
+                    grupos={[{ campos: visibleColumns.map((col) => ({ rotulo: col.label, valor: renderTransacaoCell(linhaAberta, col.key) })) }]}
+                    onFechar={aberta.fechar}
                 />
             )}
 
-            <div className="hidden max-h-[500px] overflow-x-auto overflow-y-auto md:block">
+            <div className={cx("hidden max-h-[500px] overflow-x-auto overflow-y-auto", visibleRows.length > 0 && "md:block")}>
                 <table className="w-full border-collapse">
                     <thead className="sticky top-0 z-10 bg-secondary">
                         <tr className="border-b border-secondary bg-secondary text-left">
@@ -1005,18 +1161,29 @@ const ListaTransacoesCard = ({ rows }: { rows: Transacao[] }) => {
                         </tr>
                     </thead>
                     <tbody>
-                        {visibleRows.length === 0 && (
-                            <tr>
-                                <td colSpan={visibleColumns.length} className="px-4 py-12 text-center text-sm text-tertiary">
-                                    Nenhuma transação corresponde aos filtros aplicados.
-                                </td>
-                            </tr>
-                        )}
                         {visibleRows.map((row, i) => (
-                            <tr key={row.id} className={cx("transition duration-100 ease-linear hover:bg-primary_hover", i !== visibleRows.length - 1 && "border-b border-secondary")}>
+                            // A linha abre os detalhes também no desktop (REL-236); o ID é o botão para o teclado.
+                            <tr
+                                key={row.id}
+                                onClick={() => aberta.abrir(row.id)}
+                                className={cx("cursor-pointer transition duration-100 ease-linear hover:bg-primary_hover", i !== visibleRows.length - 1 && "border-b border-secondary")}
+                            >
                                 {visibleColumns.map((col) => (
                                     <td key={String(col.key)} className={cx("whitespace-nowrap px-4 py-4 text-sm text-tertiary", col.align === "right" && "text-right", col.key === "id" && "font-mono text-sm text-secondary")}>
-                                        {renderTransacaoCell(row, col.key)}
+                                        {col.key === "id" ? (
+                                            <button
+                                                type="button"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    aberta.abrir(row.id);
+                                                }}
+                                                className="rounded-sm text-left outline-focus-ring hover:underline focus-visible:outline-2"
+                                            >
+                                                {row.id}
+                                            </button>
+                                        ) : (
+                                            renderTransacaoCell(row, col.key)
+                                        )}
                                     </td>
                                 ))}
                             </tr>

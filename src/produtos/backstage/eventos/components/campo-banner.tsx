@@ -1,5 +1,5 @@
-import { useRef, useState, useSyncExternalStore, type SyntheticEvent } from "react";
-import { Crop01, ImageUp, RefreshCw01, Trash01 } from "@untitledui/icons";
+import { useId, useRef, useState, useSyncExternalStore, type SyntheticEvent } from "react";
+import { Crop01, ImageUp, Plus, RefreshCw01, Star01, Trash01 } from "@untitledui/icons";
 import { Heading as AriaHeading } from "react-aria-components";
 import { centerCrop, makeAspectCrop, type PercentCrop } from "react-image-crop";
 import { Dialog, Modal, ModalOverlay } from "@/components/application/modals/modal";
@@ -12,7 +12,7 @@ import { cx } from "@/utils/cx";
 import { CampoDeParticulas, useCorDeParticulas } from "../../components/campo-de-particulas";
 
 /*
- * Banner do evento (EVT-79 a EVT-82). Enviar abre o modal de recorte do DS (o `Cropper` de
+ * Banners do evento (EVT-79 a EVT-82, EVT-164): vários, o primeiro é o principal (vira a capa). Enviar abre o modal de recorte do DS (o `Cropper` de
  * shared-assets/image-cropper, no layout do exemplo `image-crop-modal` do Untitled UI) com a
  * proporção fixa do banner, 4:5. A prévia mostra só a parte recortada; "Ajustar recorte" reabre.
  */
@@ -79,12 +79,19 @@ function ImagemRecortada({ imagem, recorte, className }: { imagem: ImagemDoBanne
     );
 }
 
+/** Um banner do evento: a imagem enviada e a parte dela que vale (EVT-81). */
+export interface BannerDoEvento {
+    imagem: ImagemDoBanner;
+    recorte: Recorte;
+}
+
+/** Até 5 banners por evento (EVT-164): o banco do protótipo guarda as imagens no navegador. */
+export const MAXIMO_DE_BANNERS = 5;
+
 interface CampoBannerProps {
-    imagem: ImagemDoBanner | null;
-    recorte: Recorte | null;
-    /** Imagem e recorte confirmados no modal. */
-    onAplicar: (imagem: ImagemDoBanner, recorte: Recorte) => void;
-    onRemover: () => void;
+    /** Banners na ordem; o primeiro é o principal, que vira a capa (EVT-164). */
+    banners: BannerDoEvento[];
+    onChange: (banners: BannerDoEvento[]) => void;
     /** Recusa formatos fora de PNG e JPG (EVT-63). */
     validar: (file: File) => boolean;
 }
@@ -93,17 +100,64 @@ interface CampoBannerProps {
 interface Edicao {
     imagem: ImagemDoBanner;
     recorte?: Recorte;
+    /** Índice do banner que muda (ajuste ou troca) ou "novo", para acrescentar no fim. */
+    alvo: number | "novo";
 }
 
-function useEdicaoDoBanner({ imagem, recorte, onAplicar, validar }: CampoBannerProps) {
+/** Nome do banner na tela e para leitor de tela: o primeiro é o principal. */
+const nomeDoBanner = (i: number) => (i === 0 ? "Banner principal" : `Banner ${i + 1}`);
+
+/**
+ * Lista de banners (EVT-164): qual está em foco, o seletor de arquivo, o modal de recorte e as ações
+ * (acrescentar, trocar, ajustar, remover e tornar principal). O desktop e o celular usam o mesmo.
+ */
+function useBanners({ banners, onChange, validar }: CampoBannerProps) {
+    const [selecionado, setSelecionado] = useState(0);
+    const atual = Math.min(selecionado, Math.max(0, banners.length - 1));
     const [edicao, setEdicao] = useState<Edicao | null>(null);
-    const escolher = (file: File) => {
+    const entrada = useRef<HTMLInputElement>(null);
+    // Para onde vai o arquivo escolhido no seletor: o banner em foco (trocar) ou um novo.
+    const destino = useRef<number | "novo">("novo");
+    const podeAcrescentar = banners.length < MAXIMO_DE_BANNERS;
+
+    const receber = (file: File, alvo: number | "novo") => {
         if (!validar(file)) return;
-        setEdicao({ imagem: { nome: file.name, url: URL.createObjectURL(file) } });
+        setEdicao({ imagem: { nome: file.name, url: URL.createObjectURL(file) }, alvo });
+    };
+    const abrirSeletor = (alvo: number | "novo") => {
+        destino.current = alvo;
+        entrada.current?.click();
     };
     const ajustar = () => {
-        if (imagem && recorte) setEdicao({ imagem, recorte });
+        const b = banners[atual];
+        if (b) setEdicao({ imagem: b.imagem, recorte: b.recorte, alvo: atual });
     };
+    const remover = () => {
+        onChange(banners.filter((_, i) => i !== atual));
+        setSelecionado(Math.max(0, atual - 1));
+    };
+    // Tornar principal leva o banner para o primeiro lugar; os outros seguem na mesma ordem.
+    const tornarPrincipal = () => {
+        if (atual === 0) return;
+        onChange([banners[atual], ...banners.filter((_, i) => i !== atual)]);
+        setSelecionado(0);
+    };
+
+    const seletor = (
+        <input
+            ref={entrada}
+            type="file"
+            accept="image/png,image/jpeg"
+            className="sr-only"
+            tabIndex={-1}
+            aria-hidden="true"
+            onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) receber(file, destino.current);
+                e.target.value = "";
+            }}
+        />
+    );
     const modal = edicao && (
         <ModalDeRecorte
             key={edicao.imagem.url}
@@ -111,20 +165,106 @@ function useEdicaoDoBanner({ imagem, recorte, onAplicar, validar }: CampoBannerP
             recorteInicial={edicao.recorte}
             onCancelar={() => setEdicao(null)}
             onAplicar={(r) => {
-                onAplicar(edicao.imagem, r);
+                const novo = { imagem: edicao.imagem, recorte: r };
+                if (edicao.alvo === "novo") {
+                    onChange([...banners, novo]);
+                    setSelecionado(banners.length);
+                } else {
+                    const alvo = edicao.alvo;
+                    onChange(banners.map((b, i) => (i === alvo ? novo : b)));
+                }
                 setEdicao(null);
             }}
         />
     );
-    return { escolher, ajustar, modal };
+    // Ações do banner em foco. "Tornar principal" só aparece fora do primeiro.
+    const acoes = (
+        <>
+            <ButtonUtility icon={Crop01} color="tertiary" size="sm" tooltip="Ajustar recorte" onClick={ajustar} />
+            {atual > 0 && <ButtonUtility icon={Star01} color="tertiary" size="sm" tooltip="Tornar principal" onClick={tornarPrincipal} />}
+            <ButtonUtility icon={RefreshCw01} color="tertiary" size="sm" tooltip="Trocar imagem" onClick={() => abrirSeletor(atual)} />
+            <ButtonUtility icon={Trash01} color="tertiary" size="sm" tooltip={`Remover ${nomeDoBanner(atual).toLowerCase()}`} onClick={remover} />
+        </>
+    );
+    const miniaturas = banners.length > 0 && (
+        <Miniaturas
+            banners={banners}
+            selecionado={atual}
+            onSelecionar={setSelecionado}
+            onAcrescentar={podeAcrescentar ? () => abrirSeletor("novo") : undefined}
+            onSoltar={podeAcrescentar ? (file) => receber(file, "novo") : undefined}
+        />
+    );
+    return { atual, banner: banners[atual], abrirSeletor, receber, ajustar, acoes, miniaturas, seletor, modal };
+}
+
+/**
+ * Miniaturas dos banners, na ordem (EVT-164): clicar põe o banner em foco (na prévia e nas ações); o
+ * primeiro é o principal. No fim, o quadro tracejado acrescenta outro banner, até o máximo.
+ */
+function Miniaturas({
+    banners,
+    selecionado,
+    onSelecionar,
+    onAcrescentar,
+    onSoltar,
+}: {
+    banners: BannerDoEvento[];
+    selecionado: number;
+    onSelecionar: (i: number) => void;
+    onAcrescentar?: () => void;
+    onSoltar?: (file: File) => void;
+}) {
+    const [sobre, setSobre] = useState(false);
+    return (
+        <div role="group" aria-label="Banners do evento" className="flex flex-wrap gap-2">
+            {banners.map((b, i) => (
+                <button
+                    key={`${b.imagem.url}-${i}`}
+                    type="button"
+                    onClick={() => onSelecionar(i)}
+                    aria-label={nomeDoBanner(i)}
+                    aria-pressed={i === selecionado}
+                    className={cx(
+                        "w-12 shrink-0 cursor-pointer overflow-hidden rounded-lg ring-1 ring-secondary transition duration-100 ease-linear focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring",
+                        i === selecionado ? "ring-2 ring-brand" : "opacity-70 hover:opacity-100",
+                    )}
+                >
+                    <ImagemRecortada imagem={b.imagem} recorte={b.recorte} />
+                </button>
+            ))}
+            {onAcrescentar && (
+                <button
+                    type="button"
+                    onClick={onAcrescentar}
+                    onDragOver={(e) => {
+                        e.preventDefault();
+                        setSobre(true);
+                    }}
+                    onDragLeave={() => setSobre(false)}
+                    onDrop={(e) => {
+                        e.preventDefault();
+                        setSobre(false);
+                        const file = e.dataTransfer.files[0];
+                        if (file) onSoltar?.(file);
+                    }}
+                    aria-label="Adicionar banner"
+                    title="Adicionar banner"
+                    className={cx(
+                        "flex aspect-[4/5] w-12 shrink-0 cursor-pointer items-center justify-center rounded-lg border border-dashed border-primary text-fg-quaternary transition duration-100 ease-linear hover:bg-primary_hover hover:text-fg-quaternary_hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring",
+                        sobre && "border-brand bg-primary_hover",
+                    )}
+                >
+                    <Plus className="size-5" aria-hidden="true" />
+                </button>
+            )}
+        </div>
+    );
 }
 
 /** Desktop: bloco 4:5 sem rótulo visível. Vazio, é o botão de envio sobre as partículas. */
 export function CampoBanner(props: CampoBannerProps) {
-    const { imagem, recorte, onRemover } = props;
-    const { escolher, ajustar, modal } = useEdicaoDoBanner(props);
-    const entrada = useRef<HTMLInputElement>(null);
-    const abrirSeletor = () => entrada.current?.click();
+    const { atual, banner, abrirSeletor, receber, ajustar, acoes, miniaturas, seletor, modal } = useBanners(props);
 
     return (
         <div className="flex flex-col gap-3">
@@ -132,41 +272,29 @@ export function CampoBanner(props: CampoBannerProps) {
             <span className="sr-only" id="banner-rotulo">
                 Banner
             </span>
-            <input
-                ref={entrada}
-                type="file"
-                accept="image/png,image/jpeg"
-                className="sr-only"
-                tabIndex={-1}
-                aria-hidden="true"
-                onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) escolher(file);
-                    e.target.value = "";
-                }}
-            />
-            {imagem && recorte ? (
+            {seletor}
+            {banner ? (
                 <>
                     {/* A prévia também abre o ajuste: é o alvo maior. */}
                     <button
                         type="button"
                         onClick={ajustar}
-                        aria-label="Ajustar recorte do banner"
+                        aria-label={`Ajustar recorte do ${nomeDoBanner(atual).toLowerCase()}`}
                         className="cursor-pointer overflow-hidden rounded-2xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
                     >
-                        <ImagemRecortada imagem={imagem} recorte={recorte} />
+                        <ImagemRecortada imagem={banner.imagem} recorte={banner.recorte} />
                     </button>
                     <div className="flex items-center justify-between gap-2">
-                        <span className="min-w-0 truncate text-sm text-tertiary">{imagem.nome}</span>
-                        <div className="flex shrink-0 items-center gap-1">
-                            <ButtonUtility icon={Crop01} color="tertiary" size="sm" tooltip="Ajustar recorte" onClick={ajustar} />
-                            <ButtonUtility icon={RefreshCw01} color="tertiary" size="sm" tooltip="Trocar imagem" onClick={abrirSeletor} />
-                            <ButtonUtility icon={Trash01} color="tertiary" size="sm" tooltip="Remover banner" onClick={onRemover} />
-                        </div>
+                        <span className="flex min-w-0 flex-col">
+                            <span className="text-sm font-semibold text-primary">{nomeDoBanner(atual)}</span>
+                            <span className="truncate text-sm text-tertiary">{banner.imagem.nome}</span>
+                        </span>
+                        <div className="flex shrink-0 items-center gap-1">{acoes}</div>
                     </div>
+                    {miniaturas}
                 </>
             ) : (
-                <AreaDeEnvio onClique={abrirSeletor} onSoltar={escolher} />
+                <AreaDeEnvio onClique={() => abrirSeletor("novo")} onSoltar={(file) => receber(file, "novo")} />
             )}
             {modal}
         </div>
@@ -230,101 +358,99 @@ function AreaDeEnvio({ onClique, onSoltar }: { onClique: () => void; onSoltar: (
  * botão de envio, sobre o mesmo campo de partículas do desktop.
  */
 export function CampoBannerCompacto(props: CampoBannerProps) {
-    const { imagem, recorte, onRemover } = props;
-    const { escolher, ajustar, modal } = useEdicaoDoBanner(props);
-    const entrada = useRef<HTMLInputElement>(null);
-    const abrirSeletor = () => entrada.current?.click();
-    const [sobre, setSobre] = useState(false);
-    const [emFoco, setEmFoco] = useState(false);
-    const corPadrao = useCorDeParticulas({ escuro: 0.132, claro: 0.12 });
-    const cor = emFoco || sobre ? "#ff271a" : corPadrao;
-    const caixa = "relative isolate flex w-full items-stretch overflow-hidden rounded-2xl bg-primary_alt ring-1 ring-secondary ring-inset";
+    const { atual, banner, abrirSeletor, receber, ajustar, acoes, miniaturas, seletor, modal } = useBanners(props);
 
     return (
-        <div className="flex flex-col">
-            <span className="sr-only" id="banner-rotulo-compacto">
-                Banner
-            </span>
-            <input
-                ref={entrada}
-                type="file"
-                accept="image/png,image/jpeg"
-                className="sr-only"
-                tabIndex={-1}
-                aria-hidden="true"
-                onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) escolher(file);
-                    e.target.value = "";
-                }}
-            />
-            {imagem && recorte ? (
-                <div className={caixa}>
+        <div className="flex flex-col gap-3">
+            {seletor}
+            {banner ? (
+                <div className={CAIXA}>
                     <button
                         type="button"
                         onClick={ajustar}
-                        aria-label="Ajustar recorte do banner"
+                        aria-label={`Ajustar recorte do ${nomeDoBanner(atual).toLowerCase()}`}
                         className="w-24 shrink-0 cursor-pointer focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus-ring"
                     >
-                        <ImagemRecortada imagem={imagem} recorte={recorte} />
+                        <ImagemRecortada imagem={banner.imagem} recorte={banner.recorte} />
                     </button>
-                    <div className="flex min-w-0 flex-1 items-center gap-1 px-4">
+                    <div className="flex min-w-0 flex-1 items-center gap-1 pr-2 pl-4">
                         <span className="flex min-w-0 flex-1 flex-col">
-                            <span className="text-sm font-semibold text-primary">Banner</span>
-                            <span className="truncate text-sm text-tertiary">{imagem.nome}</span>
+                            <span className="text-sm font-semibold text-primary">{nomeDoBanner(atual)}</span>
+                            <span className="truncate text-sm text-tertiary">{banner.imagem.nome}</span>
                         </span>
-                        <ButtonUtility icon={Crop01} color="tertiary" size="sm" tooltip="Ajustar recorte" onClick={ajustar} />
-                        <ButtonUtility icon={RefreshCw01} color="tertiary" size="sm" tooltip="Trocar imagem" onClick={abrirSeletor} />
-                        <ButtonUtility icon={Trash01} color="tertiary" size="sm" tooltip="Remover banner" onClick={onRemover} />
+                        {acoes}
                     </div>
                 </div>
             ) : (
-                <button
-                    type="button"
-                    onClick={abrirSeletor}
-                    onPointerEnter={() => setEmFoco(true)}
-                    onPointerLeave={() => setEmFoco(false)}
-                    onDragOver={(e) => {
-                        e.preventDefault();
-                        setSobre(true);
-                    }}
-                    onDragLeave={() => setSobre(false)}
-                    onDrop={(e) => {
-                        e.preventDefault();
-                        setSobre(false);
-                        const file = e.dataTransfer.files[0];
-                        if (file) escolher(file);
-                    }}
-                    aria-labelledby="banner-rotulo-compacto"
-                    aria-describedby="banner-dica-compacto"
-                    className={cx(
-                        caixa,
-                        "cursor-pointer text-left transition-colors duration-250 ease-out hover:bg-primary_hover/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring motion-reduce:transition-none",
-                        sobre && "bg-primary_hover/10 ring-2 ring-brand",
-                    )}
-                >
-                    {/* Partículas na caixa toda, sumindo para a direita, onde fica o texto. */}
-                    <CampoDeParticulas
-                        cor={cor}
-                        densidade={1.5}
-                        escala={2}
-                        className="absolute inset-0 -z-10 size-full [mask-image:linear-gradient(to_right,black_0%,black_25%,transparent_80%)]"
-                    />
-                    <span className="flex aspect-[4/5] w-24 shrink-0 items-center justify-center">
-                        <span className="flex size-10 items-center justify-center rounded-full bg-primary shadow-xs ring-1 ring-secondary ring-inset">
-                            <ImageUp className="size-5 text-fg-secondary" aria-hidden="true" />
-                        </span>
-                    </span>
-                    <span className="flex min-w-0 flex-1 flex-col justify-center gap-0.5 px-4">
-                        <span className="text-sm font-semibold text-primary">Enviar o banner</span>
-                        <span id="banner-dica-compacto" className="text-sm text-tertiary">
-                            PNG ou JPG, 1080 × 1350 px
-                        </span>
-                    </span>
-                </button>
+                <CaixaDeEnvio titulo="Enviar o banner" dica="PNG ou JPG, 1080 × 1350 px" onClique={() => abrirSeletor("novo")} onSoltar={(file) => receber(file, "novo")} />
             )}
+            {miniaturas}
             {modal}
         </div>
+    );
+}
+
+/** Caixa enxuta do banner (EVT-80): sem padding, ícone num quadro 4:5 à esquerda e o texto à direita. */
+const CAIXA = "relative isolate flex w-full items-stretch overflow-hidden rounded-2xl bg-primary_alt ring-1 ring-secondary ring-inset";
+
+/**
+ * Envio de imagem vazio, na caixa enxuta do banner (EVT-80): a caixa inteira é o botão, sobre o campo de
+ * partículas, e aceita arrastar. É o único desenho de envio de imagem da criação: o banner no celular e o
+ * mapa usam esta caixa (antes o mapa usava a área de envio genérica, com outro desenho).
+ */
+export function CaixaDeEnvio({ titulo, dica, onClique, onSoltar }: { titulo: string; dica: string; onClique: () => void; onSoltar: (file: File) => void }) {
+    const id = useId();
+    const [sobre, setSobre] = useState(false);
+    const [emFoco, setEmFoco] = useState(false);
+    const corPadrao = useCorDeParticulas({ escuro: 0.132, claro: 0.12 });
+    // No hover, o vermelho da marca do AFTER DS, como no banner do desktop (EVT-79).
+    const cor = emFoco || sobre ? "#ff271a" : corPadrao;
+    return (
+        <button
+            type="button"
+            onClick={onClique}
+            onPointerEnter={() => setEmFoco(true)}
+            onPointerLeave={() => setEmFoco(false)}
+            onDragOver={(e) => {
+                e.preventDefault();
+                setSobre(true);
+            }}
+            onDragLeave={() => setSobre(false)}
+            onDrop={(e) => {
+                e.preventDefault();
+                setSobre(false);
+                const file = e.dataTransfer.files[0];
+                if (file) onSoltar(file);
+            }}
+            aria-labelledby={`${id}-titulo`}
+            aria-describedby={`${id}-dica`}
+            className={cx(
+                CAIXA,
+                "cursor-pointer text-left transition-colors duration-250 ease-out hover:bg-primary_hover/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring motion-reduce:transition-none",
+                sobre && "bg-primary_hover/10 ring-2 ring-brand",
+            )}
+        >
+            {/* Partículas na caixa toda, sumindo para a direita, onde fica o texto. */}
+            <CampoDeParticulas
+                cor={cor}
+                densidade={1.5}
+                escala={2}
+                className="absolute inset-0 -z-10 size-full [mask-image:linear-gradient(to_right,black_0%,black_25%,transparent_80%)]"
+            />
+            <span className="flex aspect-[4/5] w-24 shrink-0 items-center justify-center">
+                <span className="flex size-10 items-center justify-center rounded-full bg-primary shadow-xs ring-1 ring-secondary ring-inset">
+                    <ImageUp className="size-5 text-fg-secondary" aria-hidden="true" />
+                </span>
+            </span>
+            <span className="flex min-w-0 flex-1 flex-col justify-center gap-0.5 px-4 py-3">
+                <span id={`${id}-titulo`} className="text-sm font-semibold text-primary">
+                    {titulo}
+                </span>
+                <span id={`${id}-dica`} className="text-sm text-tertiary">
+                    {dica}
+                </span>
+            </span>
+        </button>
     );
 }
 
@@ -350,7 +476,9 @@ function ModalDeRecorte({
     };
 
     return (
-        <ModalOverlay isOpen onOpenChange={(aberto) => !aberto && onCancelar()} isDismissable>
+        // Clicar fora não fecha: arrastar o recorte até a borda e soltar fora descartava a imagem (EVT-141, T6).
+        // Fecham Cancelar, X e Esc (EVT-81).
+        <ModalOverlay isOpen onOpenChange={(aberto) => !aberto && onCancelar()}>
             <Modal className="sm:max-w-140">
                 <Dialog>
                     <div className="relative w-full overflow-hidden rounded-2xl bg-primary shadow-xl ring-1 ring-border-secondary">

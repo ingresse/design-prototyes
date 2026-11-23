@@ -22,6 +22,15 @@ const ler = (): EscopoDosRelatorios => {
     return atual;
 };
 
+/** Escopo agora, fora do React (espelhos). */
+export const escopoDosRelatorios = (): EscopoDosRelatorios => ler();
+export const assinarEscopoDosRelatorios = (fn: () => void) => {
+    ouvintes.add(fn);
+    return () => {
+        ouvintes.delete(fn);
+    };
+};
+
 export function setEscopoDosRelatorios(escopo: EscopoDosRelatorios) {
     if (ler() === escopo) return;
     atual = escopo;

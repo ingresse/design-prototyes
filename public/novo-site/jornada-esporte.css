@@ -1,0 +1,254 @@
+/* jornada-esporte.css: a jornada de inscrição da Ingresse Sports (Mariana Teixeira, 28/10/2026).
+   Fonte: tools/previa/jornada-esporte/jornada-esporte.css; o gerador (tools/previa/jornada-esporte.mjs) copia para previa/jornada-esporte.css
+   e liga o <link> nas telas Ingressos, Checkout, Pagamento e Carteira, depois da identidade. Só vale com ?esporte=<id> (as classes je-* só existem
+   no markup esportivo; o fluxo de shows não é tocado).
+   Só tokens da identidade: Elza, --space-*, --color-*, --size-*, raio 8 px (círculo só no nó da linha de percurso), sem sombra, sem desfoque.
+   Documentos: docs/design/INGRESSE-SPORTS-DIRECAO-DE-ARTE-E-MOVIMENTO.md e TOKENS-INGRESSE-SPORTS.md. */
+
+/* ---------------------------------------------------------------------------------------------------------------
+   1. Estrutura (E1; E2 e E3 usam o contêiner da tela comum e só trocam o <main>)
+   --------------------------------------------------------------------------------------------------------------- */
+.je-pagina { max-width: 1280px; margin: 0 auto; padding: var(--space-7) var(--layout-margin) var(--space-10); display: flex; flex-wrap: wrap; gap: var(--space-7); align-items: flex-start; box-sizing: border-box; }
+.je-main { flex: 999 1 620px; min-width: 0; display: flex; flex-direction: column; gap: var(--space-5); }
+.je-aside { flex: 1 1 340px; min-width: 0; scroll-margin-top: var(--space-9); }
+.je-lead { margin: var(--space-3) 0 0; max-width: var(--measure-body); font-size: var(--font-size-body); line-height: var(--font-lh-body); color: var(--color-text-secondary); }
+.je-lead + .je-lead { margin-top: var(--space-2); }
+.je-sec { display: flex; flex-direction: column; gap: var(--space-3); }
+.je-aviso { margin: 0; padding: var(--space-3) var(--space-4); background: var(--color-bg-subtle); font-size: var(--font-size-small); line-height: 1.5; color: var(--color-text-secondary); }
+.je-acoes { display: flex; flex-wrap: wrap; gap: var(--space-3); margin-top: var(--space-4); }
+.je-estado { padding: var(--space-card-pad); display: flex; flex-direction: column; gap: var(--space-2); }
+.je-estado-t { margin: 0; font-size: var(--font-size-title-3); font-weight: 600; line-height: var(--font-lh-title-3); }
+.je-estado-p { margin: 0; font-size: var(--font-size-body); line-height: var(--font-lh-body); color: var(--color-text-secondary); max-width: var(--measure-body); }
+
+/* a identidade põe raio de 8 px em tudo: linhas com filete (borda só em cima) ficam retas */
+.je-tipo, .je-tipos, .je-tipos-nota, .je-grupo, .je-fato, .je-fatos, .je-done-largada, .je-faltam, .je-at-pad, .je-at-corpo, .je-at-in, .je-at-bt, .je-recap-cab, .je-recap .ce-recap, .je-recap .ce-recap li, .je-cw-fatos, .je-qr-grade > span { border-radius: 0 !important; } /* o global `* { border-radius: 8px !important }` só cede a !important: linha de 1 px é reta */
+
+/* ---------------------------------------------------------------------------------------------------------------
+   2. Cabeçalho do fluxo e a linha de percurso sob as etapas
+   Lockup oficial (SVG em máscara, pela cor do texto: preto no claro, branco no escuro): 28 px no desktop, 24 px no celular (mínimo).
+   Linha de percurso: barra de 4 px com a largura das pílulas; avanço, nós e bandeira em vermelho da marca; 12,5 / 37,5 / 62,5 / 100 %.
+   --------------------------------------------------------------------------------------------------------------- */
+.je-hdr .je-hdr-in { display: flex; align-items: center; justify-content: space-between; margin: 0 auto; padding-block: var(--space-2) !important; }
+.je-hdr-esq { display: flex; align-items: center; gap: var(--space-4); min-width: 0; flex: 1 1 auto; }
+.je-voltar { flex: 0 0 auto; width: var(--size-touch-default); height: var(--size-touch-default); display: inline-flex; align-items: center; justify-content: center; border: var(--border-width-hairline) solid var(--color-border-control); color: var(--color-text-primary); }
+.je-voltar:hover { border-color: var(--color-border-strong); }
+.je-logo { flex: 0 0 auto; display: inline-flex; align-items: center; min-height: var(--size-touch-default); color: var(--color-text-primary); }
+.je-lockup { display: block; height: 28px; width: calc(28px * 8.034); background: currentColor; -webkit-mask: url("./assets/brand/ingresse-sports.svg") left center / contain no-repeat; mask: url("./assets/brand/ingresse-sports.svg") left center / contain no-repeat; }
+.je-evt { display: flex; flex-direction: column; min-width: 0; padding-left: var(--space-4); border-left: var(--border-width-hairline) solid var(--color-border-subtle); }
+.je-evt strong { font-size: var(--font-size-small); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.je-evt span { font-size: var(--font-size-small); color: var(--color-text-tertiary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.je-fluxo { flex: 0 0 auto; display: flex; flex-direction: column; gap: var(--space-2); align-items: stretch; }
+.je-steps { display: flex; gap: var(--space-2); list-style: none; margin: 0; padding: 0; font-size: var(--font-size-small); font-weight: 600; }
+.je-steps .stp { flex: 1 1 0; justify-content: center; white-space: nowrap; }
+.je-mob { display: none; margin: 0; font-size: var(--font-size-small); font-weight: 600; color: var(--color-text-primary); }
+.je-percurso { position: relative; height: var(--size-route-height); margin-bottom: calc(var(--size-route-flag) / 2); }
+.je-trilho, .je-avanco { position: absolute; left: 0; right: 0; top: 0; height: var(--size-route-height); display: block; }
+.je-trilho { background: var(--color-sport-route-track); }
+.je-avanco { background: var(--color-sport-route-fill); transform: scaleX(var(--je-p, 0)); transform-origin: 0 50%; }
+.je-no { position: absolute; top: calc(var(--size-route-height) / 2); width: var(--size-route-node); height: var(--size-route-node); box-sizing: border-box; border-radius: var(--radius-circle); transform: translate(-50%, -50%); background: var(--color-bg-page); border: var(--border-width-strong) solid var(--color-sport-route-node); }
+.je-no[data-e="atual"] { border-color: var(--color-sport-route-fill); }
+.je-no[data-e="feito"] { background: var(--color-sport-route-fill); border-color: var(--color-sport-route-fill); }
+.je-bandeira { position: absolute; right: 0; top: calc(var(--size-route-height) / 2); width: var(--size-route-flag); height: var(--size-route-flag); box-sizing: border-box; transform: translateY(-50%); display: inline-flex; align-items: center; justify-content: center; background: var(--color-bg-page); border: var(--border-width-strong) solid var(--color-sport-route-node); color: var(--color-sport-route-node); }
+.je-bandeira[data-on="true"] { background: var(--color-sport-route-flag-bg); border-color: var(--color-sport-route-flag-bg); color: var(--color-sport-route-flag-fg); }
+.je-bandeira svg { width: 14px; height: 14px; stroke-width: 2; }
+@media (max-width: 900px) { .je-steps .stp:not([aria-current="step"]) .st-l { display: none; } .je-evt { display: none; } }
+@media (max-width: 640px) {
+  .je-hdr .je-hdr-in { flex-wrap: wrap; row-gap: var(--space-2); padding-block: var(--space-2) var(--space-3) !important; }
+  .je-hdr-esq { flex: 1 1 100%; }
+  .je-lockup { height: 24px; width: calc(24px * 8.034); }
+  .je-fluxo { flex: 1 1 100%; }
+  .je-steps { display: none; }
+  .je-mob { display: block; }
+}
+@media (max-width: 359px) { .je-lockup { width: 32px; mask-size: auto 32px; -webkit-mask-size: auto 32px; height: 32px; } } /* abaixo de 360 px, só o glifo (a marca) */
+
+/* ---------------------------------------------------------------------------------------------------------------
+   3. E1 · Sua prova: linha de prova (distância em destaque), tipos, grupo (os produtos são o `.prd` comum, em identidade-componentes.css)
+   --------------------------------------------------------------------------------------------------------------- */
+.je-provas { display: flex; flex-direction: column; gap: var(--space-4); }
+.je-prova { position: relative; min-width: 0; padding: 0; background: var(--color-bg-surface); border: var(--border-width-hairline) solid var(--color-border-subtle); }
+.je-prova[data-sel="true"] { border: var(--border-width-strong) solid var(--color-border-strong); }
+.je-prova[data-off="true"] { background: var(--color-bg-subtle); }
+.je-prova[data-off="true"] .je-stat-n, .je-prova[data-off="true"] .je-prova-nome { color: var(--color-text-tertiary); }
+.je-prova[data-destaque="true"]:not([data-sel="true"]) { border: var(--border-width-strong) solid var(--color-border-control); }
+.je-prova-cab { display: grid; grid-template-columns: minmax(96px, auto) 1fr auto; gap: var(--space-4) var(--space-5); align-items: center; min-height: var(--size-sport-race-row-min); padding: var(--space-5) var(--space-card-pad); }
+.je-stat { display: flex; align-items: baseline; gap: var(--space-1); font-variant-numeric: tabular-nums lining-nums; min-width: 0; }
+.je-stat-n { font-size: var(--font-size-stat-xl); font-weight: 600; line-height: var(--font-lh-stat-xl); letter-spacing: 0; }
+.je-stat-u { font-size: var(--font-size-stat-unit); font-weight: 400; color: var(--color-text-tertiary); }
+.je-prova-info { display: flex; flex-direction: column; gap: var(--space-1); align-items: flex-start; min-width: 0; }
+.je-prova-nome { margin: 0; font-size: var(--font-size-title-4); font-weight: 600; line-height: var(--font-lh-title-4); }
+.je-prova-p { margin: 0; font-size: var(--font-size-small); line-height: 1.5; color: var(--color-text-secondary); font-variant-numeric: tabular-nums lining-nums; }
+.je-prova-p:empty { display: none; }
+.je-prova-info .tag { margin-top: var(--space-1); }
+.je-prova-acao { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--space-3) var(--space-5); }
+.je-preco { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; font-variant-numeric: tabular-nums lining-nums; }
+.je-preco strong { font-size: var(--font-size-title-3); font-weight: 600; line-height: var(--font-lh-title-3); }
+.je-preco span { font-size: var(--font-size-small); color: var(--color-text-tertiary); }
+.je-tipos { border-top: var(--border-width-hairline) solid var(--color-border-subtle); }
+.je-tipo { display: grid; grid-template-columns: 1fr auto auto; gap: var(--space-3) var(--space-5); align-items: center; padding: var(--space-4) var(--space-card-pad); border-bottom: var(--border-width-hairline) solid var(--color-border-subtle); }
+.je-tipo-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.je-tipo-info strong { font-size: var(--font-size-body); font-weight: 600; }
+.je-tipo-info span { font-size: var(--font-size-small); color: var(--color-text-tertiary); }
+.je-tipo-preco { font-size: var(--font-size-body); font-weight: 600; font-variant-numeric: tabular-nums lining-nums; white-space: nowrap; }
+.je-tipos-nota { margin: 0; padding: var(--space-3) var(--space-card-pad); font-size: var(--font-size-small); color: var(--color-text-tertiary); }
+.je-cupom-p { margin: 0; font-size: var(--font-size-small); }
+.je-cupom-l { font-size: var(--font-size-body); font-weight: 600; }
+.je-grupo { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3) var(--space-4); padding-top: var(--space-4); border-top: var(--border-width-hairline) solid var(--color-border-subtle); }
+.je-grupo-p { font-size: var(--font-size-small); color: var(--color-text-tertiary); }
+@media (max-width: 640px) {
+  .je-pagina { padding-top: var(--space-5); }
+  .je-prova-cab { grid-template-columns: 1fr; gap: var(--space-3); padding: var(--space-4); }
+  .je-prova-acao { justify-content: space-between; }
+  .je-preco { align-items: flex-start; }
+  .je-tipo { grid-template-columns: 1fr auto; padding: var(--space-4); }
+  .je-tipo-info { grid-column: 1 / -1; }
+  .je-tipo .qtd { justify-self: end; }
+  .je-tipos-nota { padding: var(--space-3) var(--space-4); }
+}
+
+/* ---------------------------------------------------------------------------------------------------------------
+   4. E2 · Quem vai: um cartão por inscrição (acordeão com estado), seções e campos
+   --------------------------------------------------------------------------------------------------------------- */
+.je-conta { padding: var(--space-4) var(--space-5); display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); }
+.je-conta-t { flex: 1 1 200px; display: flex; flex-direction: column; min-width: 0; }
+.je-conta-t strong { font-size: var(--font-size-body); font-weight: 600; }
+.je-conta-t span { font-size: var(--font-size-small); color: var(--color-text-tertiary); }
+.je-cards { display: flex; flex-direction: column; gap: var(--space-4); }
+.je-atleta { padding: 0; }
+.je-at-h { margin: 0; font-size: inherit; font-weight: inherit; }
+.je-at-bt { width: 100%; min-height: calc(var(--size-touch-default) + var(--space-5)); display: flex; align-items: center; gap: var(--space-4); padding: var(--space-4) var(--space-card-pad); background: transparent; border: 0; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.je-at-bt:hover { background: var(--color-bg-hover); }
+.je-at-t { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.je-at-t strong { font-size: var(--font-size-body); font-weight: 600; line-height: 1.3; }
+.je-at-t span { font-size: var(--font-size-small); color: var(--color-text-tertiary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.je-at-st { flex: 0 0 auto; display: inline-flex; align-items: center; gap: var(--space-2); min-height: var(--size-wave-chip); padding: 0 var(--space-3); border: var(--border-width-strong) solid var(--color-border-control); font-size: var(--font-size-label); font-weight: 600; text-transform: uppercase; letter-spacing: var(--font-ls-label); color: var(--color-text-primary); white-space: nowrap; }
+.je-at-st[data-ok="true"] { background: var(--color-alert-success-bg); border-color: var(--color-alert-success-fg); color: var(--color-alert-success-fg); }
+.je-at-st[data-ok="false"] { background: var(--color-alert-warning-bg); border-color: var(--color-alert-warning-fg); color: var(--color-alert-warning-fg); }
+.je-at-st svg { width: 16px; height: 16px; stroke-width: 2; }
+.je-at-seta { flex: 0 0 auto; transition: transform var(--motion-duration-base) var(--motion-ease-move); }
+.je-atleta[data-aberto="true"] .je-at-seta { transform: rotate(180deg); }
+.je-at-pad { padding: var(--space-2) var(--space-card-pad) var(--space-card-pad); display: flex; flex-direction: column; gap: var(--space-5); border-top: var(--border-width-hairline) solid var(--color-border-subtle); padding-top: var(--space-5); }
+.je-quem { border: 0; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-3); }
+.je-quem legend { padding: 0; margin-bottom: var(--space-3); font-size: var(--font-size-small); font-weight: 600; line-height: 1.3; }
+.je-quem .seg, .je-modo .seg { align-self: flex-start; max-width: 100%; }
+.je-modo { display: flex; flex-direction: column; }
+.je-eu { margin: 0; display: inline-flex; align-items: center; gap: var(--space-2); font-size: var(--font-size-small); color: var(--color-text-secondary); }
+.je-secao { display: flex; flex-direction: column; gap: var(--space-3); }
+.je-secao-t { margin: 0; font-size: var(--font-size-title-4); font-weight: 600; line-height: var(--font-lh-title-4); }
+.je-secao-p { margin: 0; font-size: var(--font-size-small); color: var(--color-text-tertiary); }
+.je-campos { display: flex; flex-wrap: wrap; gap: var(--space-4) var(--space-5); }
+.je-info { font-size: var(--font-size-small); line-height: 1.5; color: var(--color-text-secondary); }
+@media (max-width: 640px) {
+  .je-at-bt { padding: var(--space-4); flex-wrap: wrap; }
+  .je-at-t { flex: 1 1 calc(100% - var(--size-touch-default) - var(--space-4) * 2 - var(--space-5)); }
+  .je-at-st { order: 3; }
+  .je-at-pad { padding: var(--space-4); padding-top: var(--space-5); }
+  .je-modo .seg { display: flex; width: 100%; }
+  .je-modo .seg:has(> button:nth-child(2):last-child) > button { flex: 1 1 0; white-space: normal; padding: var(--space-1) var(--space-3); line-height: 1.2; }
+}
+
+/* ---------------------------------------------------------------------------------------------------------------
+   5. E3 · recapitulação
+   --------------------------------------------------------------------------------------------------------------- */
+.je-recap { padding: var(--space-5) var(--space-card-pad); display: flex; flex-direction: column; gap: var(--space-1); }
+.je-recap-cab { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: var(--space-2); }
+.je-recap-t { margin: 0; font-size: var(--font-size-title-4); font-weight: 600; }
+.je-recap-p { margin: var(--space-2) 0 0; font-size: var(--font-size-small); color: var(--color-text-secondary); }
+
+/* ---------------------------------------------------------------------------------------------------------------
+   6. E4 · Sua largada: cartão de número de peito (bib card), hora da largada, ações e o que vem agora
+   --------------------------------------------------------------------------------------------------------------- */
+.je-done { max-width: 760px; margin: 0 auto; padding: var(--space-8) var(--layout-margin) var(--space-10); display: flex; flex-direction: column; gap: var(--space-6); box-sizing: border-box; }
+.je-done-topo { display: flex; flex-direction: column; align-items: center; text-align: center; gap: var(--space-3); }
+.je-done-t { margin: 0; font-size: clamp(2rem, 6vw, 3.25rem); }
+.je-done-frase { margin: 0; max-width: var(--measure-body); font-size: var(--font-size-title-4); font-weight: 600; line-height: var(--font-lh-title-4); }
+.je-done-msg { margin: 0; max-width: var(--measure-body); font-size: var(--font-size-body); line-height: var(--font-lh-body); color: var(--color-text-secondary); }
+.je-done-largada { display: grid; grid-template-columns: 1fr 1fr; align-items: center; justify-items: center; gap: var(--space-4) 0; padding: var(--space-5) 0; border-top: var(--border-width-hairline) solid var(--color-border-subtle); border-bottom: var(--border-width-hairline) solid var(--color-border-subtle); }
+.je-stat-bloco { display: flex; flex-direction: column; align-items: center; gap: var(--space-1); }
+.je-stat-hora { font-size: var(--font-size-stat-xl); font-weight: 600; line-height: var(--font-lh-stat-xl); font-variant-numeric: tabular-nums lining-nums; }
+.je-stat-quando { font-size: var(--font-size-small); color: var(--color-text-secondary); }
+.je-faltam { align-self: stretch; display: flex; align-items: center; justify-content: center; width: 100%; border-left: var(--border-width-hairline) solid var(--color-border-subtle); text-align: center; margin: 0; font-size: var(--font-size-stat); font-weight: 600; line-height: var(--font-lh-stat); font-variant-numeric: tabular-nums lining-nums; }
+.je-bibs { display: flex; flex-direction: column; align-items: center; gap: var(--space-6); }
+.je-atleta-bib { width: min(100%, 420px); display: flex; flex-direction: column; align-items: center; gap: var(--space-3); }
+.je-bib { position: relative; container-type: inline-size; width: min(100%, var(--size-sport-bib-max)); aspect-ratio: var(--size-sport-bib-ratio); box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; gap: var(--space-2); padding: calc(var(--space-4) + var(--border-width-accent)) var(--space-4) var(--space-4); background: var(--color-bg-surface); border: var(--border-width-strong) solid var(--color-border-strong); color: var(--color-text-primary); overflow: hidden; }
+.je-bib-faixa { position: absolute; left: 0; right: 0; top: 0; height: var(--border-width-accent); background: var(--color-button-primary-bg); }
+.je-bib-topo { display: flex; justify-content: space-between; align-items: baseline; gap: var(--space-3); min-width: 0; }
+.je-bib-nome { min-width: 0; font-size: var(--font-size-small); font-weight: 600; line-height: 1.3; overflow-wrap: anywhere; }
+.je-bib-dist { flex: 0 0 auto; font-size: var(--font-size-small); font-weight: 600; font-variant-numeric: tabular-nums lining-nums; }
+.je-bib-centro { display: flex; flex-direction: column; align-items: center; gap: var(--space-1); }
+.je-bib-rot { font-size: var(--font-size-label); font-weight: 600; text-transform: uppercase; letter-spacing: var(--font-ls-label); opacity: .84; }
+.je-bib-num { display: inline-flex; font-size: min(var(--font-size-bib), 22cqw); font-weight: var(--font-wt-bib); line-height: var(--font-lh-bib); letter-spacing: var(--font-ls-bib); font-variant-numeric: tabular-nums lining-nums; white-space: nowrap; }
+.je-d { display: inline-block; clip-path: inset(0); }
+.je-d > span { display: inline-block; }
+.je-bib-pe { display: flex; flex-direction: column; gap: 2px; font-size: var(--font-size-small); line-height: 1.3; }
+.je-bib-pe span { min-width: 0; overflow-wrap: anywhere; }   /* o nome da prova quebra em até 2 linhas, sem reticências */
+.je-bib-pe span:last-child { font-variant-numeric: tabular-nums lining-nums; opacity: .84; }
+@media (min-width: 768px) { .je-bib { width: min(100%, 360px); } .je-cw-card { grid-template-columns: minmax(0, 360px) 1fr; } }
+.je-bib[data-pend="true"] { border-style: dashed; }
+.je-bib-st { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: var(--space-2) var(--space-3); text-align: center; }
+.je-bib-sit { display: inline-flex; align-items: center; gap: var(--space-2); min-height: var(--size-wave-chip); font-size: var(--font-size-small); font-weight: 600; }
+.je-bib-sit svg { width: 16px; height: 16px; stroke-width: 2; }
+.je-bib-st[data-pend="false"] .je-bib-sit { color: var(--color-alert-success-fg); }
+.je-bib-st[data-pend="true"] .je-bib-sit { color: var(--color-alert-warning-fg); }
+.je-bib-acoes { display: inline-flex; flex-wrap: wrap; gap: var(--space-2); justify-content: center; }
+.je-bib-prazo { flex: 1 1 100%; font-size: var(--font-size-small); color: var(--color-text-tertiary); }
+.je-done-acoes { display: flex; flex-wrap: wrap; gap: var(--space-3); justify-content: center; }
+.je-pend { padding: var(--space-5) var(--space-card-pad); display: flex; flex-wrap: wrap; gap: var(--space-4); align-items: center; border: var(--border-width-strong) solid var(--color-alert-warning-fg); background: var(--color-bg-subtle); } /* aviso que não é poço = lavagem bg.subtle, a borda âmbar de 2 px é o sinal (SUPERFICIES-JOAQUIM §5); o amarelo sobre o chão dava degrau de 1,05:1 (auditoria 03/11/2026) */
+.je-pend-t { flex: 1 1 260px; display: flex; flex-direction: column; gap: var(--space-1); }
+.je-pend-t strong { font-size: var(--font-size-body); font-weight: 600; }
+.je-pend-t span { font-size: var(--font-size-small); color: var(--color-text-secondary); }
+.je-agora { padding: var(--space-5) var(--space-card-pad); }
+.je-agora-t { margin: 0 0 var(--space-2); font-size: var(--font-size-title-4); font-weight: 600; }
+.je-fatos { margin: 0; display: flex; flex-direction: column; }
+.je-fato { display: grid; grid-template-columns: 1fr; gap: var(--space-1); padding: var(--space-4) 0; border-top: var(--border-width-hairline) solid var(--color-border-subtle); }
+.je-fato:first-child { border-top: 0; }
+.je-fato dt { font-size: var(--font-size-label); font-weight: 600; text-transform: uppercase; letter-spacing: var(--font-ls-label); color: var(--color-text-tertiary); }
+.je-fato dd { margin: 0; font-size: var(--font-size-body); line-height: var(--font-lh-body); color: var(--color-text-secondary); }
+@media (min-width: 700px) { .je-fato { grid-template-columns: 200px 1fr; gap: var(--space-5); } }
+@media (max-width: 640px) { .je-done { padding-top: var(--space-6); } }
+
+/* ---------------------------------------------------------------------------------------------------------------
+   7. O filme de «Sua largada» (movimento-sucesso.js, perfil esportivo): cena em ilha escura, cartão de número de peito que se forma
+   --------------------------------------------------------------------------------------------------------------- */
+.ms-raiz[data-perfil="esportes"] .ms-trilha { stroke: var(--color-sport-film-track); opacity: 1; }
+.ms-bib { position: absolute; left: 50%; top: 50%; margin: 0; transform-origin: 50% 50%; box-sizing: border-box; }
+.ms-bib .je-bib { width: 100%; height: 100%; aspect-ratio: auto; }
+.ms-bib[data-desenha] .je-bib { border-color: transparent; }
+.ms-bib-contorno { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+.ms-bib-contorno rect { fill: none; stroke: currentColor; stroke-width: 2; stroke-dasharray: 100; stroke-dashoffset: 100; }
+.ms-bib [data-ms-oculto] { opacity: 0; }
+.ms-bib .je-d > span { transform: translateY(100%); }
+
+/* ---------------------------------------------------------------------------------------------------------------
+   8. Carteira esportiva: inscrição (cartão de número de peito + dados), QR a partir de qrDisponivelEm, folhas de transferência e cancelamento
+   --------------------------------------------------------------------------------------------------------------- */
+.je-cw { max-width: 1280px; margin: 0 auto; padding: var(--space-8) var(--layout-margin) var(--space-10); box-sizing: border-box; display: flex; flex-direction: column; gap: var(--space-5); }
+.je-cw-banner { flex: 0 0 auto; }
+.je-cw-lista { display: flex; flex-direction: column; gap: var(--space-5); }
+.je-cw-card { display: grid; grid-template-columns: minmax(0, var(--size-sport-bib-max)) 1fr; gap: var(--space-5) var(--space-6); padding: var(--space-card-pad); align-items: start; }
+.je-cw-card[data-k="transf"] .je-bib { border-style: dashed; }
+.je-cw-card[data-k="cancelada"] .je-bib-num { text-decoration: line-through; }
+.je-cw-bibcol { display: flex; justify-content: center; }
+.je-cw-info { display: flex; flex-direction: column; gap: var(--space-3); align-items: flex-start; min-width: 0; }
+.je-cw-t { margin: 0; font-size: var(--font-size-title-4); font-weight: 600; line-height: var(--font-lh-title-4); }
+.je-cw-fatos { margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: var(--space-4) var(--space-5); width: 100%; }
+.je-cw-fatos dt { font-size: var(--font-size-label); font-weight: 600; text-transform: uppercase; letter-spacing: var(--font-ls-label); color: var(--color-text-tertiary); }
+.je-cw-fatos dd { margin: var(--space-1) 0 0; font-size: var(--font-size-body); font-weight: 600; font-variant-numeric: tabular-nums lining-nums; }
+.je-cw-p { margin: 0; max-width: var(--measure-body); font-size: var(--font-size-small); line-height: 1.5; color: var(--color-text-secondary); }
+.je-cw-p:empty { display: none; }
+.je-cw-acoes { display: flex; flex-wrap: wrap; gap: var(--space-3); }
+.je-qr { display: flex; flex-direction: column; gap: var(--space-2); align-items: flex-start; }
+.je-qr-box { display: inline-block; padding: var(--space-3); background: var(--color-bg-surface); border: var(--border-width-strong) solid var(--color-border-strong); }
+.je-qr-img { display: block; width: 168px; height: 168px; border-radius: 0; }
+.je-qr-p { margin: 0; font-size: var(--font-size-small); color: var(--color-text-tertiary); }
+.je-fl { position: fixed; inset: 0; z-index: 100; background: rgba(10, 10, 11, .56); display: flex; align-items: flex-end; justify-content: center; }
+.je-fl-in { width: 100%; max-width: 560px; box-sizing: border-box; }
+.je-fl-t { margin: 0 0 var(--space-2); font-size: var(--font-size-title-3); font-weight: 600; outline: none; }
+.je-fl-p { margin: 0 0 var(--space-4); font-size: var(--font-size-small); line-height: 1.5; color: var(--color-text-secondary); }
+.je-fl-lista { margin: 0 0 var(--space-4); padding-left: var(--space-5); display: flex; flex-direction: column; gap: var(--space-2); font-size: var(--font-size-small); line-height: 1.5; color: var(--color-text-secondary); }
+.je-fl-acoes { display: flex; flex-wrap: wrap; gap: var(--space-3); justify-content: flex-end; margin-top: var(--space-4); }
+@media (min-width: 640px) { .je-fl { align-items: center; } }
+@media (max-width: 760px) { .je-cw-card { grid-template-columns: 1fr; } .je-cw { padding-top: var(--space-6); } }
+
+@media (max-width: 640px) { .je-done-largada { grid-template-columns: 1fr; } .je-faltam { border-left: 0; border-top: var(--border-width-hairline) solid var(--color-border-subtle); padding-top: var(--space-4); } }
+@media (min-width: 768px) { .je-cw-card { grid-template-columns: minmax(0, 360px) 1fr; } }

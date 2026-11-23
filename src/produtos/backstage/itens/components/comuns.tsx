@@ -1,5 +1,5 @@
 import { type ReactNode, useEffect, useState } from "react";
-import { ArrowLeft, ChevronRight } from "@untitledui/icons";
+import { ChevronRight } from "@untitledui/icons";
 import { CampoNumero } from "../../components/campo-numero";
 import { AccordionComponent as Accordion } from "@/components/application/accordion/accordion";
 import { Dialog, Modal, ModalOverlay } from "@/components/application/modals/modal";
@@ -10,10 +10,11 @@ import { InputGroup } from "@/components/base/input/input-group";
 import { Toggle } from "@/components/base/toggle/toggle";
 import { Surgir } from "@/components/foundations/transicao";
 import type { RegrasDeVenda } from "@/plataforma";
-import { TITULO_PAGINA } from "@/produtos/backstage/components/titulo-pagina";
+import { CabecalhoDaPagina } from "@/produtos/backstage/components/cabecalho-da-pagina";
 import { cx } from "@/utils/cx";
 import type { EstadoItem, EstadoLote } from "../data/catalogo";
 import { formatar, useTextosItens } from "../data/textos-itens";
+import { AvisoDeEscala } from "./escala";
 
 /* ------------------------------------------------------------------ */
 /*  Peças comuns ao catálogo: estado, seção com resumo, barra de       */
@@ -74,8 +75,10 @@ export function SecaoDoItem({
         return (
             <section data-alerta={alerta || undefined} className={cx("rounded-2xl bg-primary ring-1 ring-secondary", alerta && "ring-2 ring-fg-warning-secondary")}>
                 <Accordion>
-                    <Accordion.Item value="secao" className="rounded-2xl bg-primary" trigger={<span className="block py-1">{cabecalho}</span>}>
-                        <div className="flex flex-col gap-5">{children}</div>
+                    {/* O gatilho do Accordion tem 16 px de recuo e borda: sem a borda e com 4 px (8 px no desktop) a mais,
+                        o título alinha com o das outras seções (20 px, 24 px no desktop). */}
+                    <Accordion.Item value="secao" className="rounded-2xl border-0 bg-primary" trigger={<span className="block py-1 pl-1 md:pl-2">{cabecalho}</span>}>
+                        <div className="flex flex-col gap-5 px-1 md:px-2">{children}</div>
                     </Accordion.Item>
                 </Accordion>
             </section>
@@ -224,12 +227,33 @@ export function CamposDeVendas({ valor, onChange }: { valor: RegrasDeVenda | und
     );
 }
 
+/**
+ * O "À venda" do detalhe, no mesmo lugar nos três (ingresso, produto e combo): na linha do título, à direita,
+ * alinhado ao pé do título (ITM-150; `seloNoPe` do `CabecalhoDaPagina`): com o nome em duas linhas, centrado
+ * ele ficava solto. Área de toque de 44 px de altura (WCAG 2.5.8).
+ */
+export function ToggleAVenda({ titulo, ativo, onAtivo }: { titulo: string; ativo: boolean; onAtivo: (v: boolean) => void }) {
+    const { t } = useTextosItens();
+    return (
+        <div className="flex items-center">
+            <Toggle
+                size="md"
+                label={t.visibilidade.ativo}
+                aria-label={formatar("{rotulo}, {item}", { rotulo: t.visibilidade.ativo, item: titulo })}
+                isSelected={ativo}
+                onChange={onAtivo}
+                className="py-2.5"
+            />
+        </div>
+    );
+}
+
 /** Estados que o toggle "À venda" não mostra sozinho: só eles viram badge no cabeçalho. */
 const ESTADOS_DO_BADGE: EstadoItem[] = ["esgotado", "sem-estoque"];
 
 /**
- * Cabeçalho do detalhe de ingresso, produto e combo (UI-VIS-014, UI-VIS-015): voltar, título e um
- * subtítulo; o liga e desliga do item na mesma linha do título, à direita. O badge só aparece para
+ * Cabeçalho do detalhe de produto e combo (UI-VIS-014, UI-VIS-015, ITM-32): o `CabecalhoDaPagina` com
+ * voltar, título e um subtítulo; o liga e desliga do item é a ação da página. O badge só aparece para
  * o que o toggle não diz (esgotado, sem estoque); o aviso explica quando está ligado e não vende.
  */
 export function CabecalhoDoItem({
@@ -257,40 +281,40 @@ export function CabecalhoDoItem({
     const { t } = useTextosItens();
     const badge = estado && ESTADOS_DO_BADGE.includes(estado) ? <EstadoBadge estado={estado} /> : null;
     return (
-        <header className="flex flex-col gap-3">
-            <Button color="tertiary" size="md" iconLeading={ArrowLeft} onClick={onVoltar} className="-ml-3 self-start">
-                {voltar}
-            </Button>
-            {/* Título à esquerda e o toggle à direita, na mesma linha também no celular. */}
-            <div className="flex items-start justify-between gap-4">
-                <div className="flex min-w-0 items-center gap-4">
-                    {midia}
-                    <div className="flex min-w-0 flex-col gap-1">
-                        <h1 className={`${TITULO_PAGINA} break-words`}>{titulo}</h1>
-                        {(badge || resumo) && (
-                            <p className="flex flex-wrap items-center gap-2 text-md text-tertiary">
-                                {badge}
-                                {resumo && <span>{resumo}</span>}
-                            </p>
-                        )}
-                    </div>
-                </div>
-                {/* Área de toque de 44 px de altura sem mudar o alinhamento (WCAG 2.5.8). */}
-                <Toggle
-                    size="md"
-                    label={t.visibilidade.ativo}
-                    aria-label={formatar("{rotulo}, {item}", { rotulo: t.visibilidade.ativo, item: titulo })}
-                    isSelected={ativo}
-                    onChange={onAtivo}
-                    className="-my-2.5 shrink-0 py-2.5 md:mt-1.5"
-                />
-            </div>
+        // O cabeçalho padrão (BKS-100): voltar, título e subtítulo; o toggle fica na linha do título, à direita,
+        // alinhado ao pé do título, como no ingresso (ITM-150). O aviso fica logo abaixo.
+        <div className="flex flex-col gap-4">
+            <CabecalhoDaPagina
+                voltar={{ rotulo: voltar, onClick: onVoltar }}
+                titulo={
+                    midia ? (
+                        <span className="flex min-w-0 items-center gap-4">
+                            {midia}
+                            <span className="min-w-0">{titulo}</span>
+                        </span>
+                    ) : (
+                        titulo
+                    )
+                }
+                subtitulo={
+                    badge || resumo ? (
+                        <span className="flex flex-wrap items-center gap-2">
+                            {badge}
+                            {resumo && <span>{resumo}</span>}
+                        </span>
+                    ) : undefined
+                }
+                selo={<ToggleAVenda titulo={titulo} ativo={ativo} onAtivo={onAtivo} />}
+                seloNoPe
+            />
             <Surgir visivel={!!aviso}>
                 <p role="status" className="text-sm text-warning-primary">
                     {aviso}
                 </p>
             </Surgir>
-        </header>
+            {/* Catálogo simulado (`?escala`): a faixa também nos detalhes (ITM-85). */}
+            <AvisoDeEscala />
+        </div>
     );
 }
 

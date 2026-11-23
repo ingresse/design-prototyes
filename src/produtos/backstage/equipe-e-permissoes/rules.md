@@ -5,6 +5,8 @@
 > **Versão em uso:** não é a versão em uso. Hoje o menu aponta para `membros` (Membros da organização) e para `equipe-de-operacao` (Equipe de operação do evento). Esta é uma exploração anterior, por evento.
 > **Revisado em:** 2026-11-07
 
+> **Desde 21/11/2026 sem rota:** a URL leva para Equipe e comissários (`/backstage/evento/equipe`) (BKS-35). O código fica como histórico.
+
 Este arquivo é a fonte da verdade do comportamento da feature. Mudou uma regra no código, mude
 aqui no mesmo commit. Achou divergência entre código e este arquivo, registre em **Em aberto**
 em vez de escolher um lado em silêncio.

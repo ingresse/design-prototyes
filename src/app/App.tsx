@@ -12,10 +12,6 @@ import { CortesiasProvider } from '../produtos/backstage/cortesias/data/cortesia
 import { SelecaoOrganizacao } from '../produtos/backstage/organizacoes/pages/SelecaoOrganizacao';
 import { RemixProvider } from '../produtos/backstage/components/remix/remix-context';
 import { EmissaoCortesias } from '../produtos/backstage/cortesias/pages/EmissaoCortesias';
-import { PermissaoEnvio } from '../produtos/backstage/permissao-envio/pages/PermissaoEnvio';
-import { NovaPermissao } from '../produtos/backstage/permissao-envio/pages/NovaPermissao';
-import { EquipeEPermissoes } from '../produtos/backstage/equipe-e-permissoes/pages/EquipeEPermissoes';
-import { NovoMembro } from '../produtos/backstage/equipe-e-permissoes/pages/NovoMembro';
 import { RelatorioPedidos } from '../produtos/backstage/cortesias/pages/RelatorioPedidos';
 import { SelecaoItens } from '../produtos/backstage/cortesias/pages/SelecaoItens';
 import { VerificacaoFinal } from '../produtos/backstage/cortesias/pages/VerificacaoFinal';
@@ -23,8 +19,6 @@ import { Acesso } from '../produtos/backstage/relatorios/pages/Acesso';
 import { Bordero } from '../produtos/backstage/relatorios/pages/Bordero';
 import { Comparativos } from '../produtos/backstage/relatorios/pages/Comparativos';
 import { Transacoes } from '../produtos/backstage/relatorios/pages/Transacoes';
-import { Transacoes2 } from '../produtos/backstage/relatorios/pages/Transacoes2';
-import { Transacoes3 } from '../produtos/backstage/relatorios/pages/Transacoes3';
 import { Transferencias } from '../produtos/backstage/relatorios/pages/Transferencias';
 import { VendasPorGrupo } from '../produtos/backstage/relatorios/pages/VendasPorGrupo';
 import { Questionarios } from '../produtos/backstage/relatorios/pages/Questionarios';
@@ -34,8 +28,6 @@ import { CriarEvento as BackstageCriarEvento } from '../produtos/backstage/event
 import { VisaoGeralEvento } from '../produtos/backstage/eventos/pages/VisaoGeralEvento';
 import { InformacoesEvento } from '../produtos/backstage/eventos/pages/InformacoesEvento';
 import { Categorias as BackstageCategorias } from '../produtos/backstage/categorias/pages/categorias';
-import { MembrosV2 } from '../produtos/backstage/membros-v2/pages/MembrosV2';
-import { NovoGrupoV2 } from '../produtos/backstage/membros-v2/pages/NovoGrupoV2';
 import { Membros } from '../produtos/backstage/membros/pages/Membros';
 import { CriarCargo } from '../produtos/backstage/membros/pages/CriarCargo';
 import { EquipeEComissarios } from '../produtos/backstage/equipe-e-comissarios/pages/equipe-e-comissarios';
@@ -49,18 +41,26 @@ import { IngressoPdf } from '../produtos/backstage/bilheteria/pages/IngressoPdf'
 import { PedidosBilheteria } from '../produtos/backstage/bilheteria/pages/Pedidos';
 import { VincularItens } from '../produtos/backstage/chave-de-acesso/pages/VincularItens';
 import { ListaChaves } from '../produtos/backstage/chave-de-acesso/pages/ListaChaves';
+import { PixelDeRastreamento } from '../produtos/backstage/pixel-de-rastreamento/pages/pixel-de-rastreamento';
+import { ListaDeEspera as BackstageListaDeEspera } from '../produtos/backstage/lista-de-espera/pages/lista-de-espera';
+import { ConviteListaDeEspera } from '../produtos/marketplace/selecao-e-atribuicao/pages/convite-lista-de-espera';
+import { Etiquetas } from '../produtos/backstage/etiquetas/pages/etiquetas';
+import { Cupons } from '../produtos/backstage/cupons/pages/cupons';
+import { LotesSincronizados } from '../produtos/backstage/lotes-sincronizados/pages/lotes-sincronizados';
+import { NovoConjunto } from '../produtos/backstage/lotes-sincronizados/pages/novo-conjunto';
+import { ComprasEmGrupoPagina } from '../produtos/backstage/compras-em-grupo/pages/compras-em-grupo';
+import { TermosDeUso } from '../produtos/backstage/termos-de-uso/pages/termos-de-uso';
+import { MapasInterativos } from '../produtos/backstage/mapas-interativos/pages/mapas-interativos';
+import { EditorDeMapa } from '../produtos/backstage/mapas-interativos/pages/editor-de-mapa';
+import { ListaDeUsuarios } from '../produtos/backstage/relatorios/pages/lista-de-usuarios';
+import { Financas } from '../produtos/backstage/financas/pages/financas';
+import { Segmentacoes } from '../produtos/backstage/segmentacoes/pages/segmentacoes';
+import { Segmento } from '../produtos/backstage/segmentacoes/pages/segmento';
+import { PedidoDeGrupo } from '../produtos/marketplace/pedido-de-grupo/pages/pedido-de-grupo';
 import { SeletorTimes } from '../produtos/futebol/landing-pages/pages/SeletorTimes';
 import { Gremio } from '../produtos/futebol/landing-pages/pages/Gremio';
 import { Botafogo } from '../produtos/futebol/landing-pages/pages/Botafogo';
-import { PasswordGate } from '../produtos/novo-site/components/PasswordGate';
-import { EventDetails } from '../produtos/novo-site/home/pages/event-details';
-import { Categorias } from '../produtos/novo-site/home/pages/categorias';
-import { Home as NovoSiteHome } from '../produtos/novo-site/home/pages/home';
-import { Busca as NovoSiteBusca } from '../produtos/novo-site/home/pages/busca';
-import { Itens as CatalogoItens } from '../produtos/backstage/catalogo/pages/Itens';
-import { Ingressos as CatalogoIngressos } from '../produtos/backstage/ingressos/pages/Ingressos';
-import { Formulario as IngressosFormulario } from '../produtos/backstage/ingressos/pages/Formulario';
-import { EditarGrupos } from '../produtos/backstage/ingressos/pages/EditarGrupos';
+import { SiteEstatico } from './components/SiteEstatico';
 import { AberturasDeVendas } from '../produtos/backstage/aberturas-de-vendas/pages/AberturasDeVendas';
 import { Questionario } from '../produtos/backstage/questionario/pages/Questionario';
 import { PerguntaDetalhe } from '../produtos/backstage/questionario/pages/PerguntaDetalhe';
@@ -75,11 +75,7 @@ import { Combos as ItensCombos } from '../produtos/backstage/itens/pages/Combos'
 import { ComboDetalhe as ItensComboDetalhe } from '../produtos/backstage/itens/pages/ComboDetalhe';
 import { Configuracoes as ItensConfiguracoes } from '../produtos/backstage/itens/pages/Configuracoes';
 import { PerguntasProvider } from '../produtos/backstage/perguntas/data/perguntas-store';
-import { Perguntas } from '../produtos/backstage/perguntas/pages/Perguntas';
-import { PerguntaForm } from '../produtos/backstage/perguntas/pages/PerguntaForm';
 import { PesquisasProvider } from '../produtos/backstage/pesquisas/data/pesquisas-store';
-import { Pesquisas } from '../produtos/backstage/pesquisas/pages/Pesquisas';
-import { VinculosPergunta } from '../produtos/backstage/pesquisas/pages/VinculosPergunta';
 import { SelecaoEAtribuicao } from '../produtos/marketplace/selecao-e-atribuicao/pages/SelecaoEAtribuicao';
 import { Config as MarketplaceConfig } from '../produtos/marketplace/selecao-e-atribuicao/pages/Config';
 import { Sucesso as MarketplaceSucesso } from '../produtos/marketplace/selecao-e-atribuicao/pages/Sucesso';
@@ -275,10 +271,16 @@ export default function App() {
         <Route path="/backstage/membros" element={<Membros />} />
         <Route path="/backstage/membros/criar-cargo" element={<CriarCargo />} />
         <Route path="/backstage/membros/cargos/:id/editar" element={<CriarCargo />} />
-        <Route path="/backstage/membros-v2" element={<MembrosV2 />} />
-        <Route path="/backstage/membros-v2/grupos/novo" element={<NovoGrupoV2 />} />
+        {/* Telas duplicadas levam à versão em uso (BKS-35). */}
+        <Route path="/backstage/membros-v2/*" element={<Navigate to="/backstage/membros" replace />} />
         {/* Equipe e Comissários (ECO): Equipe de operação e Comissários do evento num destino só. */}
         <Route path="/backstage/evento/equipe" element={<EquipeEComissarios />} />
+        {/* Central de cada grupo do menu do evento (BKS-07, jornada-do-evento/rules.md). */}
+        {/* Financeiro saiu do menu do evento (BKS-07): produção não tem financeiro no evento. */}
+        <Route path="/backstage/evento/financeiro" element={<Navigate to="/backstage/evento/visao-geral" replace />} />
+        {/* As centrais de cartões saíram em 22/11/2026 (BKS-07): os endereços antigos levam para onde as funcionalidades estão. */}
+        <Route path="/backstage/evento/configuracoes-de-venda" element={<Navigate to="/backstage/catalogo/ingressos" replace />} />
+        <Route path="/backstage/evento/marketing" element={<Navigate to="/backstage/marketing/lista-de-espera" replace />} />
         <Route path="/backstage/evento/equipe/:grupoId" element={<GrupoDaEquipe />} />
         <Route path="/backstage/evento/equipe/:grupoId/canal/:canal" element={<CanalDoGrupo />} />
         <Route path="/backstage/equipe-de-operacao/*" element={<Navigate to="/backstage/evento/equipe" replace />} />
@@ -286,29 +288,36 @@ export default function App() {
         <Route path="/backstage/bilheteria/vender" element={<VenderIngressos />} />
         <Route path="/backstage/bilheteria/ingresso-pdf" element={<IngressoPdf />} />
         <Route path="/backstage/cortesias" element={<RelatorioPedidos />} />
-        <Route path="/backstage/permissao-envio" element={<PermissaoEnvio />} />
-        <Route path="/backstage/permissao-envio/nova" element={<NovaPermissao />} />
-        <Route path="/backstage/permissao-envio/:id/editar" element={<NovaPermissao />} />
-        <Route path="/backstage/equipe-e-permissoes" element={<EquipeEPermissoes />} />
-        <Route path="/backstage/equipe-e-permissoes/novo" element={<NovoMembro />} />
-        <Route path="/backstage/equipe-e-permissoes/:id/editar" element={<NovoMembro />} />
+        {/* Permissão de envio repetia o canal Cortesia de Equipe e comissários, onde vive a cota que a emissão aplica (BKS-35). */}
+        <Route path="/backstage/permissao-envio/*" element={<Navigate to="/backstage/evento/equipe" replace />} />
+        <Route path="/backstage/equipe-e-permissoes/*" element={<Navigate to="/backstage/evento/equipe" replace />} />
         <Route path="/backstage/itens" element={<SelecaoItens />} />
         <Route path="/backstage/destinatarios" element={<EmissaoCortesias />} />
         <Route path="/backstage/verificacao" element={<VerificacaoFinal />} />
         <Route path="/backstage/relatorios/vendas-por-grupo" element={<VendasPorGrupo />} />
         <Route path="/backstage/relatorios/transacoes" element={<Transacoes />} />
-        <Route path="/backstage/relatorios/transacoes2" element={<Transacoes2 />} />
-        <Route path="/backstage/relatorios/transacoes3" element={<Transacoes3 />} />
+        <Route path="/backstage/relatorios/transacoes2" element={<Navigate to="/backstage/relatorios/transacoes" replace />} />
+        <Route path="/backstage/relatorios/transacoes3" element={<Navigate to="/backstage/relatorios/transacoes" replace />} />
         <Route path="/backstage/relatorios/acesso" element={<Acesso />} />
         <Route path="/backstage/relatorios/bordero" element={<Bordero />} />
         <Route path="/backstage/relatorios/transferencias" element={<Transferencias />} />
         <Route path="/backstage/relatorios/comparativos" element={<Comparativos />} />
         <Route path="/backstage/relatorios/questionarios" element={<Questionarios />} />
+        <Route path="/backstage/relatorios/lista-de-usuarios" element={<ListaDeUsuarios />} />
         <Route path="/backstage/relatorios/relatorio-personalizado" element={<RelatorioPersonalizado />} />
         <Route path="/backstage/marketing/chave-de-acesso" element={<ChaveDeAcesso />} />
         <Route path="/backstage/marketing/chave-de-acesso/vincular-itens" element={<VincularItens />} />
         <Route path="/backstage/marketing/chave-de-acesso/lista" element={<ListaChaves />} />
-        {/* Menu Itens novo (itens/): o item é o centro. As telas anteriores ficam em /backstage/catalogo-anterior/*. */}
+        <Route path="/backstage/marketing/pixel" element={<PixelDeRastreamento />} />
+        <Route path="/backstage/marketing/lista-de-espera" element={<BackstageListaDeEspera />} />
+        <Route path="/backstage/marketing/cupons" element={<Cupons />} />
+        <Route path="/backstage/vendas/lotes-sincronizados" element={<LotesSincronizados />} />
+        <Route path="/backstage/vendas/lotes-sincronizados/novo" element={<NovoConjunto />} />
+        <Route path="/backstage/vendas/compras-em-grupo" element={<ComprasEmGrupoPagina />} />
+        <Route path="/backstage/marketing/etiquetas" element={<Etiquetas />} />
+        <Route path="/backstage/marketing/etiquetas/nova" element={<Etiquetas />} />
+        <Route path="/backstage/marketing/etiquetas/:id" element={<Etiquetas />} />
+        {/* Menu Itens novo (itens/): o item é o centro. As telas anteriores (/backstage/catalogo-anterior/*) levam para cá. */}
         {/* Abas de Itens numa rota-pai: rail, menu, título e abas ficam montados; só o conteúdo da aba troca. */}
         <Route element={<LayoutDeItens />}>
             <Route path="/backstage/catalogo/ingressos" element={<ItensIngressos />} />
@@ -327,16 +336,10 @@ export default function App() {
         <Route path="/backstage/catalogo/questionario" element={<Questionario />} />
         <Route path="/backstage/catalogo/questionario/:id" element={<PerguntaDetalhe />} />
         <Route path="/backstage/catalogo/itens" element={<Navigate to="/backstage/catalogo/ingressos" replace />} />
-        <Route path="/backstage/catalogo-anterior/ingressos" element={<CatalogoIngressos />} />
-        <Route path="/backstage/catalogo-anterior/editar-grupos" element={<EditarGrupos />} />
-        <Route path="/backstage/catalogo-anterior/formulario" element={<IngressosFormulario />} />
         <Route path="/backstage/catalogo-anterior/aberturas-de-vendas" element={<Navigate to="/backstage/catalogo/aberturas-de-vendas" replace />} />
-        <Route path="/backstage/catalogo-anterior/itens" element={<CatalogoItens />} />
-        <Route path="/backstage/perguntas" element={<Perguntas />} />
-        <Route path="/backstage/perguntas/nova" element={<PerguntaForm />} />
-        <Route path="/backstage/perguntas/:id/editar" element={<PerguntaForm />} />
-        <Route path="/backstage/pesquisas" element={<Pesquisas />} />
-        <Route path="/backstage/pesquisas/:perguntaId/vinculos" element={<VinculosPergunta />} />
+        <Route path="/backstage/catalogo-anterior/*" element={<Navigate to="/backstage/catalogo/ingressos" replace />} />
+        <Route path="/backstage/perguntas/*" element={<Navigate to="/backstage/catalogo/questionario" replace />} />
+        <Route path="/backstage/pesquisas/*" element={<Navigate to="/backstage/catalogo/questionario" replace />} />
         <Route path="/carteira-app/meus-ingressos" element={<MeusIngressos />} />
         <Route path="/carteira-app/meus-ingressos/web" element={<MeusIngressosWeb />} />
         <Route path="/ticket-sports/hub" element={<Hub />} />
@@ -396,10 +399,12 @@ export default function App() {
         <Route path="/totem/event" element={<TotemSelecaoEAtribuicao />} />
         <Route path="/totem/sucesso" element={<TotemSucesso />} />
         <Route path="/totem/meia-entrada" element={<TotemMeiaEntrada />} />
-        <Route path="/novo-site/home" element={<NovoSiteHome />} />
-        <Route path="/novo-site/home/busca" element={<NovoSiteBusca />} />
-        <Route path="/novo-site/home/event-details" element={<PasswordGate><EventDetails /></PasswordGate>} />
-        <Route path="/novo-site/home/categorias" element={<Categorias />} />
+        {/* Novo site: cópia estática em public/novo-site (ver ponte-backstage.js). Os endereços antigos levam às páginas novas. */}
+        <Route path="/novo-site" element={<SiteEstatico pagina="Main.dc.html?modo=mvp" />} />
+        <Route path="/novo-site/home" element={<SiteEstatico pagina="Main.dc.html?modo=mvp" />} />
+        <Route path="/novo-site/home/busca" element={<SiteEstatico pagina="Busca.dc.html" />} />
+        <Route path="/novo-site/home/event-details" element={<SiteEstatico pagina="Evento.dc.html" />} />
+        <Route path="/novo-site/home/categorias" element={<SiteEstatico pagina="Categoria.dc.html?c=shows" />} />
         <Route path="/ingresse-app" element={<IngresseAppHome />} />
         {/* Atalho de teste: abre a Início com o bottom sheet da oferta Uber */}
         <Route path="/ingresse-app/uber" element={<IngresseAppHome />} />
@@ -465,7 +470,11 @@ export default function App() {
         <Route path="/revenda/*" element={<RedirecionaRevenda />} />
         <Route path="/aprovacoes/solicitacoes" element={<SolicitacoesInbox />} />
         <Route path="/backstage/publico" element={<Publico />} />
+        <Route path="/backstage/financas" element={<Financas />} />
         <Route path="/backstage/ajustes" element={<AjustesDaOrganizacao />} />
+        <Route path="/backstage/ajustes/termos-de-uso" element={<TermosDeUso />} />
+        <Route path="/backstage/ajustes/mapas" element={<MapasInterativos />} />
+        <Route path="/backstage/ajustes/mapas/:id" element={<EditorDeMapa />} />
         <Route path="/backstage/produtos" element={<ProdutosDaOrganizacao />} />
         {/* Não há mais cadastro de comissário na organização: o grupo é o comissário (ECO-09); o painel virou relatório (ECO-26). */}
         <Route path="/backstage/relatorios/comissarios" element={<RelatorioComissarios />} />
@@ -474,6 +483,8 @@ export default function App() {
         <Route path="/backstage/evento/comissarios/:id" element={<RedirecionarComissario />} />
         <Route path="/backstage/suas-vendas" element={<Navigate to="/freepass/eventos" replace />} />
         <Route path="/backstage/produtos/:id" element={<ProdutoDaOrganizacaoDetalhe />} />
+        <Route path="/backstage/publico/segmentacoes" element={<Segmentacoes />} />
+        <Route path="/backstage/publico/segmentacoes/:id" element={<Segmento />} />
         <Route path="/backstage/publico/formularios" element={<FormulariosParticipacao />} />
         <Route path="/backstage/publico/solicitacoes" element={<SolicitacoesParticipacao />} />
         <Route path="/backstage/marketing/pre-venda" element={<PreVenda />} />
@@ -523,6 +534,9 @@ export default function App() {
         {/* Plataforma unificada: link de compra de um evento do banco (src/plataforma) */}
         <Route path="/comprar/:eventoId" element={<CompraDoEvento />} />
         <Route path="/e/:slug" element={<CompraDoEvento />} />
+        {/* Link de convite da lista de espera (LES-03), configurado no Backstage › Marketing › Lista de espera. */}
+        <Route path="/e/:slug/lista-de-espera" element={<ConviteListaDeEspera />} />
+        <Route path="/grupos/:slug" element={<PedidoDeGrupo />} />
         <Route path="/checkout/protecao-de-compra" element={<ProtecaoDeCompra />} />
       </Routes>
       {/* Todo toast pode ser fechado na hora (BKS-67). */}

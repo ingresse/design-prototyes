@@ -19,8 +19,9 @@ import type { CanalComissario, Comissario, ComissarioNoEvento, Condicoes, Pessoa
 /*  cargo aplicado às pessoas do grupo. Cada grupo, em cada evento, é  */
 /*  um comissário próprio.                                             */
 /*                                                                     */
-/*  Aqui ficam só os tipos e as contas puras. O estado (localStorage)  */
-/*  mora no store de `comissarios.ts`, o único da feature.             */
+/*  Aqui ficam só os tipos e as contas puras. O estado mora no banco   */
+/*  da plataforma (`Evento.equipe`), lido e gravado pelo store de      */
+/*  `comissarios.ts`, o único da feature.                              */
 /* ------------------------------------------------------------------ */
 
 export type CanalGrupo = "link" | "pdv" | "bilheteria" | "cortesia";
@@ -67,8 +68,38 @@ export interface CanalDoGrupo {
     cota: CotaGrupo;
     /** PDV e Bilheteria em grupo com comissário: a venda gera comissão para ele. */
     comissao?: boolean;
-    /** Quanto já foi operado de cada item neste canal. */
+    /**
+     * Quanto já foi operado de cada item neste canal. Gravado, é só a base dos pedidos de exemplo
+     * (grupos de exemplo); o que as telas leem é derivado dos pedidos do grupo (`comissarios.ts`).
+     */
     uso: Record<string, number>;
+}
+
+/** Quem vendeu nas vendas de exemplo, congelado na semente (nome e código da hora). */
+export interface VendedorDeExemplo {
+    email: string;
+    nome: string;
+    codigo?: string;
+}
+
+/**
+ * Parâmetros das vendas de exemplo de um grupo-comissário semeado (ECO-86). As vendas não são
+ * gravadas: são geradas do catálogo do evento, sempre iguais (semente: evento + grupo), com a
+ * condição, os canais e os ingressos congelados aqui na hora da semente.
+ */
+export interface VendasDeExemplo {
+    /** Quantas linhas gerar (o teto fica em `comissarios.ts`). */
+    quantidade: number;
+    condicoes: Condicoes;
+    /** Canais por onde as vendas saíram. */
+    canais: CanalGrupo[];
+    /** Ingressos do link e da bilheteria; `null`: todos os do evento. */
+    ingressos: string[] | null;
+    /** Ingressos das cortesias. */
+    cortesias: string[];
+    vendedores: VendedorDeExemplo[];
+    /** Data de referência: as vendas caem nos 30 dias antes dela. */
+    desde: string;
 }
 
 export interface GrupoEquipe {
@@ -88,7 +119,7 @@ export interface GrupoEquipe {
     operadoresInativos: string[];
     /** Grupos de Membros desligados por inteiro. */
     gruposInativos: string[];
-    /** Quanto cada pessoa já operou, somando os canais. */
+    /** Quanto cada pessoa já operou, somando os canais. Derivado dos pedidos do grupo na leitura. */
     emitidosPorOperador: Record<string, number>;
     /** O próprio id do grupo quando o grupo é comissário (canal Comissário configurado). `null`: sem comissão. */
     comissarioId: string | null;
@@ -107,6 +138,8 @@ export interface GrupoEquipe {
     codigosVendedores?: Record<string, string>;
     /** Canal ausente: ainda não configurado. */
     canais: Partial<Record<CanalGrupo, CanalDoGrupo>>;
+    /** Só nos grupos-comissário semeados: de onde saem as vendas de exemplo (ECO-86). */
+    vendasDeExemplo?: VendasDeExemplo;
 }
 
 export const plural = (n: number, um: string, varios: string) => `${n.toLocaleString("pt-BR")} ${n === 1 ? um : varios}`;

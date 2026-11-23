@@ -5,7 +5,7 @@ import { Badge } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
 import { comissaoBruta, comissaoDaVenda, setoresDoEvento, type CanalComissario } from "@/plataforma/comissarios";
 import { BackstageLayout } from "../../components/Backstage";
-import { TITULO_PAGINA } from "../../components/titulo-pagina";
+import { CabecalhoDaPagina } from "../../components/cabecalho-da-pagina";
 import { useEventoAtual } from "../../eventos/data/eventos";
 import { CompartilharLink, CopiarLink, Metrica } from "../components/comuns";
 import { nomeCurto, useAcessoNoEvento, useMinhasVendas } from "../data/minhas-vendas";
@@ -63,13 +63,10 @@ export function VendasNoEvento() {
     return (
         <BackstageLayout activeSection="comissarios" activeItem="minhas-vendas-evento">
             <div className="flex w-full min-w-0 flex-1 flex-col gap-6">
-                <header className="flex flex-col gap-1">
-                    <h1 className={TITULO_PAGINA}>Minhas vendas</h1>
-                    <p className="text-md text-tertiary">
-                        {p.organizacao}
-                        {p.comissario.pessoas.length > 1 ? `, por ${p.comissario.nome}, seu código ${p.codigo}` : `, código ${p.codigo}`}
-                    </p>
-                </header>
+                <CabecalhoDaPagina
+                    titulo="Minhas vendas"
+                    subtitulo={`${p.organizacao}${p.comissario.pessoas.length > 1 ? `, por ${p.comissario.nome}, seu código ${p.codigo}` : `, código ${p.codigo}`}`}
+                />
 
                 {/* O que ele mais faz: divulgar. */}
                 {p.pausado ? (

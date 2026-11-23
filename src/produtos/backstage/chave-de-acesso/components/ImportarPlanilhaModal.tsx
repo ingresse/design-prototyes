@@ -45,7 +45,7 @@ export function ImportarPlanilhaModal({ isOpen, onClose, onImport }: ImportarPla
         }
     }, [isOpen]);
 
-    // Simulated upload progress — only runs once the file is parsed and valid.
+    // Simulated upload progress: only runs once the file is parsed and valid.
     useEffect(() => {
         if (!file || isError || parsedKeys === null || progress >= 100) return;
         const id = setInterval(() => {
@@ -135,7 +135,7 @@ export function ImportarPlanilhaModal({ isOpen, onClose, onImport }: ImportarPla
             isDismissable
         >
             <Modal>
-                <Dialog>
+                <Dialog aria-label="Importar planilha">
                     <div className="w-full max-w-md rounded-xl bg-primary p-6 shadow-xl ring-1 ring-border-secondary">
                         <div className="flex items-start justify-between gap-3">
                             <div className="flex-1">
@@ -190,7 +190,7 @@ export function ImportarPlanilhaModal({ isOpen, onClose, onImport }: ImportarPla
                                     <span className="font-semibold text-brand-secondary">Clique</span>{" "}
                                     <span className="text-secondary">ou arraste o arquivo aqui</span>
                                 </p>
-                                <p className="mt-1 text-xs text-tertiary">CSV ou Excel com até 1.000 Passkeys</p>
+                                <p className="mt-1 text-sm text-tertiary">CSV ou Excel com até 1.000 Passkeys</p>
                             </div>
                             <FileIcon type="csv" className="pointer-events-none absolute right-6 bottom-6 size-8 shrink-0" />
                         </div>
@@ -208,7 +208,7 @@ export function ImportarPlanilhaModal({ isOpen, onClose, onImport }: ImportarPla
                                     <div className="flex items-start justify-between gap-2">
                                         <div className="flex min-w-0 flex-1 flex-col">
                                             <span className="truncate text-sm font-medium text-primary">{file.name}</span>
-                                            <span className="flex items-center gap-1.5 text-xs text-tertiary">
+                                            <span className="flex items-center gap-1.5 text-sm text-tertiary">
                                                 {file.sizeText}
                                                 <span aria-hidden="true">|</span>
                                                 {isError ? (
@@ -246,7 +246,7 @@ export function ImportarPlanilhaModal({ isOpen, onClose, onImport }: ImportarPla
                                                     style={{ width: `${progress}%` }}
                                                 />
                                             </div>
-                                            <span className="text-xs font-medium text-secondary tabular-nums">{progress}%</span>
+                                            <span className="text-sm font-medium text-secondary tabular-nums">{progress}%</span>
                                         </div>
                                     )}
                                 </div>

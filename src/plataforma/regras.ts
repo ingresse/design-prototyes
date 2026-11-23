@@ -1,4 +1,4 @@
-import type { AberturaDeVendas, Evento, EventoStatus, Grupo, HistoricoVendas, IngressoEmitido, Lote, Pedido, Sessao, TipoIngresso } from "./modelo";
+import type { AberturaDeVendas, ConjuntoSincronizado, Cupom, Evento, EventoStatus, Grupo, HistoricoVendas, IngressoEmitido, Lote, Pedido, Sessao, TipoIngresso } from "./modelo";
 
 /* Regras de negócio puras, usadas por todos os produtos. Sem React, sem banco. */
 
@@ -132,3 +132,81 @@ export const itensDaAbertura = (a: AberturaDeVendas) => {
     const vistos = new Set<string>();
     return (a.configuracoes ?? []).flatMap((c) => c.itens).filter((i) => !vistos.has(`${i.tipo}:${i.id}`) && !!vistos.add(`${i.tipo}:${i.id}`));
 };
+
+/* ------------------------------------------------------------------ */
+/*  Lotes sincronizados (LSI): o lote à venda de quem está num conjunto */
+/* ------------------------------------------------------------------ */
+
+/** Quantas viradas o conjunto já executou: a virada N roda quando as vendas dos lotes em curso chegam ao gatilho dela. */
+export function viradasExecutadas(c: ConjuntoSincronizado, e: Evento, vendidos: Map<string, number>): number {
+    const tipos = new Map<string, TipoIngresso>();
+    for (const { tipo } of percorrerCatalogo(e)) tipos.set(tipo.id, tipo);
+    const itens = c.itens.flatMap((i) => {
+        const t = tipos.get(i.ingressoId);
+        return t ? [{ t, inicio: Math.max(0, t.lotes.findIndex((l) => l.id === i.loteInicialId)) }] : [];
+    });
+    let n = 0;
+    for (;;) {
+        const gatilho = c.gatilhos[n + 1];
+        if (gatilho == null) return n;
+        let soma = 0;
+        let algum = false;
+        for (const { t, inicio } of itens) {
+            const l = t.lotes[inicio + n];
+            if (t.ativo && l) {
+                algum = true;
+                soma += vendidos.get(l.id) ?? 0;
+            }
+        }
+        if (!algum || soma < gatilho) return n;
+        n++;
+    }
+}
+
+/**
+ * Lote à venda agora. Fora de conjunto, o de sempre (`loteAtual`). Num conjunto de lotes sincronizados,
+ * o lote inicial + as viradas executadas: o ingresso só muda de lote quando o conjunto vira, e esgota
+ * se o lote da vez acabar antes (LSI-21).
+ */
+export function loteAVenda(e: Evento, tipo: TipoIngresso, vendidos: Map<string, number>): Lote | undefined {
+    const c = e.conjuntosSincronizados?.find((x) => x.itens.some((i) => i.ingressoId === tipo.id));
+    if (!c) return loteAtual(tipo, vendidos);
+    const item = c.itens.find((i) => i.ingressoId === tipo.id)!;
+    const inicio = Math.max(0, tipo.lotes.findIndex((l) => l.id === item.loteInicialId));
+    const lote = tipo.lotes[inicio + viradasExecutadas(c, e, vendidos)];
+    return lote && !lote.pausado && (vendidos.get(lote.id) ?? 0) < lote.quantidade ? lote : undefined;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Cupons (CUP): validade e desconto, as regras do checkout de produção */
+/* ------------------------------------------------------------------ */
+
+/** Por que o cupom não vale agora; `null` quando vale. `usosDoComprador`: pedidos pagos dele com o cupom. */
+export function motivoDoCupomInvalido(c: Cupom, agora: Date, usosDoComprador: number): string | null {
+    const t = agora.toISOString().slice(0, 16);
+    if (!c.ativo) return "Este cupom não está ativo.";
+    if (c.inicio && t < c.inicio) return "Este cupom ainda não está valendo.";
+    if (c.fim && t > c.fim) return "Este cupom expirou.";
+    if (c.limiteItens != null && c.usos >= c.limiteItens) return "Este cupom já foi totalmente utilizado.";
+    if (c.limitePorComprador != null && usosDoComprador >= c.limitePorComprador) return "Você já usou este cupom o máximo de vezes.";
+    if (!c.vinculos.length) return "Este cupom não vale para nenhum item.";
+    return null;
+}
+
+/**
+ * Desconto do cupom num carrinho (CART-049/051/052): só nos lotes e combos vinculados, nunca em item
+ * gratuito; com "por itens da compra" = N, só nas N unidades mais caras; respeita o que ainda resta do
+ * limite do evento. Percentual arredonda para baixo; valor fixo nunca deixa o item negativo.
+ */
+export function descontoDoCupom(c: Cupom, itens: { loteId?: string; comboId?: string; face: number; quantidade: number }[]): { desconto: number; itens: number } {
+    const vale = new Set(c.vinculos.map((v) => `${v.tipo}:${v.id}`));
+    let unidades = itens.flatMap((i) => {
+        const chave = i.loteId ? `lote:${i.loteId}` : i.comboId ? `combo:${i.comboId}` : "";
+        return chave && vale.has(chave) && i.face > 0 ? Array.from({ length: i.quantidade }, () => i.face) : [];
+    });
+    unidades.sort((a, b) => b - a);
+    if (c.limiteItensPorCompra != null) unidades = unidades.slice(0, c.limiteItensPorCompra);
+    if (c.limiteItens != null) unidades = unidades.slice(0, Math.max(0, c.limiteItens - c.usos));
+    const desconto = unidades.reduce((n, face) => n + (c.tipoDesconto === "percentual" ? Math.floor(face * c.valor) / 100 : Math.min(face, c.valor)), 0);
+    return { desconto: Math.round(desconto * 100) / 100, itens: unidades.length };
+}

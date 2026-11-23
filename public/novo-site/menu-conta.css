@@ -1,0 +1,103 @@
+/* menu-conta.css: o avatar do cabeçalho, a bolinha de notificações novas e o menu da conta, UM componente em todas as telas com cabeçalho
+   (tools/previa/menu-conta.mjs + tools/previa/menu-conta.js; pedido do Wander, 28/10/2026; Mariana, com o Edu do Udi e o Joaquim).
+   Só tokens da identidade. Raio de 8 px (círculo só no avatar e na bolinha, que são indicador), sem sombra e sem desfoque, alvo de 48 px, Elza.
+   Anatomia e comportamento: Untitled UI `dropdown-avatar` (docs/produto/MENU-DA-CONTA-EDU.md). Mesmo padrão do popover de cidades (.cid-pop):
+   position fixed no <html>, z-index de dropdown, borda de 2 px, ancorado à direita do gatilho, 8 px abaixo, vira para cima se faltar espaço.
+   Movimento: popover entra em 160 ms (motion.duration.fast) e sai em 80 ms (instant); folha (celular) entra em 280 (base) e sai em 160 (fast); reduzido = 0 (os tokens zeram). */
+
+/* ---------- o gatilho: o avatar de 48 px, círculo, com a bolinha no canto superior direito ---------- */
+.mc-av { font: inherit; position: relative; flex: 0 0 auto; box-sizing: border-box; display: inline-flex; width: var(--size-touch-default); height: var(--size-touch-default); min-width: var(--size-touch-default); padding: 0; margin: 0; border: 0; background: none; color: var(--color-text-primary); cursor: pointer; border-radius: var(--radius-circle); outline-offset: var(--focus-offset); transition: outline-color var(--motion-duration-fast) var(--motion-ease-move); }
+.mc-av.avatar-hdr { background: none; outline: 0; }
+.mc-av .uui-avatar { --uui-avatar-size: var(--size-touch-default); display: block; pointer-events: none; }
+.mc-av:hover .uui-avatar__content, .mc-av[aria-expanded="true"] .uui-avatar__content { outline: var(--border-width-strong) solid var(--color-border-strong); outline-offset: calc(var(--border-width-strong) * -1); } /* hover e aberto: anel de 2 px (a foto não escurece) */
+.mc-av:focus-visible { outline: var(--focus-width) solid var(--color-focus-ring); outline-offset: var(--focus-offset); }
+.mc-gen { display: none; width: var(--size-icon-md); height: var(--size-icon-md); fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.mc-av[data-conta="false"] .mc-gen, .mc-card[data-conta="false"] .mc-gen { display: block; } /* visitante: avatar genérico (pessoa), sem foto nem iniciais */
+.mc-av[data-conta="false"] .mc-ini, .mc-av[data-conta="false"] img, .mc-card[data-conta="false"] .mc-ini, .mc-card[data-conta="false"] img { display: none; }
+/* a bolinha: o número de NOVAS (1 a 9; «9+» de 10 em diante), círculo de 24 px com anel de 2 px na cor da página (o vermelho sobre uma foto não tem contraste garantido: o anel é obrigatório).
+   Vermelho do botão primário com o branco do texto dele (4,54:1), número 14/700. Não pulsa, não é alvo (pointer-events: none) e some sem novas; entra e sai com escala e opacidade (tokens motion.*). */
+.mc-n { position: absolute; top: -6px; right: -6px; box-sizing: border-box; width: 24px; height: 24px; padding: 0; display: inline-flex; align-items: center; justify-content: center; background: var(--color-button-primary-bg); color: var(--color-button-primary-fg); border: var(--border-width-strong) solid var(--color-bg-page); border-radius: var(--radius-circle) !important; font-size: var(--font-size-label); font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; letter-spacing: 0; pointer-events: none; opacity: 1; transform: scale(1); transition: opacity var(--motion-duration-fast) var(--motion-ease-enter), transform var(--motion-duration-base) var(--motion-ease-enter); }
+.mc-n[data-vazio="true"] { opacity: 0; transform: scale(.4); transition: opacity var(--motion-duration-fast) var(--motion-ease-exit), transform var(--motion-duration-fast) var(--motion-ease-exit); }
+.hdr-row > .mc-av, .hdr-row > .hdr-lupa ~ .mc-av { margin-left: 0; }
+html[data-pagina="busca"] .hdr-row > .mc-av { margin-left: 0; }
+
+/* ---------- o menu: popover no desktop, folha de baixo até 640 px ---------- */
+.mc-pop, .mc-pop * { font-family: var(--font-family-base) !important; }
+.mc-pop { position: fixed; z-index: var(--zIndex-dropdown); box-sizing: border-box; display: flex; flex-direction: column; width: min(320px, calc(100vw - 2 * var(--space-2))); background: var(--color-bg-surface); color: var(--color-text-primary); border: var(--border-width-strong) solid var(--color-border-strong); font-size: var(--font-size-small); line-height: var(--font-lh-body); transform-origin: 100% 0; }
+.mc-pop[data-lado="cima"] { transform-origin: 100% 100%; }
+.mc-pop[data-modo="folha"] { left: 0; right: 0; bottom: 0; top: auto; width: auto; max-height: 86dvh; border-width: var(--border-width-strong) 0 0 0; border-radius: var(--radius-base) var(--radius-base) 0 0 !important; z-index: var(--zIndex-sheet); padding-bottom: env(safe-area-inset-bottom); transform-origin: 50% 100%; }
+.mc-scrim { position: fixed; inset: 0; z-index: var(--zIndex-overlay); background: color-mix(in srgb, var(--color-bg-island) 62%, transparent); } /* a cortina é sempre escura (a ilha), nos dois temas */
+html:has(.mc-scrim) .proto { display: none; } /* com a folha aberta a engrenagem do protótipo sai da frente, como nas outras folhas */
+
+/* cartão da conta: foto, nome e e-mail (não é item de menu) */
+.mc-cab { flex: 0 0 auto; display: flex; align-items: center; gap: var(--space-3); padding: var(--space-4); border-bottom: var(--border-width-hairline) solid var(--color-border-subtle); }
+.mc-cab[data-sem-cartao] { justify-content: flex-end; padding: var(--space-2) var(--space-2) 0; border-bottom: 0; }
+.mc-pop:not([data-modo="folha"]) .mc-cab[data-sem-cartao] { display: none; }
+.mc-card { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: var(--space-3); margin: 0; }
+.mc-card .uui-avatar { flex: 0 0 auto; }
+.mc-card-tx { min-width: 0; display: flex; flex-direction: column; }
+.mc-card-nome { margin: 0; font-size: var(--font-size-small); font-weight: 700; line-height: 1.3; overflow-wrap: anywhere; }
+.mc-card-mail { margin: 0; font-size: var(--font-size-small); line-height: 1.3; color: var(--color-text-secondary); overflow-wrap: anywhere; }
+.mc-fechar { display: none; flex: 0 0 auto; align-items: center; justify-content: center; width: var(--size-touch-default); height: var(--size-touch-default); padding: 0; background: transparent; border: 0; color: var(--color-text-primary); cursor: pointer; }
+.mc-fechar:hover { background: var(--color-bg-hover); }
+.mc-fechar svg { width: var(--size-icon-md); height: var(--size-icon-md); fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.mc-pop[data-modo="folha"] .mc-fechar { display: inline-flex; }
+
+/* a lista (role=menu): rola por dentro; itens de 48 px; o destaque segue o foco (o mouse abre sem item destacado) */
+.mc-menu { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: var(--space-2); outline: 0; }
+.mc-item { display: flex; align-items: center; gap: var(--space-3); width: 100%; box-sizing: border-box; min-height: var(--size-touch-default); padding: 0 var(--space-4); margin: 0; background: none; border: 0; color: var(--color-text-primary); font: inherit; font-size: var(--font-size-small); font-weight: 600; text-align: left; text-decoration: none; cursor: pointer; outline: 0; }
+.mc-item:hover, .mc-item:focus { background: var(--color-bg-hover); }
+/* o anel de 2 px (offset 2, o do sistema: cabe no respiro de 8 px da lista); o global `[tabindex="-1"]:focus-visible { outline: none !important }` (identidade) tiraria o anel dos itens, que têm tabindex -1 (foco móvel): mais específico e !important */
+.mc-pop [role^="menuitem"]:focus-visible, .mc-pop .mc-fechar:focus-visible { outline: var(--focus-width) solid var(--color-focus-ring) !important; outline-offset: var(--focus-offset) !important; }
+.mc-item[aria-current="page"] { font-weight: 700; background: var(--color-bg-hover); }
+.mc-it { flex: 1 1 auto; min-width: 0; }
+.mc-chev { flex: 0 0 auto; width: var(--size-icon-sm); height: var(--size-icon-sm); fill: none; stroke: var(--color-text-tertiary); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; transition: transform var(--motion-duration-fast) var(--motion-ease-move); }
+.mc-item[aria-expanded="true"] .mc-chev-b { transform: rotate(90deg); }
+.mc-it-n { flex: 0 0 auto; font-size: var(--font-size-small); font-weight: 700; color: var(--color-text-brand); font-variant-numeric: tabular-nums; } /* «3 novas»: o texto de marca (6,2:1), o único vermelho do menu */
+.mc-it-n:empty { display: none; }
+.mc-item .badge { flex: 0 0 auto; } /* contador da Carteira: neutro (tinta invertida), só dentro do menu */
+.mc-sep { height: 0; margin: var(--space-1) 0; padding: 0; border: 0; border-top: var(--border-width-hairline) solid var(--color-border-subtle); border-radius: 0 !important; }
+.mc-entrar-w { padding: var(--space-2) var(--space-2) var(--space-1); }
+.mc-entrar { display: flex; justify-content: center; width: 100%; box-sizing: border-box; min-height: var(--size-touch-default); }
+
+/* idioma (15/11/2026, Alê; substitui o controle segmentado de bandeira sobre sigla): Untitled UI Dropdown, item com valor + grupo de seleção única.
+   «Idioma» é um .mc-item como os outros, com o idioma ativo à direita (bandeira + nome, texto secundário) e o chevron que gira; abre no próprio menu
+   quatro .mc-item role=menuitemradio: bandeira de 24 px (.rp-band, a do rodapé), nome por extenso e o tique no escolhido (o mesmo tique do rodapé). */
+.mc-lang-b .mc-it { flex: 0 0 auto; }
+.mc-lang-v { flex: 1 1 auto; min-width: 0; display: inline-flex; align-items: center; justify-content: flex-end; gap: var(--space-2); font-weight: 400; color: var(--color-text-secondary); }
+.mc-lang-n { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mc-idiomas[hidden] { display: none; }
+.mc-idiomas { padding-bottom: var(--space-1); }
+.mc-lang-op { font-weight: 400; color: var(--color-text-secondary); }
+.mc-lang-op:hover, .mc-lang-op:focus, .mc-lang-op[aria-checked="true"] { color: var(--color-text-primary); }
+.mc-lang-op[aria-checked="true"] { font-weight: 600; }
+.mc-lang-op::after { content: ""; flex: 0 0 auto; width: var(--size-icon-md); height: var(--size-icon-md); background: currentColor; -webkit-mask: var(--previa-ico-tick) center / contain no-repeat; mask: var(--previa-ico-tick) center / contain no-repeat; visibility: hidden; }
+.mc-lang-op[aria-checked="true"]::after { visibility: visible; } /* o escolhido: tique + peso, não só a cor */
+
+/* opções de desenvolvedor: só no protótipo (data-so-prototipo), recolhidas, neutras (sem vermelho: o vermelho é só da contagem) */
+.mc-dev-b { color: var(--color-text-secondary); font-size: var(--font-size-label); letter-spacing: var(--font-ls-label); text-transform: uppercase; }
+.mc-dev-in { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); padding: var(--space-1) var(--space-4) var(--space-3); }
+.mc-dev-in[hidden] { display: none; }
+.mc-dev-in .pv-l { flex: 1 1 100%; margin-top: var(--space-1); font-size: var(--font-size-label); letter-spacing: var(--font-ls-label); text-transform: uppercase; color: var(--color-text-tertiary); }
+.mc-dev-in .chip { min-height: var(--size-touch-default); padding: 0 var(--space-4); outline: 0; }
+.mc-dev-in .chip:hover { padding: 0 calc(var(--space-4) - 1px); }
+.mc-dev-in .chip[aria-checked="true"] { background: var(--color-bg-inverse); border-color: var(--color-bg-inverse); color: var(--color-text-inverse); }
+
+/* ---------- movimento ---------- */
+@keyframes mc-entra { from { opacity: 0; transform: translateY(calc(-1 * var(--motion-distance-sm))); } to { opacity: 1; transform: none; } }
+@keyframes mc-entra-cima { from { opacity: 0; transform: translateY(var(--motion-distance-sm)); } to { opacity: 1; transform: none; } }
+@keyframes mc-sai { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateY(calc(-1 * var(--motion-distance-sm))); } }
+@keyframes mc-sai-cima { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateY(var(--motion-distance-sm)); } }
+@keyframes mc-folha-entra { from { opacity: 0; transform: translateY(var(--motion-distance-lg)); } to { opacity: 1; transform: none; } }
+@keyframes mc-folha-sai { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateY(var(--motion-distance-lg)); } }
+@keyframes mc-cortina { from { opacity: 0; } to { opacity: 1; } }
+.mc-pop { animation: mc-entra var(--motion-duration-fast) var(--motion-ease-enter) both; }
+.mc-pop[data-lado="cima"] { animation-name: mc-entra-cima; }
+.mc-pop[data-modo="folha"] { animation: mc-folha-entra var(--motion-duration-base) var(--motion-ease-enter) both; }
+.mc-scrim { animation: mc-cortina var(--motion-duration-base) var(--motion-ease-enter) both; }
+.mc-pop[data-saindo] { pointer-events: none; animation: mc-sai var(--motion-duration-instant) var(--motion-ease-exit) both; }
+.mc-pop[data-saindo][data-lado="cima"] { animation-name: mc-sai-cima; }
+.mc-pop[data-saindo][data-modo="folha"] { animation: mc-folha-sai var(--motion-duration-fast) var(--motion-ease-exit) both; }
+.mc-scrim[data-saindo] { pointer-events: none; animation: mc-cortina var(--motion-duration-fast) var(--motion-ease-exit) both reverse; }
+@media (prefers-reduced-motion: reduce) { .mc-pop, .mc-scrim, .mc-n, .mc-chev { animation: none !important; transition: none !important; } }
+html[data-motion="reduce"] .mc-pop, html[data-motion="reduce"] .mc-scrim, html[data-motion="reduce"] .mc-n, html[data-motion="reduce"] .mc-chev { animation: none !important; transition: none !important; }

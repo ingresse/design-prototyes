@@ -11,6 +11,7 @@ import { TextArea } from "@/components/base/textarea/textarea";
 import { cx } from "@/utils/cx";
 import {
     CATEGORIA_MOTIVO_LABEL,
+    PRAZO_REAL_LABEL,
     STATUS_LABEL,
     formatarMoeda,
     type CatalogoItem,
@@ -30,8 +31,9 @@ import {
    cor de foco do design system, já que a versão arbitrária com var() não gera classe. */
 export const FOCO = "focus-visible:[--tw-outline-style:solid] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring";
 
-/** Aplique no container de uma página ou modal para elevar o foco de tudo que estiver dentro. */
-export const FOCO_ESCOPO = "[&_:focus-visible]:[--tw-outline-style:solid] [&_:focus-visible]:outline-2 [&_:focus-visible]:outline-offset-2 [&_:focus-visible]:outline-focus-ring";
+/* Não há mais o FOCO_ESCOPO (22/11/2026): aplicado na página inteira, ele punha um segundo anel em
+   todo :focus-visible, inclusive nos campos e botões do DS, que já têm o próprio foco. O FOCO vai só
+   nos elementos montados aqui (botões nativos, summary, cartões focáveis). */
 
 /* Vermelho fica reservado para falha, o único estado que exige alguém agir.
    Expirado e em andamento são avisos; sem alteração e já alterado são desfechos bons. */
@@ -140,6 +142,24 @@ export const ResumoFinanceiro = ({ linhas, titulo = "Resumo da cobrança", semMo
         </div>
     );
 };
+
+/**
+ * PED-101: o que fica ao lado do "Enviar cobrança" na revisão dos três fluxos: quanto, para quem e
+ * quanto tempo o link vale. O prazo é o do produto (PRAZO_REAL_LABEL), não o relógio acelerado da
+ * demonstração (PRAZO_DEMO_SEGUNDOS, ver "Em aberto" no rules.md). Antes a revisão só dizia o valor
+ * e o destino, e o atendente não tinha como avisar o cliente de que o link expira.
+ *
+ * O e-mail vai inteiro (PED-105): a mesma tela já mostra o endereço completo no cartão de quem
+ * recebe, e mascarado aqui ele parecia outro destino justo no botão que envia a cobrança.
+ */
+export const InfoDaCobranca = ({ total, destino }: { total: number; destino: string }) => (
+    <span className="flex flex-col gap-0.5">
+        <span className="text-sm font-medium break-all text-secondary tabular-nums">
+            {formatarMoeda(total)} para {destino}
+        </span>
+        <span className="text-sm text-tertiary">O link vale {PRAZO_REAL_LABEL}. Se expirar, nada é cobrado e a reserva é liberada.</span>
+    </span>
+);
 
 export const CampoComparativo = ({ label, de, para }: { label: string; de: string; para: string }) => {
     const mudou = de !== para;
@@ -423,7 +443,7 @@ export const rotuloDoLote = (lote: string) => (lote.toLowerCase().startsWith("lo
  * contexto da sessão deixa de se explicar: "Corrida 5 km" existe em mais de um grupo. Produto
  * não tem nem um nem outro, e aí a linha simplesmente não aparece.
  */
-export const caminhoDoItem = (item: CatalogoItem) => [item.grupo, item.lote && rotuloDoLote(item.lote)].filter(Boolean).join(" · ");
+export const caminhoDoItem = (item: CatalogoItem) => [item.grupo, item.lote && rotuloDoLote(item.lote)].filter(Boolean).join(", ");
 
 /** Foto do produto quando existe; ingresso e combo usam um ícone — não têm imagem própria no catálogo. */
 export const Miniatura = ({ item }: { item: CatalogoItem }) => {

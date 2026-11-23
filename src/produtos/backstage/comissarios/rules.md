@@ -3,7 +3,7 @@
 > **Rotas:** `/backstage/relatorios/comissarios` (relatório). `/backstage/comissarios*` (lista, detalhe e cadastro antigos) leva ao relatório; `/backstage/evento/comissarios*`, a Equipe e Comissários; `/backstage/suas-vendas`, a `/freepass/eventos`.
 > **No menu:** Backstage › menu da organização › Relatórios › Comissários. O comissário é um grupo de Equipe e Comissários com o canal Comissário (`../equipe-e-comissarios/rules.md`, ECO-09) e "Comissário" é cargo das pessoas (ECO-24); o painel Freepass fica em `freepass/rules.md`.
 > **Versão em uso:** única (`comissarios/`), papel de pão para o discovery (Q1/2027)
-> **Revisado em:** 2026-11-12
+> **Revisado em:** 2026-11-22
 
 Este arquivo é a fonte da verdade do comportamento da feature. Mudou uma regra no código, mude
 aqui no mesmo commit. Achou divergência entre código e este arquivo, registre em **Em aberto**
@@ -30,19 +30,26 @@ Viviane, 09/11/2026).
 | --- | --- | --- |
 | Organização e eventos | `@/plataforma` (`useOrganizacaoAtual`, `useEventoAtual`) | não |
 | Ingressos e setores do evento | `@/plataforma` (`useDoc("eventos", id)`: o espelho de `useEventoAtual` não traz o catálogo) | não |
-| Grupos do evento, vendas atribuídas e repasses; comissário e vínculo são leituras do grupo com o canal Comissário | `@/plataforma/comissarios` (store único com Equipe e Comissários, semeado por organização, lido também pelo Freepass); `data/comissarios.ts` é o adaptador | sim, `localStorage` `backstage-comissarios-v12` |
+| Grupos do evento e repasses; comissário e vínculo são leituras do grupo com o canal Comissário | `@/plataforma/comissarios` (store único com Equipe e Comissários, semeado por organização, lido também pelo Freepass); `data/comissarios.ts` é o adaptador | sim, no banco da plataforma: `Evento.equipe` e `Organizacao.equipeSemeadaEm` (COM-117) |
+| Vendas atribuídas e pedidos dos grupos | lidos na hora dos pedidos do evento no banco (`Pedido.comissario`, bilheteria, cortesia) e completados com exemplos do catálogo (`../equipe-e-comissarios/rules.md`, ECO-83 a ECO-86) | não (só a condição congelada por pedido, COM-118) |
 
-Vendas atribuídas são mock: a plataforma ainda não tem comissário nem `comissario_id` no pedido.
+Desde 21/11/2026 a venda atribuída sai do pedido: o pedido grava `comissario` (grupo, comissário,
+código e vendedor) quando o comprador usa o código. Os exemplos continuam por baixo enquanto o banco
+tem poucos pedidos assim.
 
 ## Regras
 
 ### Relatório de Comissários
 - **COM-110** O antigo painel de Comissários da organização é um relatório em Relatórios › Comissários (selo "Novo"), dentro do layout dos Relatórios, sem "Cadastrar comissário". _(pages/relatorio-comissarios.tsx, ../components/navegacao-de-secao.tsx)_
 - **COM-111** Soma os grupos-comissário do escopo dos Relatórios: "Todos os eventos" soma a organização (com a coluna Evento); um evento escolhido mostra só os dele. _(pages/relatorio-comissarios.tsx)_
-- **COM-112** Métricas: comissários ativos (com o total de grupos-comissário), vendido por comissários, comissão gerada (com o estornado) e a repassar (com o já repassado). _(pages/relatorio-comissarios.tsx)_
-- **COM-113** Lista: comissário (nome do grupo, código e condição), evento, vendido, comissão e a repassar. Ordena por Mais vendas (padrão, com a posição), A repassar ou Nome; grupos inativos no fim, com o selo "Grupo inativo". Busca por nome, código, e-mail ou evento; "Mostrar mais" acima de 20. No celular, tabela-lista. _(pages/relatorio-comissarios.tsx)_
+- **COM-112** Métricas, no painel de métricas dos relatórios (REL-221): comissários ativos (pessoas, contadas uma vez mesmo vendendo em vários eventos; com "Em N grupos com o canal Comissário"), vendido por comissários, comissão gerada (com o estornado) e a repassar (com o já repassado). Cada linha da tabela é o comissário num evento: vendas e repasses só daquele evento; as métricas somam as linhas. _(pages/relatorio-comissarios.tsx)_
+- **COM-113** ~~Lista: comissário (nome do grupo, código e condição), evento, vendido, comissão e a repassar. Ordena por Mais vendas (padrão, com a posição), A repassar ou Nome; grupos inativos no fim, com o selo "Grupo inativo". Busca por nome, código, e-mail ou evento; "Mostrar mais" acima de 20. No celular, tabela-lista.~~ Substituída por COM-120.
+- **COM-120** Lista na tabela do DS: comissário (nome do grupo, código e condição), evento (só em "Todos os eventos"), vendido, comissão e a repassar. Ordena pelo cabeçalho de qualquer coluna, como os outros relatórios (REL-237); abre em Vendido, decrescente. Antes, eram botões "Mais vendas / A repassar / Nome" fora da tabela. Grupos inativos no fim, com o selo "Grupo inativo". Busca por nome, código, e-mail ou evento; "Mostrar mais" acima de 20. No celular, tabela-lista. _(pages/relatorio-comissarios.tsx)_
+- **COM-121** A posição (1º, 2º…) aparece num evento escolhido, com a ordem padrão (Vendido, decrescente), e é por linha. Em "Todos os eventos" a posição sai: a mesma pessoa aparece uma vez por evento, e a posição repetia a pessoa (e a chave por pessoa dava a mesma posição em todas as linhas dela). _(pages/relatorio-comissarios.tsx)_
 - **COM-114** Clicar num comissário põe o evento dele em contexto e abre o grupo em Equipe e Comissários, na aba Vendas. _(pages/relatorio-comissarios.tsx)_
 - **COM-115** Sem grupo-comissário no escopo: "Nenhum comissário na organização" (ou "neste evento"), explicando que um grupo vira comissário pelo canal Comissário. _(pages/relatorio-comissarios.tsx)_
+- **COM-119** Vazio e busca sem resultado com as peças comuns (BKS-117, BKS-118): sem grupo-comissário no escopo, o estado vazio do DS com o texto da COM-115 e, num evento escolhido, a ação "Abrir Equipe e Comissários" (`/backstage/evento/equipe`; em "Todos os eventos", sem botão); busca sem resultado, `SemResultados` com "Nenhum comissário encontrado com esse nome, código, e-mail ou evento." e "Limpar busca". Até 22/11/2026 eram textos soltos, sem ação. _(pages/relatorio-comissarios.tsx)_
+- **COM-116** Cada linha do relatório soma os mesmos pedidos que o grupo lista na aba Pedidos (pedidos do banco, cortesias do Freepass e exemplos, de todos os canais) e os repasses do evento; as métricas somam as linhas. O vendido da linha é igual ao do grupo em Equipe e Comissários (ECO-87). _(pages/relatorio-comissarios.tsx, @/plataforma/comissarios `totaisDosPedidos`)_
 
 ### Organização (cadastro e painel)
 - **COM-01** ~~Comissários entra no menu da organização, depois de Membros.~~ substituída por COM-110 (o painel virou relatório em Relatórios; "Membros e Comissários" voltou a ser só Membros).
@@ -98,6 +105,8 @@ Vendas atribuídas são mock: a plataforma ainda não tem comissário nem `comis
 - **COM-40** O pagamento da comissão é feito por fora da Ingresse (Pix, transferência) e registrado aqui para o saldo bater. _(components/RegistrarRepasseModal.tsx)_
 - **COM-41** O repasse é de um comissário num evento; o modal sugere o saldo do evento escolhido. _(components/RegistrarRepasseModal.tsx)_
 - **COM-42** A repassar = comissão gerada (pedidos confirmados) menos repassado. _(data/comissarios.ts)_
+- **COM-117** Repasses e grupos ficam no banco da plataforma, no evento (`Evento.equipe.repasses`), e a organização guarda quando recebeu os exemplos (`Organizacao.equipeSemeadaEm`). O que estava no `localStorage` deste navegador (`backstage-comissarios-v12`) é levado uma vez para o banco e apagado (ECO-82). _(@/plataforma/comissarios `registrarRepasse`, `migrar`)_
+- **COM-118** A comissão de cada venda usa a condição da hora da venda: a do pedido do banco é gravada na primeira leitura (`Evento.equipe.condicoes`), a dos exemplos fica nos parâmetros da semente; mudar a condição do grupo só vale para pedidos novos (ECO-85). _(@/plataforma/comissarios)_
 
 ### Visão do comissário
 - **COM-80** ~~Suas vendas no Backstage, com o seletor "Protótipo: ver como".~~ substituída por COM-85.
@@ -114,18 +123,18 @@ Vendas atribuídas são mock: a plataforma ainda não tem comissário nem `comis
 
 ### Estados
 - **COM-100** ~~Organização sem comissários: "Nenhum comissário ainda" com "Cadastrar comissário".~~ substituída por ECO-40.
-- **COM-101** Evento sem comissários: "Nenhum comissário neste evento" com "Adicionar comissários" (ou "Cadastrar comissário", se a organização não tem nenhum). _(pages/ComissariosEvento.tsx)_
-- **COM-102** Comissário sem vendas no evento: "Nenhuma venda ainda." _(pages/ComissarioNoEvento.tsx)_
-- **COM-103** Comissário inexistente ou fora do evento em contexto: mensagem e volta para a lista. _(pages/ComissarioDetalhe.tsx, pages/ComissarioNoEvento.tsx)_
+- **COM-101** ~~Evento sem comissários: "Nenhum comissário neste evento" com "Adicionar comissários" (ou "Cadastrar comissário", se a organização não tem nenhum).~~ Substituída por ECO-40 (a página saiu em 12/11/2026; o vazio vive em Equipe e Comissários).
+- **COM-102** ~~Comissário sem vendas no evento: "Nenhuma venda ainda."~~ Substituída por ECO-40 ("Nenhum pedido ainda", em Equipe e Comissários).
+- **COM-103** ~~Comissário inexistente ou fora do evento em contexto: mensagem e volta para a lista.~~ Substituída por ECO-43 ("Grupo não encontrado").
 - **COM-104** ~~Carregando: esqueleto enquanto a organização é semeada.~~ substituída por ECO-42.
-- **COM-107** A primeira visita de cada organização (no Backstage ou no Freepass) cria, em até 3 eventos (primeiro os que estão vendendo), grupos-comissário de exemplo com os canais, código, responsável, pessoas, vendas e repasses; o Vitor Almeida (persona do Freepass) está na Anitta e em algumas outras, e nos eventos além do principal só emite (canal Comissário desligado). Cada venda semeada é atribuída pelo código usado: a do código do grupo vai para o responsável; a do código de um vendedor, para ele. _(@/plataforma/comissarios `semear`)_
+- **COM-107** A primeira visita de cada organização (no Backstage ou no Freepass), com o banco carregado, cria em até 3 eventos (primeiro os que estão vendendo) grupos-comissário de exemplo com os canais, código, responsável, pessoas, parâmetros das vendas de exemplo e repasses, e marca a organização (`equipeSemeadaEm`). As vendas não são gravadas: saem do catálogo do evento na leitura (ECO-86). O Vitor Almeida (persona do Freepass) está na Anitta e em algumas outras, e nos eventos além do principal só emite (canal Comissário desligado, sem vendas de exemplo). Cada venda é atribuída pelo código usado: a do código do grupo vai para o responsável; a do código de um vendedor, para ele. _(@/plataforma/comissarios `semear`)_
 - **COM-106** ~~Na semente, cada comissário de um evento vira um grupo de Equipe e Comissários com ele, com os canais que ele tinha (link em todos os ingressos, bilheteria com comissão nos ingressos do evento, cortesia nos 3 primeiros com cota 20 ou sem limite) e o uso tirado das vendas semeadas.~~ substituída por COM-107.
 - **COM-105** ~~A primeira visita de cada organização (no Backstage ou no Freepass) cria 7 comissários de exemplo (1 pausado), com vendas em até 3 eventos, primeiro os que estão vendendo. O Vitor Almeida (persona do Freepass) está na Anitta e em algumas outras; nas demais, o primeiro exemplo é Lucas Mendes. Nos eventos além do principal, o primeiro exemplo só emite (bilheteria e cortesia, ou só cortesia), sem link e sem vendas.~~ substituída por COM-107.
 
 ## Depende de / afeta
 
 - **Depende de:** organização e eventos em `@/plataforma`; catálogo de ingressos do evento.
-- **Afeta (ainda não feito):** pedido precisa guardar `comissario_id`, tipo e valor da comissão (MKT-262); Pedidos, Bilheteria, Cortesia e Relatórios precisam mostrar de qual comissário veio a venda; checkout e página do evento precisam ler o `?ref=` e o cupom (MKT-333).
+- **Afeta:** o pedido já tem `comissario` (grupo, comissário, código, vendedor) e a atribuição é lida dele (COM-116, ECO-83). Ainda não feito: gravar tipo e valor da comissão no próprio pedido (MKT-262; hoje a condição fica congelada no evento, COM-118); Pedidos, Bilheteria, Cortesia e Relatórios mostrarem de qual comissário veio a venda; checkout e página do evento lerem o `?ref=` e o cupom (MKT-333).
 
 ## Em aberto
 
@@ -139,9 +148,10 @@ Vendas atribuídas são mock: a plataforma ainda não tem comissário nem `comis
 - **Acesso do comissário:** a jornada foi para o painel Freepass (o comissário não é membro da organização, como nas Propostas 2 e 3). Falta definir o login (e-mail com código) e o convite. Hoje o paliativo em produção é cadastrar como membro "Vendedor".
 - **Metas, ranking com prêmio e sub-comissários:** fora do escopo, como na Proposta 2.
 - **Exposição no fluxo de compra** ("Você está comprando com {nome}", MKT-262 e MKT-333): não faz parte deste protótipo.
-- Tabelas são `<table>` feitas à mão e a tabela-lista vem de `relatorios/components/TabelaLista.tsx`, como nos relatórios. Conferir no AFTER DS.
+- O relatório de Comissários usa a tabela do DS (COM-120); as outras tabelas desta pasta são `<table>` feitas à mão, e a tabela-lista vem de `relatorios/components/TabelaLista.tsx`, como nos relatórios. Conferir no AFTER DS.
 - Sair do cadastro pelo menu lateral não pede confirmação: o protótipo usa `BrowserRouter`, sem bloqueio de navegação; só Cancelar, voltar e fechar a aba avisam.
 - Grupo sem nome do responsável: a pessoa responsável recebe o nome do comissário (ex.: a atlética). Como nos vendedores, o nome poderia vir da conta Ingresse.
+- COM-96 cita `ComissarioForm.tsx`, que saiu em 12/11/2026 (COM-101 a COM-103 já foram marcadas como substituídas por ECO-40 e ECO-43). Falta achar o par de COM-96 em Equipe e Comissários.
 
 ## Fontes
 

@@ -1,54 +1,35 @@
 import { useSyncExternalStore } from "react";
+import {
+    assinarBanco,
+    lerDoc,
+    salvar,
+    type CargoDaOrganizacao,
+    type GrupoDeMembros,
+    type MembroDaOrganizacao,
+    type NivelDePermissao,
+    type PermissaoDoCargo,
+} from "@/plataforma";
+import { assinarOrganizacao, lerOrganizacoes, organizacaoAtualId, ORGANIZACAO_PADRAO, useOrganizacaoAtual, type OrganizacaoComEventos } from "../organizacoes/data/organizacao-atual";
 
 /* ------------------------------------------------------------------ */
-/*  Store compartilhado de Membros / Grupos / Cargos (nível org).      */
-/*  Consumido pela área de Membros e pela gestão de Cortesias.         */
-/*  Via sancionada de compartilhamento entre projetos: components/.    */
+/*  Membros, grupos e cargos da organização em contexto (MEM).         */
+/*                                                                     */
+/*  Ficam no documento da organização no banco (`membros`,             */
+/*  `gruposDeMembros`, `cargos`). Sem gravação, valem os de exemplo,   */
+/*  feitos para cada organização: e-mails no domínio dela e grupos     */
+/*  nos eventos dela. Trocar de organização troca a lista.             */
+/*  Consumido por Membros, Cortesias e Equipe e comissários (operadores).*/
 /* ------------------------------------------------------------------ */
 
-export type PermissionLevel = "none" | "viewer" | "editor" | "admin";
-
-export interface FeaturePermission {
-    featureId: string;
-    nome: string;
-    level: PermissionLevel;
-    /** Subitems com permissões granulares (ex: tipos de relatórios). */
-    subitens?: { id: string; nome: string; level: PermissionLevel }[];
-}
-
-export interface Cargo {
-    id: string;
-    nome: string;
-    descricao: string;
-    /** Permissões granulares por funcionalidade. */
-    permissions?: FeaturePermission[];
-    /** Ações concedidas no formato "recurso:acao" (catálogo real). */
-    acoes?: string[];
-    /** Cargo sem permissão explícita — configurado por feature (ex: Cortesias). */
-    porFeature?: boolean;
-}
+export type PermissionLevel = NivelDePermissao;
+export type FeaturePermission = PermissaoDoCargo;
+export type Cargo = CargoDaOrganizacao;
+export type Grupo = GrupoDeMembros;
+export type Membro = MembroDaOrganizacao;
 
 export interface EventoRef {
     id: string;
     nome: string;
-}
-
-export interface Grupo {
-    id: string;
-    nome: string;
-    eventoIds: string[];
-    membroIds: string[];
-    /** Grupo padrão do sistema — não pode ser excluído. */
-    sistema?: boolean;
-}
-
-export interface Membro {
-    id: string;
-    email: string;
-    cargoIds: string[];
-    grupoIds: string[];
-    /** Nº de eventos com acesso (mock). */
-    eventosCount: number;
 }
 
 /* ---- Cargos (entidades fixas) ---- */
@@ -62,7 +43,7 @@ export const CARGOS: Cargo[] = [
     {
         id: "parceiro",
         nome: "Parceiro",
-        descricao: "Não possui nenhuma permissão explícita. As permissões específicas (ex.: limites e itens de cortesias) devem ser configuradas por feature.",
+        descricao: "Não tem permissão geral. Os limites ficam em cada funcionalidade, como os itens e as quantidades de cortesias.",
         porFeature: true,
     },
     {
@@ -74,24 +55,6 @@ export const CARGOS: Cargo[] = [
         porFeature: true,
     },
 ];
-
-export function cargoById(id: string) {
-    return CARGOS.find((c) => c.id === id) ?? _cargosCustom.find((c) => c.id === id);
-}
-
-/* ---- Eventos (para os selects) ---- */
-export const EVENTOS: EventoRef[] = [
-    { id: "e-botafogo", nome: "Botafogo x Chapecoense - Copa do Brasil" },
-    { id: "e-coquetel", nome: "Coquetel de Rebranding" },
-    { id: "e-nutris", nome: "ENCONTRO NUTRIS DA CASA" },
-    { id: "e-operacoes", nome: "Evento TESTE (Operações Entretenimento)" },
-    { id: "e-teste", nome: "Teste" },
-    { id: "e-samba", nome: "Samba Independente" },
-];
-
-export function eventoById(id: string) {
-    return EVENTOS.find((e) => e.id === id);
-}
 
 /* ---- Funcionalidades do sistema (para construtor de cargos) ---- */
 export const FEATURES: { id: string; nome: string; subitens: { id: string; nome: string }[] }[] = [
@@ -156,22 +119,32 @@ export const FEATURES: { id: string; nome: string; subitens: { id: string; nome:
     },
 ];
 
+export function cargoById(id: string) {
+    return CARGOS.find((c) => c.id === id) ?? estado.cargosCustom.find((c) => c.id === id);
+}
+
+/** Cargos padrão do sistema não podem ser editados nem excluídos. */
+export const isCargoSistema = (id: string) => CARGOS.some((c) => c.id === id);
+
 /* ------------------------------------------------------------------ */
-/*  Store reativo                                                      */
+/*  Exemplo por organização                                            */
 /* ------------------------------------------------------------------ */
 
+/** Domínio fictício da organização, para os e-mails de exemplo (ex.: d-edge.com.br). */
+export const dominioDaOrganizacao = (orgId: string) => `${orgId.replace(/^org_/, "")}.com.br`;
+
 /**
- * Grupos de exemplo com quem opera no evento (bilheteria, promoters, camarote). São os grupos que a
- * Equipe de operação oferece como origem de operadores (EO3-09): um cadastro só de Membros.
+ * Grupos de exemplo com quem opera no evento (bilheteria, promoters, camarote). São os grupos que
+ * Equipe e comissários oferece como origem de operadores (EO3-09): um cadastro só, o de Membros.
  */
-const GRUPOS_DE_EXEMPLO: Array<{ id: string; nome: string; emails: string[] }> = [
-    { id: "m-bilheteria", nome: "Equipe de bilheteria", emails: ["ana.lima@casamarceneiro.com.br", "bruno.costa@casamarceneiro.com.br", "carla.mendes@casamarceneiro.com.br", "diego.rocha@casamarceneiro.com.br", "elisa.prado@casamarceneiro.com.br", "felipe.nunes@casamarceneiro.com.br"] },
+const GRUPOS_DE_EXEMPLO = (dominio: string): Array<{ id: string; nome: string; emails: string[] }> => [
+    { id: "m-bilheteria", nome: "Equipe de bilheteria", emails: [`ana.lima@${dominio}`, `bruno.costa@${dominio}`, `carla.mendes@${dominio}`, `diego.rocha@${dominio}`, `elisa.prado@${dominio}`, `felipe.nunes@${dominio}`] },
     { id: "m-promoters", nome: "Promoters", emails: ["gabi.promo@gmail.com", "henrique.eventos@gmail.com", "isa.noite@gmail.com", "joao.vip@gmail.com", "karen.lista@gmail.com", "leo.festas@gmail.com", "marina.rp@gmail.com", "nando.promo@gmail.com"] },
-    { id: "m-camarote", nome: "Atendimento Camarote", emails: ["otavio.reis@casamarceneiro.com.br", "paula.santos@casamarceneiro.com.br", "rafael.dias@casamarceneiro.com.br", "sofia.alves@casamarceneiro.com.br"] },
+    { id: "m-camarote", nome: "Atendimento Camarote", emails: [`otavio.reis@${dominio}`, `paula.santos@${dominio}`, `rafael.dias@${dominio}`, `sofia.alves@${dominio}`] },
     { id: "m-producao", nome: "Produção", emails: ["tiago.moura@producao.com.br", "ursula.melo@producao.com.br", "vitor.lopes@producao.com.br", "wanda.ribeiro@producao.com.br", "yuri.campos@producao.com.br"] },
-    { id: "m-pdv", nome: "PDV Portaria", emails: ["adriana.pdv@casamarceneiro.com.br", "beto.pdv@casamarceneiro.com.br", "cris.pdv@casamarceneiro.com.br", "davi.pdv@casamarceneiro.com.br", "edu.pdv@casamarceneiro.com.br", "fabi.pdv@casamarceneiro.com.br", "gui.pdv@casamarceneiro.com.br"] },
+    { id: "m-pdv", nome: "PDV Portaria", emails: [`adriana.pdv@${dominio}`, `beto.pdv@${dominio}`, `cris.pdv@${dominio}`, `davi.pdv@${dominio}`, `edu.pdv@${dominio}`, `fabi.pdv@${dominio}`, `gui.pdv@${dominio}`] },
     { id: "m-hostess", nome: "Hostess", emails: ["helena.host@gmail.com", "iara.host@gmail.com", "julia.host@gmail.com"] },
-    { id: "m-bar", nome: "Bar Central", emails: ["kleber.bar@casamarceneiro.com.br", "luana.bar@casamarceneiro.com.br", "mateus.bar@casamarceneiro.com.br", "nina.bar@casamarceneiro.com.br", "orlando.bar@casamarceneiro.com.br"] },
+    { id: "m-bar", nome: "Bar Central", emails: [`kleber.bar@${dominio}`, `luana.bar@${dominio}`, `mateus.bar@${dominio}`, `nina.bar@${dominio}`, `orlando.bar@${dominio}`] },
     { id: "m-seguranca", nome: "Segurança", emails: ["pedro.seg@seguranca.com.br", "quiteria.seg@seguranca.com.br", "renan.seg@seguranca.com.br", "silvia.seg@seguranca.com.br", "tadeu.seg@seguranca.com.br", "valeria.seg@seguranca.com.br", "wesley.seg@seguranca.com.br", "xavier.seg@seguranca.com.br", "yara.seg@seguranca.com.br"] },
     { id: "m-credenciamento", nome: "Credenciamento", emails: ["amanda.cred@producao.com.br", "breno.cred@producao.com.br", "caio.cred@producao.com.br", "daniela.cred@producao.com.br"] },
     { id: "m-influenciadores", nome: "Influenciadores", emails: ["bia.vibes@gmail.com", "duda.roles@gmail.com", "enzo.night@gmail.com", "fefe.agenda@gmail.com", "gui.festeiro@gmail.com", "lari.eventos@gmail.com"] },
@@ -184,130 +157,272 @@ const GRUPOS_DE_EXEMPLO: Array<{ id: string; nome: string; emails: string[] }> =
 ];
 
 const membroId = (email: string) => `m-${email.replace(/[^a-z0-9]/gi, "-")}`;
+export const GRUPO_TODOS = "g-todos";
 
-let _membros: Membro[] = [
-    { id: "m-admin", email: "admin@ingresse.com", cargoIds: ["administrador"], grupoIds: [], eventosCount: EVENTOS.length },
-    ...[...new Set(GRUPOS_DE_EXEMPLO.flatMap((g) => g.emails))].map((email) => ({
-        id: membroId(email),
-        email,
-        cargoIds: ["visualizador"],
-        grupoIds: GRUPOS_DE_EXEMPLO.filter((g) => g.emails.includes(email)).map((g) => g.id),
-        eventosCount: EVENTOS.length,
-    })),
-];
+/** Sem evento, a organização está começando: só quem a criou, no grupo padrão (MEM-40). */
+function exemploDa(org: OrganizacaoComEventos) {
+    const dominio = dominioDaOrganizacao(org.id);
+    const admin: Membro = { id: "m-admin", email: `admin@${dominio}`, cargoIds: ["administrador"], grupoIds: [GRUPO_TODOS] };
+    const todos: Grupo = { id: GRUPO_TODOS, nome: "Todos os eventos", eventoIds: [], membroIds: [admin.id], sistema: true };
+    if (org.eventos.length === 0) return { membros: [admin], grupos: [todos] };
+    const exemplos = GRUPOS_DE_EXEMPLO(dominio);
+    const eventoIds = org.eventos.map((e) => e.id);
+    return {
+        membros: [
+            admin,
+            ...[...new Set(exemplos.flatMap((g) => g.emails))].map((email) => ({
+                id: membroId(email),
+                email,
+                cargoIds: ["visualizador"],
+                grupoIds: exemplos.filter((g) => g.emails.includes(email)).map((g) => g.id),
+            })),
+        ],
+        grupos: [todos, ...exemplos.map((g) => ({ id: g.id, nome: g.nome, eventoIds, membroIds: g.emails.map(membroId) }))],
+    };
+}
 
-let _grupos: Grupo[] = [
-    { id: "g-todos", nome: "Todos os eventos", eventoIds: EVENTOS.map((e) => e.id), membroIds: [], sistema: true },
-    ...GRUPOS_DE_EXEMPLO.map((g) => ({ id: g.id, nome: g.nome, eventoIds: EVENTOS.map((e) => e.id), membroIds: g.emails.map(membroId) })),
-];
+/* ------------------------------------------------------------------ */
+/*  Estado: espelho do banco para a organização em contexto            */
+/* ------------------------------------------------------------------ */
+
+interface Estado {
+    orgId: string | null;
+    eventos: EventoRef[];
+    membros: Membro[];
+    grupos: Grupo[];
+    cargosCustom: Cargo[];
+    cargos: Cargo[];
+}
+
+const VAZIO: Estado = { orgId: null, eventos: [], membros: [], grupos: [], cargosCustom: [], cargos: [...CARGOS] };
+let estado: Estado = VAZIO;
+let entradas: { org?: OrganizacaoComEventos; doc?: unknown; eventos?: string } = {};
+
+/** Mesma escolha de `useOrganizacaoAtual`, fora do React. */
+function orgEmContexto(): OrganizacaoComEventos | undefined {
+    const todas = lerOrganizacoes();
+    const id = organizacaoAtualId();
+    return todas.find((o) => o.id === id) ?? todas.find((o) => o.id === ORGANIZACAO_PADRAO) ?? todas[0];
+}
+
+function recalcular() {
+    const org = orgEmContexto();
+    const doc = org ? lerDoc("organizacoes", org.id) : undefined;
+    const chaveEventos = org ? org.eventos.map((e) => `${e.id}:${e.nome}`).join("|") : "";
+    if (org?.id === entradas.org?.id && doc === entradas.doc && chaveEventos === entradas.eventos) return false;
+    entradas = { org, doc, eventos: chaveEventos };
+    if (!org) {
+        estado = VAZIO;
+        return true;
+    }
+    const exemplo = doc?.membros && doc.gruposDeMembros ? null : exemploDa(org);
+    const idsDaOrg = new Set(org.eventos.map((e) => e.id));
+    const grupos = (doc?.gruposDeMembros ?? exemplo!.grupos).map((g) =>
+        // O grupo padrão cobre todo evento da organização, inclusive os criados depois (MEM-64).
+        g.sistema ? { ...g, eventoIds: [...idsDaOrg] } : { ...g, eventoIds: g.eventoIds.filter((id) => idsDaOrg.has(id)) },
+    );
+    const cargosCustom = doc?.cargos ?? [];
+    estado = {
+        orgId: org.id,
+        eventos: [...org.eventos].sort((a, b) => a.data.localeCompare(b.data)).map((e) => ({ id: e.id, nome: e.nome })),
+        membros: doc?.membros ?? exemplo!.membros,
+        grupos,
+        cargosCustom,
+        cargos: [...CARGOS, ...cargosCustom],
+    };
+    return true;
+}
 
 const listeners = new Set<() => void>();
 const notify = () => listeners.forEach((l) => l());
+const aoMudar = () => {
+    if (recalcular()) notify();
+};
+let assinado = false;
 const subscribe = (fn: () => void) => {
+    if (!assinado) {
+        assinado = true;
+        assinarBanco(aoMudar);
+        assinarOrganizacao(aoMudar);
+        recalcular();
+    }
     listeners.add(fn);
     return () => {
         listeners.delete(fn);
     };
 };
+const ler = () => {
+    if (!assinado) subscribe(() => {});
+    return estado;
+};
+
+/** Grava no documento da organização; o banco avisa e o espelho se refaz. */
+function gravar(patch: Partial<Pick<Estado, "membros" | "grupos" | "cargosCustom">>) {
+    const org = orgEmContexto();
+    if (!org) return;
+    const atual = ler();
+    // Organização que só existe pelos eventos ganha o documento na primeira gravação (como em Ajustes).
+    const { eventos: _e, ativos: _a, ...base } = org;
+    const doc = lerDoc("organizacoes", org.id) ?? base;
+    void salvar("organizacoes", {
+        ...doc,
+        membros: patch.membros ?? atual.membros,
+        // O grupo padrão grava sem lista: os eventos dele são sempre os da organização.
+        gruposDeMembros: (patch.grupos ?? atual.grupos).map((g) => (g.sistema ? { ...g, eventoIds: [] } : g)),
+        cargos: patch.cargosCustom ?? atual.cargosCustom,
+    });
+}
 
 /** Para leitores fora do React (espelhos): assinar e ler grupos e membros como estão agora. */
 export const assinarMembros = subscribe;
-export const lerMembros = () => ({ membros: _membros, grupos: _grupos });
+export const lerMembros = () => {
+    const { membros, grupos } = ler();
+    return { membros, grupos };
+};
+
+/* ---- eventos da organização (selects, contagens) ---- */
+export function useEventosDaOrganizacao(): EventoRef[] {
+    return useSyncExternalStore(subscribe, () => ler().eventos);
+}
+export function eventoById(id: string): EventoRef | undefined {
+    return ler().eventos.find((e) => e.id === id);
+}
+/** Eventos que o membro acessa: a soma dos eventos dos grupos dele. */
+export function eventosDoMembro(m: Membro, grupos: Grupo[] = ler().grupos): number {
+    const ids = new Set(grupos.filter((g) => m.grupoIds.includes(g.id)).flatMap((g) => g.eventoIds));
+    return ids.size;
+}
+/** A organização dos membros ainda carregando (banco ou contexto). */
+export function useMembrosCarregando() {
+    return !useOrganizacaoAtual();
+}
+
+/* ---- quem está no Backstage ---- */
+/**
+ * O protótipo não tem login no Backstage: quem opera é o primeiro administrador da organização em
+ * contexto (MEM-67). Emissor de cortesia, operador da bilheteria e autor de alteração vêm daqui.
+ */
+const membroLogadoDe = (membros: Membro[]) => membros.find((m) => m.cargoIds.includes("administrador")) ?? membros[0];
+export const lerMembroLogado = (): Membro | undefined => membroLogadoDe(ler().membros);
+export function useMembroLogado(): Membro | undefined {
+    return useSyncExternalStore(subscribe, lerMembroLogado);
+}
+/** Nome de exibição a partir do e-mail ("joao.silva@…" → "Joao Silva"); membro não guarda nome. */
+export const nomeDoMembro = (m: Pick<Membro, "email"> | undefined) =>
+    (m?.email.split("@")[0] ?? "")
+        .split(/[._-]+/)
+        .filter(Boolean)
+        .map((p) => p[0].toUpperCase() + p.slice(1))
+        .join(" ");
 
 /* ---- membros ---- */
-const membrosSnap = () => _membros;
 export function useMembros() {
-    return useSyncExternalStore(subscribe, membrosSnap);
+    return useSyncExternalStore(subscribe, () => ler().membros);
 }
 export function getMembro(id: string) {
-    return _membros.find((m) => m.id === id);
+    return ler().membros.find((m) => m.id === id);
 }
 export function addMembro(m: Membro) {
-    _membros = [m, ..._membros];
-    _sincronizarGrupos(m);
-    notify();
+    const { membros, grupos } = ler();
+    gravar({
+        membros: [m, ...membros],
+        grupos: grupos.map((g) => (m.grupoIds.includes(g.id) ? { ...g, membroIds: [...new Set([...g.membroIds, m.id])] } : g)),
+    });
 }
 export function updateMembro(id: string, patch: Partial<Membro>) {
-    _membros = _membros.map((m) => (m.id === id ? { ...m, ...patch } : m));
-    notify();
+    gravar({ membros: ler().membros.map((m) => (m.id === id ? { ...m, ...patch } : m)) });
 }
 /** Atualiza cargos/grupos de um membro e reflete a troca de grupos nos próprios grupos. */
 export function editarMembro(id: string, patch: Pick<Membro, "cargoIds" | "grupoIds">) {
-    _membros = _membros.map((m) => (m.id === id ? { ...m, ...patch } : m));
-    _grupos = _grupos.map((g) => {
-        const tem = g.membroIds.includes(id);
-        const deveTer = patch.grupoIds.includes(g.id);
-        if (tem === deveTer) return g;
-        return { ...g, membroIds: deveTer ? [...g.membroIds, id] : g.membroIds.filter((mid) => mid !== id) };
+    const { membros, grupos } = ler();
+    gravar({
+        membros: membros.map((m) => (m.id === id ? { ...m, ...patch } : m)),
+        grupos: grupos.map((g) => {
+            const tem = g.membroIds.includes(id);
+            const deveTer = patch.grupoIds.includes(g.id);
+            if (tem === deveTer) return g;
+            return { ...g, membroIds: deveTer ? [...g.membroIds, id] : g.membroIds.filter((mid) => mid !== id) };
+        }),
     });
-    notify();
 }
-
 export function removeMembros(ids: Set<string>) {
-    _membros = _membros.filter((m) => !ids.has(m.id));
-    // remove referências nos grupos
-    _grupos = _grupos.map((g) => ({ ...g, membroIds: g.membroIds.filter((mid) => !ids.has(mid)) }));
-    notify();
+    const { membros, grupos } = ler();
+    gravar({
+        membros: membros.filter((m) => !ids.has(m.id)),
+        grupos: grupos.map((g) => ({ ...g, membroIds: g.membroIds.filter((mid) => !ids.has(mid)) })),
+    });
 }
 
 /* ---- grupos ---- */
-const gruposSnap = () => _grupos;
 export function useGrupos() {
-    return useSyncExternalStore(subscribe, gruposSnap);
+    return useSyncExternalStore(subscribe, () => ler().grupos);
 }
 export function getGrupo(id: string) {
-    return _grupos.find((g) => g.id === id);
+    return ler().grupos.find((g) => g.id === id);
 }
 export function addGrupo(g: Grupo) {
-    _grupos = [g, ..._grupos];
-    // reflete o vínculo nos membros
-    _membros = _membros.map((m) => (g.membroIds.includes(m.id) ? { ...m, grupoIds: [...new Set([...m.grupoIds, g.id])] } : m));
-    notify();
+    const { membros, grupos } = ler();
+    gravar({
+        grupos: [g, ...grupos],
+        membros: membros.map((m) => (g.membroIds.includes(m.id) ? { ...m, grupoIds: [...new Set([...m.grupoIds, g.id])] } : m)),
+    });
 }
 export function updateGrupo(id: string, patch: Partial<Grupo>) {
-    _grupos = _grupos.map((g) => (g.id === id ? { ...g, ...patch } : g));
-    notify();
+    gravar({ grupos: ler().grupos.map((g) => (g.id === id ? { ...g, ...patch } : g)) });
+}
+/**
+ * Edita nome, eventos e membros de um grupo e reflete a troca de membros nos próprios membros.
+ * O grupo padrão mantém nome e eventos (cobre todos, MEM-64): só os membros mudam.
+ */
+export function editarGrupo(id: string, patch: Pick<Grupo, "nome" | "eventoIds" | "membroIds">) {
+    const { membros, grupos } = ler();
+    const atual = grupos.find((g) => g.id === id);
+    if (!atual) return;
+    const novo = atual.sistema ? { ...atual, membroIds: patch.membroIds } : { ...atual, ...patch };
+    gravar({
+        grupos: grupos.map((g) => (g.id === id ? novo : g)),
+        membros: membros.map((m) => {
+            const tem = m.grupoIds.includes(id);
+            const deveTer = novo.membroIds.includes(m.id);
+            if (tem === deveTer) return m;
+            return { ...m, grupoIds: deveTer ? [...m.grupoIds, id] : m.grupoIds.filter((gid) => gid !== id) };
+        }),
+    });
+}
+/** Ação em lote: dá um cargo ou põe num grupo os membros escolhidos, sem tirar o que já têm. */
+export function adicionarAosMembros(ids: Set<string>, alvo: { cargoId: string } | { grupoId: string }) {
+    const { membros, grupos } = ler();
+    if ("cargoId" in alvo) {
+        gravar({ membros: membros.map((m) => (ids.has(m.id) && !m.cargoIds.includes(alvo.cargoId) ? { ...m, cargoIds: [...m.cargoIds, alvo.cargoId] } : m)) });
+        return;
+    }
+    gravar({
+        membros: membros.map((m) => (ids.has(m.id) && !m.grupoIds.includes(alvo.grupoId) ? { ...m, grupoIds: [...m.grupoIds, alvo.grupoId] } : m)),
+        grupos: grupos.map((g) => (g.id === alvo.grupoId ? { ...g, membroIds: [...new Set([...g.membroIds, ...ids])] } : g)),
+    });
 }
 export function removeGrupos(ids: Set<string>) {
-    _grupos = _grupos.filter((g) => !ids.has(g.id));
-    // remove referências nos membros
-    _membros = _membros.map((m) => ({ ...m, grupoIds: m.grupoIds.filter((gid) => !ids.has(gid)) }));
-    notify();
+    const { membros, grupos } = ler();
+    gravar({
+        grupos: grupos.filter((g) => g.sistema || !ids.has(g.id)),
+        membros: membros.map((m) => ({ ...m, grupoIds: m.grupoIds.filter((gid) => !ids.has(gid)) })),
+    });
 }
 
-/** Sincroniza os grupos de um membro recém-criado (adiciona o id do membro aos grupos). */
-function _sincronizarGrupos(m: Membro) {
-    _grupos = _grupos.map((g) => (m.grupoIds.includes(g.id) ? { ...g, membroIds: [...new Set([...g.membroIds, m.id])] } : g));
-}
-
-/* ---- cargos customizados (criados pela organização) ---- */
-let _cargosCustom: Cargo[] = [];
-// Snapshot estável: useSyncExternalStore exige a mesma referência entre leituras.
-let _cargosSnap: Cargo[] = [...CARGOS];
-const atualizarCargos = () => {
-    _cargosSnap = [...CARGOS, ..._cargosCustom];
-    notify();
-};
-
+/* ---- cargos (os padrão + os criados pela organização) ---- */
 export function useCargos() {
-    return useSyncExternalStore(subscribe, () => _cargosSnap);
+    return useSyncExternalStore(subscribe, () => ler().cargos);
 }
-
-/** Cargos padrão do sistema não podem ser editados nem excluídos. */
-export const isCargoSistema = (id: string) => CARGOS.some((c) => c.id === id);
-
 export function addCargo(c: Cargo) {
-    _cargosCustom = [..._cargosCustom, c];
-    atualizarCargos();
+    gravar({ cargosCustom: [...ler().cargosCustom, c] });
 }
-
 export function updateCargo(id: string, patch: Partial<Cargo>) {
-    _cargosCustom = _cargosCustom.map((c) => (c.id === id ? { ...c, ...patch } : c));
-    atualizarCargos();
+    gravar({ cargosCustom: ler().cargosCustom.map((c) => (c.id === id ? { ...c, ...patch } : c)) });
 }
-
 export function removeCargo(id: string) {
-    _cargosCustom = _cargosCustom.filter((c) => c.id !== id);
-    _membros = _membros.map((m) => ({ ...m, cargoIds: m.cargoIds.filter((cid) => cid !== id) }));
-    atualizarCargos();
+    const { cargosCustom, membros } = ler();
+    gravar({
+        cargosCustom: cargosCustom.filter((c) => c.id !== id),
+        membros: membros.map((m) => ({ ...m, cargoIds: m.cargoIds.filter((cid) => cid !== id) })),
+    });
 }

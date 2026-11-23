@@ -20,6 +20,8 @@ export interface EntradaDasTags {
     descricao: string;
     banner: ImagemDoBanner | null;
     recorte: Recorte | null;
+    /** Sem campo aberto (edição, EVT-127): lê do nome, da descrição e do banner ao sair deles. */
+    semTextoAberto?: boolean;
 }
 
 export type EstadoDasTags =
@@ -52,7 +54,8 @@ export function useTagsDoEvento(entrada: EntradaDasTags) {
         if (!e.ativo) return Promise.resolve(null);
         const dados = { texto: e.texto.trim(), nome: e.nome.trim(), descricao: e.descricao.trim(), bannerDescricao: banner ?? undefined };
         // Sem o texto aberto não há busca ao sair de um campo (no Criar há, com o nome, a descrição e o banner): o campo trava enquanto busca, e travaria quem chega nele vindo do nome.
-        if (!dados.texto && !opcoes.reaproveitar) {
+        const temOQueLer = e.semTextoAberto ? !!(dados.nome || dados.descricao || dados.bannerDescricao) : !!dados.texto;
+        if (!temOQueLer && !opcoes.reaproveitar) {
             ultima.current = null;
             setEstado({ status: "vazio" });
             return Promise.resolve(null);

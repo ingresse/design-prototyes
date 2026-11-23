@@ -1,25 +1,25 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ArrowDown, SearchLg, SlashCircle01, XClose } from "@untitledui/icons";
+import { SlashCircle01, XClose } from "@untitledui/icons";
 import {
     Dialog as AriaDialog,
     Modal as AriaModal,
     ModalOverlay as AriaModalOverlay,
 } from "react-aria-components";
-import type { Selection } from "react-aria-components";
-import { Badge, BadgeWithDot } from "@/components/base/badges/badges";
+import { Badge } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
+import { ButtonGroup, ButtonGroupItem } from "@/components/base/button-group/button-group";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
 import { Checkbox } from "@/components/base/checkbox/checkbox";
-import { Input } from "@/components/base/input/input";
-import { MultiSelect } from "@/components/base/select/multi-select";
-import { PaginationCardAdvanced } from "@/components/application/pagination/pagination";
 import { cx } from "@/utils/cx";
+import { RodapeDePaginacao, usePaginacao } from "../../components/rodape-de-paginacao";
+import { BarraDaLista, CabecalhoDaTabela, CartaoDaTabela, Celula, LinhaDaTabela, SemResultados, TituloDaLinha } from "../../components/tabela";
 import {
     useCortesiasStore,
     type Pedido as PedidoSummaryStore,
     type PedidoStatus as StorePedidoStatus,
 } from "../data/cortesias-store";
-import type { CortesiaItem } from "../data/item-types";
+import { ITEM_STATUS_SELO, statusDoDestinatario, type CortesiaItem } from "../data/item-types";
+import { SeloDeStatus } from "../../components/estado-de-pedido";
 import { CancelConfirmModal } from "./CancelConfirmModal";
 
 /* ------------------------------------------------------------------ */
@@ -36,31 +36,14 @@ type ItemStatus = CortesiaItem["status"];
 /*  Static option lists                                               */
 /* ------------------------------------------------------------------ */
 
-const ITEM_STATUS_META: Record<
-    ItemStatus,
-    { label: string; color: "success" | "error" | "warning" | "blue" | "gray" | "brand" }
-> = {
-    aceito: { label: "Aceito", color: "success" },
-    cancelado: { label: "Cancelado", color: "error" },
-    pendente: { label: "Pendente de cadastro", color: "warning" },
-    processando: { label: "Processando", color: "blue" },
-    erro: { label: "Erro", color: "error" },
-};
-
-const ITEM_STATUS_OPTIONS: { id: ItemStatus; label: string }[] = [
-    { id: "aceito", label: "Aceito" },
-    { id: "cancelado", label: "Cancelado" },
-    { id: "pendente", label: "Pendente de cadastro" },
+/** Filtro de status em botões segmentados (BKS-111): Processando e Com erro só quando há item assim. */
+const ITEM_STATUS_FILTRO: { id: ItemStatus; label: string; sempre?: boolean }[] = [
+    { id: "aceito", label: "Aceitos", sempre: true },
+    { id: "pendente", label: "Pendentes", sempre: true },
+    { id: "cancelado", label: "Cancelados", sempre: true },
     { id: "processando", label: "Processando" },
-    { id: "erro", label: "Erro" },
+    { id: "erro", label: "Com erro" },
 ];
-
-const PEDIDO_STATUS_META: Record<PedidoStatus, { label: string; color: "success" | "error" }> = {
-    emitido: { label: "Emitido", color: "success" },
-    cancelado: { label: "Cancelado", color: "error" },
-};
-
-const DEFAULT_PAGE_SIZE = 100;
 
 /* ------------------------------------------------------------------ */
 /*  Component                                                         */
@@ -88,9 +71,7 @@ export function PedidoDetailsSlideOut({
     } = useCortesiasStore();
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [search, setSearch] = useState("");
-    const [statusKeys, setStatusKeys] = useState<Set<string>>(new Set());
-    const [page, setPage] = useState(0);
-    const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+    const [status, setStatus] = useState<"todos" | ItemStatus>("todos");
     const [showCancelPedidoConfirm, setShowCancelPedidoConfirm] = useState(false);
     const [showCancelSelectedConfirm, setShowCancelSelectedConfirm] = useState(false);
 
@@ -108,8 +89,7 @@ export function PedidoDetailsSlideOut({
         if (isOpen && pedido) {
             setSelectedIds(new Set());
             setSearch("");
-            setStatusKeys(new Set());
-            setPage(0);
+            setStatus("todos");
             setShowCancelPedidoConfirm(false);
             setShowCancelSelectedConfirm(false);
         }
@@ -118,7 +98,7 @@ export function PedidoDetailsSlideOut({
     const filtered = useMemo(() => {
         const q = search.trim().toLowerCase();
         return itens.filter((it) => {
-            if (statusKeys.size > 0 && !statusKeys.has(it.status)) return false;
+            if (status !== "todos" && it.status !== status) return false;
             if (q) {
                 const matches =
                     it.id.toLowerCase().includes(q) ||
@@ -129,11 +109,12 @@ export function PedidoDetailsSlideOut({
             }
             return true;
         });
-    }, [itens, search, statusKeys]);
+    }, [itens, search, status]);
 
-    const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
-    const safePage = Math.min(page, totalPages - 1);
-    const visibleRows = filtered.slice(safePage * pageSize, (safePage + 1) * pageSize);
+    // Busca, filtro ou tamanho novo voltam à página 1 (BKS-114).
+    const paginacao = usePaginacao(filtered, [search, status, pedido?.id, destinatarioEmail]);
+    const visibleRows = paginacao.visiveis;
+    const statusOptions = ITEM_STATUS_FILTRO.filter((o) => o.sempre || o.id === status || itens.some((it) => it.status === o.id));
 
     const toggleSelect = useCallback((id: string, isSelected: boolean) => {
         setSelectedIds((prev) => {
@@ -188,15 +169,6 @@ export function PedidoDetailsSlideOut({
         [itens, selectedIds],
     );
 
-    const handleStatusSelection = (selection: Selection) => {
-        if (selection === "all") {
-            setStatusKeys(new Set(ITEM_STATUS_OPTIONS.map((o) => o.id)));
-        } else {
-            setStatusKeys(new Set(Array.from(selection).map(String)));
-        }
-        setPage(0);
-    };
-
     const selectableVisibleRows = useMemo(
         () =>
             visibleRows.filter(
@@ -213,8 +185,9 @@ export function PedidoDetailsSlideOut({
         pageSelectedCount === selectableVisibleRows.length;
     const someOnPageSelected = pageSelectedCount > 0 && !allOnPageSelected;
 
-    const statusMeta = pedido ? PEDIDO_STATUS_META[pedido.status] : null;
-    const isPedidoCancelado = pedido?.status === "cancelado";
+    // Aberto pela linha de um destinatário, o status e o cancelamento são dele (COR-51); senão, do envio.
+    const doDestinatario = destinatarioEmail ? statusDoDestinatario(itens) : null;
+    const isPedidoCancelado = doDestinatario ? doDestinatario.status === "cancelado" : pedido?.status === "cancelado";
 
     return (
         <>
@@ -268,14 +241,10 @@ export function PedidoDetailsSlideOut({
                                 </h3>
                                 <dl className="grid grid-cols-1 gap-x-6 gap-y-2 sm:grid-cols-2">
                                     <DetailRow label="Status:">
-                                        {statusMeta && (
-                                            <BadgeWithDot
-                                                size="sm"
-                                                type="modern"
-                                                color={statusMeta.color}
-                                            >
-                                                {statusMeta.label}
-                                            </BadgeWithDot>
+                                        {doDestinatario ? (
+                                            <SeloDeStatus status={doDestinatario.status} rotulo={doDestinatario.rotulo} />
+                                        ) : (
+                                            <SeloDeStatus status={pedido.status} />
                                         )}
                                     </DetailRow>
                                     <DetailRow label="Emissor responsável:">
@@ -312,65 +281,52 @@ export function PedidoDetailsSlideOut({
                                     isDisabled={isPedidoCancelado}
                                     onClick={requestCancelPedido}
                                 >
-                                    Cancelar pedido completo
+                                    {destinatarioEmail ? "Cancelar destinatário" : "Cancelar pedido completo"}
                                 </Button>
                             </div>
                         </div>
 
-                        <div className="px-6 pb-6">
-                            <div className="rounded-xl bg-primary ring-1 ring-border-secondary">
-                                <div className="grid grid-cols-1 gap-3 border-b border-secondary px-4 py-4 md:grid-cols-[1fr_180px_180px] md:px-6">
-                                    <Input
-                                        label="Busca"
-                                        size="sm"
-                                        icon={SearchLg}
-                                        placeholder="Buscar por nome, e-mail, ID ou Documento"
-                                        value={search}
-                                        onChange={(v: string) => {
-                                            setSearch(v);
-                                            setPage(0);
-                                        }}
-                                    />
-                                    <MultiSelect
-                                        label="Status"
+                        <div className="flex flex-col gap-4 px-6 pb-6">
+                            <BarraDaLista
+                                busca={{ valor: search, onChange: setSearch, placeholder: "Buscar por nome, e-mail, ID ou documento" }}
+                                filtro={
+                                    <ButtonGroup
                                         size="sm"
                                         aria-label="Status"
-                                        placeholder="Todos"
-                                        items={ITEM_STATUS_OPTIONS}
-                                        selectedKeys={statusKeys}
-                                        onSelectionChange={handleStatusSelection}
-                                        onReset={() => setStatusKeys(new Set())}
-                                        onSelectAll={() =>
-                                            setStatusKeys(
-                                                new Set(ITEM_STATUS_OPTIONS.map((o) => o.id)),
-                                            )
-                                        }
-                                        showSearch={false}
-                                        selectedCountFormatter={(count) =>
-                                            count === ITEM_STATUS_OPTIONS.length
-                                                ? "Todos"
-                                                : `${count} ${count === 1 ? "selecionado" : "selecionados"}`
-                                        }
+                                        disallowEmptySelection
+                                        selectedKeys={[status]}
+                                        onSelectionChange={(keys) => {
+                                            const [k] = [...keys];
+                                            if (k !== undefined) setStatus(String(k) as "todos" | ItemStatus);
+                                        }}
+                                        className="w-full sm:w-max"
                                     >
-                                        {(item) => (
-                                            <MultiSelect.Item
-                                                id={item.id}
-                                                selectionIndicator="checkbox"
-                                                selectionIndicatorAlign="left"
-                                            >
-                                                {item.label}
-                                            </MultiSelect.Item>
-                                        )}
-                                    </MultiSelect>
-                                </div>
-
-                                <div className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-3 border-b border-secondary bg-secondary px-4 py-3 md:px-6">
-                                    <p className="text-sm text-tertiary">
-                                        {selectedIds.size === 0
-                                            ? "Nenhum item selecionado"
-                                            : `${selectedIds.size} ${selectedIds.size === 1 ? "item selecionado" : "itens selecionados"}`}
-                                    </p>
-                                    <div className="flex items-center gap-2">
+                                        {[{ id: "todos", label: "Todos" }, ...statusOptions].map((o) => (
+                                            <ButtonGroupItem key={o.id} id={o.id} className="flex-1 justify-center sm:flex-none">
+                                                {o.label}
+                                            </ButtonGroupItem>
+                                        ))}
+                                    </ButtonGroup>
+                                }
+                            />
+                            <CartaoDaTabela>
+                                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-secondary bg-secondary px-5 py-3 md:px-6">
+                                    <div className="flex items-center gap-4">
+                                        {/* No modo lista o cabeçalho das colunas some: o "selecionar todos" vem para cá. */}
+                                        <Checkbox
+                                            aria-label="Selecionar todos da página"
+                                            isSelected={allOnPageSelected}
+                                            isIndeterminate={someOnPageSelected}
+                                            onChange={toggleAllOnPage}
+                                            className="@min-[44rem]:hidden"
+                                        />
+                                        <p className="text-sm text-tertiary">
+                                            {selectedIds.size === 0
+                                                ? "Nenhum item selecionado"
+                                                : `${selectedIds.size} ${selectedIds.size === 1 ? "item selecionado" : "itens selecionados"}`}
+                                        </p>
+                                    </div>
+                                    <div className="flex flex-wrap items-center gap-2">
                                         <Button
                                             size="sm"
                                             color="secondary"
@@ -392,26 +348,37 @@ export function PedidoDetailsSlideOut({
                                     </div>
                                 </div>
 
-                                <ItensTable
-                                    rows={visibleRows}
-                                    selectedIds={selectedIds}
-                                    allOnPageSelected={allOnPageSelected}
-                                    someOnPageSelected={someOnPageSelected}
-                                    onToggleSelect={toggleSelect}
-                                    onToggleAllOnPage={toggleAllOnPage}
-                                />
+                                <CabecalhoDaTabela ordenavel>
+                                    <Checkbox
+                                        aria-label="Selecionar todos da página"
+                                        isSelected={allOnPageSelected}
+                                        isIndeterminate={someOnPageSelected}
+                                        onChange={toggleAllOnPage}
+                                        className="shrink-0"
+                                    />
+                                    <span className="min-w-0 flex-1">Item</span>
+                                    <span className="w-40">Status</span>
+                                    <span className="min-w-0 flex-1">Destinatário</span>
+                                </CabecalhoDaTabela>
 
-                                <PaginationCardAdvanced
-                                    page={safePage + 1}
-                                    total={totalPages}
-                                    pageSize={pageSize}
-                                    onPageChange={(p) => setPage(p - 1)}
-                                    onPageSizeChange={(size) => {
-                                        setPageSize(size);
-                                        setPage(0);
-                                    }}
-                                />
-                            </div>
+                                {filtered.length === 0 ? (
+                                    <SemResultados
+                                        texto="Nenhum item encontrado."
+                                        onLimpar={() => {
+                                            setSearch("");
+                                            setStatus("todos");
+                                        }}
+                                    />
+                                ) : (
+                                    <ul className="flex flex-col divide-y divide-secondary">
+                                        {visibleRows.map((row) => (
+                                            <ItemRow key={row.id} row={row} isSelected={selectedIds.has(row.id)} onToggleSelect={toggleSelect} />
+                                        ))}
+                                    </ul>
+                                )}
+
+                                <RodapeDePaginacao {...paginacao} />
+                            </CartaoDaTabela>
                         </div>
                     </div>
 
@@ -429,17 +396,23 @@ export function PedidoDetailsSlideOut({
             isOpen={showCancelPedidoConfirm}
             onClose={() => setShowCancelPedidoConfirm(false)}
             onConfirm={confirmCancelPedido}
-            title="Cancelar este pedido de cortesia?"
+            title={destinatarioEmail ? "Cancelar este destinatário?" : "Cancelar este pedido de cortesia?"}
             description={
-                <>
-                    Você está prestes a cancelar o pedido{" "}
-                    <span className="font-medium text-primary">{pedido?.id}</span>. Isso
-                    interromperá o envio para todos os destinatários vinculados a este
-                    pedido. Esta ação não pode ser desfeita.
-                </>
+                destinatarioEmail ? (
+                    <>
+                        Você está prestes a cancelar os itens enviados para{" "}
+                        <span className="font-medium break-all text-primary">{destinatarioEmail}</span> no pedido{" "}
+                        <span className="font-medium text-primary">{pedido?.nome}</span>. Os QR codes serão invalidados e essa ação não pode ser desfeita.
+                    </>
+                ) : (
+                    <>
+                        Você está prestes a cancelar o pedido <span className="font-medium text-primary">{pedido?.id}</span>. Isso interromperá o envio para
+                        todos os destinatários vinculados a este pedido. Esta ação não pode ser desfeita.
+                    </>
+                )
             }
-            confirmLabel="Cancelar pedido"
-            cancelLabel="Manter pedido"
+            confirmLabel={destinatarioEmail ? "Cancelar destinatário" : "Cancelar pedido"}
+            cancelLabel={destinatarioEmail ? "Manter destinatário" : "Manter pedido"}
         />
 
         <CancelConfirmModal
@@ -452,7 +425,7 @@ export function PedidoDetailsSlideOut({
             listItems={selectedItensList.map((it) => (
                 <div className="flex flex-col">
                     <span className="font-medium text-primary">{it.nome}</span>
-                    <span className="text-xs text-tertiary">{it.subtitulo}</span>
+                    <span className="text-sm text-tertiary">{it.subtitulo}</span>
                 </div>
             ))}
             confirmLabel="Cancelar itens"
@@ -478,123 +451,42 @@ const DetailRow = ({ label, children }: DetailRowProps) => (
     </div>
 );
 
-interface ItensTableProps {
-    rows: CortesiaItem[];
-    selectedIds: Set<string>;
-    allOnPageSelected: boolean;
-    someOnPageSelected: boolean;
-    onToggleSelect: (id: string, selected: boolean) => void;
-    onToggleAllOnPage: (selected: boolean) => void;
-}
-
-const ItensTable = ({
-    rows,
-    selectedIds,
-    allOnPageSelected,
-    someOnPageSelected,
-    onToggleSelect,
-    onToggleAllOnPage,
-}: ItensTableProps) => {
-    if (rows.length === 0) {
-        return (
-            <div className="px-6 py-12 text-center text-sm text-tertiary">
-                Nenhum item encontrado.
-            </div>
-        );
-    }
-
+/** Uma linha por item: tabela a partir de 704 px de cartão; abaixo, bloco com rótulos (BKS-115). */
+const ItemRow = ({ row, isSelected, onToggleSelect }: { row: CortesiaItem; isSelected: boolean; onToggleSelect: (id: string, selected: boolean) => void }) => {
+    const showEmail = row.status !== "cancelado" || row.email;
+    const isCheckboxDisabled = row.status === "cancelado" || row.status === "erro";
     return (
-        <div className="overflow-x-auto">
-            <table className="w-full border-collapse">
-                <thead>
-                    <tr className="border-b border-secondary bg-secondary_subtle text-left">
-                        <th className="w-10 px-4 py-3 md:px-6">
-                            <Checkbox
-                                aria-label="Selecionar todos da página"
-                                isSelected={allOnPageSelected}
-                                isIndeterminate={someOnPageSelected}
-                                onChange={(s) => onToggleAllOnPage(s)}
-                            />
-                        </th>
-                        <th className="px-4 py-3 text-xs font-semibold text-tertiary">Item</th>
-                        <th className="px-4 py-3 text-xs font-semibold text-tertiary">
-                            <span className="inline-flex items-center gap-1">
-                                Status
-                                <ArrowDown
-                                    aria-hidden="true"
-                                    className="size-3.5 text-fg-quaternary"
-                                />
-                            </span>
-                        </th>
-                        <th className="px-4 py-3 text-xs font-semibold text-tertiary">
-                            Destinatário
-                        </th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {rows.map((row, i) => {
-                        const isSelected = selectedIds.has(row.id);
-                        const meta = ITEM_STATUS_META[row.status];
-                        const showEmail = row.status !== "cancelado" || row.email;
-                        const isCheckboxDisabled =
-                            row.status === "cancelado" || row.status === "erro";
-                        return (
-                            <tr
-                                key={row.id}
-                                className={cx(
-                                    "transition duration-100 ease-linear hover:bg-primary_hover",
-                                    i !== rows.length - 1 && "border-b border-secondary",
+        <LinhaDaTabela interativa selecionada={isSelected}>
+            <Checkbox
+                aria-label={`Selecionar item ${row.id}`}
+                isSelected={isSelected}
+                isDisabled={isCheckboxDisabled}
+                onChange={(s) => onToggleSelect(row.id, s)}
+                className="mt-0.5 shrink-0 @min-[44rem]:mt-0"
+            />
+            <div className="flex min-w-0 flex-1 flex-col gap-1.5 @min-[44rem]:flex-row @min-[44rem]:items-center @min-[44rem]:gap-4">
+                <TituloDaLinha titulo={row.nome} apoio={row.subtitulo} />
+                <Celula rotulo="Status" className="@min-[44rem]:w-40">
+                    <SeloDeStatus status={ITEM_STATUS_SELO[row.status]} />
+                </Celula>
+                <Celula rotulo="Destinatário" className="@min-[44rem]:min-w-0 @min-[44rem]:flex-1">
+                    {row.status === "cancelado" && !showEmail ? (
+                        <span className="text-tertiary">-</span>
+                    ) : (
+                        <span className="flex min-w-0 flex-1 flex-col">
+                            <span className="flex min-w-0 items-center gap-2">
+                                <span className="break-all">{row.email}</span>
+                                {row.transferido && (
+                                    <Badge size="sm" color="gray" type="modern" className="shrink-0">
+                                        Transferido
+                                    </Badge>
                                 )}
-                            >
-                                <td className="px-4 py-3 md:px-6">
-                                    <Checkbox
-                                        aria-label={`Selecionar item ${row.id}`}
-                                        isSelected={isSelected}
-                                        isDisabled={isCheckboxDisabled}
-                                        onChange={(s) => onToggleSelect(row.id, s)}
-                                    />
-                                </td>
-                                <td className="px-4 py-3">
-                                    <div className="flex flex-col gap-0.5">
-                                        <span className="text-sm font-medium text-primary">
-                                            {row.nome}
-                                        </span>
-                                        <span className="text-xs text-tertiary">
-                                            {row.subtitulo}
-                                        </span>
-                                    </div>
-                                </td>
-                                <td className="px-4 py-3">
-                                    <BadgeWithDot size="sm" type="modern" color={meta.color}>
-                                        {meta.label}
-                                    </BadgeWithDot>
-                                </td>
-                                <td className="px-4 py-3">
-                                    {row.status === "cancelado" && !showEmail ? (
-                                        <span className="text-sm text-tertiary">-</span>
-                                    ) : (
-                                        <div className="flex flex-col gap-1">
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-sm text-primary">
-                                                    {row.email}
-                                                </span>
-                                                {row.transferido && (
-                                                    <Badge size="sm" color="gray" type="modern">
-                                                        Transferido
-                                                    </Badge>
-                                                )}
-                                            </div>
-                                            <span className="text-xs text-tertiary">
-                                                Documento: {row.documento}
-                                            </span>
-                                        </div>
-                                    )}
-                                </td>
-                            </tr>
-                        );
-                    })}
-                </tbody>
-            </table>
-        </div>
+                            </span>
+                            <span className="truncate text-tertiary">Documento: {row.documento}</span>
+                        </span>
+                    )}
+                </Celula>
+            </div>
+        </LinhaDaTabela>
     );
 };

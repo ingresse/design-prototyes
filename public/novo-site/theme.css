@@ -1,0 +1,97 @@
+/* Temas do protótipo — tokens do design system Ingresse × Koto (colors_and_type.css).
+   Claro (padrão): papel quente #F5F4F2, superfícies brancas, bordas fog/mist, tinta #0A0A0B.
+   Escuro (opcional pelo botão do header): quase-preto #0B0B0D em camadas, laranja clareado para manter AA.
+   Decisão de 16/10: a identidade do marketplace é a do rebrand Koto; a pele do microsite milk-club
+   (cantos retos, caixa alta, neutros frios) foi revertida. O modo escuro e o seletor de idioma ficaram. */
+
+:root,
+html[data-theme="light"]{
+  color-scheme:light;
+  --bg:#F5F4F2;
+  --bg-alt:#FAF9F6;
+  --surface:#FFFFFF;
+  --inverse:#0A0A0B;
+  --inverse-2:#1A1A1C;
+  --inverse-line:#0A0A0B;
+  --line:#E6E6E9;
+  --line-strong:#C9C9CE;
+  --ink:#0A0A0B;
+  --ink-2:#3A3A3E;
+  --muted:#55555A;
+  --muted-2:#6B6B70;
+  --muted-3:#8B8B90;
+  --accent-ink:#C41A0F;
+  --accent-ink-2:#7A1A12;
+  --accent-soft:#FFE1DD;
+  --accent-line:#FFD6D1;
+  --header-bg:rgba(255,255,255,.72);
+  --footer-bg:#0A0A0B;
+  --hover-bg:#FAF9F6;
+}
+
+html[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#0B0B0D;
+  --bg-alt:#111114;
+  --surface:#16161A;
+  --inverse:#26262C;
+  --inverse-2:#303037;
+  --inverse-line:#3E3E46;
+  --line:#26262B;
+  --line-strong:#3A3A41;
+  --ink:#F5F4F2;
+  --ink-2:#D4D4D8;
+  --muted:#A6A6AD;
+  --muted-2:#8E8E95;
+  --muted-3:#75757C;
+  --accent-ink:#FF6B5E;
+  --accent-ink-2:#FFB3A8;
+  --accent-soft:rgba(255,39,26,.14);
+  --accent-line:rgba(255,39,26,.32);
+  --header-bg:rgba(11,11,13,.72);
+  --footer-bg:#0B0B0D;
+  --hover-bg:#1A1A1C;
+  --ok-ink:#5BD08A;--ok-soft:rgba(91,208,138,.14);--warn:#F2C97A;--warn-soft:rgba(245,166,35,.14);
+  --shadow-xs:0 1px 2px rgba(0,0,0,.4);--shadow-sm:0 2px 6px rgba(0,0,0,.45);--shadow-md:0 8px 20px rgba(0,0,0,.5);
+  --shadow-lg:0 16px 40px rgba(0,0,0,.55);--shadow-xl:0 28px 64px rgba(0,0,0,.6);
+}
+
+html,body{background:var(--bg);color:var(--ink);transition:background-color .2s linear,color .2s linear}
+
+/* Header: vidro claro/escuro conforme o DS (blur só aqui e na barra inferior) */
+.hdr{background:var(--header-bg)}
+footer{background:var(--footer-bg) !important;border-top:1px solid var(--line)}
+footer .over{color:var(--muted) !important}
+
+/* Ícones SVG que usam a cor de texto como atributo */
+html[data-theme="dark"] svg[fill="#0A0A0B"],
+html[data-theme="dark"] svg [fill="#0A0A0B"]{fill:var(--ink)}
+html[data-theme="dark"] svg[stroke="#0A0A0B"],
+html[data-theme="dark"] svg [stroke="#0A0A0B"]{stroke:var(--ink)}
+html[data-theme="dark"] img[src*="8703fb5f412b57860d569f5abeea2cae"]{filter:brightness(0) invert(1)}
+html[data-theme="dark"] a.card:hover{box-shadow:0 18px 40px -12px rgba(0,0,0,.7),0 0 0 1px var(--line-strong)}
+html[data-theme="dark"] input,
+html[data-theme="dark"] select,
+html[data-theme="dark"] textarea{color:var(--ink)}
+html[data-theme="dark"] ::placeholder{color:var(--muted-2)}
+html[data-theme="dark"] .ev-stub-date small{color:var(--muted)}
+html[data-theme="dark"] .ev-stub{background:var(--surface);color:var(--ink)}
+html[data-theme="dark"] .coupon-ok,html[data-theme="dark"] .save,html[data-theme="dark"] .tagok,html[data-theme="dark"] .st[data-k="ok"]{color:var(--ok-ink);background:var(--ok-soft)}
+
+/* Ferramentas do header: idioma (PT · EN · ES) e tema, no vocabulário do DS (pill, 36 px) */
+.hdr-tools{display:inline-flex;align-items:center;gap:8px;flex:0 0 auto;margin-left:4px}
+.lang-switch{display:inline-flex;flex:0 0 auto;padding:3px;border:1px solid var(--line-strong);border-radius:999px;background:var(--surface);height:36px;box-sizing:border-box}
+.lang-switch button{min-width:30px;height:100%;padding:0 8px;border:0;border-radius:999px;background:transparent;color:var(--muted);font:inherit;font-size:11px;font-weight:600;letter-spacing:.08em;cursor:pointer;transition:background-color .12s,color .12s}
+.lang-switch button:hover{color:var(--ink)}
+.lang-switch button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+.lang-switch button:focus-visible{outline:2px solid #FF271A;outline-offset:2px}
+@media (max-width:640px){.lang-switch{display:none}}
+.theme-toggle{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;flex:0 0 auto;padding:0;background:var(--surface);color:var(--ink);border:1px solid var(--line-strong);border-radius:50%;cursor:pointer;transition:background-color .12s,border-color .12s}
+.theme-toggle:hover{background:var(--hover-bg);border-color:var(--ink)}
+.theme-toggle:focus-visible{outline:2px solid #FF271A;outline-offset:2px}
+
+/* Vitrine (hero): momento de marca, foto P&B full-bleed dentro do raio de 24 px; sem blur no painel lateral */
+html[data-theme] .vit-rail{background:rgba(10,10,11,.78);-webkit-backdrop-filter:none;backdrop-filter:none}
+html[data-theme] .vit .bs{color:#fff;border-color:rgba(255,255,255,.7);background:transparent}
+html[data-theme] .vit .bs:hover{background:#fff;color:#0A0A0B;border-color:#fff}
+html[data-theme] .vit .car-pause{background:rgba(255,255,255,.12);color:#fff;border-color:rgba(255,255,255,.3)}

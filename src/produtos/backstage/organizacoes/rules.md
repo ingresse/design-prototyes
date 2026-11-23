@@ -3,7 +3,7 @@
 > **Rotas:** `/backstage` (tela de seleção); modal de troca em qualquer tela do Backstage
 > **No menu:** entrada do Backstage (card Backstage na seleção de produtos); avatar do rail clássico, chip da barra do topo, chip da gaveta mobile ou ⌘K / Ctrl+K
 > **Versão em uso:** única (`organizacoes/`)
-> **Revisado em:** 2026-11-07
+> **Revisado em:** 2026-11-22 (Ajustes: atribuição com erro tratado e Desfazer, largura da página)
 
 Este arquivo é a fonte da verdade do comportamento da feature. Mudou uma regra no código, mude
 aqui no mesmo commit. Achou divergência entre código e este arquivo, registre em **Em aberto**
@@ -58,8 +58,10 @@ de qualquer tela.
 
 ### Ajustes (`/backstage/ajustes`)
 - **ORG-43** Ajustes da organização, pelo item Ajustes do rail da organização, com os mesmos ajustes do Backstage em produção: Regras de compra (Termos de uso; Atribuição de ingressos a documentos) e Personalização (Mapas interativos), mais o tema da interface. Cada seção é um cartão com uma linha por ajuste: título e descrição à esquerda, controle à direita. Sem o rail do evento. _(pages/ajustes.tsx)_
-- **ORG-44** Atribuição de ingressos a documentos: toggle gravado na organização (`atribuicaoADocumentos`), com toast de ligada ou desligada. Termos de uso e Mapas interativos ainda não têm tela no protótipo e dizem isso ("Ainda não está no protótipo"), sem levar a lugar nenhum. _(pages/ajustes.tsx, @/plataforma `Organizacao`)_
+- ~~**ORG-44** Atribuição de ingressos a documentos: toggle gravado na organização (`atribuicaoADocumentos`), com toast de ligada ou desligada. Termos de uso tem "Gerenciar", que abre a página dos termos (termos-de-uso/rules.md, desde 21/11/2026). Mapas interativos também tem "Gerenciar" (mapas-interativos/rules.md, desde 21/11/2026). _(pages/ajustes.tsx, @/plataforma `Organizacao`)_~~ Substituída por ORG-46.
 - **ORG-45** Tema da interface: Claro, Escuro ou Sistema (controle segmentado do DS). Vale para a pessoa neste navegador, não para a organização, e fica gravado mesmo quando é "Sistema". Sem escolha, o Backstage abre no escuro (BKS-73). É o único lugar do tema no rail clássico (BKS-68). _(pages/ajustes.tsx, @/providers/theme-provider)_
+- **ORG-46** Atribuição de ingressos a documentos: toggle gravado na organização (`atribuicaoADocumentos`). Gravou: "Atribuição de ingressos a documentos ligada." / "… desligada.", com "Desfazer" no aviso. Falhou: "Tente de novo: a atribuição de ingressos a documentos não foi salva." e o toggle continua como estava (lê do banco). Enquanto grava, o toggle fica desabilitado. Até 22/11/2026 gravava sem tratar erro e sem Desfazer. Termos de uso tem "Gerenciar", que abre a página dos termos (termos-de-uso/rules.md, desde 21/11/2026). Mapas interativos também tem "Gerenciar" (mapas-interativos/rules.md, desde 21/11/2026). _(pages/ajustes.tsx, @/plataforma `Organizacao`)_
+- **ORG-47** A página de Ajustes tem no máximo 768 px de largura: numa tela larga, o controle (toggle, "Gerenciar", tema) ficava longe demais do rótulo. _(pages/ajustes.tsx)_
 
 ## Depende de / afeta
 

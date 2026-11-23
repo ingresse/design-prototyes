@@ -1,26 +1,27 @@
 import { Fragment, useMemo, useState, type ReactNode } from "react";
-import { ChevronDown, CurrencyDollarCircle, Receipt, Ticket01, XClose } from "@untitledui/icons";
-import { Dialog as AriaDialog, Modal as AriaModal, ModalOverlay as AriaModalOverlay } from "react-aria-components";
+import { motion } from "motion/react";
 import { toast } from "sonner";
 import { AlertFloating } from "@/components/application/alerts/alerts";
-import { MetricsIcon03 } from "@/components/application/metrics/metrics";
 import { TabList, Tabs } from "@/components/application/tabs/tabs";
+import { NativeSelect } from "@/components/base/select/select-native";
 import { Badge } from "@/components/base/badges/badges";
-import { Button } from "@/components/base/buttons/button";
-import { ButtonUtility } from "@/components/base/buttons/button-utility";
 import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
 import { ExportMenu, RelatorioPageHeader } from "../components/RelatorioPageHeader";
-import { RelatorioFiltersProvider, dateRangeFraction, useRelatorioFilters } from "../components/relatorio-filters";
-import { DetalhesDaLinha, linhaQueAbre, useLinhaAberta } from "../components/TabelaLista";
+import { RelatorioFiltersProvider, useRelatorioFilters, type DateRange } from "../components/relatorio-filters";
+import { AbrirDaLinha, AlternarDaArvore, DetalhesDaLinha, PainelLateral, linhaQueAbre, useLinhaAberta } from "../components/TabelaLista";
+import { CarregandoRelatorio, useItemNaUrl, useLinhaFilhaAnimada, useRelatorioCarregando } from "../components/estado-dos-relatorios";
+import { MetricaDoRelatorio, PainelDeMetricas } from "../components/visual-dos-relatorios";
 import { useBreakpoint } from "@/hooks/use-breakpoint";
 import { SortableHeader } from "../components/SortableHeader";
 import { useSortableTable } from "../utils/useSortableTable";
-import { EVENT, currencyFormatter, numberFormatter } from "../data/event";
-import type { agregar } from "@/reports/event-dataset";
+import { currencyFormatter, dataEHora, numberFormatter } from "../data/event";
 import { useDatasetDoEvento } from "../data/vendas-banco";
+import { getLocalTimeZone } from "@internationalized/date";
+import { useBanco, type Evento as EventoBanco, type HistoricoVendas, type Pedido as PedidoBanco } from "@/plataforma";
+import { eventos as eventosDaOrganizacao, useEventoAtual, useEventosVersao } from "../../eventos/data/eventos";
+import { useTodosOsEventos } from "../../components/escopo-dos-relatorios";
 
-const HIDE_TREND_AND_MENU = "[&_.top-4.right-4]:hidden [&_.md\\:top-5]:hidden [&_p+div]:hidden";
 
 /* ------------------------------------------------------------------ */
 /*  Tree types + helpers                                              */
@@ -55,280 +56,28 @@ const grandTotalOf = (nodes: TreeNode[]): number[] =>
         return s.map((v, i) => (acc[i] ?? 0) + v);
     }, []);
 
+/** Em subtotal, o valor unitário é o total ÷ a quantidade, não a soma dos unitários. */
+const comUnitario = (values: number[], columns: ColDef[]): number[] => {
+    const q = columns.findIndex((c) => c.label === "Quantidade");
+    const u = columns.findIndex((c) => c.label === "Valor unitário");
+    const t = columns.findIndex((c) => c.label === "Valor total");
+    if (q < 0 || u < 0 || t < 0) return values;
+    const out = [...values];
+    out[u] = values[q] ? Math.round((values[t] / values[q]) * 100) / 100 : 0;
+    return out;
+};
+
 /* ------------------------------------------------------------------ */
-/*  Mock data — 3 visões                                              */
+/*  Colunas das 3 visões                                              */
 /* ------------------------------------------------------------------ */
 
-const MACRO_COLUMNS: ColDef[] = [
-    { label: "Bundle", type: "text" },
-    { label: "Produto", type: "text" },
-    { label: "Quantidade", type: "int" },
-    { label: "Valor unitário", type: "currency" },
-    { label: "Valor Total", type: "currency" },
-];
-
-const macroData: TreeNode[] = [
-    {
-        label: "BILHETERIA",
-        children: [
-            {
-                label: "Tribuna",
-                children: [
-                    { label: "Família Jogadores", values: [0, 0, 54, 0, 0] },
-                    { label: "Estádio", values: [0, 0, 4, 0, 0] },
-                    { label: "Patrocinador", values: [0, 0, 1, 0, 0] },
-                ],
-            },
-            {
-                label: "Sul (Visitante)",
-                children: [
-                    { label: "Gratuidade - PCD", values: [0, 0, 8, 0, 0] },
-                    { label: "Gratuidade - Maior de 60 Anos", values: [0, 0, 37, 0, 0] },
-                    { label: "Acompanhante PCD", values: [0, 0, 2, 0, 0] },
-                    { label: "Reciprocidade", values: [0, 0, 35, 0, 0] },
-                ],
-            },
-            {
-                label: "Oeste Superior B",
-                children: [
-                    { label: "Gratuidade - Maior de 60 Anos", values: [0, 0, 245, 0, 0] },
-                    { label: "Gratuidade - Menor de 12 Anos", values: [0, 0, 40, 0, 0] },
-                ],
-            },
-            {
-                label: "Oeste Inferior",
-                children: [
-                    { label: "Gratuidade - Maior de 60 Anos", values: [0, 0, 410, 0, 0] },
-                    { label: "Familia Jogadores", values: [0, 0, 139, 0, 0] },
-                    { label: "Acompanhante PCD", values: [0, 0, 20, 0, 0] },
-                    { label: "FERJ", values: [0, 0, 14, 0, 0] },
-                    { label: "Gratuidade - PCD", values: [0, 0, 40, 0, 0] },
-                    { label: "Gratuidade - Menor de 12 Anos", values: [0, 0, 80, 0, 0] },
-                    { label: "Patrocinador", values: [0, 0, 59, 0, 0] },
-                    { label: "Sócio Proprietário", values: [0, 0, 115, 0, 0] },
-                    { label: "Relacionamento", values: [0, 0, 78, 0, 0] },
-                    { label: "BEPE", values: [0, 0, 21, 0, 0] },
-                    { label: "Resgate OFF Rio", values: [0, 0, 9, 0, 0] },
-                    { label: "NIKE", values: [0, 0, 7, 0, 0] },
-                    { label: "CPE Estado Maior", values: [0, 0, 3, 0, 0] },
-                    { label: "Aquecimento", values: [0, 0, 8, 0, 0] },
-                    { label: "Bombeiro (DDP)", values: [0, 0, 9, 0, 0] },
-                    { label: "Acompanhante Backstage Tour", values: [0, 0, 3, 0, 0] },
-                    { label: "3º BATALHÃO", values: [0, 0, 10, 0, 0] },
-                    { label: "Intervalo", values: [0, 0, 2, 0, 0] },
-                    { label: "24 DP", values: [0, 0, 3, 0, 0] },
-                    { label: "Backstage Tour", values: [0, 0, 3, 0, 0] },
-                ],
-            },
-            {
-                label: "Leste Superior",
-                children: [
-                    { label: "Gratuidade - Menor de 12 Anos", values: [0, 0, 285, 0, 0] },
-                    { label: "Gratuidade - Maior de 60 Anos", values: [0, 0, 714, 0, 0] },
-                    { label: "Patrocinador", values: [0, 0, 7, 0, 0] },
-                    { label: "Bateria", values: [0, 0, 11, 0, 0] },
-                ],
-            },
-            {
-                label: "Leste Inferior",
-                children: [
-                    { label: "Gratuidade - Maior de 60 Anos", values: [0, 0, 355, 0, 0] },
-                    { label: "Patrocinador", values: [0, 0, 30, 0, 0] },
-                    { label: "Relacionamento", values: [0, 0, 40, 0, 0] },
-                    { label: "Sócio Proprietário", values: [0, 0, 45, 0, 0] },
-                    { label: "Gratuidade - Menor de 12 Anos", values: [0, 0, 100, 0, 0] },
-                    { label: "Gratuidade - PCD", values: [0, 0, 30, 0, 0] },
-                    { label: "Acompanhante PCD", values: [0, 0, 15, 0, 0] },
-                    { label: "Reciprocidade", values: [0, 0, 60, 0, 0] },
-                    { label: "Familia Jogadores", values: [0, 0, 80, 0, 0] },
-                    { label: "Bateria", values: [0, 0, 15, 0, 0] },
-                ],
-            },
-            {
-                label: "Camarote",
-                children: [
-                    { label: "Gratuidade - Menor de 12 Anos", values: [0, 0, 60, 0, 0] },
-                    { label: "Família Jogadores", values: [0, 0, 30, 0, 0] },
-                    { label: "Patrocinador", values: [0, 0, 30, 0, 0] },
-                ],
-            },
-            {
-                label: "3º Andar Leste",
-                children: [
-                    { label: "Gratuidade - Maior de 60 Anos", values: [0, 0, 150, 0, 0] },
-                    { label: "Família Jogadores", values: [0, 0, 50, 0, 0] },
-                    { label: "Reciprocidade", values: [0, 0, 54, 0, 0] },
-                ],
-            },
-        ],
-    },
-    {
-        label: "ONLINE",
-        children: [
-            {
-                label: "Tribuna",
-                children: [
-                    { label: "Futebol", values: [0, 0, 10, 120, 1200] },
-                ],
-            },
-            {
-                label: "Sul (Visitante)",
-                children: [
-                    { label: "Meia-Entrada", values: [0, 0, 6, 40, 240] },
-                    { label: "Inteira", values: [0, 0, 7, 80, 560] },
-                ],
-            },
-            {
-                label: "Oeste Superior B",
-                children: [
-                    { label: "Meia-Entrada", values: [0, 0, 1683, 30, 50490] },
-                    { label: "Inteira", values: [0, 0, 1051, 60, 63060] },
-                    { label: "Acompanhante Glorioso", values: [0, 0, 61, 24, 1464] },
-                    { label: "Branco", values: [0, 0, 71, 30, 2130] },
-                    { label: "Glorioso", values: [0, 0, 44, 0, 0] },
-                    { label: "Alvinegro OFF Rio", values: [0, 0, 11, 12, 132] },
-                    { label: "Preto", values: [0, 0, 65, 24, 1560] },
-                    { label: "Alvinegro", values: [0, 0, 93, 0, 0] },
-                ],
-            },
-            {
-                label: "Oeste Inferior",
-                children: [
-                    { label: "Meia-Entrada", values: [0, 0, 1337, 50, 66850] },
-                    { label: "Inteira", values: [0, 0, 508, 100, 50800] },
-                    { label: "Alvinegro", values: [0, 0, 1163, 0, 0] },
-                    { label: "Preto", values: [0, 0, 314, 20, 6280] },
-                    { label: "Acompanhante Glorioso", values: [0, 0, 351, 40, 14040] },
-                    { label: "Glorioso", values: [0, 0, 502, 0, 0] },
-                    { label: "Funcionário Glorioso", values: [0, 0, 30, 0, 0] },
-                    { label: "Branco", values: [0, 0, 262, 30, 7860] },
-                    { label: "Alvinegro OFF Rio", values: [0, 0, 48, 20, 960] },
-                ],
-            },
-            {
-                label: "Leste Superior",
-                children: [
-                    { label: "Meia-Entrada", values: [0, 0, 3877, 20, 77540] },
-                    { label: "Inteira", values: [0, 0, 2225, 40, 89000] },
-                    { label: "Acompanhante Glorioso", values: [0, 0, 423, 16, 6768] },
-                    { label: "Preto", values: [0, 0, 441, 15, 6615] },
-                    { label: "Branco", values: [0, 0, 364, 20, 7280] },
-                    { label: "Glorioso", values: [0, 0, 402, 0, 0] },
-                    { label: "Alvinegro", values: [0, 0, 1089, 0, 0] },
-                    { label: "Alvinegro OFF Rio", values: [0, 0, 110, 8, 880] },
-                    { label: "Sócio Torcida", values: [0, 0, 68, 0, 0] },
-                ],
-            },
-            {
-                label: "Leste Inferior",
-                children: [
-                    { label: "Meia-Entrada", values: [0, 0, 1491, 40, 59640] },
-                    { label: "Inteira", values: [0, 0, 700, 80, 56000] },
-                    { label: "Alvinegro", values: [0, 0, 900, 0, 0] },
-                    { label: "Glorioso", values: [0, 0, 400, 0, 0] },
-                    { label: "Acompanhante Glorioso", values: [0, 0, 200, 40, 8000] },
-                    { label: "Preto", values: [0, 0, 150, 20, 3000] },
-                    { label: "Branco", values: [0, 0, 120, 30, 3600] },
-                    { label: "Alvinegro OFF Rio", values: [0, 0, 65, 20, 1300] },
-                    { label: "Funcionário Glorioso", values: [0, 0, 50, 0, 0] },
-                    { label: "Sócio Torcida", values: [0, 0, 135, 0, 0] },
-                ],
-            },
-            {
-                label: "Camarote",
-                children: [
-                    { label: "Inteira", values: [0, 0, 40, 60, 2400] },
-                ],
-            },
-            {
-                label: "3º Andar Oeste",
-                children: [
-                    { label: "Inteira", values: [0, 0, 50, 60, 3000] },
-                    { label: "Alvinegro", values: [0, 0, 120, 0, 0] },
-                    { label: "Glorioso", values: [0, 0, 80, 0, 0] },
-                    { label: "Branco", values: [0, 0, 30, 30, 900] },
-                    { label: "Preto", values: [0, 0, 50, 0, 0] },
-                ],
-            },
-            {
-                label: "3º Andar Leste",
-                children: [
-                    { label: "Meia-Entrada", values: [0, 0, 175, 20, 3500] },
-                    { label: "Branco", values: [0, 0, 40, 30, 1200] },
-                    { label: "Alvinegro OFF Rio", values: [0, 0, 1, 24, 24] },
-                    { label: "Alvinegro", values: [0, 0, 800, 0, 0] },
-                    { label: "Glorioso", values: [0, 0, 350, 0, 0] },
-                ],
-            },
-        ],
-    },
-];
-
+// As três visões têm as mesmas colunas. "Bundle" e "Produto" saíram da visão macro: eram sempre "-" (REL-230).
 const PDV_COLUMNS: ColDef[] = [
     { label: "Quantidade", type: "int" },
     { label: "Valor unitário", type: "currency" },
-    { label: "Valor Total", type: "currency" },
+    { label: "Valor total", type: "currency" },
 ];
-
-const pdvData: TreeNode[] = [
-    {
-        label: "Bilheteria Estádio Nilton Santos",
-        children: [
-            {
-                label: "Tribuna",
-                children: [{ label: "Futebol", values: [10, 120, 1200] }],
-            },
-            {
-                label: "Sul (Visitante)",
-                children: [
-                    { label: "Inteira", values: [7, 80, 560], changed: true },
-                    { label: "Meia-Entrada", values: [6, 40, 240] },
-                ],
-            },
-        ],
-    },
-    {
-        label: "Loja Oficial Botafogo - Nilton Santos",
-        children: [
-            {
-                label: "Oeste Inferior",
-                children: [
-                    { label: "Meia-Entrada", values: [1337, 50, 66850], changed: true },
-                    { label: "Inteira", values: [508, 100, 50800] },
-                ],
-            },
-        ],
-    },
-    {
-        label: "Loja Oficial Botafogo - Shopping Rio Sul",
-        children: [
-            {
-                label: "Leste Inferior",
-                children: [
-                    { label: "Meia-Entrada", values: [1491, 40, 59640] },
-                    { label: "Inteira", values: [700, 80, 56000], changed: true },
-                ],
-            },
-        ],
-    },
-];
-
-const meiosData: TreeNode[] = [
-    {
-        label: "Bilheteria Estádio Nilton Santos",
-        children: [
-            { label: "Dinheiro", values: [23, 150, 3450], changed: true },
-            { label: "Cartão de Débito", values: [10, 90, 900] },
-        ],
-    },
-    {
-        label: "Loja Oficial Botafogo - Shopping Rio Sul",
-        children: [
-            { label: "Cartão de Crédito", values: [320, 95, 30400] },
-            { label: "PIX", values: [1800, 55, 99000], changed: true },
-        ],
-    },
-];
+const MACRO_COLUMNS = PDV_COLUMNS;
 
 type ChangeType = "venda" | "cancelamento" | "estorno";
 
@@ -349,87 +98,287 @@ const CHANGE_META: Record<ChangeType, { label: string; color: "success" | "gray"
     estorno: { label: "Estorno", color: "error" },
 };
 
-const changedTransacoes: BorderoChange[] = [
-    { id: "c1", hora: "28/12 10h12", tipo: "cancelamento", canal: "Online", descricao: "Pista · Inteira + Camiseta oficial", ingressos: -1, produtos: -1, valor: -239.9 },
-    { id: "c2", hora: "29/12 14h30", tipo: "estorno", canal: "Online", descricao: "Camarote · VIP + Copo colecionável + Kit do festival", ingressos: -2, produtos: -2, valor: -958.8 },
-    { id: "c3", hora: "30/12 09h05", tipo: "estorno", canal: "Online", descricao: "Pista · Meia-entrada", ingressos: -1, produtos: 0, valor: -90 },
-    { id: "c4", hora: "30/12 23h50", tipo: "cancelamento", canal: "Impresso/Bilheteria", descricao: "Pista Premium · Inteira + Kit do festival", ingressos: -1, produtos: -1, valor: -318.9 },
-    { id: "c5", hora: "31/12 11h20", tipo: "estorno", canal: "Online", descricao: "Front Stage · VIP + 2 produtos", ingressos: -3, produtos: -2, valor: -1179.7 },
-];
-
 type BorderoView = "macro" | "pdv" | "meios";
 
-/* ------------------------------------------------------------------ */
-/*  Visões geradas a partir do dataset do evento (src/reports).        */
-/* ------------------------------------------------------------------ */
-
-type DsBordero = ReturnType<typeof agregar>;
-const _u = (valor: number, qtd: number) => (qtd ? Math.round(valor / qtd) : 0);
-// Nó de grupo dividido em Inteira/Meia. `pad` alinha o tamanho do array de valores às colunas.
-const _grupoNode = (grupo: string, qtd: number, valor: number, pad: boolean): TreeNode => {
-    const int = Math.round(qtd * 0.6);
-    const mei = qtd - int;
-    const vint = Math.round(valor * 0.6);
-    const vmei = valor - vint;
-    const row = (q: number, v: number) => (pad ? [0, 0, q, _u(v, q), v] : [q, _u(v, q), v]);
-    return {
-        label: grupo,
-        children: [
-            { label: "Inteira", values: row(int, vint) },
-            { label: "Meia-entrada", values: row(mei, vmei) },
-        ],
-    };
-};
-const _canal = (ds: DsBordero, label: string, frac: number): TreeNode => ({
-    label,
-    children: [
-        ...ds.ingressosPorGrupo.map((g) => _grupoNode(g.grupo, Math.round(g.vendido * frac), Math.round(g.valor * frac), true)),
-        ...ds.mixDeReceita
-            .filter((m) => m.grupo !== "Ingressos")
-            .map((m) => ({ label: m.grupo, values: [0, 0, Math.round(m.quantidade * frac), _u(m.valor, m.quantidade), Math.round(m.valor * frac)] })),
-    ],
-});
-
-/** Gera as três visões do borderô a partir do dataset do período selecionado. */
-function gerarVisoes(ds: DsBordero): Record<BorderoView, TreeNode[]> {
-    return {
-        macro: [_canal(ds, "ONLINE", 0.96), _canal(ds, "BILHETERIA", 0.04)],
-        pdv: [
-            { label: "Loja Oficial Réveillon Carneiros", children: ds.ingressosPorGrupo.map((g) => _grupoNode(g.grupo, Math.round(g.vendido * 0.96), Math.round(g.valor * 0.96), false)) },
-            { label: "Bilheteria Praia de Carneiros", children: ds.ingressosPorGrupo.map((g) => _grupoNode(g.grupo, Math.round(g.vendido * 0.04), Math.round(g.valor * 0.04), false)) },
-        ],
-        meios: [
-            {
-                label: "Todos os canais",
-                children: ds.meiosDePagamento.map((m) => ({
-                    label: m.meio,
-                    values: [Math.round((ds.totais.itensVendidos * m.pct) / 100), 0, Math.round((ds.totais.valorTotalBruto * m.pct) / 100)],
-                })),
-            },
-        ],
-    };
-}
+const VISOES_DO_BORDERO: { id: BorderoView; label: string }[] = [
+    { id: "macro", label: "Visão macro" },
+    { id: "pdv", label: "Por PDV" },
+    { id: "meios", label: "Por meios de pagamento" },
+];
 
 const VIEWS: Record<BorderoView, { columns: ColDef[]; firstCol: string }> = {
-    macro: { columns: MACRO_COLUMNS, firstCol: "Canal · Grupo · Ingresso" },
-    pdv: { columns: PDV_COLUMNS, firstCol: "PDV · Grupo · Ingresso" },
-    meios: { columns: PDV_COLUMNS, firstCol: "Canal · Meio de pagamento" },
+    macro: { columns: MACRO_COLUMNS, firstCol: "Canal, grupo e ingresso" },
+    pdv: { columns: PDV_COLUMNS, firstCol: "PDV, grupo e ingresso" },
+    meios: { columns: PDV_COLUMNS, firstCol: "Canal e meio de pagamento" },
 };
 
 /* ------------------------------------------------------------------ */
-/*  Scaling (sessão + intervalo de data afetam todas as visões)        */
+/*  Vendas do evento por canal, do banco unificado                     */
+/*                                                                     */
+/*  Duas fontes, as mesmas de Vendas (data/vendas-banco.ts):           */
+/*  - histórico (vendas anteriores ao gêmeo): o dia a dia é total, então */
+/*    divide pelo canal (`porCanal`), pelo ingresso (`porLote`) e pelo  */
+/*    meio de pagamento (`pagamentos`) nas proporções do próprio evento; */
+/*  - pedidos pagos: canal, emissor da bilheteria e meio reais.        */
 /* ------------------------------------------------------------------ */
 
-// Jogo único: a sessão da partida concentra 100% das vendas.
-const SESSAO_WEIGHT: Record<string, number> = { all: 1, [EVENT.sessoes[0].id]: 1 };
+type CanalBordero = "ONLINE" | "BILHETERIA" | "CORTESIAS";
+const ORDEM_CANAIS: CanalBordero[] = ["ONLINE", "BILHETERIA", "CORTESIAS"];
+const CANAL_DO_PEDIDO: Record<PedidoBanco["canal"], CanalBordero> = { site: "ONLINE", link: "ONLINE", app: "ONLINE", bilheteria: "BILHETERIA", cortesia: "CORTESIAS" };
+const NOME_DO_CANAL: Record<CanalBordero, string> = { ONLINE: "Online", BILHETERIA: "Bilheteria", CORTESIAS: "Cortesias" };
+const MEIO_DO_PEDIDO: Record<string, string> = { pix: "Pix", credito: "Cartão de crédito", debito: "Cartão de débito", dinheiro: "Dinheiro", saldo: "Saldo da produtora", cortesia: "Cortesia" };
 
-// Escala valores de quantidade/faturado; mantém colunas de "valor unitário" intactas.
-const scaleNodes = (nodes: TreeNode[], columns: ColDef[], factor: number): TreeNode[] =>
-    nodes.map((n) => ({
-        ...n,
-        values: n.values?.map((v, i) => (columns[i]?.label === "Valor unitário" ? v : Math.round(v * factor * 100) / 100)),
-        children: n.children ? scaleNodes(n.children, columns, factor) : undefined,
-    }));
+/** Uma linha de venda já no período: canal, ponto de venda, grupo, item e meio. */
+interface VendaBordero {
+    canal: CanalBordero;
+    pdv: string;
+    grupo: string;
+    item: string;
+    meio: string;
+    qtd: number;
+    valor: number;
+}
+
+const DIA_MS = 86_400_000;
+
+/** Grupo e nome do tipo de ingresso de cada lote, e o preço. */
+function catalogoDoEvento(ev: EventoBanco, nomeDoGrupo: (g: string) => string) {
+    const lotes = new Map<string, { grupo: string; item: string; preco: number }>();
+    const grupos = new Map<string, string>();
+    const tipos = new Map<string, string>();
+    for (const s of ev.sessoes)
+        for (const g of s.grupos) {
+            grupos.set(g.id, nomeDoGrupo(g.nome));
+            for (const t of g.ingressos) {
+                tipos.set(t.id, t.nome);
+                for (const l of t.lotes) lotes.set(l.id, { grupo: nomeDoGrupo(g.nome), item: t.nome, preco: l.preco });
+            }
+        }
+    return { lotes, grupos, tipos };
+}
+
+/** Distribui `total` pelos pesos, arredondando pelo maior resto para a soma fechar. */
+function repartir(total: number, pesos: number[]): number[] {
+    const soma = pesos.reduce((a, b) => a + b, 0);
+    if (!soma || !total) return pesos.map(() => 0);
+    const brutos = pesos.map((p) => (total * p) / soma);
+    const base = brutos.map(Math.floor);
+    let resto = Math.round(total - base.reduce((a, b) => a + b, 0));
+    brutos
+        .map((b, i) => ({ i, f: b - Math.floor(b) }))
+        .sort((a, b) => b.f - a.f)
+        .forEach(({ i }) => {
+            if (resto > 0) {
+                base[i]++;
+                resto--;
+            }
+        });
+    return base;
+}
+
+/** Vendas do histórico no período, divididas por canal, ingresso e meio nas proporções do evento. */
+function vendasDoHistorico(ev: EventoBanco, h: HistoricoVendas, de: number, ate: number, nomeDoGrupo: (g: string) => string): VendaBordero[] {
+    const hoje = new Date();
+    let ingressos = 0;
+    let faturamento = 0;
+    h.serie.forEach(([i, , f], idx, todos) => {
+        const ms = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() - (todos.length - idx)).getTime();
+        if (ms < de || ms > ate) return;
+        ingressos += i;
+        faturamento += f;
+    });
+    if (!ingressos && !faturamento) return [];
+
+    const { lotes } = catalogoDoEvento(ev, nomeDoGrupo);
+    const porTipo = new Map<string, { grupo: string; item: string; qtd: number; valor: number }>();
+    for (const [lote, qtd] of Object.entries(h.porLote)) {
+        const l = lotes.get(lote);
+        if (!l || qtd <= 0) continue;
+        const chave = `${l.grupo}|${l.item}`;
+        const atual = porTipo.get(chave) ?? { grupo: l.grupo, item: l.item, qtd: 0, valor: 0 };
+        atual.qtd += qtd;
+        atual.valor += qtd * l.preco;
+        porTipo.set(chave, atual);
+    }
+    const tipos = [...porTipo.values()];
+    if (tipos.length === 0) tipos.push({ grupo: nomeDoGrupo("Ingressos"), item: "Ingresso", qtd: 1, valor: 1 });
+
+    const { online, bilheteria, cortesia } = h.porCanal;
+    const pagos = online + bilheteria;
+    // Quantidade nos três canais; o faturamento do histórico é só do que foi pago (cortesia sai a zero).
+    const [qOnline, qBilheteria, qCortesia] = online + bilheteria + cortesia ? repartir(ingressos, [online, bilheteria, cortesia]) : [ingressos, 0, 0];
+    const [vOnline, vBilheteria] = pagos ? repartir(faturamento, [online, bilheteria]) : [faturamento, 0];
+
+    // Meios: o histórico só tem a contagem geral; dinheiro fica na bilheteria.
+    const meiosOnline = h.pagamentos.filter((p) => p.tipo !== "Dinheiro" && p.qtd > 0);
+    const meiosBilheteria = h.pagamentos.filter((p) => p.qtd > 0);
+
+    const linhas: VendaBordero[] = [];
+    const canal = (c: CanalBordero, qtd: number, valor: number, meios: { tipo: string; qtd: number }[]) => {
+        if (!qtd && !valor) return;
+        // Reparte de uma vez por ingresso × meio, para o arredondamento fechar no canal inteiro.
+        const lista = meios.length ? meios : [{ tipo: "Não informado", qtd: 1 }];
+        const pares = tipos.flatMap((t) => lista.map((m) => ({ t, m })));
+        const qs = repartir(qtd, pares.map(({ t, m }) => t.qtd * m.qtd));
+        const vs = repartir(valor, pares.map(({ t, m }) => t.valor * m.qtd));
+        pares.forEach(({ t, m }, i) => {
+            if (qs[i] || vs[i]) linhas.push({ canal: c, pdv: NOME_DO_CANAL[c], grupo: t.grupo, item: t.item, meio: m.tipo, qtd: qs[i], valor: vs[i] });
+        });
+    };
+    canal("ONLINE", qOnline, vOnline, meiosOnline);
+    canal("BILHETERIA", qBilheteria, vBilheteria, meiosBilheteria);
+    canal("CORTESIAS", qCortesia, 0, [{ tipo: "Cortesia", qtd: 1 }]);
+    return linhas;
+}
+
+/** Pedidos pagos no período: canal, emissor da bilheteria, ingresso e meio reais. */
+function vendasDosPedidos(ev: EventoBanco, pedidos: PedidoBanco[], de: number, ate: number, nomeDoGrupo: (g: string) => string): VendaBordero[] {
+    const { lotes, grupos, tipos } = catalogoDoEvento(ev, nomeDoGrupo);
+    const linhas: VendaBordero[] = [];
+    for (const p of pedidos) {
+        if (p.eventoId !== ev.id || p.status !== "pago") continue;
+        const ms = new Date(p.pagamento?.pagoEm ?? p.atualizadoEm).getTime();
+        if (ms < de || ms > ate) continue;
+        const canal = CANAL_DO_PEDIDO[p.canal];
+        const pdv = canal === "BILHETERIA" ? `Bilheteria (${p.bilheteria?.emissor ?? "sem emissor"})` : NOME_DO_CANAL[canal];
+        const meio = p.pagamento ? (MEIO_DO_PEDIDO[p.pagamento.metodo] ?? p.pagamento.metodo) : "Não informado";
+        for (const item of p.itens) {
+            const ingresso = item.tipo === "ingresso";
+            const grupo = ingresso ? ((item.grupoId && grupos.get(item.grupoId)) || (item.loteId && lotes.get(item.loteId)?.grupo) || nomeDoGrupo("Ingressos")) : nomeDoGrupo("Produtos");
+            const nome = ingresso ? ((item.ingressoId && tipos.get(item.ingressoId)) || item.nome) : item.nome;
+            linhas.push({ canal, pdv, grupo, item: nome, meio, qtd: item.quantidade, valor: item.face * item.quantidade });
+        }
+    }
+    return linhas;
+}
+
+interface No {
+    qtd: number;
+    valor: number;
+    filhos: Map<string, No>;
+}
+
+/** Árvore de N níveis somando quantidade e valor; as folhas viram [qtd, unitário, total] (ou com as colunas de texto na frente). */
+function arvore(vendas: VendaBordero[], niveis: ((v: VendaBordero) => string)[], ordemTopo: string[], comTexto: boolean): TreeNode[] {
+    const raiz: No = { qtd: 0, valor: 0, filhos: new Map() };
+    for (const v of vendas) {
+        let no = raiz;
+        for (const nivel of niveis) {
+            const chave = nivel(v);
+            const filho = no.filhos.get(chave) ?? { qtd: 0, valor: 0, filhos: new Map() };
+            no.filhos.set(chave, filho);
+            no = filho;
+        }
+        no.qtd += v.qtd;
+        no.valor += v.valor;
+    }
+    const valores = (n: No) => {
+        const unit = n.qtd ? Math.round((n.valor / n.qtd) * 100) / 100 : 0;
+        return comTexto ? [0, 0, n.qtd, unit, n.valor] : [n.qtd, unit, n.valor];
+    };
+    const montar = (mapa: Map<string, No>, nivel: number): TreeNode[] =>
+        [...mapa.entries()].map(([label, n]) => (nivel === niveis.length - 1 ? { label, values: valores(n) } : { label, children: montar(n.filhos, nivel + 1) }));
+    const peso = (label: string) => {
+        const i = ordemTopo.findIndex((o) => label === o || label.startsWith(`${o} (`));
+        return i < 0 ? ordemTopo.length : i;
+    };
+    return montar(raiz.filhos, 0).sort((a, b) => peso(a.label) - peso(b.label));
+}
+
+/** Semente estável a partir de um texto (para as alterações de exemplo não mudarem a cada render). */
+const semente = (s: string) => [...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7);
+const p2 = (n: number) => String(n).padStart(2, "0");
+// Um formato de data só nos relatórios (T9).
+const horaCurta = dataEHora;
+
+/**
+ * Alterações que mexeram no borderô: os pedidos cancelados de verdade e, para o protótipo ter o que
+ * mostrar, alguns cancelamentos e estornos de exemplo feitos com ingressos que o evento vendeu.
+ */
+function alteracoesDoBordero(eventos: EventoBanco[], historicos: Record<string, HistoricoVendas | undefined>, pedidos: PedidoBanco[], todos: boolean): BorderoChange[] {
+    const ids = new Set(eventos.map((e) => e.id));
+    const sufixo = (ev: EventoBanco) => (todos ? ` (${ev.nome})` : "");
+    const reais: (BorderoChange & { ms: number })[] = pedidos
+        .filter((p) => ids.has(p.eventoId) && p.status === "cancelado")
+        .map((p) => {
+            const ev = eventos.find((e) => e.id === p.eventoId)!;
+            const { grupos, tipos } = catalogoDoEvento(ev, (g) => g);
+            const ingressos = p.itens.filter((i) => i.tipo === "ingresso").reduce((n, i) => n + i.quantidade, 0);
+            const produtos = p.itens.filter((i) => i.tipo !== "ingresso").reduce((n, i) => n + i.quantidade, 0);
+            const descricao = p.itens.map((i) => (i.tipo === "ingresso" ? [(i.grupoId && grupos.get(i.grupoId)) || "", (i.ingressoId && tipos.get(i.ingressoId)) || i.nome].filter(Boolean).join(", ") : i.nome)).join(" + ");
+            return { id: p.id, ms: new Date(p.atualizadoEm).getTime(), hora: horaCurta(new Date(p.atualizadoEm)), tipo: "cancelamento" as const, canal: NOME_DO_CANAL[CANAL_DO_PEDIDO[p.canal]], descricao: `${descricao}${sufixo(ev)}`, ingressos: -ingressos, produtos: -produtos, valor: -p.subtotal };
+        });
+
+    const exemplos: (BorderoChange & { ms: number })[] = eventos.flatMap((ev) => {
+        const h = historicos[ev.id];
+        if (!h) return [];
+        const { lotes } = catalogoDoEvento(ev, (g) => g);
+        const vendidos = Object.entries(h.porLote)
+            .filter(([id, q]) => q > 0 && (lotes.get(id)?.preco ?? 0) > 0)
+            .map(([id]) => lotes.get(id)!);
+        if (vendidos.length === 0) return [];
+        let s = semente(ev.id);
+        const rnd = () => {
+            s = (Math.imul(s ^ (s >>> 15), 2246822507) + 0x9e3779b9) >>> 0;
+            return s / 4294967296;
+        };
+        // Ancorado no começo de hoje, para os horários não mudarem a cada render.
+        const hoje = new Date();
+        const agora = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate()).getTime();
+        const quantos = todos ? 2 : 5;
+        return Array.from({ length: quantos }, (_, i) => {
+            const l = vendidos[Math.floor(rnd() * vendidos.length)];
+            const qtd = 1 + Math.floor(rnd() * 3);
+            const quando = new Date(agora - Math.floor((quantos - i) * DIA_MS * 0.6 + rnd() * DIA_MS * 0.4));
+            const tipo: ChangeType = rnd() < 0.5 ? "cancelamento" : "estorno";
+            return {
+                id: `${ev.id}-alt-${i}`,
+                ms: quando.getTime(),
+                hora: horaCurta(quando),
+                tipo,
+                canal: rnd() < 0.85 ? "Online" : "Bilheteria",
+                descricao: `${l.grupo}, ${l.item}${qtd > 1 ? ` × ${qtd}` : ""}${sufixo(ev)}`,
+                ingressos: -qtd,
+                produtos: 0,
+                valor: -qtd * l.preco,
+            };
+        });
+    });
+    return [...reais, ...exemplos].sort((a, b) => a.ms - b.ms).map(({ ms: _ms, ...c }) => c);
+}
+
+/** Borderô do evento em contexto, ou de todos os eventos da organização (BKS-27), no período escolhido. */
+function useBorderoDoEvento(dateRange: DateRange) {
+    const ctx = useEventoAtual();
+    const todos = useTodosOsEventos();
+    const { tabelas } = useBanco();
+    const versao = useEventosVersao();
+    return useMemo(() => {
+        void versao;
+        const ids = todos ? eventosDaOrganizacao.map((e) => e.id) : [ctx.id];
+        const eventos = ids.map((id) => tabelas.eventos?.[id]).filter((e): e is EventoBanco => !!e);
+        const pedidos = Object.values(tabelas.pedidos ?? {});
+        const historicos = tabelas.historico ?? {};
+        const tz = getLocalTimeZone();
+        const de = dateRange ? dateRange.start.toDate(tz).getTime() : -Infinity;
+        const ate = dateRange ? dateRange.end.toDate(tz).getTime() + DIA_MS - 1 : Infinity;
+
+        const vendas = eventos.flatMap((ev) => {
+            // Somando eventos, cada grupo leva o nome do evento (o mesmo rótulo de Vendas).
+            const nomeDoGrupo = (g: string) => (todos ? `${g} (${ev.nome})` : g);
+            const h = historicos[ev.id];
+            return [...(h ? vendasDoHistorico(ev, h, de, ate, nomeDoGrupo) : []), ...vendasDosPedidos(ev, pedidos, de, ate, nomeDoGrupo)];
+        });
+
+        const visoes: Record<BorderoView, TreeNode[]> = {
+            // Canal com o nome de exibição ("Online", não "ONLINE"; REL-231).
+            macro: arvore(vendas, [(v) => NOME_DO_CANAL[v.canal], (v) => v.grupo, (v) => v.item], ORDEM_CANAIS.map((c) => NOME_DO_CANAL[c]), false),
+            pdv: arvore(vendas, [(v) => v.pdv, (v) => v.grupo, (v) => v.item], ["Online", "Bilheteria", "Cortesias"], false),
+            meios: arvore(vendas, [(v) => NOME_DO_CANAL[v.canal], (v) => v.meio], ORDEM_CANAIS.map((c) => NOME_DO_CANAL[c]), false),
+        };
+        return { visoes, mudancas: alteracoesDoBordero(eventos, historicos, pedidos, todos) };
+    }, [ctx.id, todos, tabelas, versao, dateRange]);
+}
 
 /* ------------------------------------------------------------------ */
 /*  Page                                                              */
@@ -437,17 +386,20 @@ const scaleNodes = (nodes: TreeNode[], columns: ColDef[], factor: number): TreeN
 
 export function Bordero() {
     const { periodoPadrao } = useDatasetDoEvento();
+    const carregando = useRelatorioCarregando();
     return (
         <BackstageLayout activeSection="relatorios" activeItem="bordero">
-            <RelatorioFiltersProvider initialDateRange={periodoPadrao}>
+            {/* A chave volta ao período completo quando o evento (ou o escopo) muda o período padrão. */}
+            <RelatorioFiltersProvider key={`${periodoPadrao.start.toString()}|${periodoPadrao.end.toString()}`} initialDateRange={periodoPadrao}>
                 <div className="flex min-w-0 flex-1 flex-col">
                     <main className="flex flex-1 flex-col gap-6">
+                        {/* Só o botão de período (REL-220); o filtro de sessão, que não filtrava, saiu. */}
                         <RelatorioPageHeader
                             title="Borderô"
-                            withFilters={false}
+                            splitControls
                             actions={<ExportMenu onExport={(f) => toast.success(`Exportando ${f.toUpperCase()}`, { description: "O borderô será exportado." })} />}
                         />
-                        <BorderoBody />
+                        {carregando ? <CarregandoRelatorio rotulo="Carregando borderô" /> : <BorderoBody />}
                     </main>
                 </div>
             </RelatorioFiltersProvider>
@@ -456,21 +408,22 @@ export function Bordero() {
 }
 
 const BorderoBody = () => {
-    const { dateRange, sessao } = useRelatorioFilters();
+    const { dateRange } = useRelatorioFilters();
     const [view, setView] = useState<BorderoView>("macro");
     const [acknowledged, setAcknowledged] = useState(false);
-    const [detailsOpen, setDetailsOpen] = useState(false);
+    // Painel das alterações aberto na URL (?painel=alteracoes, REL-223).
+    const painel = useItemNaUrl("painel");
+    const detailsOpen = painel.id === "alteracoes";
 
-    // Vendas do evento em contexto, do banco unificado (histórico + pedidos pagos).
-    const { consultar } = useDatasetDoEvento();
-    const scaled = useMemo(() => gerarVisoes(consultar(dateRange)), [consultar, dateRange]);
+    // Vendas do evento em contexto (ou da organização), do banco unificado: histórico + pedidos pagos, por canal real.
+    const { visoes: scaled, mudancas: changedTransacoes } = useBorderoDoEvento(dateRange);
 
     const activeNodes = view === "macro" ? scaled.macro : view === "pdv" ? scaled.pdv : scaled.meios;
     const activeMeta = VIEWS[view];
 
     const macroGrand = useMemo(() => grandTotalOf(scaled.macro), [scaled.macro]);
-    const totalIngressos = macroGrand[2] ?? 0;
-    const totalFaturado = macroGrand[4] ?? 0;
+    const totalIngressos = macroGrand[0] ?? 0;
+    const totalFaturado = macroGrand[2] ?? 0;
     const ticketMedio = totalIngressos === 0 ? 0 : totalFaturado / totalIngressos;
 
     const changedCount = changedTransacoes.length;
@@ -484,44 +437,50 @@ const BorderoBody = () => {
                     title="Borderô atualizado"
                     description={`${changedCount} ${changedCount === 1 ? "transação alterou" : "transações alteraram"} o borderô desde o fim do evento.`}
                     confirmLabel="Detalhes"
-                    onConfirm={() => setDetailsOpen(true)}
+                    onConfirm={() => painel.abrir("alteracoes")}
                     dismissLabel="Marcar como visto"
                     onClose={() => setAcknowledged(true)}
                 />
             )}
 
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                <MetricsIcon03 icon={CurrencyDollarCircle} subtitle="Total faturado" title={currencyFormatter.format(totalFaturado)} change={null} changeTrend="positive" actions={false} className={HIDE_TREND_AND_MENU} />
-                <MetricsIcon03 icon={Ticket01} subtitle="Total de ingressos" title={numberFormatter.format(totalIngressos)} change={null} changeTrend="positive" actions={false} className={HIDE_TREND_AND_MENU} />
-                <MetricsIcon03 icon={Receipt} subtitle="Ticket médio" title={currencyFormatter.format(ticketMedio)} change={null} changeTrend="positive" actions={false} className={HIDE_TREND_AND_MENU} />
-            </div>
+            {/* O painel de métricas comum dos relatórios (REL-221). */}
+            <PainelDeMetricas rotulo="Resumo do borderô" className="sm:grid-cols-3 xl:grid-cols-3">
+                <MetricaDoRelatorio rotulo="Total faturado" valor={currencyFormatter.format(totalFaturado)} destaque />
+                <MetricaDoRelatorio rotulo="Total de ingressos" valor={numberFormatter.format(totalIngressos)} />
+                <MetricaDoRelatorio rotulo="Ticket médio" valor={currencyFormatter.format(ticketMedio)} />
+            </PainelDeMetricas>
 
             <section className="flex flex-col overflow-clip rounded-xl bg-primary ring-1 ring-border-secondary">
                 <header className="flex flex-col gap-3 border-b border-secondary px-4 py-4 md:flex-row md:items-center md:justify-between">
                     <h3 className="text-md font-semibold text-primary">Detalhamento do borderô</h3>
+                    {/* No celular, as três visões não cabem lado a lado em 390 px: viram um select do DS (UI-MOB-005, REL-218). */}
+                    <NativeSelect
+                        // O nome acessível vem do label (o NativeSelect do DS aponta aria-labelledby para ele); o label fica só para leitor de tela.
+                        label="Visão do borderô"
+                        className="md:hidden [&_label]:sr-only"
+                        value={view}
+                        onChange={(e) => {
+                            setView(e.target.value as BorderoView);
+                            setAcknowledged(false);
+                        }}
+                        options={VISOES_DO_BORDERO.map((v) => ({ value: v.id, label: v.label }))}
+                    />
                     <Tabs
                         selectedKey={view}
                         onSelectionChange={(value: React.Key) => {
                             setView(value as BorderoView);
                             setAcknowledged(false);
                         }}
-                        className="w-auto shrink-0"
+                        className="hidden w-auto shrink-0 md:flex"
                     >
-                        <TabList
-                            type="button-minimal"
-                            items={[
-                                { id: "macro", label: "Visão macro" },
-                                { id: "pdv", label: "Por PDV" },
-                                { id: "meios", label: "Por meios de pagamento" },
-                            ]}
-                        />
+                        <TabList type="button-minimal" items={VISOES_DO_BORDERO} />
                     </Tabs>
                 </header>
 
                 <TreeTable key={view} nodes={activeNodes} columns={activeMeta.columns} firstCol={activeMeta.firstCol} />
             </section>
 
-            <BorderoChangesSlideout isOpen={detailsOpen} onClose={() => setDetailsOpen(false)} changes={changedTransacoes} />
+            {detailsOpen && <BorderoChangesSlideout onClose={painel.fechar} changes={changedTransacoes} />}
         </>
     );
 };
@@ -535,63 +494,43 @@ const signed = (value: number, currency: boolean) => {
     return `${value >= 0 ? "+" : "−"}${formatted}`;
 };
 
-const BorderoChangesSlideout = ({ isOpen, onClose, changes }: { isOpen: boolean; onClose: () => void; changes: BorderoChange[] }) => (
-    <AriaModalOverlay
-        isOpen={isOpen}
-        onOpenChange={(open) => !open && onClose()}
-        isDismissable
-        className="fixed inset-0 z-50 flex justify-end outline-hidden"
-    >
-        <AriaModal className={({ isEntering, isExiting }) => cx("h-full w-full max-w-[520px] bg-primary shadow-xl outline-hidden", isEntering && "duration-300 ease-out animate-in slide-in-from-right", isExiting && "duration-200 ease-in animate-out slide-out-to-right")}>
-            <AriaDialog className="flex h-full flex-col outline-hidden">
-                <div className="flex shrink-0 items-start justify-between gap-4 border-b border-secondary px-6 py-5">
-                    <div className="flex flex-col gap-0.5">
-                        <h2 className="text-lg font-semibold text-primary">Transações desde o fim do evento</h2>
-                        <p className="text-sm text-tertiary">Alterações que impactaram o borderô.</p>
-                    </div>
-                    <ButtonUtility size="sm" color="tertiary" icon={XClose} onClick={onClose} tooltip="Fechar" />
-                </div>
-
-                <ul className="flex min-h-0 flex-1 flex-col divide-y divide-secondary overflow-y-auto px-6">
-                    {changes.map((change) => {
-                        const meta = CHANGE_META[change.tipo];
-                        return (
-                            <li key={change.id} className="flex flex-col gap-2 py-4 first:pt-6 last:pb-6">
-                                <div className="flex items-start justify-between gap-3">
-                                    <div className="flex min-w-0 flex-col">
-                                        <span className="text-sm font-medium text-primary">{change.descricao}</span>
-                                        <span className="text-sm text-tertiary">{change.canal} · {change.hora}</span>
-                                    </div>
-                                    <Badge size="sm" color={meta.color} type="pill-color">
-                                        {meta.label}
-                                    </Badge>
-                                </div>
-                                <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-tertiary">
-                                    <span>
-                                        Ingressos: <b className={cx("tabular-nums", change.ingressos >= 0 ? "text-success-primary" : "text-error-primary")}>{signed(change.ingressos, false)}</b>
-                                    </span>
-                                    {change.produtos !== 0 && (
-                                        <span>
-                                            Produtos: <b className={cx("tabular-nums", change.produtos >= 0 ? "text-success-primary" : "text-error-primary")}>{signed(change.produtos, false)}</b>
-                                        </span>
-                                    )}
-                                    <span>
-                                        Faturado: <b className={cx("tabular-nums", change.valor >= 0 ? "text-success-primary" : "text-error-primary")}>{signed(change.valor, true)}</b>
-                                    </span>
-                                </div>
-                            </li>
-                        );
-                    })}
-                </ul>
-
-                <div className="flex items-center justify-end gap-2 border-t border-secondary px-6 py-4">
-                    <Button size="sm" color="secondary" onClick={onClose}>
-                        Fechar
-                    </Button>
-                </div>
-            </AriaDialog>
-        </AriaModal>
-    </AriaModalOverlay>
+// No painel lateral do DS (REL-225), no lugar do modal feito à mão de 520 px.
+const BorderoChangesSlideout = ({ onClose, changes }: { onClose: () => void; changes: BorderoChange[] }) => (
+    <PainelLateral titulo="Transações desde o fim do evento" subtitulo="Alterações que impactaram o borderô." onFechar={onClose}>
+        <ul className="flex flex-col divide-y divide-secondary">
+            {changes.map((change) => {
+                const meta = CHANGE_META[change.tipo];
+                return (
+                    <li key={change.id} className="flex flex-col gap-2 py-4">
+                        <div className="flex items-start justify-between gap-3">
+                            <div className="flex min-w-0 flex-col">
+                                <span className="text-sm font-medium text-primary">{change.descricao}</span>
+                                <span className="text-sm text-tertiary">
+                                    {change.canal}, {change.hora}
+                                </span>
+                            </div>
+                            <Badge size="sm" color={meta.color} type="pill-color">
+                                {meta.label}
+                            </Badge>
+                        </div>
+                        <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-tertiary">
+                            <span>
+                                Ingressos: <b className={cx("tabular-nums", change.ingressos >= 0 ? "text-success-primary" : "text-error-primary")}>{signed(change.ingressos, false)}</b>
+                            </span>
+                            {change.produtos !== 0 && (
+                                <span>
+                                    Produtos: <b className={cx("tabular-nums", change.produtos >= 0 ? "text-success-primary" : "text-error-primary")}>{signed(change.produtos, false)}</b>
+                                </span>
+                            )}
+                            <span>
+                                Faturado: <b className={cx("tabular-nums", change.valor >= 0 ? "text-success-primary" : "text-error-primary")}>{signed(change.valor, true)}</b>
+                            </span>
+                        </div>
+                    </li>
+                );
+            })}
+        </ul>
+    </PainelLateral>
 );
 
 /* ------------------------------------------------------------------ */
@@ -600,6 +539,7 @@ const BorderoChangesSlideout = ({ isOpen, onClose, changes }: { isOpen: boolean;
 
 const TreeTable = ({ nodes, columns, firstCol }: { nodes: TreeNode[]; columns: ColDef[]; firstCol: string }) => {
     const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
+    const entrada = useLinhaFilhaAnimada();
     // Celular: só a última coluna cabe; a linha final abre os detalhes com todas (UI-MOB-005).
     const celular = !useBreakpoint("md");
     const linha = useLinhaAberta<{ titulo: string; apoio: string; valores: number[] }>();
@@ -609,7 +549,7 @@ const TreeTable = ({ nodes, columns, firstCol }: { nodes: TreeNode[]; columns: C
     const accessors = useMemo(() => {
         const acc: Record<string, (n: TreeNode) => string | number> = { label: (n) => n.label };
         columns.forEach((_, i) => {
-            acc[`c${i}`] = (n) => subtotalOf(n)[i] ?? 0;
+            acc[`c${i}`] = (n) => comUnitario(subtotalOf(n), columns)[i] ?? 0;
         });
         return acc;
     }, [columns]);
@@ -617,7 +557,7 @@ const TreeTable = ({ nodes, columns, firstCol }: { nodes: TreeNode[]; columns: C
     const { sorted, sortKey, sortDir, toggleSort } = useSortableTable(nodes as unknown as Record<string, unknown>[], accessors as Partial<Record<string, (r: Record<string, unknown>) => string | number>>);
     const sortedNodes = sorted as unknown as TreeNode[];
 
-    const grand = grandTotalOf(nodes);
+    const grand = comUnitario(grandTotalOf(nodes), columns);
 
     const toggle = (key: string) =>
         setExpanded((prev) => {
@@ -639,48 +579,44 @@ const TreeTable = ({ nodes, columns, firstCol }: { nodes: TreeNode[]; columns: C
             const key = `${prefix}-${idx}`;
             if (node.children) {
                 const isExpanded = expanded.has(key);
-                const sub = subtotalOf(node);
+                const sub = comUnitario(subtotalOf(node), columns);
                 const labelClass = depth === 0 ? "font-bold text-primary" : "font-semibold text-secondary";
                 const valueClass = depth === 0 ? "font-semibold text-primary" : "font-medium text-secondary";
                 out.push(
                     <Fragment key={key}>
-                        <tr
-                            role="button"
-                            tabIndex={0}
-                            aria-expanded={isExpanded}
+                        {/* Linha de tabela, não botão (REL-226); as filhas entram com transição (REL-224). */}
+                        <motion.tr
+                            {...(depth > 0 ? entrada : {})}
                             onClick={() => toggle(key)}
-                            onKeyDown={(e) => {
-                                if (e.key === "Enter" || e.key === " ") {
-                                    e.preventDefault();
-                                    toggle(key);
-                                }
-                            }}
                             className={cx("cursor-pointer border-b border-secondary transition duration-100 ease-linear hover:bg-primary_hover", depth === 0 && "bg-primary")}
                         >
                             <td className="py-3.5 pr-4 text-sm" style={{ paddingLeft: indent(depth) }}>
-                                <span className="flex items-center gap-2">
-                                    <ChevronDown aria-hidden="true" className={cx("size-4 shrink-0 text-fg-quaternary transition-transform duration-150", isExpanded && "rotate-180")} />
-                                    <span className={cx("line-clamp-2", labelClass)}>{node.label}</span>
-                                </span>
+                                <AlternarDaArvore aberto={isExpanded} onAlternar={() => toggle(key)}>
+                                    <span title={node.label} className={cx("line-clamp-2", labelClass)}>{node.label}</span>
+                                </AlternarDaArvore>
                             </td>
                             {sub.map((v, i) => metricCell(v, i, valueClass))}
-                        </tr>
+                        </motion.tr>
                         {isExpanded && renderNodes(node.children!, depth + 1, key, [...caminho, node.label])}
                     </Fragment>,
                 );
                 return;
             }
+            const abrirDetalhes = () => linha.abrir({ titulo: node.label, apoio: caminho.join(", "), valores: node.values! });
             out.push(
-                <tr
+                <motion.tr
                     key={key}
-                    {...linhaQueAbre(celular, () => linha.abrir({ titulo: node.label, apoio: caminho.join(" · "), valores: node.values! }))}
+                    {...entrada}
+                    {...linhaQueAbre(celular, abrirDetalhes)}
                     className={cx("border-b border-secondary bg-secondary/60", celular && "hover:bg-primary_hover")}
                 >
                     <td className="py-3 pr-4 text-sm text-tertiary" style={{ paddingLeft: indent(depth) }}>
-                        <span className="line-clamp-2">{node.label}</span>
+                        <AbrirDaLinha ativa={celular} onAbrir={abrirDetalhes} className="line-clamp-2">
+                            {node.label}
+                        </AbrirDaLinha>
                     </td>
                     {node.values!.map((v, i) => metricCell(v, i, i === lastCol ? "font-medium text-primary" : "text-tertiary"))}
-                </tr>,
+                </motion.tr>,
             );
         });
         return out;

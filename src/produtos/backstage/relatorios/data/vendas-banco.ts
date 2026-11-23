@@ -47,27 +47,68 @@ function mapaDoCatalogo(evento: Evento, nomeDoGrupo: (g: string) => string = (g)
     return { grupoDoLote, precoDoLote, grupos };
 }
 
+/** Uso de cupom num pedido pago, por item: base da tabela de cupons de Vendas (REL-213). */
+export interface FatoCupom {
+    iso: string;
+    ms: number;
+    /** Código do cupom (no escopo "Todos os eventos", com o nome do evento). */
+    cupom: string;
+    /** Item do pedido ("Inteira · 1º lote"). */
+    item: string;
+    quantidade: number;
+    valor: number;
+    desconto: number;
+}
+
+/** Linha de um detalhamento: quantidade, bruto e líquido (bruto − desconto do cupom). */
+export interface LinhaDoDetalhe {
+    nome: string;
+    quantidade: number;
+    bruto: number;
+    liquido: number;
+}
+
+/**
+ * Detalhe do período, das mesmas linhas que os totais (REL-213): mix por categoria, ingressos por
+ * grupo, combos, produtos e cupons, todos com o desconto real dos cupons dos pedidos.
+ */
+export interface DetalheDoPeriodo {
+    mix: LinhaDoDetalhe[];
+    ingressosPorGrupo: LinhaDoDetalhe[];
+    combos: LinhaDoDetalhe[];
+    produtos: LinhaDoDetalhe[];
+    cupons: (LinhaDoDetalhe & { itens: LinhaDoDetalhe[] })[];
+}
+
 export interface DatasetDoEvento {
-    consultar: (periodo: PeriodoSelecionado) => ReturnType<typeof agregar>;
+    consultar: (periodo: PeriodoSelecionado) => ReturnType<typeof agregar> & { detalhe: DetalheDoPeriodo };
     periodoPadrao: { start: CalendarDate; end: CalendarDate };
     grupos: ContextoDataset["grupos"];
     vazio: boolean;
 }
 
 /** Fatos (dia × grupo) e grupos de um evento. `nomeDoGrupo` identifica o setor quando vários eventos são somados. */
-function fatosDoEvento(evento: Evento, historico: HistoricoVendas | undefined, pedidos: Pedido[], nomeDoGrupo?: (g: string) => string, linhas = new Map<string, FatoVenda>()) {
+function fatosDoEvento(
+    evento: Evento,
+    historico: HistoricoVendas | undefined,
+    pedidos: Pedido[],
+    nomeDoGrupo?: (g: string) => string,
+    linhas = new Map<string, FatoVenda>(),
+    cupons: FatoCupom[] = [],
+) {
     const { grupoDoLote, precoDoLote, grupos } = mapaDoCatalogo(evento, nomeDoGrupo);
-    const somar = (dia: string, grupo: string, categoria: string, itens: number, receita: number) => {
+    const somar = (dia: string, grupo: string, categoria: string, itens: number, receita: number, liquida = receita) => {
         if (itens <= 0 && receita <= 0) return;
         const chave = `${dia}|${categoria}|${grupo}`;
         const atual = linhas.get(chave) ?? { iso: dia, data: isoParaLabel(dia), ms: isoParaMs(dia), categoria, grupo, itens: 0, receitaBruta: 0, receitaLiquida: 0 };
         atual.itens += itens;
         atual.receitaBruta += receita;
-        atual.receitaLiquida += receita;
+        atual.receitaLiquida += liquida;
         linhas.set(chave, atual);
     };
 
     // Histórico: o dia a dia é total; divide entre os grupos pela participação de cada um nas vendas.
+    // O histórico não tem cupom: o valor c/ desconto dele é o próprio bruto.
     if (historico) {
         const porGrupo = new Map<string, { itens: number; receita: number }>();
         for (const [lote, qtd] of Object.entries(historico.porLote)) {
@@ -87,40 +128,98 @@ function fatosDoEvento(evento: Evento, historico: HistoricoVendas | undefined, p
         });
     }
 
+    // Pedidos pagos: ingresso, combo (a linha do combo) e produto, cada um na própria categoria. O desconto
+    // do cupom (já fora do total do pedido) é dividido entre as linhas pelo valor de cada uma (REL-213).
+    const nome = nomeDoGrupo ?? ((g: string) => g);
     for (const p of pedidos) {
         if (p.eventoId !== evento.id || p.status !== "pago") continue;
         const dia = iso(new Date(p.pagamento?.pagoEm ?? p.atualizadoEm));
-        for (const item of p.itens) {
-            if (item.tipo === "ingresso" && item.loteId) somar(dia, grupoDoLote.get(item.loteId) ?? item.nome, "Ingressos", item.quantidade, item.face * item.quantidade);
-            else somar(dia, nomeDoGrupo ? nomeDoGrupo(item.nome) : item.nome, "Produtos", item.quantidade, item.face * item.quantidade);
+        const ativos = p.itens.filter((item) => !item.cancelado);
+        const brutoDoPedido = ativos.reduce((t, item) => t + item.face * item.quantidade, 0);
+        const desconto = Math.min(p.cupom?.desconto ?? 0, brutoDoPedido);
+        for (const item of ativos) {
+            const bruto = item.face * item.quantidade;
+            const descontoDoItem = brutoDoPedido > 0 ? (desconto * bruto) / brutoDoPedido : 0;
+            if (item.tipo === "ingresso" && item.loteId) somar(dia, grupoDoLote.get(item.loteId) ?? item.nome, "Ingressos", item.quantidade, bruto, bruto - descontoDoItem);
+            else if (item.comboId) somar(dia, nome(item.nome), "Combos", item.quantidade, bruto, bruto - descontoDoItem);
+            else somar(dia, nome(item.nome), "Produtos", item.quantidade, bruto, bruto - descontoDoItem);
+            if (p.cupom && bruto > 0)
+                cupons.push({
+                    iso: dia,
+                    ms: isoParaMs(dia),
+                    cupom: nome(p.cupom.codigo),
+                    item: item.detalhe ? `${item.nome} (${item.detalhe})` : item.nome,
+                    quantidade: item.quantidade,
+                    valor: bruto,
+                    desconto: descontoDoItem,
+                });
         }
     }
-    return { linhas, grupos };
+    return { linhas, grupos, cupons };
+}
+
+/** Soma por nome, na ordem de maior valor. */
+function porNome<T>(linhas: T[], nomeDe: (l: T) => string, valores: (l: T) => { quantidade: number; bruto: number; liquido: number }): LinhaDoDetalhe[] {
+    const mapa = new Map<string, LinhaDoDetalhe>();
+    for (const l of linhas) {
+        const n = nomeDe(l);
+        const v = valores(l);
+        const atual = mapa.get(n) ?? { nome: n, quantidade: 0, bruto: 0, liquido: 0 };
+        atual.quantidade += v.quantidade;
+        atual.bruto += v.bruto;
+        atual.liquido += v.liquido;
+        mapa.set(n, atual);
+    }
+    return [...mapa.values()].sort((a, b) => b.bruto - a.bruto);
+}
+
+/** Detalhe do período a partir das mesmas linhas que os totais (REL-213). */
+function detalhar(fatos: FatoVenda[], cupons: FatoCupom[]): DetalheDoPeriodo {
+    const valores = (f: FatoVenda) => ({ quantidade: f.itens, bruto: f.receitaBruta, liquido: f.receitaLiquida });
+    const daCategoria = (c: string) => fatos.filter((f) => f.categoria === c);
+    const ordem = ["Ingressos", "Combos", "Produtos"];
+    return {
+        mix: ordem.map((c) => porNome(daCategoria(c), () => c, valores)[0]).filter((l): l is LinhaDoDetalhe => !!l && l.quantidade > 0),
+        ingressosPorGrupo: porNome(daCategoria("Ingressos"), (f) => f.grupo, valores),
+        combos: porNome(daCategoria("Combos"), (f) => f.grupo, valores),
+        produtos: porNome(daCategoria("Produtos"), (f) => f.grupo, valores),
+        cupons: porNome(cupons, (c) => c.cupom, (c) => ({ quantidade: c.quantidade, bruto: c.valor, liquido: c.valor - c.desconto })).map((linha) => ({
+            ...linha,
+            itens: porNome(
+                cupons.filter((c) => c.cupom === linha.nome),
+                (c) => c.item,
+                (c) => ({ quantidade: c.quantidade, bruto: c.valor, liquido: c.valor - c.desconto }),
+            ),
+        })),
+    };
 }
 
 export function montarDataset(evento: Evento, historico: HistoricoVendas | undefined, pedidos: Pedido[]): DatasetDoEvento {
-    const { linhas, grupos } = fatosDoEvento(evento, historico, pedidos);
-    return datasetDe(linhas, grupos, evento.data.slice(0, 10));
+    const { linhas, grupos, cupons } = fatosDoEvento(evento, historico, pedidos);
+    return datasetDe(linhas, grupos, evento.data.slice(0, 10), cupons);
 }
 
 /** Todos os eventos da organização somados (BKS-27): cada setor leva o nome do evento entre parênteses. */
 export function montarDatasetDeVarios(eventos: Evento[], historicos: Record<string, HistoricoVendas | undefined>, pedidos: Pedido[]): DatasetDoEvento {
     const linhas = new Map<string, FatoVenda>();
+    const cupons: FatoCupom[] = [];
     const grupos = new Map<string, { capacidade: number; somaPreco: number; lotes: number }>();
     for (const e of eventos) {
-        const r = fatosDoEvento(e, historicos[e.id], pedidos, (g) => `${g} (${e.nome})`, linhas);
+        const r = fatosDoEvento(e, historicos[e.id], pedidos, (g) => `${g} (${e.nome})`, linhas, cupons);
         for (const [nome, g] of r.grupos) grupos.set(nome, g);
     }
     const ultimoDia = eventos.map((e) => e.data.slice(0, 10)).sort().pop() ?? iso(new Date());
-    return datasetDe(linhas, grupos, ultimoDia);
+    return datasetDe(linhas, grupos, ultimoDia, cupons);
 }
 
-function datasetDe(linhas: Map<string, FatoVenda>, grupos: Map<string, { capacidade: number; somaPreco: number; lotes: number }>, fimEvento: string): DatasetDoEvento {
+function datasetDe(linhas: Map<string, FatoVenda>, grupos: Map<string, { capacidade: number; somaPreco: number; lotes: number }>, fimEvento: string, cupons: FatoCupom[] = []): DatasetDoEvento {
     const fatos = [...linhas.values()].sort((a, b) => a.ms - b.ms);
     const ctx: ContextoDataset = {
         grupos: [
             ...[...grupos.entries()].map(([nome, g]) => ({ nome, categoria: "Ingressos", capacidade: g.capacidade, precoMedio: g.lotes ? Math.round(g.somaPreco / g.lotes) : 0, validaPct: 0.92 })),
-            ...[...new Set(fatos.filter((f) => f.categoria === "Produtos").map((f) => f.grupo))].map((nome) => ({ nome, categoria: "Produtos", capacidade: null, precoMedio: 0, validaPct: 0 })),
+            ...["Combos", "Produtos"].flatMap((categoria) =>
+                [...new Set(fatos.filter((f) => f.categoria === categoria).map((f) => f.grupo))].map((nome) => ({ nome, categoria, capacidade: null, precoMedio: 0, validaPct: 0 })),
+            ),
         ],
         capacidade: [...grupos.values()].reduce((t, g) => t + g.capacidade, 0),
         itensTotal: fatos.reduce((t, f) => t + f.itens, 0),
@@ -137,10 +236,8 @@ function datasetDe(linhas: Map<string, FatoVenda>, grupos: Map<string, { capacid
             const tz = getLocalTimeZone();
             const de = periodo ? periodo.start.toDate(tz).getTime() : -Infinity;
             const ate = periodo ? periodo.end.toDate(tz).getTime() + 86_400_000 - 1 : Infinity;
-            return agregar(
-                fatos.filter((f) => f.ms >= de && f.ms <= ate),
-                ctx,
-            );
+            const doPeriodo = fatos.filter((f) => f.ms >= de && f.ms <= ate);
+            return { ...agregar(doPeriodo, ctx), detalhe: detalhar(doPeriodo, cupons.filter((c) => c.ms >= de && c.ms <= ate)) };
         },
         periodoPadrao: { start: calendario(inicio), end: calendario(fim) },
         grupos: ctx.grupos,

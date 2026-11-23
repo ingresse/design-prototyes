@@ -1,0 +1,7 @@
+/* chips-caixinha.css: o «+» dos carrosséis com chips é uma caixinha (ver chips-caixinha.js). Sem cor nem medida nova: só a ordem de empilhamento e o recorte durante a animação. */
+.hd-chips > .chip { position: relative; z-index: var(--zIndex-base); } /* os extras saem de DENTRO do «+»: ficam por baixo dele enquanto viajam */
+.hd-chips > .hd-mais { z-index: var(--zIndex-raised); } /* acima de qualquer extra em voo (o z-index dos extras em voo vai de 2 a 9, no JS) */
+.hd-mais > span { display: inline-block; }
+/* só enquanto a altura anima: recorte VERTICAL (a altura é o que cresce); na horizontal nada é cortado, para o chip chegar inteiro e o anel de foco não ser comido.
+   `align-content: flex-start`: com a altura travada maior que o conteúdo, as linhas de chips não se afastam e voltam (validação do Bessa, 03/11/2026) */
+.hd-chips[data-caixinha] { overflow-x: visible; overflow-y: clip; overflow-clip-margin: var(--space-1); align-content: flex-start; }

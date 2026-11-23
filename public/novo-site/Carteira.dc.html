@@ -1,0 +1,1460 @@
+<!doctype html>
+<html lang="pt-BR" data-pagina="carteira" data-superficie="chao">
+<head>
+<meta charset="utf-8">
+<script src="./ponte-backstage.js" data-ponte-backstage></script>
+<script src="./transicao-evento.js" data-previa-te></script>
+<script data-previa-esportes-cedo>(function () {
+  var root = document.documentElement, qs = new URLSearchParams(location.search), v = null;
+  try {
+    if (qs.get('dados') === 'mock' || qs.get('dados') === 'bff') localStorage.setItem('previa-dados', qs.get('dados'));
+    v = localStorage.getItem('previa-dados') || 'bff'; // padrão no design-prototypes: dados do Backstage (ponte-backstage.js)
+  } catch (e) {}
+  root.setAttribute('data-dados', v === 'bff' ? 'bff' : 'mock');
+  if (v !== 'bff' || !window.fetch) return;
+  var f0 = window.fetch;
+  window.fetch = function (u, o) {
+    var url = typeof u === 'string' ? u : (u && u.url) || '', alvo = null, md;
+    if (/\/api\/eventos(\.json)?(\?|$)/.test(url)) alvo = url.replace(/\/api\/eventos(\.json)?/, '/api/bff/eventos');
+    else if ((md = /(?:^|\/)dados\/((?:busca-artistas|busca-locais|catalogo-indice|sorteio-pool|home-reais|categoria-[a-z0-9-]+)\.json)(\?|$)/.exec(url))) alvo = '/api/bff/dados/' + md[1]; // os índices e as categorias também saem do BFF
+    if (!alvo) return f0.apply(this, arguments);
+    var self = this, args = arguments;
+    return f0.call(this, alvo, o).then(function (r) {
+      if (r.ok) { root.setAttribute('data-dados-ok', ''); return r; }
+      return r.clone().json().catch(function () { return {}; }).then(function (d) { root.setAttribute('data-dados-falha', (d && d.error) || ('HTTP ' + r.status)); return f0.apply(self, args); });
+    }, function () { root.setAttribute('data-dados-falha', 'sem conexão com o servidor local'); return f0.apply(self, args); });
+  };
+})();
+(function () {
+  var root = document.documentElement, qs = new URLSearchParams(location.search), v = null;
+  try {
+    if (qs.get('esportes') === 'on' || qs.get('esportes') === 'off') localStorage.setItem('previa-esportes', qs.get('esportes'));
+    v = localStorage.getItem('previa-esportes');
+  } catch (e) {}
+  var ligado = v === 'on';
+  root.setAttribute('data-esportes', ligado ? 'on' : 'off');
+  var DESCOBERTA = ['home', 'busca', 'categoria', 'artista', 'venue', 'colecao'];
+  if (ligado || DESCOBERTA.indexOf(root.getAttribute('data-pagina')) < 0 || qs.get('escopo') === 'esportes') return;
+  root.setAttribute('data-esportes-ocultar', '');
+  var prova = function (e) { var c = (e && e.cats) || []; return c.indexOf('corridas') >= 0 || (c.indexOf('esportes') >= 0 && c.indexOf('futebol') < 0); };
+  var f0 = window.fetch;
+  if (!f0) return;
+  window.fetch = function (u) {
+    var url = typeof u === 'string' ? u : (u && u.url) || '', p = f0.apply(this, arguments);
+    if (!/\/api\/eventos(\.json)?(\?|$)/.test(url)) return p;
+    return p.then(function (r) {
+      if (!r.ok) return r;
+      return r.clone().json().then(function (d) {
+        if (!d || !d.events) return r;
+        d.events = d.events.filter(function (e) { return !prova(e); });
+        if (d.categories) d.categories = d.categories.filter(function (c) { return c.id !== 'corridas'; });
+        return new Response(JSON.stringify(d), { status: r.status, statusText: r.statusText, headers: { 'Content-Type': 'application/json' } });
+      }).catch(function () { return r; });
+    });
+  };
+})();</script>
+<script data-previa-nav-cedo>(function () {
+  try {
+    var h = document.documentElement;
+    var tema = localStorage.getItem('prototipo-theme');
+    if (tema !== 'dark' && tema !== 'light') tema = window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    if (/\/(Ingressos|Checkout|Pagamento)\.dc\.html$/.test(location.pathname) || (/\/Evento\.dc\.html$/.test(location.pathname) && sessionStorage.getItem('mov:de'))) {
+      // chegada do movimento-compra.js (ele tem o seu portão e a sua entrada): aqui só o fundo da última tela vista, que fecha o quadro
+      // branco do tema escuro entre a saída e a entrada. Sai em movimento-navegacao.js quando o portão dele abre.
+      h.setAttribute('data-mov-dona', '');
+      var bgc = localStorage.getItem('mov:bg:' + tema);
+      if (bgc) {
+        h.style.setProperty('background-color', bgc, 'important');
+        h.setAttribute('data-mov-bgcompra', '');
+        setTimeout(function () { h.removeAttribute('data-mov-bgcompra'); h.style.removeProperty('background-color'); }, 3000);
+      }
+      return;
+    }
+    var j = sessionStorage.getItem('mov:nav');
+    var o = j ? JSON.parse(j) : null;
+    // o registro vale para esta URL (ou para qualquer uma, quando a tela anterior saiu sem clique nosso: Voltar, URL digitada, recarregar)
+    if (!o || o.v !== 1 || Date.now() - o.t > 6000 || (o.para && o.para !== location.pathname)) {
+      o = { v: 1, padrao: 'direta', bg: localStorage.getItem('mov:bg:' + tema) || '' };
+    }
+    h.setAttribute('data-mov-nav', o.padrao || '');
+    h.setAttribute('data-mov-nav-gate', '');
+    var g = document.createElement('style');
+    g.id = 'mov-nav-portao';
+    // sem transições (data-mov-nav, que sai 2 quadros depois do portão abrir): os estilos chegam com a tela escondida e, sem isto, cores e bordas
+    // ainda estariam em transição de 160 ms quando ela aparece (e, em movimento reduzido, a própria visibilidade levaria um quadro para virar)
+    g.textContent = 'html[data-mov-nav-gate] #dc-root{visibility:hidden}html[data-mov-nav] #dc-root,html[data-mov-nav] #dc-root *,html[data-mov-nav] #dc-root *::before,html[data-mov-nav] #dc-root *::after{transition:none !important}';
+    (document.head || h).appendChild(g);
+    if (o.bg) h.style.setProperty('background-color', o.bg, 'important');
+    if (o.ponte && o.ponte.html) {
+      // a fonte da ponte tem nome próprio (ElzaPonte): a identidade da tela nova declara "Elza" com font-display swap e, se a ponte usasse
+      // esse nome, o texto trocaria para a fonte de sistema quando o CSS novo chegasse. Os dados (base64, guardados pela tela anterior)
+      // entram por FontFace binária, sem espera; sem eles, cai na URL (block = texto invisível até a fonte chegar).
+      var r4 = sessionStorage.getItem('mov:fonte400'), r6 = sessionStorage.getItem('mov:fonte600');
+      var bin = function (b64) { var t = atob(b64), u = new Uint8Array(t.length), i; for (i = 0; i < t.length; i++) u[i] = t.charCodeAt(i); return u.buffer; };
+      var doDados = false;
+      if (r4 && r6 && window.FontFace) {
+        // FontFace com dados binários fica pronta na hora (status "loaded" no mesmo instante): o texto da ponte já nasce na fonte certa
+        try {
+          document.fonts.add(new FontFace('ElzaPonte', bin(r4), { weight: '400 500' }));
+          document.fonts.add(new FontFace('ElzaPonte', bin(r6), { weight: '600 700' }));
+          doDados = true;
+        } catch (e) {}
+      }
+      if (!doDados) {
+        var f = document.createElement('style');
+        f.id = 'mov-ponte-fonte';
+        f.textContent = '@font-face{font-family:"ElzaPonte";src:url(./fontes/Elza-Regular.woff2) format("woff2");font-weight:400 500;font-display:block}' +
+          '@font-face{font-family:"ElzaPonte";src:url(./fontes/Elza-Semibold.woff2) format("woff2");font-weight:600 700;font-display:block}';
+        (document.head || h).appendChild(f);
+      }
+      // dentro de um shadow root: o CSS da tela nova (div, span, a, svg…) não alcança a ponte enquanto ela espera
+      var d = document.createElement('div');
+      d.id = 'mov-ponte';
+      d.setAttribute('aria-hidden', 'true');
+      d.style.cssText = 'all:initial;position:fixed;left:0;top:' + (o.ponte.top || 0) + 'px;width:' + o.ponte.w + 'px;height:' + o.ponte.h + 'px;z-index:2147483000;pointer-events:none;overflow:hidden;display:block';
+      var sr = d.attachShadow ? d.attachShadow({ mode: 'open' }) : d;
+      sr.innerHTML = o.ponte.html;
+      h.appendChild(d);
+    }
+    if (o.poster && o.poster.src) {
+      var im = document.createElement('img');
+      im.id = 'mov-ponte-poster';
+      im.alt = '';
+      im.setAttribute('aria-hidden', 'true');
+      im.src = o.poster.src;
+      im.style.cssText = 'all:initial;position:fixed;left:' + o.poster.x + 'px;top:' + o.poster.y + 'px;width:' + o.poster.w + 'px;height:' + o.poster.h + 'px;object-fit:cover;border-radius:' + (o.poster.r || '0') + ';z-index:' + (o.poster.z || 1) + ';pointer-events:none;display:block';
+      h.appendChild(im);
+    }
+    setTimeout(function () {
+      var pp = document.getElementById('mov-ponte-poster');
+      if (pp) pp.remove();
+      var p = document.getElementById('mov-ponte');
+      if (p) p.remove();
+      var s = document.getElementById('mov-ponte-fonte');
+      if (s) s.remove();
+      h.removeAttribute('data-mov-nav-gate');
+      h.removeAttribute('data-mov-nav');
+      h.style.removeProperty('background-color');
+    }, 3000);
+  } catch (e) {}
+})();</script>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#F5F4F2">
+<meta name="format-detection" content="telephone=no">
+<link rel="preload" href="./fontes/Elza-Semibold.woff2" as="font" type="font/woff2" crossorigin data-previa>
+<link rel="preload" href="./fontes/Elza-Regular.woff2" as="font" type="font/woff2" crossorigin data-previa>
+<title>Ingresse — Carteira</title>
+<script data-jf-titulo>try{if(/[?&]jogo=/.test(location.search)&&window.IngresseJornadaFutebol&&window.IngresseJornadaFutebol.ativo())document.title=window.IngresseJornadaFutebol.tituloInicial(document.documentElement.getAttribute("data-pagina"))}catch(e){}</script>
+<script data-je-loader>if(/[?&]esporte=/.test(location.search)){document.write('<script src="./jornada-esporte-dados.js"><\/script><script src="./jornada-esporte.js"><\/script>')}</script>
+<script src="./produtos-dados.js" data-prd></script>
+<script src="./produtos.js" data-prd></script>
+<script data-jf-loader>if(/[?&]jogo=/.test(location.search)){document.write('<script src="./jornada-futebol-dados.js"><\/script><script src="./jornada-futebol-textos.js"><\/script><script src="./jornada-futebol-regras.js"><\/script><script src="./modal-uui.js"><\/script><script src="./vendor/qr-code-styling.js"><\/script><script src="./qr-ingresse.js"><\/script><script src="./mapa-estadio.js"><\/script><script src="./rosto.js"><\/script><script src="./dependentes.js"><\/script><script src="./jornada-futebol.js"><\/script>')}</script>
+<script src="./vendor/react.js"></script>
+<script src="./vendor/react-dom.js"></script>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<script src="./destinos.js" defer data-previa></script>
+<style>
+/* Estilos específicos desta tela. Componentes: base.css */
+.sheet{width:100%;max-width:560px;background:var(--surface);border-radius:32px 32px 0 0;padding:28px 24px calc(24px + env(safe-area-inset-bottom));box-shadow:var(--shadow-xl);box-sizing:border-box}
+@media (min-width:640px){.sheet{border-radius:24px;margin-bottom:8vh}}
+/* Header + menu da conta */
+.mainnav{display:flex;gap:28px;font-size:15px;font-weight:600}
+.acct{position:relative}
+.acct-btn{display:flex;align-items:center;gap:10px;background:transparent;border:1px solid transparent;border-radius:999px;padding:4px 12px 4px 4px;font:inherit;font-size:15px;font-weight:600;color:var(--ink);cursor:pointer;transition:all .2s}
+.acct-btn:hover,.acct-btn[aria-expanded="true"]{border-color:var(--line-strong);background:var(--surface)}
+.menu{position:absolute;right:0;top:calc(100% + 8px);z-index:70;width:280px;padding:8px;background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:0 24px 60px rgba(10,10,11,.22)}
+.menu-h{display:flex;align-items:center;gap:12px;padding:10px 10px 14px;border-bottom:1px solid var(--line);margin-bottom:6px}
+.menu a{display:flex;justify-content:space-between;align-items:center;min-height:42px;padding:0 12px;border-radius:10px;font-size:15px;color:var(--ink-2)}
+.menu a:hover{background:var(--bg-alt);color:var(--ink)}
+.menu a[aria-current="page"]{background:var(--bg-alt);color:var(--ink);font-weight:700}
+.menu hr{border:0;border-top:1px solid var(--line);margin:6px 0}
+.scrim{position:fixed;inset:0;z-index:60;background:transparent;border:0;padding:0;cursor:default}
+
+@media (max-width:760px){.mainnav{display:none}.acct-name{display:none}.acct-btn{padding:4px}.menu{position:fixed;left:12px;right:12px;top:68px;width:auto}}
+/* Ingresso em destaque */
+.tk{display:flex;flex-wrap:wrap;border-radius:24px;overflow:hidden;box-shadow:0 16px 40px rgba(10,10,11,.14);margin-bottom:20px}
+.tk-main{position:relative;overflow:hidden;flex:999 1 380px;padding:32px;min-height:260px;display:flex;flex-direction:column;color:#fff;background:#0A0A0B}
+.tk-bg{position:absolute;inset:-40px;width:calc(100% + 80px);height:calc(100% + 80px);object-fit:cover;filter:blur(34px) saturate(1.3) brightness(.55)}
+.tk-tint{position:absolute;inset:0;background:radial-gradient(ellipse 80% 100% at 100% 0%,rgba(255,39,26,.85) 0%,rgba(196,26,15,.55) 35%,rgba(10,10,11,.6) 80%)}
+.tk-in{position:relative;display:flex;flex-direction:column;flex:1}
+.tk-head{display:flex;gap:20px;align-items:flex-start}
+.tk-poster{flex:0 0 auto;width:104px;aspect-ratio:3/4;object-fit:cover;border-radius:10px;box-shadow:0 12px 30px rgba(0,0,0,.45)}
+.tk-qr{flex:1 1 280px;padding:28px;background:var(--surface);border-left:2px dashed var(--line);display:flex;flex-direction:column;align-items:center;gap:14px}
+
+@media (max-width:560px){.tk-poster{width:76px}.tk-main{padding:24px}}
+/* Gestão de muitos ingressos */
+.chk{font-family:ui-sans-serif,system-ui,sans-serif;width:22px;height:22px;flex:0 0 auto;border-radius:6px;border:1.5px solid var(--line-strong);background:var(--surface);display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;color:#fff;font-size:13px;font-weight:700}
+.trow{display:flex;flex-wrap:wrap;align-items:center;gap:12px 16px;padding:14px 20px;border-top:1px solid var(--line)}
+.trow[data-cur="true"]{background:var(--accent-soft)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--bg)}
+.bulk{position:sticky;bottom:16px;z-index:40;margin:12px 16px 16px !important;display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;padding:12px 16px 12px 20px;margin-top:12px;border-radius:999px;background:var(--inverse);color:#fff;box-shadow:0 18px 40px rgba(10,10,11,.3)}
+
+@media (max-width:560px){.bulk{border-radius:20px}.hide-sm{display:none !important}}
+.bulk .bs{background:transparent;color:#fff;border-color:rgba(255,255,255,.35)}
+.bulk .bs:hover{background:rgba(255,255,255,.12)}
+/* Lista de eventos */
+.ev{display:flex;align-items:center;gap:16px;padding:12px 18px 12px 12px}
+.ev-thumb{flex:0 0 auto;width:54px;aspect-ratio:3/4;border-radius:8px;object-fit:cover;background:var(--line)}
+.ev-ph{display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff;background:linear-gradient(140deg,#FF271A,#0A0A0B)}
+.ev-date{width:48px;text-align:center;flex:0 0 auto}
+.month[data-show="false"]{display:none}
+.month{position:sticky;top:70px;z-index:5;padding:8px 2px;background:var(--bg)}
+</style>
+<style data-pb>
+/* lupa de busca do menu (pilula-busca.mjs) */
+.hdr-search.hdr-lupa { flex: 0 0 auto !important; display: inline-flex !important; align-items: center; justify-content: center; width: var(--size-touch-default); height: var(--size-touch-default); min-height: var(--size-touch-default) !important; padding: 0 !important; margin: 0 0 0 auto !important; max-width: none; border-radius: var(--radius-base); color: var(--color-text-primary) !important; cursor: pointer; }
+.hdr-search.hdr-lupa svg { stroke: currentColor; }
+.hdr .crumbs { min-width: 0; flex: 0 1 auto; overflow: hidden; }
+.hdr .crumbs .crumb-cur, .hdr .crumbs [aria-current] { overflow: hidden; text-overflow: ellipsis; }
+</style>
+<link rel="stylesheet" href="./theme.css">
+<link rel="stylesheet" href="./base.css">
+<script src="./theme.js"></script>
+<link rel="stylesheet" href="./ux.css">
+<link rel="stylesheet" href="./ds.css">
+<script src="./ux.js" defer></script>
+<link rel="stylesheet" href="./identidade-v1.css" data-previa>
+<script src="./previa.js" defer data-previa></script>
+<script src="./movimento-compra.js" defer data-previa></script>
+<script src="./movimento-navegacao.js" defer data-previa></script>
+<link rel="stylesheet" href="./cidade-cabecalho.css" data-previa>
+<script src="./modal-uui.js" defer data-previa></script>
+<script src="./local.js" defer data-previa></script>
+<script src="./local-ui.js" defer data-previa></script>
+<script src="./lugares-consulta.js" defer data-previa></script>
+<script src="./cidade-cabecalho.js" defer data-previa></script>
+<link rel="stylesheet" href="./lembretes.css" data-previa>
+<script src="./lembretes.js" defer data-previa></script>
+<link rel="stylesheet" href="./jornada-esporte.css" data-previa>
+<script src="./vendor/lottie_svg.min.js" defer data-previa></script>
+<script src="./icones-motion.js" defer data-previa></script>
+<script src="./vendor/qr-code-styling.js" defer data-previa></script>
+<script src="./qr-ingresse.js" defer data-previa></script>
+<script src="./seg-tablist.js" defer data-previa></script>
+<link rel="stylesheet" href="./menu-conta.css" data-previa>
+<script src="./menu-conta.js" defer data-previa></script>
+<link rel="stylesheet" href="./jornada-futebol.css" data-previa>
+<script src="./lacunas.js" defer data-previa></script>
+<link rel="stylesheet" href="./transicao-evento.css" data-previa data-previa-te>
+</helmet>
+
+<div style="min-height: 100vh; background: var(--pagina-bg)">
+<header class="hdr">
+  <div class="hdr-row" style="max-width: 1280px; margin: 0 auto; padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; gap: 24px; flex-wrap: wrap">
+    <a href="Main.dc.html" aria-label="Ingresse — início" class="hdr-logo"><img src="./assets/8703fb5f412b57860d569f5abeea2cae.svg" alt="Ingresse"></a>
+    <a href="Busca.dc.html" class="hdr-search hdr-lupa" aria-label="Buscar evento, prova, time, artista ou local" title="Buscar">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+    </a>
+    <span class="cid" data-cidade>
+      <button type="button" class="bs cid-btn" data-cidade-btn data-marcado="true" aria-haspopup="dialog" aria-expanded="false" aria-label="Cidade: São Paulo. Trocar">
+        <span class="btn-ic cid-pin" aria-hidden="true" data-lottie="./assets/icones/esp-perto-de-voce.json" data-repouso="0" data-loop="0"></span>
+        <span class="cid-nome" data-cidade-nome>São Paulo</span>
+        <svg class="cid-chev ico ico-14" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+      </button>
+    </span>
+        <!-- mc:ini --><button type="button" class="avatar-hdr mc-av" data-menu-conta data-conta="true" aria-haspopup="menu" aria-expanded="false" aria-label="Minha conta"><span class="uui-avatar uui-avatar--lg" aria-hidden="true"><span class="uui-avatar__content"><span class="mc-ini" aria-hidden="true">PE</span><svg class="mc-gen" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 21a8 8 0 0 0-16 0"/><path d="M12 13a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"/></svg><img src="./assets/pessoas/pessoa-exemplo.jpg" srcset="./assets/pessoas/pessoa-exemplo.jpg 96w, ./assets/pessoas/pessoa-exemplo@2x.jpg 192w" sizes="48px" width="48" height="48" alt=""></span></span><span class="mc-n" data-mc-n data-vazio="true" aria-hidden="true">0</span></button><!-- mc:fim -->
+  </div>
+</header>
+
+<!-- jf:cw -->
+<sc-if value="{{jfOff}}" hint-placeholder-val="{{true}}">
+<!-- je:ini -->
+<sc-if value="{{espOff}}" hint-placeholder-val="{{true}}">
+<main style="max-width: 1280px; margin: 0 auto; padding: 48px 24px 96px; box-sizing: border-box">
+  <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 20px; margin-bottom: 28px">
+    <div>
+      <div class="over" style="margin-bottom: 10px">Carteira</div>
+      <h1 class="h1">Seus próximos eventos</h1>
+    </div>
+    <div class="cart-tools" style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center">
+      <div class="seg" role="tablist" aria-label="Filtrar ingressos">
+        <button type="button" role="tab" aria-selected="{{nextSel}}" onClick="{{toNext}}">Próximos</button>
+        <button type="button" role="tab" aria-selected="{{pastSel}}" onClick="{{toPast}}">Passados</button>
+      </div>
+    </div>
+  </div>
+
+  <sc-if value="{{isNext}}" hint-placeholder-val="{{true}}">
+    <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 16px; padding: 16px 20px; border-radius: 16px; background: var(--accent-soft); margin-bottom: 20px">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"></path><circle cx="12" cy="10" r="3"></circle><path d="M7.5 17a5 5 0 0 1 9 0"></path></svg>
+      <div style="flex: 1 1 260px"><div style="font-size: 16px; font-weight: 700; color: var(--ink)">Cadastre sua facial antes de domingo</div><div style="font-size: 14px; color: var(--ink-2)">Você entra mais rápido no Sorriso Eu Gosto no Pagode, no Anhembi. Leva menos de 1 minuto.</div></div>
+      <a href="#" class="bs bs-ink" data-toast="Leva menos de 1 minuto.">Cadastrar facial</a>
+    </div>
+
+    <article class="tk" aria-label="Próximo ingresso">
+      <div class="tk-main">
+        <img src="./assets/real/104717.avif" alt="" aria-hidden="true" class="tk-bg">
+        <div class="tk-tint" aria-hidden="true"></div>
+        <div class="tk-in">
+          <div class="tk-head">
+            <img src="./assets/real/104717.avif" alt="Pôster do Sorriso Eu Gosto no Pagode" class="tk-poster">
+            <div style="flex: 1; min-width: 0">
+              <span class="tag tk-count">{{countdown}}</span>
+              <h2 class="disp" style="font-size: clamp(30px, 3.6vw, 46px); margin-bottom: 10px">Sorriso Eu Gosto no Pagode</h2>
+              <div style="font-size: 15px; color: rgba(255,255,255,.85)">{{dayLabel}} · 13h · Arena Anhembi, São Paulo</div><sc-if value="{{hasOrder}}" hint-placeholder-val="{{false}}"><div style="margin-top: 8px; font-size: 13px; color: rgba(255,255,255,.7)">Pedido {{orderId}}</div></sc-if>
+            </div>
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: auto; padding-top: 28px">
+            <div><div class="over" style="color: rgba(255,255,255,.65)">Setor</div><div style="font-size: 16px; font-weight: 700">{{cur.sector}}</div></div>
+            <div><div class="over" style="color: rgba(255,255,255,.65)">Ingresso</div><div style="font-size: 16px; font-weight: 700">{{ticketPos}}</div></div>
+            <div><div class="over" style="color: rgba(255,255,255,.65)">Titular</div><div style="font-size: 16px; font-weight: 700">{{cur.holder}}</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="tk-qr">
+        <sc-if value="{{qrReady}}" hint-placeholder-val="{{true}}">
+          <div class="uui-alert uui-alert--success tk-qraviso" role="status">
+            <span class="uui-alert__icon"><svg class="uui-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="m7.5 12 3 3 6-6m5.5 3c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10Z"/></svg></span>
+            <div class="uui-alert__body"><p class="uui-alert__text">QR liberado. Mostre este código na entrada.</p></div>
+          </div>
+          <button type="button" class="tk-qrbtn qr-in" aria-label="{{qrOpenAria}}" data-qv-opener="card" onClick="{{openQrCard}}">
+            <span class="qr-live tk-qrbox"><img src="{{curQr}}" alt="" width="212" height="212"></span>
+          </button>
+          <div class="tk-qrnote">O código muda a cada 15 segundos: captura de tela não vale.<br>Funciona sem internet. Aumente o brilho da tela na entrada.</div>
+        </sc-if>
+        <sc-if value="{{qrBlocked}}" hint-placeholder-val="{{false}}">
+          <div class="qr-lock" data-k="{{curKind}}">
+            <sc-if value="{{isWait}}" hint-placeholder-val="{{false}}"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg></sc-if>
+            <sc-if value="{{notWait}}" hint-placeholder-val="{{true}}"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg></sc-if>
+            <sc-if value="{{lockBadge}}" hint-placeholder-val="{{false}}"><span class="st tk-lockbadge" data-k="{{curKind}}">{{lockBadge}}</span></sc-if>
+            <sc-if value="{{hasLockTitle}}" hint-placeholder-val="{{true}}"><strong style="font-size: 15px; color: var(--ink)">{{lockTitle}}</strong></sc-if>
+            <sc-if value="{{isWait}}" hint-placeholder-val="{{false}}">
+              <span>Seu QR aparece <span data-exemplo="Janela a confirmar">2 horas</span> antes do evento.</span>
+              <span class="qr-lock__quando">Libera em {{waitIn}}</span>
+            </sc-if>
+            <sc-if value="{{isCancelKind}}" hint-placeholder-val="{{false}}"><span>O QR deste ingresso deixou de valer. Você recebe o reembolso em até <span data-exemplo="Prazo de exemplo">10 dias úteis</span>, sem precisar pedir.</span></sc-if>
+            <sc-if value="{{lockPlain}}" hint-placeholder-val="{{true}}"><span>{{lockText}}</span></sc-if>
+          </div>
+          <sc-if value="{{isPend}}" hint-placeholder-val="{{false}}"><div class="tk-lockact"><button type="button" class="bp bp-sm" onClick="{{curAct}}">Definir titular</button><button type="button" class="bs bs-sm" data-share="Seu ingresso para o Sorriso Eu Gosto no Pagode: preencha seus dados para liberar o QR">Enviar link</button></div></sc-if>
+          <sc-if value="{{isListed}}" hint-placeholder-val="{{false}}"><div class="tk-lockact"><button type="button" class="bs bs-sm" onClick="{{cancelResaleCur}}">Cancelar a venda</button></div></sc-if>
+          <sc-if value="{{isCancelKind}}" hint-placeholder-val="{{false}}"><div class="tk-lockact"><button type="button" class="bs bs-sm" onClick="{{curAct}}">Ver meu reembolso</button></div></sc-if>
+        </sc-if>
+        <div class="tk-pager">
+          <button type="button" class="bs" onClick="{{prev}}" aria-label="Ingresso anterior" style="width: 48px; padding: 0"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M11 6l-6 6 6 6"></path></svg></button>
+          <span style="font-size: 14px; font-weight: 600; width: 64px; text-align: center" aria-live="polite">{{ticketPos}}</span>
+          <button type="button" class="bs" onClick="{{next}}" aria-label="Próximo ingresso" style="width: 48px; padding: 0"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></button>
+        </div>
+        <sc-if value="{{manyB}}" hint-placeholder-val="{{false}}">
+          <a href="#gerenciar" class="tk-manage">Ver e gerenciar os {{nTickets}} ingressos</a>
+        </sc-if>
+      </div>
+      <div class="tk-foot">
+        <sc-if value="{{noteRecebido}}" hint-placeholder-val="{{false}}">
+          <div class="uui-alert uui-alert--neutral tk-nota-estado" role="status">
+            <span class="uui-alert__icon"><svg class="uui-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16v-4m0-4h.01M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10Z"/></svg></span>
+            <div class="uui-alert__body"><p class="uui-alert__text">Pedido de reembolso recebido. O valor volta para a forma de pagamento em até <span data-exemplo="Prazo de exemplo">10 dias úteis</span>.</p><div class="uui-alert__actions"><button type="button" class="linkbtn" onClick="{{curAct}}">Ver meu reembolso</button></div></div>
+          </div>
+        </sc-if>
+        <sc-if value="{{noteAndamento}}" hint-placeholder-val="{{false}}">
+          <div class="uui-alert uui-alert--neutral tk-nota-estado" role="status">
+            <span class="uui-alert__icon"><svg class="uui-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6v6l4 2m6-2c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10Z"/></svg></span>
+            <div class="uui-alert__body"><p class="uui-alert__text">Reembolso em andamento. O valor volta na forma de pagamento original em até <span data-exemplo="Prazo de exemplo">10 dias úteis</span>.</p></div>
+          </div>
+        </sc-if>
+        <sc-if value="{{noteNegado}}" hint-placeholder-val="{{false}}">
+          <div class="uui-alert uui-alert--warning tk-nota-estado" role="status">
+            <span class="uui-alert__icon"><svg class="uui-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 9v4m0 4h.01M10.615 3.892 2.39 18.098c-.456.788-.684 1.182-.65 1.506a1 1 0 0 0 .406.705c.263.191.718.191 1.629.191h16.45c.91 0 1.365 0 1.628-.191a1 1 0 0 0 .407-.705c.034-.324-.195-.718-.65-1.506L13.383 3.892c-.454-.785-.681-1.178-.978-1.31a1 1 0 0 0-.813 0c-.296.132-.523.525-.978 1.31Z"/></svg></span>
+            <div class="uui-alert__body"><p class="uui-alert__text">Não consigo reembolsar este ingresso: o prazo para pedir reembolso terminou em <span data-exemplo="Data de exemplo">1 nov</span>. O que ainda dá para fazer: transferir o ingresso para outra pessoa ou revendê-lo na Revenda Oficial. Quer que eu explique como?</p></div>
+          </div>
+        </sc-if>
+        <div class="tk-foot-row">
+          <sc-if value="{{qrReady}}" hint-placeholder-val="{{true}}"><button type="button" class="bp tk-full" data-qv-opener="card" onClick="{{openQrCard}}">Mostrar QR em tela cheia</button></sc-if>
+          <sc-if value="{{canTransfer}}" hint-placeholder-val="{{true}}"><button type="button" class="bs" onClick="{{curAct}}">Transferir</button></sc-if>
+          <sc-if value="{{canResell}}" hint-placeholder-val="{{true}}"><button type="button" class="bs" onClick="{{resellCur}}">Revender ingresso</button></sc-if>
+          <sc-if value="{{showCurAct}}" hint-placeholder-val="{{false}}"><button type="button" class="bs" onClick="{{curAct}}">{{curActLabel}}</button></sc-if>
+          <a href="Evento.dc.html" class="bs">Ver evento</a>
+        </div>
+        <sc-if value="{{canCancelBuy}}" hint-placeholder-val="{{false}}"><div class="tk-sec"><button type="button" class="linkbtn tk-cancelar" onClick="{{cancelBuyCur}}">Cancelar compra</button></div></sc-if>
+        <sc-if value="{{why7}}" hint-placeholder-val="{{false}}"><p class="tk-nota">Não dá mais para cancelar a compra: o prazo é de <span data-exemplo="Prazo a confirmar">7 dias</span> depois da compra.</p></sc-if>
+        <sc-if value="{{why48}}" hint-placeholder-val="{{false}}"><p class="tk-nota">Não dá mais para cancelar a compra: faltam menos de <span data-exemplo="Prazo a confirmar">48 horas</span> para o evento.</p></sc-if>
+        <sc-if value="{{qrReady}}" hint-placeholder-val="{{true}}">
+          <div class="wal" role="group" aria-label="Adicionar à carteira do celular">
+            <div class="over">Adicionar à carteira do celular</div>
+            <div class="wal-list">
+              <sc-for list="{{wallets}}" as="w" hint-placeholder-count="3">
+                <button type="button" class="bs wal-btn" aria-pressed="{{w.on}}" aria-label="{{w.aria}}" onClick="{{w.add}}">
+                  <svg class="wal-ic" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 7V5.5A1.5 1.5 0 0 0 17.5 4h-11A2.5 2.5 0 0 0 4 6.5v11A2.5 2.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5V17"></path><path d="M4 6.5C4 7.9 5.1 9 6.5 9H19a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-3.5a2.5 2.5 0 0 1 0-5H20"></path></svg>
+                  <span class="wal-name">{{w.label}}</span>
+                  <span class="tag tag-ok wal-state" data-on="{{w.on}}">Adicionado</span>
+                </button>
+              </sc-for>
+            </div>
+          </div>
+        </sc-if>
+      </div>
+    </article>
+
+    <!-- prd:pedido -->
+<sc-if value="{{prdPedido}}" hint-placeholder-val="{{false}}">
+<section class="card prd-pedido" aria-labelledby="prd-pedido-t">
+  <div class="over" id="prd-pedido-t">Produtos do pedido</div>
+  <ul aria-label="Produtos do pedido">
+    <sc-for list="{{prdLista}}" as="i" hint-placeholder-count="2">
+      <li><span class="prd-pedido__n">{{i.linha}}</span><strong>{{i.valor}}</strong><small>{{i.retirada}}</small></li>
+    </sc-for>
+  </ul>
+</section>
+</sc-if>
+<!-- prd:pedido-fim -->
+
+
+    <sc-if value="{{manyB}}" hint-placeholder-val="{{false}}">
+      <section id="gerenciar" class="card" style="overflow: hidden; margin-bottom: 32px; scroll-margin-top: 90px" aria-labelledby="t-ger">
+        <div style="padding: 18px 20px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px">
+          <div>
+            <h2 id="t-ger" style="margin: 0; font-size: 20px; font-weight: 700">Ingressos deste evento · {{nTickets}}</h2>
+            <div style="font-size: 14px; color: var(--muted)">Defina titulares, transfira e mostre o QR de cada pessoa</div>
+          </div>
+          <div class="chips" role="group" aria-label="Filtrar por status">
+            <sc-for list="{{filters}}" as="f" hint-placeholder-count="4">
+              <button type="button" class="chip" aria-pressed="{{f.on}}" onClick="{{f.pick}}">{{f.label}}</button>
+            </sc-for>
+          </div>
+        </div>
+        <div class="trow" style="padding-top: 10px; padding-bottom: 10px; background: var(--bg-alt)">
+          <button type="button" class="chk" role="checkbox" aria-checked="{{allChecked}}" aria-label="Selecionar todos" onClick="{{toggleAll}}"></button>
+          <span class="over" style="flex: 1">Ingresso · titular</span>
+          <span class="over">Status</span>
+        </div>
+        <sc-for list="{{rows}}" as="r" hint-placeholder-count="8">
+          <div class="trow" data-cur="{{r.cur}}">
+            <button type="button" class="chk" role="checkbox" aria-checked="{{r.checked}}" aria-label="{{r.selLabel}}" onClick="{{r.toggle}}"></button>
+            <div style="flex: 1 1 200px; min-width: 0">
+              <div style="font-size: 15px; font-weight: 700">#{{r.n}} · {{r.sector}}</div>
+              <div style="font-size: 14px; color: var(--muted)">{{r.holder}}</div>
+            </div>
+            <span class="st" data-k="{{r.k}}">{{r.status}}</span>
+            <div class="trow-act">
+              <button type="button" class="bs bs-sm" onClick="{{r.show}}" data-qv-opener="{{r.openerId}}">{{r.showLabel}}</button>
+              <button type="button" class="bs bs-sm" onClick="{{r.act}}">{{r.action}}</button>
+              <sc-if value="{{r.canResell}}" hint-placeholder-val="{{false}}"><button type="button" class="bs bs-sm" onClick="{{r.resell}}">Revender ingresso</button></sc-if>
+            </div>
+          </div>
+        </sc-for>
+        <sc-if value="{{hasSel}}" hint-placeholder-val="{{false}}">
+          <div class="bulk" role="region" aria-label="Ações em lote">
+            <span style="flex: 1 1 140px; font-size: 15px; font-weight: 700">{{selCount}}</span>
+            <button type="button" class="bs bs-sm" onClick="{{bulkHolders}}">Definir titulares</button>
+            <button type="button" class="bs bs-sm" onClick="{{bulkTransfer}}">Transferir</button>
+            <button type="button" class="bs bs-sm hide-sm">Enviar por WhatsApp</button>
+            <button type="button" class="bs bs-sm" onClick="{{clearSel}}" aria-label="Limpar seleção" style="width: 48px; padding: 0"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg></button>
+          </div>
+        </sc-if>
+      </section>
+
+    </sc-if>
+
+    <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px">
+      <h2 style="margin: 0; font-size: 20px; font-weight: 700">Outros eventos · {{nEvents}}</h2>
+      <sc-if value="{{manyB}}" hint-placeholder-val="{{false}}">
+        <input type="search" class="search" placeholder="Buscar evento, local ou cidade" aria-label="Buscar nos seus ingressos" style="max-width: 360px">
+      </sc-if>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 10px">
+      <sc-for list="{{groups}}" as="g" hint-placeholder-count="2">
+        <div class="over month" data-show="{{g.show}}">{{g.month}}</div>
+        <sc-for list="{{g.items}}" as="e" hint-placeholder-count="2">
+          <a href="Evento.dc.html" class="card ev">
+            <img src="{{e.img}}" alt="" class="ev-thumb">
+            <span class="ev-date"><span class="disp" style="display: block; font-size: 26px">{{e.day}}</span><span class="over">{{e.mon}}</span></span>
+            <span style="flex: 1 1 200px; min-width: 0"><span style="display: block; font-size: 17px; font-weight: 700">{{e.name}}</span><span style="font-size: 14px; color: var(--muted)">{{e.meta}}</span></span>
+            <span class="st" data-k="{{e.k}}">{{e.status}}</span>
+          </a>
+        </sc-for>
+      </sc-for>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{isPast}}" hint-placeholder-val="{{false}}">
+    <div style="display: flex; flex-direction: column; gap: 12px">
+      <div class="card" style="display: flex; flex-wrap: wrap; align-items: center; gap: 20px; padding: 18px 22px">
+        <span style="width: 64px; text-align: center; color: var(--muted-2)"><span class="disp" style="display: block; font-size: 30px">20</span><span class="over">set</span></span>
+        <span style="flex: 1 1 240px"><span style="display: block; font-size: 18px; font-weight: 700">Noite Eletrônica Vol. 6</span><span style="font-size: 14px; color: var(--muted)">Audio Club · usado às 23h41</span></span>
+        <a href="#" class="bs">Avaliar experiência</a>
+      </div>
+      <div class="card" style="display: flex; flex-wrap: wrap; align-items: center; gap: 20px; padding: 18px 22px">
+        <span style="width: 64px; text-align: center; color: var(--muted-2)"><span class="disp" style="display: block; font-size: 30px">02</span><span class="over">ago</span></span>
+        <span style="flex: 1 1 240px"><span style="display: block; font-size: 18px; font-weight: 700">Corrida do Parque 5K</span><span style="font-size: 14px; color: var(--muted)">Transferido para Júlia P.</span></span>
+        <span class="st" data-k="trans">Transferido</span>
+      </div>
+      <div style="margin-top: 16px; padding: 28px; border-radius: 24px; background: var(--inverse); color: #fff; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 16px">
+        <div>
+          <div class="over" style="color: #C9C9CE; margin-bottom: 8px">Porque você foi ao Noite Eletrônica Vol. 6</div>
+          <div style="font-size: 24px; font-weight: 700; letter-spacing: -.01em">Solomun · Curitiba · Sáb 31 out</div>
+        </div>
+        <a href="Evento.dc.html" class="bp">Ver evento <svg class="ico ico-16" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+      </div>
+    </div>
+  </sc-if>
+  <sc-if value="{{sheetOpen}}" hint-placeholder-val="{{false}}">
+    <div style="position: fixed; inset: 0; z-index: 100; background: rgba(10,10,11,.56); display: flex; align-items: flex-end; justify-content: center" onClick="{{closeSheet}}">
+      <div role="dialog" aria-modal="true" aria-labelledby="sh-title" class="sheet" onClick="{{stop}}">
+        <div class="over" style="margin-bottom: 8px">{{sheetKicker}}</div>
+        <h2 id="sh-title" tabindex="-1" style="outline: none; margin: 0 0 6px; font-size: 24px; font-weight: 700; letter-spacing: -.01em">{{sheetTitle}}</h2>
+        <sc-if value="{{hasSheetText}}" hint-placeholder-val="{{true}}"><p style="margin: 0 0 18px; font-size: 15px; color: var(--muted)">{{sheetText}}</p></sc-if>
+        <sc-if value="{{isResale}}" hint-placeholder-val="{{false}}">
+          <ol class="rs-steps">
+            <sc-for list="{{resaleSteps}}" as="st" hint-placeholder-count="3"><li>{{st}}</li></sc-for>
+          </ol>
+          <dl class="rs-val">
+            <div><dt>Valor do ingresso</dt><dd>{{rsFace}}</dd></div>
+            <div><dt>Taxa da Revenda Oficial</dt><dd>{{rsFee}}</dd></div>
+            <div class="rs-net"><dt>Você recebe</dt><dd>{{rsNet}}</dd></div>
+          </dl>
+        </sc-if>
+        <sc-if value="{{isCancelBuy}}" hint-placeholder-val="{{false}}">
+          <ol class="rs-steps">
+            <li><span>O valor dos ingressos volta na forma de pagamento original, em até <span data-exemplo="Prazo de exemplo">10 dias úteis</span>.</span></li>
+            <li><span>O QR deste ingresso deixa de valer.</span></li>
+          </ol>
+          <dl class="rs-val">
+            <div><dt>Valor dos ingressos</dt><dd>{{rsFace}}</dd></div>
+            <div><dt>Volta para</dt><dd>Forma de pagamento original</dd></div>
+          </dl>
+        </sc-if>
+        <sc-if value="{{isHolder}}" hint-placeholder-val="{{true}}">
+          <div style="display: flex; flex-wrap: wrap; gap: 12px 16px">
+            <div class="field" data-err="{{errName}}"><label for="sh-name">Nome completo</label><input id="sh-name" type="text" value="{{fName}}" onInput="{{onName}}" placeholder="Como está no documento" autocomplete="off"></div>
+            <div class="field" data-err="{{errCpf}}" style="flex: 1 1 180px"><label for="sh-cpf">CPF</label><input id="sh-cpf" type="text" inputmode="numeric" value="{{fCpf}}" onInput="{{onCpf}}" placeholder="000.000.000-00" autocomplete="off"></div>
+          </div>
+        </sc-if>
+        <sc-if value="{{isTransfer}}" hint-placeholder-val="{{false}}">
+          <div style="display: flex; flex-wrap: wrap; gap: 12px 16px">
+            <div class="field" data-err="{{errName}}"><label for="sh-name">Nome de quem recebe</label><input id="sh-name" type="text" value="{{fName}}" onInput="{{onName}}" placeholder="Nome completo" autocomplete="off"></div>
+            <div class="field" data-err="{{errCpf}}" style="flex: 1 1 220px"><label for="sh-to">E-mail ou celular</label><input id="sh-to" type="text" value="{{fTo}}" onInput="{{onTo}}" placeholder="maria@exemplo.com ou (11) 9…" autocomplete="off"></div>
+          </div>
+          <p class="apoio" style="margin: 14px 0 0; padding: 12px 14px; border-radius: 12px; font-size: 13px; line-height: 1.5; color: var(--ink-2)">A pessoa recebe um link e o ingresso aparece na Carteira dela com um QR novo. O seu deixa de valer na hora. Dá para desfazer até ela aceitar.</p>
+        </sc-if>
+        <p class="err" role="alert" style="margin: 10px 0 0; min-height: 18px; font-size: 13px; color: var(--color-alert-error-fg)">{{sheetErr}}</p>
+        <div style="display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; margin-top: 16px">
+          <button type="button" class="bs" onClick="{{closeSheet}}">{{sheetBack}}</button>
+          <button type="button" class="bp" onClick="{{confirmSheet}}">{{sheetCta}}</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+</main>
+</sc-if>
+<!-- je:cw-esp -->
+<sc-if value="{{espOn}}" hint-placeholder-val="{{false}}">
+<main class="je-cw">
+  <div>
+    <div class="over">Carteira</div>
+    <h1 class="h1">Suas inscrições</h1>
+    <p class="je-lead">{{jeCwEvento}}</p>
+  </div>
+
+  <sc-if value="{{jeCwProvaCancelada}}" hint-placeholder-val="{{false}}">
+    <div class="uui-alert uui-alert--neutral je-cw-banner" role="status">
+      <span class="uui-alert__icon"><svg class="uui-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8v4m0 4h.01M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10Z"/></svg></span>
+      <div class="uui-alert__body">
+        <p class="uui-alert__title">Prova cancelada</p>
+        <p class="uui-alert__text">A inscrição foi cancelada. Você recebe o reembolso em até 10 dias úteis, sem precisar pedir.</p>
+      </div>
+    </div>
+  </sc-if>
+
+  <div class="je-cw-lista">
+    <sc-for list="{{jeCwLista}}" as="i" hint-placeholder-count="2">
+      <article class="card je-cw-card" data-k="{{i.k}}" aria-labelledby="{{i.idTit}}">
+        <div class="je-cw-bibcol">
+          <div class="je-bib" data-pend="{{i.pend}}" role="group" aria-label="{{i.aria}}">
+            <span class="je-bib-faixa" aria-hidden="true"></span>
+            <div class="je-bib-topo"><strong class="je-bib-nome">{{i.nome}}</strong><span class="je-bib-dist">{{i.dist}}</span></div>
+            <div class="je-bib-centro"><span class="je-bib-rot">Inscrição</span><span class="je-bib-num" aria-hidden="true"><sc-for list="{{i.digitos}}" as="d" hint-placeholder-count="5"><span class="je-d"><span>{{d.c}}</span></span></sc-for></span></div>
+            <div class="je-bib-pe"><span>{{i.prova}}</span><span>{{i.quando}}</span></div>
+          </div>
+        </div>
+        <div class="je-cw-info">
+          <span class="st je-cw-sit" data-k="{{i.kb}}">{{i.status}}</span>
+          <h2 class="je-cw-t" id="{{i.idTit}}">Inscrição {{i.n}} · {{i.dist}}</h2>
+          <dl class="je-cw-fatos">
+            <div><dt>Participante</dt><dd>{{i.nomeFato}}</dd></div>
+            <div><dt>Largada</dt><dd>{{i.quando}}</dd></div>
+            <div><dt>Retirada do kit</dt><dd>{{i.kit}}</dd></div>
+            <sc-if value="{{i.temCamiseta}}" hint-placeholder-val="{{false}}"><div><dt>Camiseta</dt><dd>{{i.camiseta}}</dd></div></sc-if>
+          </dl>
+          <sc-if value="{{i.qrLiberado}}" hint-placeholder-val="{{false}}">
+            <div class="je-qr">
+              <span class="je-qr-box" role="img" aria-label="QR da inscrição {{i.n}}"><img class="je-qr-img" src="{{i.qrUri}}" alt="" width="168" height="168"></span>
+              <p class="je-qr-p">O código muda a cada 15 segundos.</p>
+            </div>
+          </sc-if>
+          <sc-if value="{{i.qrTrava}}" hint-placeholder-val="{{false}}"><p class="je-cw-p">{{i.qrTxt}}</p></sc-if>
+          <sc-if value="{{i.faltam}}" hint-placeholder-val="{{false}}"><p class="je-cw-p">{{i.faltamTxt}}</p></sc-if>
+          <sc-if value="{{i.reembolsoTxt}}" hint-placeholder-val="{{false}}"><p class="je-cw-p">{{i.reembolso}}</p></sc-if>
+          <p class="je-cw-p je-cw-prazo">{{i.prazo}}</p>
+          <div class="je-cw-acoes">
+            <sc-if value="{{i.podeTransferir}}" hint-placeholder-val="{{false}}"><button type="button" class="bs" onClick="{{i.abrirTransferir}}">Transferir inscrição</button></sc-if>
+            <sc-if value="{{i.podeCancelar}}" hint-placeholder-val="{{false}}"><button type="button" class="bs" onClick="{{i.abrirCancelar}}">Cancelar inscrição</button></sc-if>
+            <sc-if value="{{i.podeReembolso}}" hint-placeholder-val="{{false}}"><button type="button" class="bs" onClick="{{i.verReembolso}}">Ver meu reembolso</button></sc-if>
+          </div>
+        </div>
+      </article>
+    </sc-for>
+  </div>
+
+  <!-- prd:pedido -->
+<sc-if value="{{prdPedido}}" hint-placeholder-val="{{false}}">
+<section class="card prd-pedido" aria-labelledby="prd-pedido-t">
+  <div class="over" id="prd-pedido-t">Produtos do pedido</div>
+  <ul aria-label="Produtos do pedido">
+    <sc-for list="{{prdLista}}" as="i" hint-placeholder-count="2">
+      <li><span class="prd-pedido__n">{{i.linha}}</span><strong>{{i.valor}}</strong><small>{{i.retirada}}</small></li>
+    </sc-for>
+  </ul>
+</section>
+</sc-if>
+<!-- prd:pedido-fim -->
+
+  <sc-if value="{{jeCwSheet}}" hint-placeholder-val="{{false}}">
+    <div class="je-fl" onClick="{{jeCwFecha}}">
+      <div role="dialog" aria-modal="true" aria-labelledby="je-fl-t" class="sheet je-fl-in" onClick="{{jeCwParar}}">
+        <div class="over" style="margin-bottom: 8px">{{jeCwKicker}}</div>
+        <h2 id="je-fl-t" tabindex="-1" class="je-fl-t">{{jeCwTitulo}}</h2>
+        <p class="je-fl-p">{{jeCwTexto}}</p>
+        <sc-if value="{{jeCwTransfer}}" hint-placeholder-val="{{false}}">
+          <div class="field" data-err="{{jeCwErrB}}">
+            <label for="je-fl-dest">E-mail ou celular de quem vai receber</label>
+            <input id="je-fl-dest" type="text" autocomplete="off" value="{{jeCwDest}}" onInput="{{jeCwDigita}}">
+            <span class="err" aria-live="polite">{{jeCwErr}}</span>
+          </div>
+          <p class="je-fl-p">{{jeCwTexto2}}</p>
+        </sc-if>
+        <sc-if value="{{jeCwCancelar}}" hint-placeholder-val="{{false}}">
+          <ul class="je-fl-lista">
+            <li>{{jeCwVolta}}</li>
+            <li>{{jeCwPerde}}</li>
+          </ul>
+        </sc-if>
+        <div class="je-fl-acoes">
+          <button type="button" class="bs" onClick="{{jeCwFecha}}">{{jeCwVoltar}}</button>
+          <button type="button" class="bp" onClick="{{jeCwConfirma}}">{{jeCwCta}}</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+</main>
+</sc-if>
+<!-- je:cw-esp-fim -->
+<!-- je:fim -->
+</sc-if>
+<!-- jf:cw-jf -->
+<sc-if value="{{jfOn}}" hint-placeholder-val="{{false}}">
+<main class="jf-cw" id="jf-conteudo">
+  <div class="jf-topo">
+    <div class="over">{{jfOver}}</div>
+    <h1 class="h1" id="jf-h1" tabindex="-1">{{jfH1}}</h1>
+    <p class="jf-lead jf-lead--balanceado">{{jfLead}}</p>
+  </div>
+
+  <sc-if value="{{jfTemAvisos}}" hint-placeholder-val="{{false}}">
+    <div class="jf-avisos">
+      <sc-for list="{{jfAvisos}}" as="a" hint-placeholder-count="1">
+        <div class="uui-alert uui-alert--{{a.variante}}" role="{{a.role}}" id="{{a.id}}" tabindex="-1">
+          <span class="uui-alert__icon"><span class="jf-ic" data-ic="{{a.ic}}" aria-hidden="true"></span></span>
+          <div class="uui-alert__body">
+            <sc-if value="{{a.temTitulo}}" hint-placeholder-val="{{false}}"><p class="uui-alert__title">{{a.titulo}}</p></sc-if>
+            <p class="uui-alert__text">{{a.texto}}</p>
+            <sc-if value="{{a.temAcoes}}" hint-placeholder-val="{{false}}">
+              <div class="uui-alert__actions">
+                <sc-for list="{{a.acoes}}" as="b" hint-placeholder-count="1">
+                  <sc-if value="{{b.isLink}}" hint-placeholder-val="{{false}}"><a href="{{b.href}}" class="{{b.cls}}">{{b.txt}}</a></sc-if>
+                  <sc-if value="{{b.isBtn}}" hint-placeholder-val="{{true}}"><button type="button" class="{{b.cls}}" onClick="{{b.pick}}">{{b.txt}}</button></sc-if>
+                </sc-for>
+              </div>
+            </sc-if>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+  </sc-if>
+
+  <div class="jf-ingressos jf-ingressos--carteira">
+    <sc-for list="{{jfIngs}}" as="i" hint-placeholder-count="2">
+<article class="card jf-ingresso" data-k="{{i.k}}" data-pend="{{i.pend}}" aria-labelledby="{{i.idTit}}" data-jf-cascata>
+  <div class="jf-ingresso__faixa" aria-hidden="true"></div>
+  <header class="jf-ingresso__cab">
+    <span class="st jf-ingresso__sit" data-k="{{i.kb}}">{{i.status}}</span>
+    <h2 class="jf-ingresso__t" id="{{i.idTit}}">{{i.nome}}</h2>
+    <p class="jf-ingresso__jogo">{{i.jogoLinha}}</p>
+    <sc-if value="{{i.temPapel}}" hint-placeholder-val="{{false}}"><p class="jf-ingresso__papel">{{i.papel}}</p></sc-if>
+  </header>
+  <dl class="jf-grade">
+    <sc-for list="{{i.fatos}}" as="f" hint-placeholder-count="5"><div><dt>{{f.rot}}</dt><dd>{{f.val}}</dd></div></sc-for>
+  </dl>
+  <div class="jf-entrada" data-metodo="{{i.metodo}}">
+    <p class="jf-entrada__t"><span class="jf-ic jf-ic--16" data-ic="{{i.entradaIc}}" aria-hidden="true"></span>{{i.entradaTitulo}}</p>
+    <p class="jf-entrada__p">{{i.entradaTexto}}</p>
+    <sc-if value="{{i.qrLiberado}}" hint-placeholder-val="{{false}}">
+      <div class="jf-qr">
+        <span class="jf-qr__box" role="img" aria-label="{{i.qrAria}}"><img class="jf-qr__img" src="{{i.qrUri}}" alt="" width="168" height="168"></span>
+        <p class="jf-qr__p">{{i.qrTxt}}</p>
+      </div>
+    </sc-if>
+    <sc-if value="{{i.qrTrava}}" hint-placeholder-val="{{false}}"><p class="jf-entrada__p">{{i.qrTravaTxt}}</p></sc-if>
+  </div>
+  <sc-if value="{{i.temPend}}" hint-placeholder-val="{{false}}">
+    <div class="jf-pend" role="group">
+      <div class="jf-pend__slot" data-jf-slot="rosto-estado" data-estado="{{i.rEstado}}" data-nome="{{i.rNome}}" data-tipo="{{i.rTipo}}" data-pessoa="{{i.rPessoa}}" data-sem-conta="{{i.rSemConta}}"></div>
+      <sc-if value="{{i.pendReenviar}}" hint-placeholder-val="{{false}}"><div class="jf-pend__acoes"><button type="button" class="bs bs-sm" onClick="{{i.reenviar}}">{{i.reenviarTx}}</button></div></sc-if>
+    </div>
+  </sc-if>
+  <sc-if value="{{i.temNota}}" hint-placeholder-val="{{false}}"><p class="jf-ingresso__nota">{{i.nota}}</p></sc-if>
+  <sc-if value="{{i.temAcoes}}" hint-placeholder-val="{{false}}">
+    <div class="jf-ingresso__acoes">
+      <sc-for list="{{i.acoes}}" as="a" hint-placeholder-count="2"><button type="button" class="bs" onClick="{{a.pick}}">{{a.txt}}</button></sc-for>
+    </div>
+  </sc-if>
+</article>
+    </sc-for>
+  </div>
+
+  <sc-if value="{{jfVazio}}" hint-placeholder-val="{{false}}">
+    <div class="uui-empty-state" role="status">
+      <div class="uui-empty-state__header"><h2 class="uui-empty-state__title">{{jfVazioT}}</h2><p class="uui-empty-state__text">{{jfVazioP}}</p></div>
+      <div class="uui-empty-state__actions"><a href="{{jfVazioHref}}" class="bp">{{jfVazioAcao}}</a></div>
+    </div>
+  </sc-if>
+
+  <!-- prd:pedido -->
+<sc-if value="{{prdPedido}}" hint-placeholder-val="{{false}}">
+<section class="card prd-pedido" aria-labelledby="prd-pedido-t">
+  <div class="over" id="prd-pedido-t">Produtos do pedido</div>
+  <ul aria-label="Produtos do pedido">
+    <sc-for list="{{prdLista}}" as="i" hint-placeholder-count="2">
+      <li><span class="prd-pedido__n">{{i.linha}}</span><strong>{{i.valor}}</strong><small>{{i.retirada}}</small></li>
+    </sc-for>
+  </ul>
+</section>
+</sc-if>
+<!-- prd:pedido-fim -->
+  <div class="jf-vivo" role="status" aria-live="polite" aria-atomic="true">{{jfVivo}}</div>
+</main>
+</sc-if>
+<!-- jf:cw-jf-fim -->
+<!-- jf:cw-fim -->
+
+<sc-if value="{{viewerOpen}}" hint-placeholder-val="{{false}}">
+  <div class="qv" role="dialog" aria-modal="true" aria-label="QR do ingresso em tela cheia">
+    <div class="qv-top">
+      <span class="qv-ev"><strong>Sorriso Eu Gosto no Pagode</strong><span>Arena Anhembi, São Paulo</span></span>
+      <button type="button" class="bs qv-close" aria-label="Fechar QR em tela cheia" onClick="{{vClose}}"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg></button>
+    </div>
+    <div class="qv-track" role="group" aria-roledescription="carrossel" aria-label="Ingressos com QR liberado" onScroll="{{vScroll}}">
+      <sc-for list="{{vSlides}}" as="s" hint-placeholder-count="2">
+        <section class="qv-slide" role="group" aria-roledescription="slide" aria-label="{{s.pos}}" aria-hidden="{{s.hidden}}">
+          <span class="qr-live qv-qrbox"><img class="qv-qr" src="{{s.img}}" alt="{{s.aria}}"></span>
+          <div class="qv-info">
+            <h2 class="qv-name">{{s.holder}}</h2>
+            <dl class="qv-facts">
+              <div><dt>Setor</dt><dd>{{s.sector}}</dd></div>
+              <div><dt>Data</dt><dd>{{s.date}}</dd></div>
+              <div><dt>Portão</dt><dd>{{s.gate}}</dd></div>
+            </dl>
+          </div>
+        </section>
+      </sc-for>
+    </div>
+    <div class="qv-foot">
+      <p class="qv-live"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7"></path><path d="M21 4v5h-5"></path></svg><span>O código muda a cada 15 segundos. Funciona sem internet.</span></p>
+      <sc-if value="{{vMany}}" hint-placeholder-val="{{false}}">
+        <div class="qv-nav">
+          <button type="button" class="bs" aria-label="Ingresso anterior" onClick="{{vPrev}}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M11 6l-6 6 6 6"></path></svg></button>
+          <div class="qv-pos"><span class="qv-dots" aria-hidden="true"><sc-for list="{{vDots}}" as="d" hint-placeholder-count="2"><i data-on="{{d}}"></i></sc-for></span><span aria-live="polite">{{vPos}}</span></div>
+          <button type="button" class="bs" aria-label="Próximo ingresso" onClick="{{vNext}}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></button>
+        </div>
+      </sc-if>
+      <div class="wal" role="group" aria-label="Adicionar à carteira do celular">
+        <div class="over">Adicionar à carteira do celular</div>
+        <div class="wal-list">
+          <sc-for list="{{vWallets}}" as="w" hint-placeholder-count="3">
+            <button type="button" class="bs wal-btn" aria-pressed="{{w.on}}" aria-label="{{w.aria}}" onClick="{{w.add}}">
+              <svg class="wal-ic" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 7V5.5A1.5 1.5 0 0 0 17.5 4h-11A2.5 2.5 0 0 0 4 6.5v11A2.5 2.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5V17"></path><path d="M4 6.5C4 7.9 5.1 9 6.5 9H19a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-3.5a2.5 2.5 0 0 1 0-5H20"></path></svg>
+              <span class="wal-name">{{w.label}}</span>
+              <span class="tag tag-ok wal-state" data-on="{{w.on}}">Adicionado</span>
+            </button>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+  </div>
+</sc-if>
+
+<!-- jf:proto -->
+<sc-if value="{{jfOff}}" hint-placeholder-val="{{true}}">
+<sc-if value="{{espOff}}" hint-placeholder-val="{{true}}">
+<details class="proto">
+  <summary>Protótipo · Carteira</summary>
+  <div class="proto-in" role="group" aria-label="Simulação da Carteira">
+    <div class="over">Quantidade de ingressos</div>
+    <button type="button" class="chip chip-sm" aria-pressed="{{fewOn}}" onClick="{{toFew}}">Poucos ingressos</button>
+    <button type="button" class="chip chip-sm" aria-pressed="{{manyOn}}" onClick="{{toMany}}">Muitos ingressos</button>
+    <div class="over">QR do ingresso</div>
+    <button type="button" class="chip chip-sm" aria-pressed="{{qrLockedOn}}" onClick="{{toQrLocked}}">QR ainda não liberado</button>
+    <button type="button" class="chip chip-sm" aria-pressed="{{qrReleasedOn}}" onClick="{{toQrReleased}}">QR liberado</button>
+    <div class="over">Situação do ingresso</div>
+    <button type="button" class="chip chip-sm" aria-pressed="{{sitNormalOn}}" onClick="{{toSitNormal}}">Normal</button>
+    <button type="button" class="chip chip-sm" aria-pressed="{{sitCancelOn}}" onClick="{{toSitCancel}}">Evento cancelado</button>
+    <button type="button" class="chip chip-sm" aria-pressed="{{sitRecebidoOn}}" onClick="{{toSitRecebido}}">Pedido de reembolso recebido</button>
+    <button type="button" class="chip chip-sm" aria-pressed="{{sitAndamentoOn}}" onClick="{{toSitAndamento}}">Reembolso em andamento</button>
+    <button type="button" class="chip chip-sm" aria-pressed="{{sitNegadoOn}}" onClick="{{toSitNegado}}">Reembolso negado</button>
+    <div class="over">Cancelar compra (arrependimento)</div>
+    <button type="button" class="chip chip-sm" aria-pressed="{{winInOn}}" onClick="{{toWinIn}}">Dentro do prazo</button>
+    <button type="button" class="chip chip-sm" aria-pressed="{{win7On}}" onClick="{{toWin7}}">Fora do prazo: 7 dias</button>
+    <button type="button" class="chip chip-sm" aria-pressed="{{win48On}}" onClick="{{toWin48}}">Fora do prazo: 48 horas</button>
+    <div class="over">Revenda</div>
+    <button type="button" class="chip chip-sm" onClick="{{simSold}}">Simular venda da revenda</button>
+    <div class="over">Dados de exemplo</div>
+    <button type="button" class="chip chip-sm" aria-pressed="{{exOn}}" onClick="{{toggleEx}}">Mostrar o que é exemplo</button>
+    <div class="over">Recomeçar</div>
+    <button type="button" class="chip chip-sm" onClick="{{simReset}}">Limpar simulações</button>
+  </div>
+</details>
+</sc-if>
+<!-- je:cw-proto-esp -->
+<sc-if value="{{espOn}}" hint-placeholder-val="{{false}}">
+<details class="proto">
+  <summary>Protótipo · Carteira esportiva</summary>
+  <div class="proto-in" role="group" aria-label="Simulação da Carteira esportiva">
+    <div class="over">QR da inscrição</div>
+    <sc-for list="{{jeCwSimQr}}" as="o" hint-placeholder-count="2"><button type="button" class="chip chip-sm" aria-pressed="{{o.on}}" onClick="{{o.pick}}">{{o.label}}</button></sc-for>
+    <div class="over">Situação</div>
+    <sc-for list="{{jeCwSimSit}}" as="o" hint-placeholder-count="6"><button type="button" class="chip chip-sm" aria-pressed="{{o.on}}" onClick="{{o.pick}}">{{o.label}}</button></sc-for>
+    <div class="over">Cancelar inscrição (arrependimento)</div>
+    <sc-for list="{{jeCwSimJanela}}" as="o" hint-placeholder-count="2"><button type="button" class="chip chip-sm" aria-pressed="{{o.on}}" onClick="{{o.pick}}">{{o.label}}</button></sc-for>
+    <div class="over">Recomeçar</div>
+    <button type="button" class="chip chip-sm" onClick="{{jeCwReset}}">Limpar simulações</button>
+  </div>
+</details>
+</sc-if>
+<!-- je:cw-proto-esp-fim -->
+</sc-if>
+<!-- jf:proto-jf -->
+<sc-if value="{{jfOn}}" hint-placeholder-val="{{false}}">
+<details class="proto">
+  <summary>{{jfProtoResumo}}</summary>
+  <div class="proto-in" role="group" aria-label="{{jfProtoAria}}">
+    <div class="over">{{jfProtoTitulo}}</div>
+    <sc-for list="{{jfProtoGrupos}}" as="g" hint-placeholder-count="6">
+      <div class="over">{{g.rot}}</div>
+      <sc-for list="{{g.chips}}" as="o" hint-placeholder-count="3"><button type="button" class="chip chip-sm" aria-pressed="{{o.on}}" onClick="{{o.pick}}">{{o.label}}</button></sc-for>
+    </sc-for>
+  </div>
+</details>
+</sc-if>
+<!-- jf:proto-jf-fim -->
+<!-- jf:proto-fim -->
+<footer class="rp" aria-label="Rodapé">
+  <div class="rp-in">
+    <div class="rp-topo">
+      <a href="Main.dc.html" class="rp-marca" aria-label="Ingresse — início"><img src="./assets/8703fb5f412b57860d569f5abeea2cae.svg" alt="Ingresse"></a>
+      <div class="rp-cols">
+      <nav class="rp-col" aria-labelledby="rp-c0">
+        <h2 class="rp-col__t" id="rp-c0">A Ingresse</h2>
+        <ul class="rp-lista">
+          <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Sobre a Ingresse</a></li>
+          <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Trabalhe conosco</a></li>
+          <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Diversidade e inclusão</a></li>
+          <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Imprensa</a></li>
+        </ul>
+      </nav>
+      <nav class="rp-col" aria-labelledby="rp-c1">
+        <h2 class="rp-col__t" id="rp-c1">Ajuda</h2>
+        <ul class="rp-lista">
+          <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Central de ajuda</a></li>
+          <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Perguntas frequentes</a></li>
+          <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Pedir reembolso</a></li>
+          <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Regras de meia‑entrada</a></li>
+        </ul>
+      </nav>
+      <nav class="rp-col" aria-labelledby="rp-c2">
+        <h2 class="rp-col__t" id="rp-c2">Descubra</h2>
+        <ul class="rp-lista">
+          <li><a class="rp-link" href="Busca.dc.html?escopo=artistas">Artistas</a></li>
+          <li><a class="rp-link" href="Busca.dc.html?escopo=locais">Locais</a></li>
+          <li><a class="rp-link" href="https://revenda.ingresse.com" target="_blank" rel="noopener noreferrer" aria-label="Revenda Oficial, abre em nova aba">Revenda Oficial</a></li>
+          <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Para <span class="rp-nw">produtores<svg class="rp-ico rp-ico--sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M8 7h9v9"/></svg></span></a></li>
+        </ul>
+      </nav>
+      </div>
+    </div>
+    <div class="rp-linha">
+      <div class="rp-apps" role="group" aria-label="Baixe o app">
+        <a class="bs rp-app" href="#" data-toast="O link da App Store entra quando o app novo for publicado" aria-label="Baixar o app da Ingresse para iOS"><svg class="rp-ico" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16.37 12.83c-.02-2.3 1.88-3.4 1.97-3.46-1.07-1.57-2.74-1.78-3.33-1.8-1.42-.14-2.77.83-3.49.83-.72 0-1.83-.81-3.01-.79-1.55.02-2.98.9-3.78 2.29-1.61 2.8-.41 6.94 1.16 9.21.77 1.11 1.68 2.36 2.88 2.31 1.16-.05 1.59-.75 2.99-.75 1.4 0 1.79.75 3.01.72 1.24-.02 2.03-1.13 2.79-2.25.88-1.29 1.24-2.54 1.26-2.6-.03-.01-2.42-.93-2.45-3.71zM14.08 6.07c.64-.77 1.07-1.85.95-2.92-.92.04-2.03.61-2.69 1.38-.59.68-1.11 1.78-.97 2.83 1.02.08 2.07-.52 2.71-1.29z"/></svg><span>iOS</span></a>
+        <a class="bs rp-app" href="#" data-toast="O link do Google Play entra quando o app novo for publicado" aria-label="Baixar o app da Ingresse para Android"><svg class="rp-ico" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 18c0 .55.45 1 1 1h1v3.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5V19h2v3.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5V19h1c.55 0 1-.45 1-1V8H6v10zM3.5 8C2.67 8 2 8.67 2 9.5v7c0 .83.67 1.5 1.5 1.5S5 17.33 5 16.5v-7C5 8.67 4.33 8 3.5 8zm17 0c-.83 0-1.5.67-1.5 1.5v7c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5v-7c0-.83-.67-1.5-1.5-1.5zm-4.97-5.84l1.3-1.3c.2-.2.2-.51 0-.71-.2-.2-.51-.2-.71 0l-1.48 1.48A5.84 5.84 0 0 0 12 1c-.96 0-1.86.23-2.66.63L7.85.15c-.2-.2-.51-.2-.71 0-.2.2-.2.51 0 .71l1.31 1.31A5.98 5.98 0 0 0 6 7h12c0-1.99-.97-3.75-2.47-4.84zM10 5H9V4h1v1zm5 0h-1V4h1v1z"/></svg><span>Android</span></a>
+      </div>
+      <ul class="rp-redes" aria-label="Ingresse nas redes">
+        <li><a class="bs bs-icone rp-rede" href="https://www.instagram.com/ingresse/" target="_blank" rel="noopener noreferrer" aria-label="Ingresse no Instagram (abre em nova aba)"><svg class="rp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><path d="M17.5 6.5h.01"/></svg></a></li>
+        <li><a class="bs bs-icone rp-rede" href="https://www.tiktok.com/@ingresse" target="_blank" rel="noopener noreferrer" aria-label="Ingresse no TikTok (abre em nova aba)"><svg class="rp-ico" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16.6 5.82A4.28 4.28 0 0 1 15.54 3h-3.09v12.4a2.59 2.59 0 0 1-2.59 2.5c-1.42 0-2.6-1.16-2.6-2.6 0-1.72 1.66-3.01 3.37-2.48V9.66c-3.45-.46-6.47 2.22-6.47 5.64 0 3.33 2.76 5.7 5.69 5.7 3.14 0 5.69-2.55 5.69-5.7V9.01a7.35 7.35 0 0 0 4.3 1.38V7.3s-1.88.09-3.24-1.48z"/></svg></a></li>
+        <li><a class="bs bs-icone rp-rede" href="https://www.linkedin.com/company/ingresse/" target="_blank" rel="noopener noreferrer" aria-label="Ingresse no LinkedIn (abre em nova aba)"><svg class="rp-ico" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.45 20.45h-3.56v-5.57c0-1.33-.02-3.04-1.85-3.04-1.85 0-2.14 1.45-2.14 2.94v5.67H9.35V9h3.41v1.56h.05c.48-.9 1.64-1.85 3.37-1.85 3.6 0 4.27 2.37 4.27 5.46v6.28zM5.34 7.43a2.06 2.06 0 1 1 0-4.13 2.06 2.06 0 0 1 0 4.13zM7.12 20.45H3.56V9h3.56v11.45z"/></svg></a></li>
+      </ul>
+    </div>
+    <div class="rp-base">
+      <p class="rp-direitos">© 2026 Ingresse</p>
+      <details class="rp-idioma">
+        <summary class="rp-idioma__b" aria-haspopup="menu"><span class="sr-only">Idioma do site: </span><img class="rp-band" src="./assets/flags/br.svg" alt="" width="24" height="18" data-pv-lang-band><span data-pv-lang-nome>Português (Brasil)</span><svg class="rp-ico rp-ico--sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary>
+        <ul class="rp-idioma__lista" role="menu" aria-label="Idioma do site">
+          <li role="none"><button type="button" class="rp-idioma__op" role="menuitemradio" data-pv-lang="PT" aria-checked="true" tabindex="-1" lang="pt-BR"><img class="rp-band" src="./assets/flags/br.svg" alt="" width="24" height="18">Português (Brasil)</button></li>
+          <li role="none"><button type="button" class="rp-idioma__op" role="menuitemradio" data-pv-lang="PT-PT" aria-checked="false" tabindex="-1" lang="pt-PT"><img class="rp-band" src="./assets/flags/pt.svg" alt="" width="24" height="18">Português (Portugal)</button></li>
+          <li role="none"><button type="button" class="rp-idioma__op" role="menuitemradio" data-pv-lang="ES" aria-checked="false" tabindex="-1" lang="es"><img class="rp-band" src="./assets/flags/es.svg" alt="" width="24" height="18">Español</button></li>
+          <li role="none"><button type="button" class="rp-idioma__op" role="menuitemradio" data-pv-lang="EN" aria-checked="false" tabindex="-1" lang="en"><img class="rp-band" src="./assets/flags/us.svg" alt="" width="24" height="18">English</button></li>
+        </ul>
+      </details>
+      <ul class="rp-legais" aria-label="Termos e políticas">
+        <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Política de privacidade</a></li>
+        <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Termos de uso</a></li>
+        <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Termos de compra</a></li>
+        <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Configurações de cookies</a></li>
+      </ul>
+    </div>
+    <div class="rp-grupo">
+      <h2 class="rp-grupo__t" id="rp-grupo">Empresas do Grupo Ingresse</h2>
+      <ul class="rp-grupo__lista" aria-labelledby="rp-grupo">
+        <li><a class="rp-link" href="https://ingresse.com/" target="_blank" rel="noopener noreferrer" aria-label="Ingresse (ingresse.com, abre em nova aba)">Ingresse</a></li>
+        <li><a class="rp-link" href="https://ticketsports.com.br/" target="_blank" rel="noopener noreferrer" aria-label="TicketSports (ticketsports.com.br, abre em nova aba)">TicketSports</a></li>
+        <li><a class="rp-link" href="https://outgo.com.br/" target="_blank" rel="noopener noreferrer" aria-label="OutGo (outgo.com.br, abre em nova aba)">OutGo</a></li>
+        <li><a class="rp-link" href="https://ingressonacional.com.br/" target="_blank" rel="noopener noreferrer" aria-label="Ingresso Nacional (ingressonacional.com.br, abre em nova aba)">Ingresso Nacional</a></li>
+        <li><a class="rp-link" href="https://ingressolive.com/" target="_blank" rel="noopener noreferrer" aria-label="Ingresso Live (ingressolive.com, abre em nova aba)">Ingresso Live</a></li>
+        <li><a class="rp-link" href="https://blacktag.com.br/" target="_blank" rel="noopener noreferrer" aria-label="Blacktag (blacktag.com.br, abre em nova aba)">Blacktag</a></li>
+        <li><a class="rp-link" href="https://pixelticket.com.br/" target="_blank" rel="noopener noreferrer" aria-label="PixelTicket (pixelticket.com.br, abre em nova aba)">PixelTicket</a></li>
+        <li><a class="rp-link" href="https://meep.com.br/" target="_blank" rel="noopener noreferrer" aria-label="Meep (meep.com.br, abre em nova aba)">Meep</a></li>
+      </ul>
+    </div>
+  </div>
+</footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1500}}'>
+// Dados de exemplo da Revenda Oficial e do portão: não são regra de produto (ver docs/produto/CARTEIRA-REVENDA-E-WALLETS.md)
+const PRICES = { 'Pista': 180, 'Pista Premium': 280 };
+const FEE_PCT = 0.1;
+const GATES = { 'Pista': 'Portão B', 'Pista Premium': 'Portão A' };
+// Carteiras do celular: a lista é extensível (acrescente { id, label }); a ordem muda conforme o aparelho
+const WALLETS = [{ id: 'apple', label: 'Apple Wallet' }, { id: 'google', label: 'Google Wallet' }, { id: 'samsung', label: 'Samsung Wallet' }];
+const orderWallets = () => {
+  const ua = (typeof navigator !== 'undefined' && navigator.userAgent) || '';
+  const first = /iPhone|iPad|iPod/i.test(ua) ? ['apple'] : /SamsungBrowser|SM-[A-Z0-9]/i.test(ua) ? ['samsung', 'google'] : /Android/i.test(ua) ? ['google', 'samsung'] : [];
+  const rank = id => { const k = first.indexOf(id); return k < 0 ? first.length : k; };
+  return WALLETS.map((w, k) => ({ ...w, k })).sort((a, b) => rank(a.id) - rank(b.id) || a.k - b.k);
+};
+const brl = v => 'R$ ' + String(v).replace('.', ',');
+const cssVar = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+// tempo do movimento vem do token (movimento reduzido zera o token: aparece direto)
+const tokenMs = name => { const v = cssVar(name); return /ms$/.test(v) ? parseFloat(v) || 0 : /s$/.test(v) ? (parseFloat(v) || 0) * 1000 : 0; };
+// QR de verdade no modelo do Untitled UI (qr-ingresse.js: qr-code-styling local, tinta + glifo da Ingresse no centro); dados sintéticos
+const QR_ESPERA = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1"><rect width="1" height="1" fill="#fff"/></svg>');
+const qrUri = n => (window.IngresseQR && IngresseQR.uri('tk' + n, 'INGRESSE-TICKET-' + n)) || QR_ESPERA;
+const inView = r => !!r && r.width > 0 && r.bottom > 0 && r.top < window.innerHeight && r.right > 0 && r.left < window.innerWidth;
+
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    const IX = window.IX;
+    const order = IX ? IX.store.get('order', null) : null;
+    // Pedido feito no protótipo substitui o conjunto fixo "Poucos ingressos" até a sessão acabar.
+    this.state = { tab: 'next', i: 0, many: false, menu: false, filter: 'all', sel: [], order, sheet: null, f: {}, err: '', overrides: {}, viewer: null, walletOn: {},
+      // QR só aparece perto do evento (janela de exemplo: 2 horas antes; a confirmar); estado do evento; prazo do cancelamento por arrependimento (exemplo, a confirmar)
+      qr: 'locked', evCancel: false, win: 'in', ex: typeof document !== 'undefined' && document.documentElement.hasAttribute('data-exemplos') };
+    this._readyN = [];
+  }
+  componentDidMount() {
+    this.onKey = e => {
+      const st = this.state;
+      if (st.viewer) { this._qvKey(e); return; }
+      if (st.sheet) {
+        if (e.key === 'Escape') this.setState({ sheet: null, f: {}, err: '' });
+        else if (e.key === 'Tab') this._trap(e, document.querySelector('.sheet'));
+      }
+    };
+    document.addEventListener('keydown', this.onKey);
+    this.onQr = () => this.setState({ qrv: Date.now() }); // o QR fica pronto depois da primeira pintura (gerado em ~10 ms)
+    document.addEventListener('previa:qr', this.onQr);
+    for (let k = 0; k < 8; k++) qrUri(k);
+  }
+  componentDidUpdate() {
+    const st = this.state;
+    if (st.viewer && !this._qvOn) this._qvStart();
+    else if (!st.viewer && this._qvOn) this._qvCleanup();
+    // folha: o foco vai para o título ao abrir e volta ao botão que abriu ao fechar
+    if (st.sheet && !this._sheetOn) {
+      this._sheetOn = true;
+      this._sheetOpener = this._opener || null;
+      setTimeout(() => { const h = document.getElementById('sh-title'); if (h) h.focus({ preventScroll: true }); }, 0);
+    } else if (!st.sheet && this._sheetOn) {
+      this._sheetOn = false;
+      const o = this._sheetOpener;
+      setTimeout(() => { const alvo = o && document.contains(o) ? o : document.querySelector('.tk-lockact button, .tk-foot button, .tk-foot a'); if (alvo) alvo.focus({ preventScroll: true }); }, 0);
+    }
+  }
+  componentWillUnmount() { document.removeEventListener('keydown', this.onKey); if (this._qvOn) this._qvCleanup(true); }
+
+  /* ---------- QR em tela cheia: entrada e saída, gestos, foco, rolagem e tela acesa ---------- */
+  _focusables(root) {
+    return [...root.querySelectorAll('button, a[href], input, select, textarea, [tabindex]:not([tabindex="-1"])')].filter(el => !el.disabled && el.getClientRects().length > 0 && !el.closest('[aria-hidden="true"]'));
+  }
+  _trap(e, root) {
+    if (!root) return;
+    const f = this._focusables(root);
+    if (!f.length) return;
+    const a = document.activeElement, first = f[0], last = f[f.length - 1];
+    if (!root.contains(a)) { e.preventDefault(); first.focus({ preventScroll: true }); }
+    else if (e.shiftKey && a === first) { e.preventDefault(); last.focus({ preventScroll: true }); }
+    else if (!e.shiftKey && a === last) { e.preventDefault(); first.focus({ preventScroll: true }); }
+  }
+  _qvKey(e) {
+    if (e.key === 'Escape') { e.preventDefault(); this._qvClose('tecla'); }
+    else if (e.key === 'ArrowRight') this._qvStep(1);
+    else if (e.key === 'ArrowLeft') this._qvStep(-1);
+    else if (e.key === 'Tab') this._trap(e, document.querySelector('.qv'));
+  }
+  _qvGoto(n, smooth) {
+    const tr = document.querySelector('.qv-track');
+    const s = this._readyN.indexOf(n);
+    if (!tr || s < 0) return;
+    const left = s * tr.clientWidth;
+    if (smooth && tokenMs('--motion-duration-base') > 0 && tr.scrollTo) tr.scrollTo({ left, behavior: 'smooth' }); else tr.scrollLeft = left;
+  }
+  _qvStep(dir) {
+    const st = this.state;
+    if (!st.viewer || this._closing || this._readyN.length < 2) return;
+    const len = this._readyN.length, idx = this._readyN.indexOf(st.viewer.n);
+    const to = (idx + dir + len) % len;
+    this._qvGoto(this._readyN[to], Math.abs(to - idx) === 1);
+    this.setState({ viewer: { n: this._readyN[to] }, i: this._readyN[to] });
+  }
+  _qvStart() {
+    const root = document.querySelector('.qv');
+    if (!root) return;
+    this._qvOn = true; this._closing = false;
+    document.documentElement.setAttribute('data-qv-open', '');
+    const n = this.state.viewer.n;
+    this._qvGoto(n, false);
+    this._qvIn(root, n);
+    this._fin = e => { const r = document.querySelector('.qv'); if (r && !r.contains(e.target)) { const f = this._focusables(r)[0]; if (f) f.focus({ preventScroll: true }); } };
+    document.addEventListener('focusin', this._fin);
+    this._vis = () => { if (document.visibilityState === 'visible' && this._qvOn) this._wake(); };
+    document.addEventListener('visibilitychange', this._vis);
+    this._tbind(root);
+    this._wake();
+    const foco = () => { const b = document.querySelector('.qv .qv-close'); if (b) b.focus({ preventScroll: true }); };
+    setTimeout(foco, 0);
+    setTimeout(() => { const r = document.querySelector('.qv'); if (r && !r.contains(document.activeElement)) foco(); }, 160);
+  }
+  _qvIn(root, n) {
+    const d = tokenMs('--motion-duration-base');
+    if (!d || !root.animate) return;
+    const ease = cssVar('--motion-ease-enter') || 'ease-out';
+    const dist = parseFloat(cssVar('--motion-distance-sm')) || 8;
+    const box = root.querySelectorAll('.qv-qrbox')[this._readyN.indexOf(n)];
+    root.animate([{ opacity: 0 }, { opacity: 1 }], { duration: d, easing: ease });
+    root.querySelectorAll('.qv-top > *, .qv-info, .qv-foot').forEach(el => el.animate([{ opacity: 0, transform: 'translateY(' + dist + 'px)' }, { opacity: 1, transform: 'none' }], { duration: d, delay: Math.round(d * 0.3), easing: ease, fill: 'backwards' }));
+    if (!box) return;
+    const to = box.getBoundingClientRect(), src = this._srcRect;
+    if (inView(src)) {
+      // o QR cresce a partir do lugar em que estava (FLIP); botão ou linha da lista cresce do centro
+      const quadrado = Math.abs(src.width - src.height) < 4;
+      const sc = quadrado ? src.width / to.width : 0.3;
+      const tx = src.left + src.width / 2 - (to.left + to.width / 2), ty = src.top + src.height / 2 - (to.top + to.height / 2);
+      box.animate([{ transform: 'translate(' + tx + 'px,' + ty + 'px) scale(' + sc + ')' }, { transform: 'none' }], { duration: d, easing: ease });
+    } else box.animate([{ transform: 'scale(.92)' }, { transform: 'none' }], { duration: d, easing: ease });
+  }
+  _qvClose(como) {
+    if (this._closing || !this._qvOn) return;
+    this._closing = true;
+    let feito = false;
+    const fim = () => { if (feito) return; feito = true; this.setState({ viewer: null }); };
+    const root = document.querySelector('.qv');
+    const d = tokenMs('--motion-duration-base');
+    if (!root || !d || !root.animate) { fim(); return; }
+    const ease = cssVar('--motion-ease-exit') || 'ease-in';
+    const n = this.state.viewer.n;
+    const box = root.querySelectorAll('.qv-qrbox')[this._readyN.indexOf(n)];
+    const alvo = document.querySelector('.tk-qrbox');
+    const ra = alvo ? alvo.getBoundingClientRect() : null;
+    const dest = inView(ra) ? ra : (n === this._srcN && inView(this._srcRect) ? this._srcRect : null);
+    const opts = { duration: d, easing: ease, fill: 'forwards' };
+    if (como === 'arrasto') {
+      const m = /translateY\(([\d.]+)px\)/.exec(root.style.transform || '');
+      const y0 = m ? parseFloat(m[1]) : 0;
+      root.style.transform = ''; root.style.opacity = '';
+      const a = root.animate([{ transform: 'translateY(' + y0 + 'px)', opacity: 1 }, { transform: 'translateY(' + Math.round(window.innerHeight * 0.4) + 'px)', opacity: 0 }], opts);
+      a.onfinish = fim;
+    } else {
+      if (box && dest) {
+        const to = box.getBoundingClientRect();
+        const quadrado = Math.abs(dest.width - dest.height) < 4;
+        const sc = quadrado ? dest.width / to.width : 0.3;
+        const tx = dest.left + dest.width / 2 - (to.left + to.width / 2), ty = dest.top + dest.height / 2 - (to.top + to.height / 2);
+        box.animate([{ transform: 'none' }, { transform: 'translate(' + tx + 'px,' + ty + 'px) scale(' + sc + ')' }], opts);
+      } else if (box) box.animate([{ transform: 'none' }, { transform: 'scale(.92)' }], opts);
+      root.querySelectorAll('.qv-top > *, .qv-info, .qv-foot').forEach(el => el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: Math.round(d * 0.5), easing: ease, fill: 'forwards' }));
+      const a = root.animate([{ opacity: 1 }, { opacity: 0 }], { ...opts, delay: Math.round(d * 0.35), duration: Math.round(d * 0.65) });
+      a.onfinish = fim;
+    }
+    setTimeout(fim, d + 120); // aba em segundo plano não conclui animação: este prazo garante o fechamento
+  }
+  _tbind(root) {
+    let x0 = 0, y0 = 0, dy = 0, ativo = false, t0 = 0;
+    const ini = e => { if (this._closing || e.touches.length !== 1) return; x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; dy = 0; ativo = false; t0 = Date.now(); };
+    const mov = e => {
+      if (this._closing || e.touches.length !== 1) return;
+      const dx = e.touches[0].clientX - x0;
+      dy = e.touches[0].clientY - y0;
+      if (!ativo) { if (dy > 12 && dy > Math.abs(dx) * 1.5 && root.scrollTop <= 0) { ativo = true; root.style.transition = 'none'; } else return; }
+      if (e.cancelable) e.preventDefault();
+      const y = Math.max(0, dy);
+      root.style.transform = 'translateY(' + y + 'px)';
+      root.style.opacity = String(1 - Math.min(0.5, y / (window.innerHeight * 1.2)));
+    };
+    const fim = () => {
+      if (!ativo) return;
+      ativo = false;
+      if (dy > 120 || (Date.now() - t0 < 250 && dy > 60)) { this._qvClose('arrasto'); return; }
+      root.style.transition = 'transform var(--motion-duration-base) var(--motion-ease-enter), opacity var(--motion-duration-base) var(--motion-ease-enter)';
+      root.style.transform = ''; root.style.opacity = '';
+    };
+    root.addEventListener('touchstart', ini, { passive: true });
+    root.addEventListener('touchmove', mov, { passive: false });
+    root.addEventListener('touchend', fim);
+    root.addEventListener('touchcancel', fim);
+  }
+  _wake() {
+    try {
+      if (navigator.wakeLock && navigator.wakeLock.request) navigator.wakeLock.request('screen').then(l => { if (this._qvOn) { this._wl = l; } else l.release(); }).catch(() => {});
+    } catch (e) {}
+  }
+  _qvCleanup(semFoco) {
+    this._qvOn = false; this._closing = false;
+    document.documentElement.removeAttribute('data-qv-open');
+    document.removeEventListener('focusin', this._fin);
+    document.removeEventListener('visibilitychange', this._vis);
+    try { if (this._wl) this._wl.release(); } catch (e) {}
+    this._wl = null;
+    const o = this._opener;
+    if (!semFoco) setTimeout(() => { if (o && document.contains(o)) o.focus({ preventScroll: true }); }, 0);
+  }
+
+  renderVals() {
+    const st = this.state;
+    const FEW = [
+      { sector: 'Pista', holder: 'Pessoa E.', k: 'ok' },
+      { sector: 'Pista', holder: 'A definir', k: 'pend' }
+    ];
+    const MANY = [
+      { sector: 'Pista Premium', holder: 'Pessoa E.', k: 'ok' },
+      { sector: 'Pista Premium', holder: 'Juliana P.', k: 'ok' },
+      { sector: 'Pista Premium', holder: 'A definir', k: 'pend' },
+      { sector: 'Pista Premium', holder: 'Pedro L.', k: 'ok' },
+      { sector: 'Pista', holder: 'Transferido p/ Larissa C.', k: 'trans' },
+      { sector: 'Pista', holder: 'A definir', k: 'pend' },
+      { sector: 'Pista', holder: 'Rafael S.', k: 'ok' },
+      { sector: 'Pista', holder: 'A definir', k: 'pend' }
+    ];
+    const IX = window.IX || { store: { get: (k, d) => d, set() {}, del() {} }, toast() {} };
+    const order = st.order;
+    const base = st.many ? MANY : (order && order.tickets && order.tickets.length ? order.tickets : FEW);
+    // Mudanças feitas nesta sessão (titular definido, transferência, revenda) sobrepõem o conjunto base.
+    const tickets = base.map((t, n) => ({ ...t, ...(st.overrides[(st.many ? 'm' : 'f') + n] || {}) }));
+    const i = Math.min(st.i, tickets.length - 1);
+    const cur = tickets[i];
+    // situação mostrada: o ingresso pronto que está na Revenda Oficial vira "resale" (à venda) ou "sold" (vendido);
+    // evento cancelado vira "cancel"; pedido de reembolso vira "refund"; pronto fora da janela do QR vira "wait" (QR ainda não liberado)
+    const qrOn = st.qr === 'released';
+    const vkBase = t => {
+      if (t.k === 'trans') return 'trans';
+      if (st.evCancel) return 'cancel';
+      if (t.refund === 'recebido' || t.refund === 'andamento') return 'refund';
+      return t.k === 'ok' && t.resale ? (t.resale === 'sold' ? 'sold' : 'resale') : t.k;
+    };
+    const vk = t => { const k = vkBase(t); return k === 'ok' && !qrOn ? 'wait' : k; };
+    const vkb = t => { const k = vk(t); return k === 'wait' ? 'ok' : k; }; // para filtros e contagens: "pronto" com ou sem QR liberado
+    const okish = k => k === 'ok' || k === 'wait';
+    const kind = vk(cur);
+    const faceOf = t => PRICES[t.sector] || 180;
+    const feeOf = t => Math.round(faceOf(t) * FEE_PCT);
+    const netOf = t => faceOf(t) - feeOf(t);
+    const keyOf = n => (st.many ? 'm' : 'f') + n;
+    const ready = tickets.map((t, n) => ({ ...t, n })).filter(t => vk(t) === 'ok');
+    this._readyN = ready.map(t => t.n);
+
+    const STATUS = { ok: 'Pronto para usar', wait: 'QR ainda não liberado', pend: 'Falta titular', trans: 'Transferido', resale: 'À venda', sold: 'Vendido', cancel: 'Evento cancelado', refund: 'Reembolso' };
+    const ACTION = { ok: 'Transferir', wait: 'Transferir', pend: 'Definir titular', trans: 'Ver detalhes', resale: 'Cancelar a venda', sold: 'Ver detalhes', cancel: 'Ver meu reembolso', refund: 'Ver meu reembolso' };
+    const statusOf = t => { const k = vk(t); return k === 'refund' ? (t.refund === 'andamento' ? 'Reembolso em andamento' : 'Pedido de reembolso recebido') : STATUS[k]; };
+    const TXT_ANDAMENTO = 'Reembolso em andamento. O valor volta na forma de pagamento original em até 10 dias úteis.';
+    const openSheet = (kind2, idx, from) => { this._opener = from || document.activeElement; this.setState({ sheet: { kind: kind2, idx }, f: {}, err: '' }); };
+    const setOv = (n, patch) => { const key = keyOf(n), o = { ...(st.overrides[key] || {}), ...patch }; Object.keys(o).forEach(x => { if (o[x] === undefined) delete o[x]; }); return { ...st.overrides, [key]: o }; };
+    const cancelResale = n => () => {
+      this.setState({ overrides: setOv(n, { resale: undefined }) });
+      IX.toast('Venda cancelada. O QR do ingresso ' + (n + 1) + ' voltou a valer.', 'ok');
+    };
+    const actFor = (t, n) => e => {
+      const k = vk(t), from = e && e.currentTarget;
+      if (k === 'pend') openSheet('holder', n, from);
+      else if (okish(k)) openSheet('transfer', n, from);
+      else if (k === 'resale') cancelResale(n)();
+      else if (k === 'sold') IX.toast('Vendido na Revenda Oficial. Você recebe ' + brl(netOf(t)) + '.');
+      else if (k === 'cancel') IX.toast(TXT_ANDAMENTO);
+      else if (k === 'refund') { if (t.refund === 'recebido') this.setState({ overrides: setOv(n, { refund: 'andamento' }) }); IX.toast(TXT_ANDAMENTO); }
+      else IX.toast('Transferido para ' + t.holder.replace('Transferido p/ ', '') + '. O QR está na Carteira de quem recebeu.');
+    };
+    const resell = n => e => openSheet('resale', n, e && e.currentTarget);
+    const openViewer = (n, src, opener) => {
+      if (!ready.some(t => t.n === n)) return;
+      const r = src && src.getBoundingClientRect ? src.getBoundingClientRect() : null;
+      this._srcRect = r ? { left: r.left, top: r.top, width: r.width, height: r.height } : null;
+      this._srcN = n; this._opener = opener || document.activeElement;
+      this.setState({ viewer: { n }, i: n, sheet: null });
+    };
+    const count = k => tickets.filter(t => vkb(t) === k).length;
+    const nResale = count('resale') + count('sold');
+    const filters = [['all', 'Todos · ' + tickets.length], ['pend', 'Falta titular · ' + count('pend')], ['ok', 'Prontos · ' + count('ok')], ['trans', 'Transferidos · ' + count('trans')], ['resale', 'Na revenda · ' + nResale]]
+      .map(([id, label]) => ({ label, on: st.filter === id ? 'true' : 'false', pick: () => this.setState({ filter: id }) }));
+    const visible = tickets.map((t, n) => ({ ...t, n })).filter(t => st.filter === 'all' || vkb(t) === st.filter || (st.filter === 'resale' && vkb(t) === 'sold'));
+    const sel = st.sel;
+    const toggle = n => this.setState({ sel: sel.includes(n) ? sel.filter(x => x !== n) : [...sel, n] });
+    const rows = visible.map(t => {
+      const on = sel.includes(t.n), k = vk(t);
+      return { n: t.n + 1, sector: t.sector, holder: t.holder, k, status: statusOf(t), action: ACTION[k], act: actFor(t, t.n),
+        cur: t.n === i ? 'true' : 'false', checked: on ? 'true' : 'false', mark: on ? '✓' : '', selLabel: 'Selecionar ingresso ' + (t.n + 1),
+        canResell: okish(k), resell: resell(t.n), openerId: 'linha-' + (t.n + 1), showLabel: k === 'ok' ? 'Mostrar QR' : 'Ver ingresso',
+        toggle: () => toggle(t.n), show: e => { if (k === 'ok') openViewer(t.n, e.currentTarget, e.currentTarget); else { this.setState({ i: t.n }); window.scrollTo({ top: 0, behavior: 'smooth' }); } } };
+    });
+    const visIds = visible.map(t => t.n);
+    const selVis = visIds.filter(n => sel.includes(n)).length;
+    const allChecked = selVis === 0 ? 'false' : selVis === visIds.length ? 'true' : 'mixed';
+
+    const P = './assets/real/';
+    const FEW_EV = [
+      { day: '25', mon: 'out', m: 'Outubro', name: 'Juntô · Roda de samba', meta: 'Casa Tupi · São Paulo · 1 ingresso', k: 'ok', img: P + '105388.avif' },
+      { day: '05', mon: 'dez', m: 'Dezembro', name: 'Primavera Sound São Paulo 2026', meta: 'Autódromo de Interlagos · 2 ingressos + estacionamento', k: 'pend', img: P + '108325.avif' }
+    ];
+    const MANY_EV = [
+      { day: '17', mon: 'out', m: 'Outubro', name: 'Sorriso Eu Gosto no Pagode — Campinas', meta: 'Sambódromo de Paulínia · 4 ingressos', k: 'ok', img: P + '105383.avif' },
+      { day: '25', mon: 'out', m: 'Outubro', name: 'Juntô · Roda de samba', meta: 'Casa Tupi · São Paulo · 1 ingresso', k: 'ok', img: P + '105388.avif' },
+      { day: '31', mon: 'out', m: 'Outubro', name: 'Sorriso Eu Gosto no Pagode — Ribeirão Preto', meta: 'Estádio do Comercial · 2 ingressos', k: 'pend', img: P + '91221.avif' },
+      { day: '14', mon: 'nov', m: 'Novembro', name: 'Noite Eletrônica Vol. 7', meta: 'Audio Club · São Paulo · 3 ingressos', k: 'ok', img: P + '106671.avif' },
+      { day: '22', mon: 'nov', m: 'Novembro', name: 'Festival de Verão', meta: 'Parque da Cidade · Salvador · 6 ingressos', k: 'pend', img: P + '107033.avif' },
+      { day: '05', mon: 'dez', m: 'Dezembro', name: 'Primavera Sound São Paulo 2026', meta: 'Autódromo de Interlagos · 2 ingressos + estacionamento', k: 'pend', img: P + '108325.avif' },
+      { day: '12', mon: 'dez', m: 'Dezembro', name: 'Réveillon na Praia', meta: 'Praia do Forte · 2 ingressos', k: 'ok', img: P + '108421.avif' }
+    ];
+    const events = (st.many ? MANY_EV : FEW_EV).map(e => ({ ...e, status: STATUS[e.k] }));
+    const groups = [];
+    events.forEach(e => { let g = groups.find(x => x.month === e.m); if (!g) { g = { month: e.m, items: [] }; groups.push(g); } g.items.push(e); });
+    groups.forEach(g => { g.show = st.many ? 'true' : 'false'; });
+
+    const setMany = v => this.setState({ many: v, i: 0, sel: [], filter: 'all', sheet: null, viewer: null });
+    const digits = v => (v || '').replace(/\D/g, '');
+    const maskCpf = v => { const d = digits(v).slice(0, 11); return d.replace(/^(\d{3})(\d)/, '$1.$2').replace(/^(\d{3})\.(\d{3})(\d)/, '$1.$2.$3').replace(/\.(\d{3})(\d{1,2})$/, '.$1-$2'); };
+    const cpfOk = v => { const d = digits(v); if (d.length !== 11 || /^(\d)\1+$/.test(d)) return false; const calc = n => { let s2 = 0; for (let k = 0; k < n; k++) s2 += Number(d[k]) * (n + 1 - k); const r = (s2 * 10) % 11; return r === 10 ? 0 : r; }; return calc(9) === Number(d[9]) && calc(10) === Number(d[10]); };
+    const nameOk = v => (v || '').trim().split(/\s+/).filter(w => w.length > 1).length >= 2;
+    const toOk = v => /\S+@\S+\.\S+/.test(v || '') || digits(v).length >= 10;
+    const short = name => { const w = name.trim().split(/\s+/); return w[0] + ' ' + (w[1] || '').charAt(0).toUpperCase() + '.'; };
+    const sh = st.sheet; const f = st.f;
+    const sheetTicket = sh ? tickets[sh.idx] : null;
+    const setF = (k, fmt) => e => this.setState({ f: { ...f, [k]: fmt ? fmt(e.target.value) : e.target.value }, err: '' });
+    const confirmSheet = () => {
+      if (!sh) return;
+      if (sh.kind === 'resale') {
+        const key = keyOf(sh.idx);
+        this.setState({ overrides: { ...st.overrides, [key]: { ...(st.overrides[key] || {}), resale: 'on' } }, sheet: null, f: {}, err: '' });
+        IX.toast('Ingresso colocado à venda na Revenda Oficial.', 'ok');
+        return;
+      }
+      if (sh.kind === 'cancel') {
+        // cancelamento por arrependimento: o pedido entra como "recebido" e o QR deixa de valer (toast neutro: nada de ícone de sucesso em mensagem de dinheiro)
+        this.setState({ overrides: setOv(sh.idx, { refund: 'recebido' }), sheet: null, f: {}, err: '', sel: sel.filter(n => n !== sh.idx) });
+        IX.toast('Pedido de reembolso recebido. O valor volta para a forma de pagamento em até 10 dias úteis.');
+        return;
+      }
+      if (!nameOk(f.name)) { this.setState({ err: 'Digite nome e sobrenome.' }); return; }
+      if (sh.kind === 'holder' && !cpfOk(f.cpf)) { this.setState({ err: digits(f.cpf).length < 11 ? 'Confira o CPF: ele precisa ter 11 números.' : 'Confira o CPF: algum número está incorreto.' }); return; }
+      if (sh.kind === 'transfer' && !toOk(f.to)) { this.setState({ err: 'Digite um e-mail ou celular válido.' }); return; }
+      const patch = sh.kind === 'holder' ? { holder: short(f.name), k: 'ok' } : { holder: 'Transferido p/ ' + short(f.name), k: 'trans' };
+      const overrides = { ...st.overrides, [keyOf(sh.idx)]: { ...(st.overrides[keyOf(sh.idx)] || {}), ...patch } };
+      if (order && !st.many) { const t2 = order.tickets.map((t, n) => n === sh.idx ? { ...t, ...patch } : t); IX.store.set('order', { ...order, tickets: t2 }); }
+      this.setState({ overrides, sheet: null, f: {}, err: '', sel: sel.filter(n => n !== sh.idx) });
+      IX.toast(sh.kind === 'holder' ? 'Titular definido. O QR do ingresso ' + (sh.idx + 1) + ' já está disponível.' : 'Transferido para ' + short(f.name) + '. A pessoa recebe o link agora.', 'ok');
+    };
+    const isRs = !!sh && sh.kind === 'resale';
+    const isCb = !!sh && sh.kind === 'cancel';
+    const sheetVals = {
+      sheetOpen: !!sh, isHolder: !!sh && sh.kind === 'holder', isTransfer: !!sh && sh.kind === 'transfer', isResale: isRs, isCancelBuy: isCb, hasSheetText: !isRs && !isCb,
+      sheetKicker: sh ? 'Ingresso ' + (sh.idx + 1) + ' · ' + (sheetTicket ? sheetTicket.sector : '') : '',
+      sheetTitle: isRs ? 'Revender ingresso' : isCb ? 'Cancelar compra' : sh && sh.kind === 'transfer' ? 'Transferir ingresso' : 'Quem vai usar este ingresso?',
+      sheetText: sh && sh.kind === 'transfer' ? 'O ingresso é nominal: quem recebe entra com o próprio QR.' : 'O nome e o CPF precisam bater com o documento apresentado na entrada.',
+      sheetCta: isRs ? 'Vender' : isCb ? 'Cancelar compra' : sh && sh.kind === 'transfer' ? 'Transferir' : 'Salvar titular', sheetBack: 'Voltar', sheetErr: st.err,
+      resaleSteps: ['Seu ingresso aparece na Revenda Oficial da Ingresse.', 'Quando alguém comprar, você recebe o valor abaixo.', 'Enquanto estiver à venda, o QR fica indisponível. Se você cancelar a venda, ele volta.'],
+      rsFace: sheetTicket ? brl(faceOf(sheetTicket)) : '', rsFee: sheetTicket ? brl(feeOf(sheetTicket)) : '', rsNet: sheetTicket ? brl(netOf(sheetTicket)) : '',
+      fName: f.name || '', fCpf: f.cpf || '', fTo: f.to || '', onName: setF('name'), onCpf: setF('cpf', maskCpf), onTo: setF('to'),
+      errName: st.err && /nome/i.test(st.err) ? 'true' : 'false', errCpf: st.err && /CPF|e-mail/i.test(st.err) ? 'true' : 'false',
+      closeSheet: () => this.setState({ sheet: null, f: {}, err: '' }), stop: e => e.stopPropagation(), confirmSheet
+    };
+
+    // outras carteiras do celular: Apple, Google, Samsung (e as que vierem); cada toque marca como adicionado
+    const walletList = n => orderWallets().map(w => {
+      const key = keyOf(n) + ':' + w.id, on = !!st.walletOn[key];
+      return { label: w.label, on: on ? 'true' : 'false', aria: on ? w.label + ': ingresso adicionado' : 'Adicionar à ' + w.label,
+        add: () => {
+          if (st.walletOn[key]) { IX.toast('Este ingresso já está na ' + w.label + '.', 'ok'); return; }
+          this.setState({ walletOn: { ...st.walletOn, [key]: true } });
+          IX.toast('Ingresso adicionado à ' + w.label + '.', 'ok');
+        } };
+    });
+
+    // tela cheia do QR: só passa por ingressos com QR liberado
+    const vOk = !!st.viewer && ready.some(t => t.n === st.viewer.n);
+    const vN = vOk ? st.viewer.n : (ready[0] ? ready[0].n : 0);
+    const dayLabel = order && order.day === 'sab' ? 'Sáb 7 nov' : 'Dom 8 nov';
+    const vSlides = ready.map(t => ({ pos: 'Ingresso ' + (t.n + 1) + ' de ' + tickets.length, img: qrUri(t.n), aria: 'QR code de acesso do ingresso ' + (t.n + 1) + ', titular ' + t.holder,
+      holder: t.holder, sector: t.sector, date: dayLabel + ', 13h', gate: GATES[t.sector] || 'Portão B', place: 'Arena Anhembi, São Paulo', hidden: t.n === vN ? 'false' : 'true' }));
+    const vStep = d => () => this._qvStep(d);
+
+    const lock = {
+      pend: { badge: '', title: 'Falta titular', text: 'O QR fica disponível assim que o titular for definido.' },
+      trans: { badge: '', title: 'Ingresso transferido', text: 'Este QR deixou de valer. O ingresso está na Carteira de quem recebeu.' },
+      resale: { badge: 'À venda na Revenda Oficial', title: 'QR indisponível', text: 'Se você cancelar a venda, o QR volta a valer.' },
+      sold: { badge: 'Vendido na Revenda Oficial', title: 'Você recebe ' + brl(netOf(cur)), text: 'O QR deste ingresso deixou de valer.' },
+      wait: { badge: '', title: 'QR ainda não liberado', text: '' },
+      cancel: { badge: 'Evento cancelado', title: '', text: '' },
+      refund: { badge: statusOf(cur), title: '', text: 'O QR deste ingresso deixou de valer.' }
+    }[kind] || { badge: '', title: '', text: '' };
+
+    // QR só perto do evento: contagem até a abertura da janela (exemplo: 2 h antes do início, às 13h => 11h)
+    const waitIn = (() => {
+      const ms = new Date('2026-11-08T11:00:00-03:00') - new Date();
+      if (ms <= 0) return 'instantes';
+      const d = Math.floor(ms / 864e5), h = Math.floor((ms % 864e5) / 36e5);
+      return d > 0 ? d + (d === 1 ? ' dia' : ' dias') + (h ? ' e ' + h + (h === 1 ? ' hora' : ' horas') : '') : Math.max(1, h) + (h <= 1 ? ' hora' : ' horas');
+    })();
+    // cancelamento por arrependimento (exemplo, a confirmar: até 7 dias depois da compra e mais de 48 h antes do evento); com o QR liberado faltam menos de 48 h
+    const winEff = qrOn ? 'out48' : st.win;
+    const ownOk = okish(kind) && !cur.refund;
+    const canCancelBuy = ownOk && winEff === 'in';
+    const setSit = (patch, evCancel) => () => this.setState({ evCancel, overrides: setOv(i, { refund: undefined, ...patch }), viewer: null, sheet: null });
+
+    return {
+      menuOpen: st.menu ? 'true' : 'false', menuOpenB: st.menu,
+      toggleMenu: () => this.setState({ menu: !st.menu }), closeMenu: () => this.setState({ menu: false }),
+      ticketCount: (window.IngresseConta ? window.IngresseConta.definirIngressos(tickets.length + events.length) : tickets.length + events.length), /* mc:n */
+      fewOn: st.many ? 'false' : 'true', manyOn: st.many ? 'true' : 'false', toFew: () => setMany(false), toMany: () => setMany(true), manyB: st.many,
+      nextSel: st.tab === 'next' ? 'true' : 'false', pastSel: st.tab === 'past' ? 'true' : 'false',
+      toNext: () => this.setState({ tab: 'next' }), toPast: () => this.setState({ tab: 'past' }),
+      isNext: st.tab === 'next', isPast: st.tab === 'past',
+      cur, tickets, countdown: st.evCancel ? 'Cancelado' : qrOn ? 'Hoje' : (() => { const d = Math.ceil((new Date('2026-11-08T13:00:00-03:00') - new Date()) / 864e5); return d <= 0 ? 'Hoje' : d === 1 ? 'Amanhã' : 'Faltam ' + d + ' dias'; })(),
+      curQr: kind === 'ok' ? qrUri(i) : '', curKind: kind,
+      qrReady: kind === 'ok', qrBlocked: kind !== 'ok', isPend: kind === 'pend', isListed: kind === 'resale',
+      isWait: kind === 'wait', notWait: kind !== 'wait', isCancelKind: kind === 'cancel', hasLockTitle: !!lock.title, lockPlain: kind !== 'wait' && kind !== 'cancel',
+      waitIn,
+      noteRecebido: kind === 'refund' && cur.refund === 'recebido', noteAndamento: kind === 'refund' && cur.refund === 'andamento', noteNegado: cur.refund === 'negado' && okish(kind),
+      canCancelBuy, why7: ownOk && winEff === 'out7', why48: ownOk && winEff === 'out48',
+      cancelBuyCur: e => openSheet('cancel', i, e && e.currentTarget),
+      qrLockedOn: qrOn ? 'false' : 'true', qrReleasedOn: qrOn ? 'true' : 'false',
+      toQrLocked: () => this.setState({ qr: 'locked', viewer: null }), toQrReleased: () => this.setState({ qr: 'released', viewer: null }),
+      sitNormalOn: !st.evCancel && !cur.refund ? 'true' : 'false', sitCancelOn: st.evCancel ? 'true' : 'false',
+      sitRecebidoOn: !st.evCancel && cur.refund === 'recebido' ? 'true' : 'false', sitAndamentoOn: !st.evCancel && cur.refund === 'andamento' ? 'true' : 'false', sitNegadoOn: !st.evCancel && cur.refund === 'negado' ? 'true' : 'false',
+      toSitNormal: setSit({}, false), toSitCancel: setSit({}, true), toSitRecebido: setSit({ refund: 'recebido' }, false), toSitAndamento: setSit({ refund: 'andamento' }, false), toSitNegado: setSit({ refund: 'negado' }, false),
+      winInOn: st.win === 'in' ? 'true' : 'false', win7On: st.win === 'out7' ? 'true' : 'false', win48On: st.win === 'out48' ? 'true' : 'false',
+      toWinIn: () => this.setState({ win: 'in' }), toWin7: () => this.setState({ win: 'out7' }), toWin48: () => this.setState({ win: 'out48' }),
+      exOn: st.ex ? 'true' : 'false', toggleEx: () => { const on = document.documentElement.toggleAttribute('data-exemplos'); this.setState({ ex: on }); },
+      qrOpenAria: 'Mostrar QR em tela cheia, ingresso ' + (i + 1) + ', titular ' + cur.holder,
+      lockBadge: lock.badge, lockTitle: lock.title, lockText: lock.text, ticketPos: (i + 1) + ' de ' + tickets.length,
+      prev: () => this.setState({ i: (i - 1 + tickets.length) % tickets.length }), next: () => this.setState({ i: (i + 1) % tickets.length }),
+      filters, rows, allChecked, allMark: allChecked === 'true' ? '✓' : allChecked === 'mixed' ? '–' : '',
+      toggleAll: () => this.setState({ sel: allChecked === 'true' ? sel.filter(n => !visIds.includes(n)) : Array.from(new Set([...sel, ...visIds])) }),
+      hasSel: sel.length > 0, selCount: sel.length + (sel.length === 1 ? ' ingresso selecionado' : ' ingressos selecionados'), clearSel: () => this.setState({ sel: [] }),
+      events, groups, nTickets: tickets.length, nEvents: events.length,
+      hasOrder: !!(order && !st.many), orderId: order ? order.id : '', dayLabel,
+      curAct: actFor(cur, i), curActLabel: ACTION[kind], showCurAct: kind === 'pend' || kind === 'trans' || kind === 'sold',
+      canTransfer: okish(kind), canResell: okish(kind), resellCur: resell(i), cancelResaleCur: cancelResale(i),
+      openQrCard: e => openViewer(i, document.querySelector('.tk-qrbox') || e.currentTarget, e.currentTarget),
+      wallets: walletList(i), vWallets: walletList(vN),
+      viewerOpen: vOk, vSlides, vMany: ready.length > 1, vPos: 'Ingresso ' + (vN + 1) + ' de ' + tickets.length, vDots: ready.map(t => (t.n === vN ? 'true' : 'false')),
+      vClose: () => this._qvClose('botao'), vPrev: vStep(-1), vNext: vStep(1),
+      vScroll: e => {
+        const tr = e.currentTarget, s = Math.round(tr.scrollLeft / Math.max(1, tr.clientWidth)), n = this._readyN[s];
+        if (n != null && st.viewer && n !== st.viewer.n && !this._closing) this.setState({ viewer: { n }, i: n });
+      },
+      simSold: () => {
+        const on = tickets.map((t, n) => n).filter(n => tickets[n].resale === 'on');
+        if (!on.length) { IX.toast('Coloque um ingresso à venda para simular a venda.'); return; }
+        const ov = { ...st.overrides };
+        on.forEach(n => { ov[keyOf(n)] = { ...(ov[keyOf(n)] || {}), resale: 'sold' }; });
+        this.setState({ overrides: ov });
+        IX.toast('Ingresso vendido na Revenda Oficial. Você recebe ' + brl(netOf(tickets[on[0]])) + '.', 'ok');
+      },
+      simReset: () => { this.setState({ overrides: {}, walletOn: {}, sel: [], sheet: null, viewer: null, filter: 'all', qr: 'locked', evCancel: false, win: 'in' }); IX.toast('Simulações limpas.'); },
+      bulkHolders: () => { const first = sel.map(n => tickets[n]).findIndex(t => t && vk(t) === 'pend'); if (first < 0) { IX.toast('Os ingressos selecionados já têm titular.'); return; } openSheet('holder', sel[first]); },
+      bulkTransfer: () => { const first = sel.map(n => tickets[n]).findIndex(t => t && okish(vk(t))); if (first < 0) { IX.toast('Selecione um ingresso pronto para transferir.'); return; } openSheet('transfer', sel[first]); },
+      ...sheetVals
+    };
+  }
+}
+/* je:script */
+Component = (function (Base) {
+  // valores neutros do fluxo de shows para as variáveis que a camada esportiva acrescentou ao modelo
+  const JE_PADRAO = { espOn: false, espOff: true, espDone: false, lblSub: 'Ingressos', lblTaxa: 'Taxa de serviço (10%)', ingressosHref: 'Ingressos.dc.html',
+    txtRecusa: 'Seus ingressos continuam reservados. Você pode tentar de novo, pagar com Pix ou usar outro cartão.', txtPixSub: 'Aprovação na hora · ingressos liberados em segundos',
+    txtPixSaem: 'Os ingressos saem em segundos.', txtPixExpirou: 'O código Pix expirou e a compra não foi concluída. Gere um novo código para pagar. Sua reserva segue valendo.' };
+  return class Component extends Base {
+    constructor(props) {
+      super(props);
+      const JE = window.JornadaEsporte;
+      if (JE && JE.ativo()) this.state = Object.assign({}, this.state, JE.estado('carteira'));
+    }
+    componentDidMount() {
+      if (super.componentDidMount) super.componentDidMount();
+      const JE = window.JornadaEsporte;
+      if (JE && JE.ativo()) { this.__jeTick = setInterval(() => { this.setState({ jeNow: Date.now() }); }, 1000); JE.montou('carteira', this); }
+    }
+    componentWillUnmount() { clearInterval(this.__jeTick); if (super.componentWillUnmount) super.componentWillUnmount(); }
+    renderVals() {
+      const JE = window.JornadaEsporte;
+      const v = super.renderVals();
+      if (JE && JE.ativo()) { return JE.vals('carteira', this, v); }
+      Object.assign(v, JE_PADRAO); return v;
+    }
+  };
+})(Component);
+/* je:script-fim */
+/* jf:script */
+Component = (function (Base) {
+  // valores neutros do fluxo de shows para as variáveis que a camada de futebol acrescentou ao modelo
+  const JF_PADRAO = { jfOn: false, jfOff: true, jfDone: false };
+  return class Component extends Base {
+    constructor(props) {
+      super(props);
+      const JF = window.IngresseJornadaFutebol;
+      if (JF && JF.ativo()) this.state = Object.assign({}, this.state, JF.estado('carteira'));
+    }
+    componentDidMount() {
+      if (super.componentDidMount) super.componentDidMount();
+      const JF = window.IngresseJornadaFutebol;
+      if (JF && JF.ativo()) { JF.montou('carteira', this); }
+    }
+    componentDidUpdate(a, b, c) {
+      if (super.componentDidUpdate) super.componentDidUpdate(a, b, c);
+      const JF = window.IngresseJornadaFutebol;
+      if (JF && JF.ativo() && JF.atualizou) JF.atualizou('carteira', this);
+    }
+    componentWillUnmount() { clearInterval(this.__jfTick); if (super.componentWillUnmount) super.componentWillUnmount(); }
+    renderVals() {
+      const JF = window.IngresseJornadaFutebol;
+      if (JF && JF.ativo()) { const b = super.renderVals(); return JF.vals('carteira', this, b); }
+      const v = super.renderVals(); Object.assign(v, JF_PADRAO); return v;
+    }
+  };
+})(Component);
+/* jf:script-fim */
+/* prd:script */
+Component = (window.IngresseProdutos ? window.IngresseProdutos.subtipo('carteira')(Component) : Component);
+/* prd:script-fim */
+</script>
+</body>
+</html>

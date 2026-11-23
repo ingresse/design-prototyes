@@ -32,7 +32,8 @@ const catalogIndex = (): Record<string, CartLine> => {
                 kind: "ingresso",
                 quantity: 0,
                 name: ticket.name,
-                meta: `${ticket.group} - ${ticket.type}`,
+                // O nome é o do ingresso; a linha de apoio diz o grupo (sem repetir o nome).
+                meta: ticket.group,
                 date: session.shortDate,
                 unitPrice: ticket.price,
                 lote: ticket.lote,
@@ -57,7 +58,6 @@ const catalogIndex = (): Record<string, CartLine> => {
             kind: "combo",
             quantity: 0,
             name: combo.name,
-            meta: `${combo.group} - ${combo.type}`,
             date: combo.shortDate,
             unitPrice: combo.price,
             composicao: combo.composicao,

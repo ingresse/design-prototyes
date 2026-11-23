@@ -5,7 +5,7 @@ import { Select } from "@/components/base/select/select";
 import { TextArea } from "@/components/base/textarea/textarea";
 import { cx } from "@/utils/cx";
 import type { Pergunta } from "../data/pos-compra-store";
-import { FOCO } from "./pos-compra-ui";
+import { FOCO, Regra } from "./pos-compra-ui";
 
 /* ------------------------------------------------------------------ */
 /*  Leitura                                                            */
@@ -146,11 +146,6 @@ export const EditorResposta = ({ pergunta, valor, valorOriginal, onChange }: Edi
             placeholder="Selecione"
             selectedKey={valor || null}
             onSelectionChange={(key) => onChange(String(key))}
-            hint={
-                pergunta.opcoes.some((o) => typeof o.estoque === "number")
-                    ? "Opções esgotadas ficam indisponíveis porque essa pergunta controla estoque."
-                    : undefined
-            }
             items={pergunta.opcoes.map((o) => ({
                 id: o.valor,
                 label: o.valor,
@@ -166,6 +161,18 @@ export const EditorResposta = ({ pergunta, valor, valorOriginal, onChange }: Edi
         </Select>
     );
 };
+
+const controlaEstoque = (pergunta: Pergunta) => pergunta.tipo === "opcao" && pergunta.opcoes.some((o) => typeof o.estoque === "number");
+
+/**
+ * Um aviso só, acima das perguntas, quando alguma delas controla estoque (PED-106). Antes cada
+ * pergunta com estoque repetia a mesma frase como dica, e numa ficha com três delas o aviso
+ * aparecia três vezes. A opção esgotada continua dizendo "Esgotado" na própria lista.
+ */
+export const AvisoDeEstoque = ({ perguntas }: { perguntas: Pergunta[] }) =>
+    perguntas.some(controlaEstoque) ? (
+        <Regra>Algumas respostas têm vagas limitadas. Opção esgotada aparece na lista, mas não pode ser escolhida.</Regra>
+    ) : null;
 
 /** Antes e depois de uma resposta, empilhado quando o valor é longo. */
 export const ComparativoResposta = ({ pergunta, de, para }: { pergunta?: Pergunta; de: string; para: string }) => {

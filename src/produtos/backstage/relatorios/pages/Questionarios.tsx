@@ -1,32 +1,41 @@
 import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { toast } from "sonner";
-import { Dialog as AriaDialog, Modal as AriaModal, ModalOverlay as AriaModalOverlay, type Key, type Selection } from "react-aria-components";
-import { ChevronDown, ChevronRight, Download01, FilterLines, Paperclip, Plus, SearchLg, Ticket01, XClose } from "@untitledui/icons";
+import type { Key, Selection } from "react-aria-components";
+import { ChevronDown, ChevronRight, Download01, FilterLines, MessageQuestionCircle, Paperclip, Plus, SearchLg, Ticket01 } from "@untitledui/icons";
 import { Avatar } from "@/components/base/avatar/avatar";
 import { Button } from "@/components/base/buttons/button";
-import { ButtonUtility } from "@/components/base/buttons/button-utility";
 import { CloseButton } from "@/components/base/buttons/close-button";
 import { Input } from "@/components/base/input/input";
 import { MultiSelect } from "@/components/base/select/multi-select";
 import { Select } from "@/components/base/select/select";
 import { PaginationCardAdvanced } from "@/components/application/pagination/pagination";
 import { Tabs } from "@/components/application/tabs/tabs";
+import { EmptyState } from "@/components/application/empty-state/empty-state";
 import { CountBadge, type FilterRow } from "@/components/application/filter-bar/filter-dropdown-menu";
 import { cx } from "@/utils/cx";
+import { PainelLateral } from "../components/TabelaLista";
+import { useItemNaUrl } from "../components/estado-dos-relatorios";
 import { FilterPopover } from "../components/FilterPopover";
 import { BackstageLayout } from "../../components/Backstage";
 import { ExportMenu, RelatorioPageHeader } from "../components/RelatorioPageHeader";
 import { RelatorioFiltersProvider, matchRow, type FilterFieldDef } from "../components/relatorio-filters";
-import { EVENT, numberFormatter, percentFormatter } from "../data/event";
-import { QUESTIONARIO, TIPO_RESPOSTA, type QuestionarioPergunta, type RespostaLinha } from "../data/questionarios";
+import { numberFormatter, percentFormatter } from "../data/event";
+import {
+    TIPO_RESPOSTA,
+    ehEscolha,
+    ehTextoLivre,
+    useRespostasDoQuestionario,
+    type IngressoRespondido,
+    type Participante,
+    type QuestionarioPergunta,
+    type Respondente,
+    type RespostaLinha,
+} from "../data/questionarios";
 
 const pct = (n: number) => percentFormatter.format(n);
 const num = (n: number) => numberFormatter.format(n);
 const scrollToTop = () => window.scrollTo({ top: 0, behavior: "smooth" });
-
-type Respondente = RespostaLinha["respondente"];
-type Participante = { respondente: Respondente; respostas: number };
 
 const getInitials = (name: string): string => {
     const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -44,35 +53,13 @@ const OPERADORES = [
     { id: "does-not-contain", label: "não inclui" },
 ];
 
-const PERGUNTA_FIELDS: FilterFieldDef[] = QUESTIONARIO.map((q) => ({
-    id: q.id,
-    label: q.titulo,
-    multi: q.opcoes ? { options: q.opcoes.map((o) => ({ id: o.label, label: o.label })) } : undefined,
-}));
-
-/** Participantes únicos (deduplicados por respondente) + nº de respostas. */
-const PARTICIPANTES: Participante[] = (() => {
-    const map = new Map<string, Participante>();
-    for (const q of QUESTIONARIO) {
-        for (const l of q.respostas) {
-            const ex = map.get(l.respondente.id);
-            if (ex) ex.respostas += 1;
-            else map.set(l.respondente.id, { respondente: l.respondente, respostas: 1 });
-        }
-    }
-    return Array.from(map.values());
-})();
-
-function valorDaResposta(respondenteId: string, perguntaId: string): string {
-    const q = QUESTIONARIO.find((x) => x.id === perguntaId);
-    if (!q) return "";
-    const linha = q.respostas.find((l) => l.respondente.id === respondenteId);
-    if (!linha) return "";
-    if (q.tipo === "selecao-unica") return linha.opcao ?? "";
-    if (q.tipo === "multipla-selecao") return (linha.opcoesMultiplas ?? []).join(" || ");
-    if (q.tipo === "texto-aberto") return linha.texto ?? "";
-    return linha.anexo?.arquivo ?? "";
-}
+/** Campos do filtro: uma pergunta por campo; perguntas de escolha filtram pelas opções. */
+const camposDoFiltro = (perguntas: QuestionarioPergunta[], todos: boolean): FilterFieldDef[] =>
+    perguntas.map((q) => ({
+        id: q.id,
+        label: todos ? `${q.titulo} (${q.eventoNome})` : q.titulo,
+        multi: q.opcoes ? { options: q.opcoes.map((o) => ({ id: o.label, label: o.label })) } : undefined,
+    }));
 
 let nextFilterId = 1;
 const novoFiltro = (): FilterRow => ({ id: `qf${nextFilterId++}`, field: "", operator: "contains", value: "" });
@@ -92,19 +79,27 @@ export function Questionarios() {
 }
 
 const QuestionariosBody = () => {
+    const dados = useRespostasDoQuestionario();
     const [tab, setTab] = useState<Key>("resumo");
     const [filters, setFilters] = useState<FilterRow[]>(() => [novoFiltro()]);
+    const campos = useMemo(() => camposDoFiltro(dados.perguntas, dados.todos), [dados.perguntas, dados.todos]);
+
+    // Outro evento ou escopo: as perguntas mudam, os filtros e a aba voltam ao início.
+    useEffect(() => {
+        setFilters([novoFiltro()]);
+        setTab("resumo");
+    }, [dados.chave]);
 
     /** Conjunto de respondentes que atendem ao filtro (null = todos). */
     const cohort = useMemo(() => {
-        const ativos = filters.filter((f) => f.field && f.value);
+        const ativos = filters.filter((f) => f.field && f.value && campos.some((c) => c.id === f.field));
         if (!ativos.length) return null;
         const set = new Set<string>();
-        for (const p of PARTICIPANTES) {
-            if (matchRow(p.respondente.id, ativos, (rid, field) => valorDaResposta(rid, field))) set.add(p.respondente.id);
+        for (const p of dados.participantes) {
+            if (matchRow(p.respondente.id, ativos, (rid, field) => dados.valor(rid, field))) set.add(p.respondente.id);
         }
         return set;
-    }, [filters]);
+    }, [filters, campos, dados]);
 
     /** Clique numa opção do resumo aplica o filtro daquela pergunta e leva à lista de respostas. */
     const mostrarQuemRespondeu = (perguntaId: string, opcao: string) => {
@@ -120,6 +115,30 @@ const QuestionariosBody = () => {
         scrollToTop();
     };
 
+    if (dados.semPerguntas) {
+        return (
+            <>
+                <RelatorioPageHeader title="Respostas do questionário" withFilters={false} />
+                <div className="flex items-center justify-center rounded-xl bg-primary px-4 py-16 ring-1 ring-border-secondary">
+                    <EmptyState size="sm">
+                        <EmptyState.Header>
+                            <EmptyState.FeaturedIcon icon={MessageQuestionCircle} color="gray" theme="modern" />
+                        </EmptyState.Header>
+                        <EmptyState.Content>
+                            <EmptyState.Title>{dados.todos ? "Nenhum evento tem questionário" : "Este evento não tem questionário"}</EmptyState.Title>
+                            <EmptyState.Description>Crie as perguntas no Questionário, em Ingressos e produtos. As respostas de quem comprar aparecem aqui.</EmptyState.Description>
+                        </EmptyState.Content>
+                        <EmptyState.Footer>
+                            <Button size="md" color="primary" iconLeading={Plus} href="/backstage/catalogo/questionario">
+                                Criar perguntas
+                            </Button>
+                        </EmptyState.Footer>
+                    </EmptyState>
+                </div>
+            </>
+        );
+    }
+
     return (
         <>
             <RelatorioPageHeader
@@ -127,7 +146,7 @@ const QuestionariosBody = () => {
                 withFilters={false}
                 actions={
                     <>
-                        <PerguntasFilter filters={filters} setFilters={setFilters} />
+                        <PerguntasFilter campos={campos} filters={filters} setFilters={setFilters} />
                         <ExportMenu />
                     </>
                 }
@@ -152,7 +171,11 @@ const QuestionariosBody = () => {
                         exit={{ opacity: 0, x: -24 }}
                         transition={{ duration: 0.2, ease: "easeOut" }}
                     >
-                        {tab === "respostas" ? <RespostasArea cohort={cohort} /> : <ResumoArea cohort={cohort} onFiltrar={mostrarQuemRespondeu} />}
+                        {tab === "respostas" ? (
+                            <RespostasArea cohort={cohort} participantes={dados.participantes} perguntas={dados.perguntas} />
+                        ) : (
+                            <ResumoArea cohort={cohort} perguntas={dados.perguntas} todos={dados.todos} onFiltrar={mostrarQuemRespondeu} />
+                        )}
                     </motion.div>
                 </AnimatePresence>
                 </div>
@@ -165,7 +188,7 @@ const QuestionariosBody = () => {
 /*  Filtro (dropdown composto)                                         */
 /* ------------------------------------------------------------------ */
 
-function PerguntasFilter({ filters, setFilters }: { filters: FilterRow[]; setFilters: (fn: (prev: FilterRow[]) => FilterRow[]) => void }) {
+function PerguntasFilter({ campos, filters, setFilters }: { campos: FilterFieldDef[]; filters: FilterRow[]; setFilters: (fn: (prev: FilterRow[]) => FilterRow[]) => void }) {
     const aplicados = filters.filter((f) => f.field && f.value).length;
 
     const add = () => {
@@ -198,7 +221,7 @@ function PerguntasFilter({ filters, setFilters }: { filters: FilterRow[]; setFil
                             {filters.map((filter) => (
                                 <div key={filter.id} className="flex items-start gap-1 py-3 first:pt-4">
                                     <div className="flex min-w-0 flex-1 items-center gap-3">
-                                        <LinhaFiltro filter={filter} onChange={(patch) => change(filter.id, patch)} />
+                                        <LinhaFiltro campos={campos} filter={filter} onChange={(patch) => change(filter.id, patch)} />
                                     </div>
                                     {filters.length > 1 && <CloseButton label="Remover pergunta" size="sm" onPress={() => remove(filter.id)} />}
                                 </div>
@@ -225,8 +248,8 @@ function PerguntasFilter({ filters, setFilters }: { filters: FilterRow[]; setFil
     );
 }
 
-function LinhaFiltro({ filter, onChange }: { filter: FilterRow; onChange: (patch: Partial<Omit<FilterRow, "id">>) => void }) {
-    const def = PERGUNTA_FIELDS.find((f) => f.id === filter.field);
+function LinhaFiltro({ campos, filter, onChange }: { campos: FilterFieldDef[]; filter: FilterRow; onChange: (patch: Partial<Omit<FilterRow, "id">>) => void }) {
+    const def = campos.find((f) => f.id === filter.field);
     return (
         <div className="flex min-w-0 flex-1 flex-col gap-2">
             <Select
@@ -234,7 +257,7 @@ function LinhaFiltro({ filter, onChange }: { filter: FilterRow; onChange: (patch
                 size="sm"
                 aria-label="Pergunta"
                 placeholder="Selecione a pergunta"
-                items={PERGUNTA_FIELDS}
+                items={campos}
                 selectedKey={filter.field || null}
                 onSelectionChange={(key: Key | null) => onChange({ field: key ? String(key) : "", value: "" })}
             >
@@ -304,8 +327,8 @@ function aplicarCohort(pergunta: QuestionarioPergunta, cohort: Set<string> | nul
     const respostas = pergunta.respostas.filter((l) => cohort.has(l.respondente.id));
     const contagem = new Map<string, number>();
     for (const l of respostas) {
-        if (pergunta.tipo === "selecao-unica" && l.opcao) contagem.set(l.opcao, (contagem.get(l.opcao) ?? 0) + 1);
-        else if (pergunta.tipo === "multipla-selecao") for (const o of l.opcoesMultiplas ?? []) contagem.set(o, (contagem.get(o) ?? 0) + 1);
+        if (pergunta.tipo === "opcao-unica" && l.opcao) contagem.set(l.opcao, (contagem.get(l.opcao) ?? 0) + 1);
+        else if (pergunta.tipo === "multipla") for (const o of l.opcoesMultiplas ?? []) contagem.set(o, (contagem.get(o) ?? 0) + 1);
     }
     return {
         ...pergunta,
@@ -315,12 +338,22 @@ function aplicarCohort(pergunta: QuestionarioPergunta, cohort: Set<string> | nul
     };
 }
 
-function ResumoArea({ cohort, onFiltrar }: { cohort: Set<string> | null; onFiltrar: (perguntaId: string, opcao: string) => void }) {
+function ResumoArea({
+    cohort,
+    perguntas: todas,
+    todos,
+    onFiltrar,
+}: {
+    cohort: Set<string> | null;
+    perguntas: QuestionarioPergunta[];
+    todos: boolean;
+    onFiltrar: (perguntaId: string, opcao: string) => void;
+}) {
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(15);
 
-    // Só perguntas de escolha (seleção única / múltipla / dropdown).
-    const perguntas = QUESTIONARIO.filter((q) => q.tipo === "selecao-unica" || q.tipo === "multipla-selecao").map((q) => aplicarCohort(q, cohort));
+    // Só perguntas de escolha (opção única / múltipla escolha).
+    const perguntas = useMemo(() => todas.filter((q) => ehEscolha(q.tipo)).map((q) => aplicarCohort(q, cohort)), [todas, cohort]);
 
     const totalPages = Math.max(1, Math.ceil(perguntas.length / pageSize));
     const safePage = Math.min(page, totalPages);
@@ -338,11 +371,17 @@ function ResumoArea({ cohort, onFiltrar }: { cohort: Set<string> | null; onFiltr
                 de {num(perguntas.length)} perguntas
             </span>
 
-            <div className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-2">
-                {visiveis.map((q) => (
-                    <ResumoPerguntaCard key={q.id} pergunta={q} onFiltrar={onFiltrar} />
-                ))}
-            </div>
+            {perguntas.length === 0 ? (
+                <div className="rounded-xl bg-primary px-4 py-12 text-center text-sm text-tertiary ring-1 ring-border-secondary">
+                    O resumo mostra perguntas de opção única e múltipla escolha. As respostas de texto, número, telefone e anexo estão na aba Respostas.
+                </div>
+            ) : (
+                <div className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-2">
+                    {visiveis.map((q) => (
+                        <ResumoPerguntaCard key={q.id} pergunta={q} todos={todos} onFiltrar={onFiltrar} />
+                    ))}
+                </div>
+            )}
 
             <div className="overflow-clip rounded-xl bg-primary ring-1 ring-border-secondary">
                 <PaginationCardAdvanced
@@ -365,7 +404,7 @@ function ResumoArea({ cohort, onFiltrar }: { cohort: Set<string> | null; onFiltr
     );
 }
 
-function ResumoPerguntaCard({ pergunta, onFiltrar }: { pergunta: QuestionarioPergunta; onFiltrar: (perguntaId: string, opcao: string) => void }) {
+function ResumoPerguntaCard({ pergunta, todos, onFiltrar }: { pergunta: QuestionarioPergunta; todos: boolean; onFiltrar: (perguntaId: string, opcao: string) => void }) {
     const opcoes = pergunta.opcoes ?? [];
 
     return (
@@ -373,7 +412,10 @@ function ResumoPerguntaCard({ pergunta, onFiltrar }: { pergunta: QuestionarioPer
             <div className="flex items-end justify-between gap-4">
                 <div className="flex min-w-0 flex-col gap-0.5">
                     <h2 className="line-clamp-2 text-md font-semibold text-primary">{pergunta.titulo}</h2>
-                    <span className="text-sm text-tertiary">{TIPO_RESPOSTA[pergunta.tipo].label}</span>
+                    <span className="text-sm text-tertiary">
+                        {TIPO_RESPOSTA[pergunta.tipo].label}
+                        {todos && ` em ${pergunta.eventoNome}`}
+                    </span>
                 </div>
                 <span className="shrink-0 text-sm text-tertiary">{num(pergunta.respondidas)} responderam</span>
             </div>
@@ -392,7 +434,7 @@ function ResumoPerguntaCard({ pergunta, onFiltrar }: { pergunta: QuestionarioPer
                                 <span className="line-clamp-2 min-w-0 text-sm font-medium text-secondary group-hover:line-clamp-1">{op.label}</span>
                                 <div className="flex shrink-0 items-center gap-2">
                                     <span className="text-sm text-tertiary">
-                                        <span className="font-semibold text-primary">{num(op.respostas)}</span> · {pct(fracao)}
+                                        <span className="font-semibold text-primary">{num(op.respostas)}</span> ({pct(fracao)})
                                     </span>
                                     {/* Surge da direita empurrando a contagem para a esquerda */}
                                     <span className="flex max-w-0 items-center gap-1 overflow-hidden whitespace-nowrap text-sm font-medium text-brand-secondary opacity-0 transition-all duration-200 ease-out group-hover:max-w-56 group-hover:opacity-100">
@@ -416,13 +458,15 @@ function ResumoPerguntaCard({ pergunta, onFiltrar }: { pergunta: QuestionarioPer
 /*  Aba Respostas — cards de participantes + slideout de detalhes       */
 /* ------------------------------------------------------------------ */
 
-function RespostasArea({ cohort }: { cohort: Set<string> | null }) {
+function RespostasArea({ cohort, participantes, perguntas }: { cohort: Set<string> | null; participantes: Participante[]; perguntas: QuestionarioPergunta[] }) {
     const [busca, setBusca] = useState("");
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
-    const [selected, setSelected] = useState<Participante | null>(null);
+    // Participante aberto na URL (?item=<id>, REL-223).
+    const aberto = useItemNaUrl();
+    const selected = useMemo(() => (aberto.id ? (participantes.find((p) => p.respondente.id === aberto.id) ?? null) : null), [participantes, aberto.id]);
 
-    const base = useMemo(() => (cohort ? PARTICIPANTES.filter((p) => cohort.has(p.respondente.id)) : PARTICIPANTES), [cohort]);
+    const base = useMemo(() => (cohort ? participantes.filter((p) => cohort.has(p.respondente.id)) : participantes), [cohort, participantes]);
 
     const filtrados = useMemo(() => {
         const termo = busca.trim().toLowerCase();
@@ -469,7 +513,7 @@ function RespostasArea({ cohort }: { cohort: Set<string> | null }) {
                             key={p.respondente.id}
                             participante={p}
                             isSelected={selected?.respondente.id === p.respondente.id}
-                            onClick={() => setSelected(p)}
+                            onClick={() => aberto.abrir(p.respondente.id)}
                         />
                     ))}
                 </div>
@@ -493,14 +537,14 @@ function RespostasArea({ cohort }: { cohort: Set<string> | null }) {
                 />
             </div>
 
-            <ParticipanteDetailsSlideOut isOpen={selected !== null} participante={selected} onClose={() => setSelected(null)} />
+            {selected && <ParticipanteDetailsSlideOut participante={selected} perguntas={perguntas} onClose={aberto.fechar} />}
         </div>
     );
 }
 
 const ParticipanteCard = ({ participante, isSelected, onClick }: { participante: Participante; isSelected: boolean; onClick: () => void }) => {
     const { respondente: r } = participante;
-    const ingressos = numIngressos(r.id);
+    const ingressos = participante.ingressos.length;
     return (
         <button
             type="button"
@@ -525,141 +569,53 @@ const ParticipanteCard = ({ participante, isSelected, onClick }: { participante:
 };
 
 /* ------------------------------------------------------------------ */
-/*  Ingressos sintéticos do portador (cada um com comprador + respostas)*/
+/*  Ingressos do portador (cada um com comprador + respostas)          */
 /* ------------------------------------------------------------------ */
 
 interface IngressoResposta {
     pergunta: QuestionarioPergunta;
     linha: RespostaLinha | null;
 }
-interface Contato {
-    nome: string;
-    email: string;
-    telefone: string;
-    documento: string;
-    nascimento: string;
-}
 interface IngressoDoPortador {
     grupo: string;
     ingresso: string;
-    comprador: Contato;
+    comprador: Respondente;
     ehComprador: boolean;
     respostas: IngressoResposta[];
 }
 
-const NOMES_COMPRADORES = ["Marcelo Tavares", "Carolina Freitas", "Bruno Azevedo", "Patrícia Gomes", "Rodrigo Nunes", "Bianca Teixeira"];
-const GRUPOS_INGRESSOS = [
-    { grupo: "Pista", ingresso: "Inteira" },
-    { grupo: "Pista Premium", ingresso: "Meia-entrada" },
-    { grupo: "Arquibancada", ingresso: "Inteira" },
-    { grupo: "Camarote", ingresso: "Open bar" },
-    { grupo: "Cadeira Superior", ingresso: "Meia-entrada" },
-    { grupo: "Front Stage", ingresso: "Inteira" },
-];
-const hashStr = (s: string): number => Array.from(s).reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
-/** Nº de ingressos do portador (mesma regra usada no slideout). */
-const numIngressos = (id: string): number => 1 + (hashStr(id) % 2);
-const pad2 = (n: number) => String(n).padStart(2, "0");
-const pad11 = (n: number) => String(n).padStart(11, "0");
-const formatCpf = (cpf: string): string => cpf.replace(/\D/g, "").padStart(11, "0").slice(0, 11).replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
-const gerarTelefone = (seed: number): string => {
-    const meio = String(1000 + (seed % 9000));
-    const fim = String((seed * 31) % 10000).padStart(4, "0");
-    return `(11) 9${meio}-${fim}`;
-};
-const gerarNascimento = (seed: number): string => `${pad2((seed % 28) + 1)}/${pad2((seed % 12) + 1)}/${1980 + (seed % 25)}`;
-
-const gerarComprador = (seed: number): Contato => {
-    const nome = NOMES_COMPRADORES[seed % NOMES_COMPRADORES.length];
-    const [primeiro, ultimo] = [nome.split(" ")[0], nome.split(" ").slice(-1)[0]];
-    return {
-        nome,
-        email: `${primeiro}.${ultimo}@gmail.com`.toLowerCase(),
-        telefone: gerarTelefone(seed),
-        documento: pad11((seed * 7919) % 100000000000),
-        nascimento: gerarNascimento(seed),
-    };
+/** CPF formatado; vazio quando o banco não tem o dado (pessoa real). */
+const formatCpf = (cpf: string): string => {
+    const d = cpf.replace(/\D/g, "");
+    return d.length === 11 ? d.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4") : cpf;
 };
 
-function sintetizarLinha(q: QuestionarioPergunta, respondente: Respondente, seed: number): RespostaLinha {
-    const base: RespostaLinha = { respondente, data: "" };
-    const ops = q.opcoes ?? [];
-    if (q.tipo === "selecao-unica") return { ...base, opcao: ops[seed % (ops.length || 1)]?.label ?? "" };
-    if (q.tipo === "multipla-selecao") return { ...base, opcoesMultiplas: [ops[seed % (ops.length || 1)]?.label, ops[(seed + 1) % (ops.length || 1)]?.label].filter(Boolean) as string[] };
-    if (q.tipo === "texto-aberto") return { ...base, texto: "Resposta registrada neste ingresso." };
-    return { ...base, anexo: { arquivo: `comprovante-${(seed % 900) + 100}.pdf`, tamanho: "1,2 MB" } };
-}
-
-/** Dados do portador (o participante) — telefone sintetizado (não existe no mock). */
-function contatoDoPortador(respondente: Respondente): Contato {
-    return {
-        nome: respondente.nome,
-        email: respondente.email,
-        telefone: gerarTelefone(hashStr(respondente.id)),
-        documento: respondente.documento,
-        nascimento: respondente.nascimento,
-    };
-}
-
-function buildIngressos(participante: Participante): IngressoDoPortador[] {
-    const { respondente } = participante;
-    const h = hashStr(respondente.id);
-    const n = numIngressos(respondente.id); // 1 ou 2 ingressos
-    const ingressos: IngressoDoPortador[] = [];
-    for (let i = 0; i < n; i++) {
-        const gi = GRUPOS_INGRESSOS[(h + i) % GRUPOS_INGRESSOS.length];
-        const ehComprador = i === 0 && h % 3 !== 0;
-        const comprador = ehComprador ? contatoDoPortador(respondente) : gerarComprador(h + i);
-        const respostas: IngressoResposta[] = QUESTIONARIO.map((q) =>
-            i === 0
-                ? { pergunta: q, linha: q.respostas.find((l) => l.respondente.id === respondente.id) ?? null }
-                : { pergunta: q, linha: sintetizarLinha(q, respondente, h + i * 5 + q.titulo.length) },
-        );
-        ingressos.push({ grupo: gi.grupo, ingresso: gi.ingresso, comprador, ehComprador, respostas });
-    }
-    return ingressos;
+function buildIngressos(participante: Participante, perguntas: Map<string, QuestionarioPergunta>): IngressoDoPortador[] {
+    return participante.ingressos.map((ing: IngressoRespondido) => ({
+        grupo: ing.grupo,
+        ingresso: ing.ingresso,
+        comprador: ing.comprador,
+        ehComprador: ing.ehComprador,
+        respostas: ing.aplicaveis
+            .map((id) => perguntas.get(id))
+            .filter((q): q is QuestionarioPergunta => !!q)
+            .map((q) => ({ pergunta: q, linha: ing.respostas[q.id] ?? null })),
+    }));
 }
 
 /* ------------------------------------------------------------------ */
 /*  Slideout de detalhes do participante                               */
 /* ------------------------------------------------------------------ */
 
-const ParticipanteDetailsSlideOut = ({ isOpen, participante, onClose }: { isOpen: boolean; participante: Participante | null; onClose: () => void }) => (
-    <AriaModalOverlay
-        isOpen={isOpen}
-        onOpenChange={(open) => {
-            if (!open) onClose();
-        }}
-        isDismissable
-        className="fixed inset-0 z-50 flex justify-end outline-hidden"
-    >
-        <AriaModal
-            className={({ isEntering, isExiting }) =>
-                cx(
-                    "h-full w-full max-w-[520px] bg-primary shadow-xl outline-hidden",
-                    isEntering && "duration-300 ease-out animate-in slide-in-from-right",
-                    isExiting && "duration-200 ease-in animate-out slide-out-to-right",
-                )
-            }
-        >
-            <AriaDialog className="flex h-full flex-col outline-hidden">
-                <div className="flex items-center justify-between gap-4 border-b border-secondary px-6 py-5">
-                    <h2 className="text-lg font-semibold text-primary">Detalhes do participante</h2>
-                    <ButtonUtility size="sm" color="tertiary" icon={XClose} tooltip="Fechar" onClick={onClose} />
-                </div>
-                {participante && <SlideoutConteudo key={participante.respondente.id} participante={participante} />}
-                <div className="flex items-center justify-end gap-2 border-t border-secondary px-6 py-4">
-                    <Button size="sm" color="secondary" onClick={onClose}>
-                        Fechar
-                    </Button>
-                </div>
-            </AriaDialog>
-        </AriaModal>
-    </AriaModalOverlay>
+// No painel lateral do DS (REL-225), no lugar do modal feito à mão de 520 px.
+const ParticipanteDetailsSlideOut = ({ participante, perguntas, onClose }: { participante: Participante; perguntas: QuestionarioPergunta[]; onClose: () => void }) => (
+    <PainelLateral titulo="Detalhes do participante" onFechar={onClose}>
+        <SlideoutConteudo key={participante.respondente.id} participante={participante} perguntas={perguntas} />
+    </PainelLateral>
 );
 
-function SlideoutConteudo({ participante }: { participante: Participante }) {
-    const [ingressos, setIngressos] = useState<IngressoDoPortador[]>(() => buildIngressos(participante));
+function SlideoutConteudo({ participante, perguntas }: { participante: Participante; perguntas: QuestionarioPergunta[] }) {
+    const [ingressos, setIngressos] = useState<IngressoDoPortador[]>(() => buildIngressos(participante, new Map(perguntas.map((q) => [q.id, q]))));
     // Accordion single-open: abrir um fecha o outro.
     const [aberto, setAberto] = useState<number | null>(null);
 
@@ -673,10 +629,10 @@ function SlideoutConteudo({ participante }: { participante: Participante }) {
         );
 
     const { respondente: r } = participante;
-    const portador = contatoDoPortador(r);
+    const portador = r;
 
     return (
-        <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-6 py-6">
+        <div className="flex flex-col gap-5 py-5">
             {/* Portador — primeiro nível: separador, sem caixa */}
             <div className="flex shrink-0 flex-col gap-4 border-b border-secondary pb-5">
                 <div className="flex items-center gap-3">
@@ -712,7 +668,7 @@ function SlideoutConteudo({ participante }: { participante: Participante }) {
                             </span>
                             <div className="flex min-w-0 flex-1 flex-col">
                                 <span className="line-clamp-2 text-sm font-semibold text-primary">
-                                    {ing.grupo} · {ing.ingresso}
+                                    {ing.grupo}, {ing.ingresso}
                                 </span>
                                 <span className="line-clamp-2 text-sm text-tertiary">
                                     {ing.ehComprador ? "Comprado pelo próprio portador" : `Comprado por ${ing.comprador.nome}`}
@@ -736,6 +692,7 @@ function SlideoutConteudo({ participante }: { participante: Participante }) {
                                 {/* Respostas do ingresso */}
                                 <div className="flex flex-col gap-3">
                                     <span className="text-sm font-semibold text-secondary">Respostas do ingresso</span>
+                                    {ing.respostas.length === 0 && <span className="text-sm text-tertiary">Nenhuma pergunta vale para este ingresso.</span>}
                                     {ing.respostas.map((rr) => (
                                         <RespostaEditavel
                                             key={rr.pergunta.id}
@@ -757,7 +714,7 @@ function SlideoutConteudo({ participante }: { participante: Participante }) {
 const DetailRow = ({ label, value, isEmail = false }: { label: string; value: string; isEmail?: boolean }) => (
     <div className="flex min-w-0 flex-col gap-0.5">
         <dt className="text-sm text-tertiary">{label}</dt>
-        <dd className={cx("line-clamp-2 text-sm break-words", isEmail ? "text-brand-secondary" : "text-secondary")}>{value}</dd>
+        <dd className={cx("line-clamp-2 text-sm break-words", isEmail && value ? "text-brand-secondary" : value ? "text-secondary" : "text-quaternary")}>{value || "Não informado"}</dd>
     </div>
 );
 
@@ -770,7 +727,7 @@ function RespostaEditavel({ pergunta, linha, onSave }: { pergunta: QuestionarioP
     const [txt, setTxt] = useState<string>(linha?.opcao ?? linha?.texto ?? "");
     const [multi, setMulti] = useState<Selection>(new Set(linha?.opcoesMultiplas ?? []));
 
-    const podeEditar = linha !== null && pergunta.tipo !== "anexar-arquivo";
+    const podeEditar = linha !== null && pergunta.tipo !== "anexo";
     const opcoes = (pergunta.opcoes ?? []).map((o) => ({ id: o.label, label: o.label }));
 
     const iniciarEdicao = () => {
@@ -782,9 +739,9 @@ function RespostaEditavel({ pergunta, linha, onSave }: { pergunta: QuestionarioP
     const confirmar = () => {
         if (!linha) return;
         let nova: RespostaLinha = linha;
-        if (pergunta.tipo === "selecao-unica") nova = { ...linha, opcao: txt };
-        else if (pergunta.tipo === "texto-aberto") nova = { ...linha, texto: txt };
-        else if (pergunta.tipo === "multipla-selecao") nova = { ...linha, opcoesMultiplas: multi === "all" ? opcoes.map((o) => o.id) : Array.from(multi, String) };
+        if (pergunta.tipo === "opcao-unica") nova = { ...linha, opcao: txt };
+        else if (ehTextoLivre(pergunta.tipo)) nova = { ...linha, texto: txt };
+        else if (pergunta.tipo === "multipla") nova = { ...linha, opcoesMultiplas: multi === "all" ? opcoes.map((o) => o.id) : Array.from(multi, String) };
         onSave(nova);
         setModo("view");
         toast.success("Resposta alterada");
@@ -794,7 +751,7 @@ function RespostaEditavel({ pergunta, linha, onSave }: { pergunta: QuestionarioP
         <div className="flex flex-col gap-2 rounded-lg bg-secondary p-3">
             <div className="flex items-start justify-between gap-2">
                 <span className="line-clamp-2 min-w-0 text-sm font-medium text-tertiary">{pergunta.titulo}</span>
-                {pergunta.tipo === "anexar-arquivo" && linha?.anexo ? (
+                {pergunta.tipo === "anexo" && linha?.anexo ? (
                     <Button size="sm" color="link-color" iconLeading={Download01} onClick={() => toast.success(`Baixando ${linha.anexo?.arquivo}`)}>
                         Baixar
                     </Button>
@@ -812,12 +769,12 @@ function RespostaEditavel({ pergunta, linha, onSave }: { pergunta: QuestionarioP
 
             {modo === "edit" && (
                 <div className="flex flex-col gap-2">
-                    {pergunta.tipo === "selecao-unica" && (
+                    {pergunta.tipo === "opcao-unica" && (
                         <Select size="sm" aria-label="Nova resposta" items={opcoes} selectedKey={txt || null} onSelectionChange={(k: Key | null) => setTxt(k ? String(k) : "")}>
                             {(item: { id: string; label: string }) => <Select.Item id={item.id}>{item.label}</Select.Item>}
                         </Select>
                     )}
-                    {pergunta.tipo === "multipla-selecao" && (
+                    {pergunta.tipo === "multipla" && (
                         <MultiSelect size="sm" aria-label="Nova resposta" placeholder="Selecione" items={opcoes} selectedKeys={multi} onSelectionChange={setMulti}>
                             {(item: { id: string; label: string }) => (
                                 <MultiSelect.Item id={item.id} selectionIndicator="checkmark">
@@ -826,7 +783,7 @@ function RespostaEditavel({ pergunta, linha, onSave }: { pergunta: QuestionarioP
                             )}
                         </MultiSelect>
                     )}
-                    {pergunta.tipo === "texto-aberto" && <Input size="sm" aria-label="Nova resposta" value={txt} onChange={(v: string) => setTxt(v)} />}
+                    {ehTextoLivre(pergunta.tipo) && <Input size="sm" aria-label="Nova resposta" value={txt} onChange={(v: string) => setTxt(v)} />}
                     <div className="flex items-center justify-end gap-2">
                         <Button size="sm" color="link-gray" onClick={() => setModo("view")}>
                             Cancelar
@@ -857,10 +814,10 @@ function RespostaEditavel({ pergunta, linha, onSave }: { pergunta: QuestionarioP
 }
 
 function RespostaCelula({ linha, tipo }: { linha: RespostaLinha; tipo: QuestionarioPergunta["tipo"] }) {
-    if (tipo === "selecao-unica") {
+    if (tipo === "opcao-unica") {
         return <span className="text-sm font-medium text-secondary">{linha.opcao}</span>;
     }
-    if (tipo === "multipla-selecao") {
+    if (tipo === "multipla") {
         return (
             <div className="flex flex-wrap gap-1">
                 {(linha.opcoesMultiplas ?? []).map((o) => (
@@ -871,8 +828,11 @@ function RespostaCelula({ linha, tipo }: { linha: RespostaLinha; tipo: Questiona
             </div>
         );
     }
-    if (tipo === "texto-aberto") {
+    if (tipo === "texto-longo") {
         return <span className="line-clamp-2 text-sm text-secondary">“{linha.texto}”</span>;
+    }
+    if (ehTextoLivre(tipo)) {
+        return <span className="text-sm font-medium text-secondary">{linha.texto}</span>;
     }
     return (
         <span className="inline-flex items-center gap-2 text-sm">

@@ -1,0 +1,77 @@
+/* Padrões de experiência do protótipo (toast, painel de protótipo, barra de compra, checkout, carteira).
+   Componentes básicos vivem em base.css. */
+/* Camada de experiência (v2) — correções de layout mobile, feedback e padrões de checkout. */
+
+.step:focus-visible,.seat:focus-visible,.day:focus-visible,.sec:focus-visible{outline:3px solid #FF271A;outline-offset:2px}
+
+/* Toast de feedback */
+.ix-toast{position:fixed;left:50%;bottom:calc(24px + var(--safe-b));z-index:2000;max-width:min(92vw,440px);padding:14px 18px;border-radius:14px;background:#0A0A0B;color:#fff;font:600 14px/1.4 'Elza',ui-sans-serif,system-ui,sans-serif;box-shadow:0 18px 40px -10px rgba(10,10,11,.45);transform:translate(-50%,20px);opacity:0;pointer-events:none;transition:opacity .2s,transform .25s cubic-bezier(.2,.8,.2,1)}
+.ix-toast.is-on{opacity:1;transform:translate(-50%,0)}
+.ix-toast[data-kind="ok"]::before{content:"✓ ";color:#5BD08A}
+@media (max-width:760px){.ix-toast{bottom:calc(96px + var(--safe-b))}}
+
+/* Controles de protótipo: saem do conteúdo e viram um painel recolhível (Shift+P esconde) */
+.proto{position:fixed;left:16px;bottom:calc(16px + var(--safe-b));z-index:900;max-width:min(360px,calc(100vw - 32px));background:var(--surface);border:1px dashed var(--line-strong);border-radius:16px;box-shadow:0 18px 40px -14px rgba(10,10,11,.35);font-size:13px}
+.proto>summary{list-style:none;cursor:pointer;padding:10px 14px;font-weight:700;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:8px}
+.proto>summary::-webkit-details-marker{display:none}
+.proto>summary::before{content:"";width:8px;height:8px;border-radius:50%;background:#FF271A}
+.proto[open]>summary{border-bottom:1px solid var(--line)}
+.proto-in{padding:12px 14px 14px;display:flex;flex-wrap:wrap;gap:6px}
+.proto-in .over{flex:1 1 100%;margin:4px 0 2px}
+html[data-hide-proto] .proto{display:none}
+@media (max-width:760px){.proto{bottom:calc(88px + var(--safe-b));left:12px}.proto:not([open]){max-width:52px}.proto:not([open])>summary{font-size:0;padding:14px}}
+
+
+
+/* Barra de compra mobile (Ingressos / Checkout) */
+.cbar{display:none}
+@media (max-width:860px){
+  .cbar{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:80;align-items:center;gap:12px;padding:12px 16px calc(12px + var(--safe-b));background:rgba(255,255,255,.94);backdrop-filter:saturate(1.4) blur(16px);border-top:1px solid var(--line);box-shadow:0 -10px 30px -12px rgba(10,10,11,.18)}
+  .cbar .bp{min-height:50px !important;padding:0 22px !important;font-size:16px !important;box-shadow:none !important}
+  .cbar-t{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.2}
+  .cbar-t small{font-size:12px;color:var(--muted)}
+  .cbar-t strong{font-size:20px}
+  .has-cbar{padding-bottom:110px !important}
+  .aside-sum{position:static !important}
+}
+
+/* Hero: botão de pausa do carrossel (WCAG 2.2.2) */
+.car-pause{position:absolute;right:12px;top:12px;z-index:3;width:40px;height:40px;border-radius:50%;border:1px solid var(--line-strong);background:var(--surface);color:var(--ink);display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 4px 12px rgba(10,10,11,.12)}
+.car-pause svg{width:14px;height:14px}
+
+/* Busca: os filtros recolhíveis do v5.3 saíram; o componente de filtros é um só (tools/previa/filtros/filtros.css) */
+
+/* Carteira: QR dinâmico com faixa animada (anti-print) e bloqueio quando não está pronto */
+.qr-live{position:relative;overflow:hidden;border-radius:16px}
+.qr-live::after{content:"";position:absolute;left:0;right:0;height:22%;top:-22%;background:linear-gradient(180deg,transparent,rgba(232,33,19,.18),transparent);animation:qrscan 2.6s linear infinite;pointer-events:none}
+@keyframes qrscan{to{top:100%}}
+.qr-lock{width:212px;height:212px;border-radius:16px;border:1px dashed var(--line-strong);background:var(--bg-alt);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;padding:20px;box-sizing:border-box;font-size:14px;color:var(--ink-2)}
+@media (prefers-reduced-motion:reduce){.qr-live::after{animation:none;display:none}}
+
+/* Checkout (campos: ver base.css › Formulários) */
+.pay{display:flex;align-items:center;gap:14px;width:100%;text-align:left;padding:16px 18px;border:1px solid var(--line-strong);border-radius:14px;background:var(--surface);color:var(--ink);font:inherit;cursor:pointer;transition:border-color .2s,box-shadow .2s}
+.pay:hover{border-color:var(--inverse-line)}
+.pay[aria-checked="true"]{border-color:var(--ing-orange-hover);box-shadow:0 0 0 1px var(--ing-orange-hover) inset}
+.pay-dot{width:20px;height:20px;border-radius:50%;border:2px solid var(--line-strong);flex:0 0 auto;box-sizing:border-box}
+.pay[aria-checked="true"] .pay-dot{border:6px solid var(--ing-orange-hover)}
+.pay-t{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.pay-t strong{font-size:16px}
+.pay-t small{font-size:13px;color:var(--muted)}
+.tagok{display:inline-block;border-radius:var(--r-pill);padding:3px 9px;font-size:11px;font-weight:700;background:var(--ok-soft);color:var(--ok-ink);white-space:nowrap}
+.opt{display:flex;gap:14px;align-items:flex-start;padding:16px 18px;border:1px solid var(--line);border-radius:14px;background:var(--surface);cursor:pointer}
+.opt input{width:20px;height:20px;margin:2px 0 0;accent-color:var(--ing-orange-hover);flex:0 0 auto}
+.spin{width:18px;height:18px;border-radius:50%;border:2.5px solid rgba(10,10,11,.25);border-top-color:var(--ing-ink);animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.pix-code{font:13px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;word-break:break-all;padding:12px 14px;border-radius:12px;background:var(--bg);border:1px solid var(--line)}
+.done-burst{animation:pop .6s cubic-bezier(.2,.9,.3,1.4) both}
+@keyframes pop{from{transform:scale(.6);opacity:0}to{transform:none;opacity:1}}
+@media (prefers-reduced-motion:reduce){.done-burst,.spin{animation:none}}
+
+/* Cabeçalho do funil no mobile: etapas viram uma barra fina de progresso para o título respirar */
+@media (max-width:640px){
+  ol.steps{display:none !important}
+  header:has(ol.steps)::after{content:"";display:block;height:3px;background:linear-gradient(90deg,var(--ing-orange-hover) var(--prog,33%),var(--line) var(--prog,33%))}
+}
+
+/* Busca: duas colunas no celular, padrão de vitrine de ticketing */
+@media (max-width:560px){.res-grid{grid-template-columns:repeat(2,minmax(0,1fr)) !important;gap:10px !important}.res-grid h3{font-size:14px !important}}

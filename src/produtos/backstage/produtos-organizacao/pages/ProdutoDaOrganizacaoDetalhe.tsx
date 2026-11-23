@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router";
+import { useId, useMemo, useState } from "react";
+import { useLocation, useNavigate, useParams } from "react-router";
 import { toast } from "sonner";
 import { ArrowLeft, SearchLg, ShoppingBag01, Trash01 } from "@untitledui/icons";
 import { EmptyState } from "@/components/application/empty-state/empty-state";
@@ -8,11 +8,13 @@ import { Dialog, Modal, ModalOverlay } from "@/components/application/modals/mod
 import { Button } from "@/components/base/buttons/button";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
 import { Input } from "@/components/base/input/input";
+import { Label } from "@/components/base/input/label";
 import { TextArea } from "@/components/base/textarea/textarea";
 import { Surgir } from "@/components/foundations/transicao";
 import type { ProdutoDaOrganizacao, RegrasDeVenda } from "@/plataforma";
-import { TITULO_PAGINA } from "@/produtos/backstage/components/titulo-pagina";
 import { BackstageLayout } from "../../components/Backstage";
+import { CabecalhoDaPagina } from "../../components/cabecalho-da-pagina";
+import { setEventoAtual } from "../../eventos/data/eventos";
 import { BarraDeSalvar, CampoPreco, CamposDeVendas, ConfirmarSaida, SecaoDoItem, irParaPrimeiroErro } from "../../itens/components/comuns";
 import { novoId } from "../../itens/data/catalogo";
 import { formatar, useTextosItens } from "../../itens/data/textos-itens";
@@ -27,16 +29,21 @@ import { useBiblioteca } from "../data/biblioteca";
 /* ------------------------------------------------------------------ */
 
 const LISTA = "/backstage/produtos";
-const MAX_IMAGEM = 400 * 1024;
+/* POR-09: o arquivo pode ter até 10 MB; no envio a imagem é reduzida para no máximo 600 px de lado e
+   comprimida, e só o resultado vai para o banco. Antes o limite era 400 KB do arquivo original, gravado
+   como veio dentro do documento da organização. */
+const MAX_ARQUIVO = 10 * 1024 * 1024;
+const LADO_MAXIMO = 600;
 
 const T = {
     voltar: "Produtos",
     novo: "Novo produto",
-    novoDica: "Depois de criado, ele pode ser adicionado em Itens › Produtos de cada evento.",
-    eventos: { one: "Vendido em {n} evento.", other: "Vendido em {n} eventos." },
+    novoDica: "Depois de criado, adicione o produto aos eventos em Ingressos e produtos.",
+    eventos: { one: "Em {n} evento.", other: "Em {n} eventos." },
     semEvento: "Ainda não está em nenhum evento.",
     naoEncontrado: "Produto não encontrado",
     naoEncontradoDica: "Ele pode ter sido excluído. Volte para a lista e escolha outro.",
+    voltarParaLista: "Voltar para produtos",
     carregando: "Carregando produto",
     info: "Informações",
     nome: "Nome",
@@ -45,8 +52,8 @@ const T = {
     descricao: "Descrição",
     descricaoPlaceholder: "Material, tamanhos e o que mais ajuda a decidir a compra.",
     imagem: "Imagem",
-    imagemDica: "PNG ou JPG até 400 KB, quadrada de preferência.",
-    imagemGrande: "Escolha uma imagem de até {maximo} KB: esta tem {tamanho} KB.",
+    imagemDica: "PNG ou JPG até 10 MB, quadrada de preferência. A imagem é reduzida no envio.",
+    imagemGrande: "Escolha uma imagem de até {maximo} MB: esta tem {tamanho} MB.",
     imagemErro: "Tente outra imagem: não foi possível ler este arquivo.",
     removerImagem: "Remover imagem",
     precoBase: "Preço sugerido",
@@ -55,7 +62,8 @@ const T = {
     revise: "Revise os campos destacados para salvar o produto.",
     criado: "{nome} criado.",
     excluir: "Excluir produto",
-    excluirEmUso: { one: "Está em {n} evento: remova dele antes de excluir.", other: "Está em {n} eventos: remova deles antes de excluir." },
+    excluirEmUso: { one: "Para excluir, tire o produto deste evento antes:", other: "Para excluir, tire o produto destes {n} eventos antes:" },
+    abrirProdutosDoEvento: "Abrir os produtos de {evento}",
     excluirTitulo: "Excluir {nome}?",
     excluirDica: "O produto sai da organização. Esta ação não pode ser desfeita.",
     cancelar: "Cancelar",
@@ -82,8 +90,11 @@ const assinatura = (r: Rascunho) => JSON.stringify({ ...r, nome: r.nome.trim(), 
 export function ProdutoDaOrganizacaoDetalhe() {
     const { id = "" } = useParams();
     const navigate = useNavigate();
+    const location = useLocation();
+    /* Volta para a lista como ela estava (a busca vem na URL, POR-08). */
+    const lista = `${LISTA}${(location.state as { de?: string } | null)?.de ?? ""}`;
     const { t, plural } = useTextosItens();
-    const { carregando, biblioteca, usos, gravar } = useBiblioteca();
+    const { carregando, biblioteca, usos, eventosDoProduto, gravar } = useBiblioteca();
     const novo = id === "novo";
     const produto = useMemo(() => biblioteca.find((p) => p.id === id), [biblioteca, id]);
     const base = useMemo(() => (novo ? VAZIO : produto ? paraRascunho(produto) : null), [novo, produto]);
@@ -101,6 +112,12 @@ export function ProdutoDaOrganizacaoDetalhe() {
     const erroPreco = atual && (!Number.isFinite(atual.precoBase) || atual.precoBase < 0) ? T.precoBaseErro : undefined;
     const mostrar = tentou > 0;
     const usadoEm = produto ? (usos.get(produto.id) ?? 0) : 0;
+    const eventosEmUso = produto ? (eventosDoProduto.get(produto.id) ?? []) : [];
+    /* Leva aos produtos do evento, já com o evento em contexto, para tirar o produto de lá. */
+    const abrirProdutosDoEvento = (eventoId: string) => {
+        setEventoAtual(eventoId);
+        navigate("/backstage/catalogo/produtos");
+    };
 
     const editar = (patch: Partial<Rascunho>) => atual && setRascunho({ id, valor: { ...atual, ...patch } });
     const descartar = () => {
@@ -108,7 +125,7 @@ export function ProdutoDaOrganizacaoDetalhe() {
         setTentou(0);
         setVersao((v) => v + 1);
     };
-    const voltar = () => (mudou ? setSair(true) : navigate(LISTA));
+    const voltar = () => (mudou ? setSair(true) : navigate(lista));
 
     const salvar = async () => {
         if (!atual) return;
@@ -157,7 +174,7 @@ export function ProdutoDaOrganizacaoDetalhe() {
         try {
             await gravar(biblioteca.filter((p) => p.id !== produto.id));
             toast.success(formatar(T.excluido, { nome: produto.nome }));
-            navigate(LISTA);
+            navigate(lista);
         } catch {
             toast.error(t.erroAoSalvar);
         }
@@ -181,6 +198,7 @@ export function ProdutoDaOrganizacaoDetalhe() {
                             ))}
                         </div>
                     ) : (
+                        /* Com a saída no próprio vazio (POR-10): antes o vazio do DS não tinha ação. */
                         <div className="flex items-center justify-center py-16">
                             <EmptyState size="sm">
                                 <EmptyState.Header>
@@ -190,6 +208,11 @@ export function ProdutoDaOrganizacaoDetalhe() {
                                     <EmptyState.Title>{T.naoEncontrado}</EmptyState.Title>
                                     <EmptyState.Description>{T.naoEncontradoDica}</EmptyState.Description>
                                 </EmptyState.Content>
+                                <EmptyState.Footer>
+                                    <Button color="secondary" size="md" iconLeading={ArrowLeft} onClick={() => navigate(lista)}>
+                                        {T.voltarParaLista}
+                                    </Button>
+                                </EmptyState.Footer>
                             </EmptyState>
                         </div>
                     )}
@@ -201,11 +224,11 @@ export function ProdutoDaOrganizacaoDetalhe() {
     return (
         <BackstageLayout showEventContext={false} activeProducer="produtos" showLayoutSwitcher={false}>
             <div className="flex min-w-0 flex-1 flex-col gap-6">
-                <header className="flex flex-col gap-3">
-                    {voltarBotao}
-                    <h1 className={`${TITULO_PAGINA} break-words`}>{novo ? atual.nome.trim() || T.novo : base.nome}</h1>
-                    <p className="text-md text-tertiary">{novo ? T.novoDica : usadoEm ? plural(T.eventos, usadoEm) : T.semEvento}</p>
-                </header>
+                <CabecalhoDaPagina
+                    voltar={{ rotulo: T.voltar, onClick: voltar }}
+                    titulo={novo ? atual.nome.trim() || T.novo : base.nome}
+                    subtitulo={novo ? T.novoDica : usadoEm ? plural(T.eventos, usadoEm) : T.semEvento}
+                />
 
                 <div className="mx-auto flex w-full max-w-[732px] min-w-0 flex-col gap-4">
                     <SecaoDoItem
@@ -243,7 +266,26 @@ export function ProdutoDaOrganizacaoDetalhe() {
                     {!novo && (
                         <div className="flex flex-col gap-2 pt-2">
                             {usadoEm > 0 ? (
-                                <p className="text-sm text-tertiary">{plural(T.excluirEmUso, usadoEm)}</p>
+                                /* POR-07: diz em quais eventos o produto está e leva até eles. Antes só dizia
+                                   "Está em N eventos", sem nome nem caminho. */
+                                <div className="flex flex-col gap-1">
+                                    <p className="text-sm text-tertiary">{plural(T.excluirEmUso, usadoEm)}</p>
+                                    <ul className="flex flex-col items-start gap-1">
+                                        {eventosEmUso.map((evento) => (
+                                            <li key={evento.id}>
+                                                <Button
+                                                    color="link-color"
+                                                    size="md"
+                                                    className="min-h-11 text-left"
+                                                    aria-label={formatar(T.abrirProdutosDoEvento, { evento: evento.nome })}
+                                                    onClick={() => abrirProdutosDoEvento(evento.id)}
+                                                >
+                                                    {evento.nome}
+                                                </Button>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
                             ) : (
                                 <Button color="secondary-destructive" size="md" iconLeading={Trash01} className="self-start" onClick={() => setExcluir(true)}>
                                     {T.excluir}
@@ -253,10 +295,12 @@ export function ProdutoDaOrganizacaoDetalhe() {
                     )}
                 </div>
 
-                <BarraDeSalvar visivel={novo || mudou} salvando={salvando} onSalvar={salvar} onDescartar={novo && !mudou ? voltar : descartar} />
+                {/* Só aparece depois que algo muda, também no produto novo (POR-11): antes ela abria
+                    junto com a tela vazia, pedindo para salvar o que ninguém tinha digitado. */}
+                <BarraDeSalvar visivel={mudou} salvando={salvando} onSalvar={salvar} onDescartar={descartar} />
             </div>
 
-            <ConfirmarSaida aberto={sair} onFechar={() => setSair(false)} onSair={() => navigate(LISTA)} />
+            <ConfirmarSaida aberto={sair} onFechar={() => setSair(false)} onSair={() => navigate(lista)} />
 
             <ModalOverlay isOpen={excluir} onOpenChange={setExcluir} isDismissable>
                 <Modal className="sm:max-w-[400px]">
@@ -282,37 +326,65 @@ export function ProdutoDaOrganizacaoDetalhe() {
     );
 }
 
-const lerComoDataUrl = (file: File) =>
+/**
+ * Lê a imagem, reduz para no máximo LADO_MAXIMO de lado e comprime (POR-09). Sai em WebP quando o
+ * navegador sabe gravar WebP; senão em JPEG (foto) ou PNG (mantém a transparência).
+ */
+const reduzirImagem = (file: File) =>
     new Promise<string>((resolve, reject) => {
-        const r = new FileReader();
-        r.onload = () => resolve(String(r.result));
-        r.onerror = reject;
-        r.readAsDataURL(file);
+        const url = URL.createObjectURL(file);
+        const img = new Image();
+        img.onload = () => {
+            URL.revokeObjectURL(url);
+            const escala = Math.min(1, LADO_MAXIMO / Math.max(img.naturalWidth, img.naturalHeight));
+            const canvas = document.createElement("canvas");
+            canvas.width = Math.max(1, Math.round(img.naturalWidth * escala));
+            canvas.height = Math.max(1, Math.round(img.naturalHeight * escala));
+            const ctx = canvas.getContext("2d");
+            if (!ctx) return reject(new Error("sem canvas"));
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            const webp = canvas.toDataURL("image/webp", 0.85);
+            if (webp.startsWith("data:image/webp")) return resolve(webp);
+            resolve(file.type === "image/png" ? canvas.toDataURL("image/png") : canvas.toDataURL("image/jpeg", 0.85));
+        };
+        img.onerror = () => {
+            URL.revokeObjectURL(url);
+            reject(new Error("imagem ilegível"));
+        };
+        img.src = url;
     });
 
-/** Imagem do produto: mostra a atual e troca por PNG/JPG até 400 KB, gravada como dataUrl. */
+/**
+ * Imagem do produto: mostra a atual e troca por PNG/JPG, reduzida no envio (POR-09).
+ *
+ * POR-12: a prévia fica direto no cartão da seção, sem moldura própria (era uma caixa dentro do
+ * cartão), e o rótulo é o Label do DS ligado ao grupo do campo (era um span solto).
+ */
 function CampoImagem({ imagem, onChange }: { imagem?: string; onChange: (v: string | undefined) => void }) {
+    const idRotulo = useId();
     const escolher = async (file: File) => {
-        if (file.size > MAX_IMAGEM) {
-            toast.error(formatar(T.imagemGrande, { maximo: Math.round(MAX_IMAGEM / 1024), tamanho: Math.round(file.size / 1024) }));
+        if (file.size > MAX_ARQUIVO) {
+            toast.error(formatar(T.imagemGrande, { maximo: Math.round(MAX_ARQUIVO / 1024 / 1024), tamanho: (file.size / 1024 / 1024).toFixed(1).replace(".", ",") }));
             return;
         }
         try {
-            onChange(await lerComoDataUrl(file));
+            onChange(await reduzirImagem(file));
         } catch {
             toast.error(T.imagemErro);
         }
     };
     return (
-        <div className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium text-secondary">{T.imagem}</span>
+        <div role="group" aria-labelledby={idRotulo} className="flex flex-col gap-1.5">
+            <Label id={idRotulo} isRequired={false}>
+                {T.imagem}
+            </Label>
             <Surgir visivel={!!imagem}>
-                <div className="flex items-center gap-3 rounded-xl p-3 ring-1 ring-secondary">
+                <div className="flex items-center gap-3">
                     <span className="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-secondary">
                         {imagem ? <img src={imagem} alt="" className="size-full object-cover" /> : <ShoppingBag01 className="size-6 text-fg-quaternary" aria-hidden="true" />}
                     </span>
                     <span className="min-w-0 flex-1 text-sm text-tertiary">{T.imagemDica}</span>
-                    <ButtonUtility icon={Trash01} color="tertiary" tooltip={T.removerImagem} onClick={() => onChange(undefined)} className="size-11" />
+                    <ButtonUtility icon={Trash01} color="tertiary" tooltip={T.removerImagem} aria-label={T.removerImagem} onClick={() => onChange(undefined)} className="size-11" />
                 </div>
             </Surgir>
             <Surgir visivel={!imagem}>

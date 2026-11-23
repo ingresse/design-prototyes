@@ -13,6 +13,7 @@ import { Tabs } from "@/components/application/tabs/tabs";
 import { EmptyState } from "@/components/application/empty-state/empty-state";
 import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
+import { CabecalhoDaPagina } from "../../components/cabecalho-da-pagina";
 import { AcessoEditor, Avatar, Collapse, ResumoAcesso } from "../components/acesso-ui";
 import {
     EVENTOS,
@@ -29,7 +30,6 @@ import {
     type GrupoV2,
     type MembroV2,
 } from "../data/membros-v2-store";
-import { TITULO_PAGINA } from "@/produtos/backstage/components/titulo-pagina";
 
 type TabKey = "membros" | "grupos";
 
@@ -60,23 +60,25 @@ export function MembrosV2() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.28, ease: "easeOut" }}
             >
-                <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                    <div className="flex flex-col gap-2">
-                        <div className="flex items-center gap-2">
-                            <h1 className={TITULO_PAGINA}>Membros</h1>
-                            <Badge size="md" type="pill-color" color="brand">
-                                v2 · acesso por grupo
-                            </Badge>
-                        </div>
-                        <p className="max-w-2xl text-sm text-tertiary">
+                <CabecalhoDaPagina
+                    titulo="Membros"
+                    selo={
+                        <Badge size="md" type="pill-color" color="brand">
+                            v2 · acesso por grupo
+                        </Badge>
+                    }
+                    subtitulo={
+                        <span className="block max-w-2xl">
                             O acesso é definido <span className="font-medium text-secondary">por pessoa dentro de cada grupo</span>. O grupo define os eventos; você escolhe o que a pessoa pode
                             fazer em cada feature. Quando alguém está em vários grupos, vale o acesso mais amplo.
-                        </p>
-                    </div>
-                    <Button size="md" color="primary" iconLeading={Plus} onClick={() => navigate("/backstage/membros-v2/grupos/novo")}>
-                        Novo grupo
-                    </Button>
-                </header>
+                        </span>
+                    }
+                    acoes={
+                        <Button size="md" color="primary" iconLeading={Plus} onClick={() => navigate("/backstage/membros-v2/grupos/novo")}>
+                            Novo grupo
+                        </Button>
+                    }
+                />
 
                 <main className="flex flex-1 flex-col gap-5">
                     <div className="overflow-hidden rounded-2xl bg-primary ring-1 ring-border-secondary">

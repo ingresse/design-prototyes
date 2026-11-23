@@ -1,29 +1,37 @@
 import { Fragment, useMemo, useState, type ReactNode } from "react";
-import { CheckCircle, ChevronDown, ChevronLeft, ChevronRight, ClockFastForward, SearchLg, XClose } from "@untitledui/icons";
-import { Dialog as AriaDialog, Modal as AriaModal, ModalOverlay as AriaModalOverlay } from "react-aria-components";
+import { ChevronLeft, ChevronRight, SearchLg } from "@untitledui/icons";
+import { motion } from "motion/react";
 import { Bar, CartesianGrid, Cell, ComposedChart, LabelList, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { toast } from "sonner";
-import { MetricsIcon03 } from "@/components/application/metrics/metrics";
 import { Avatar } from "@/components/base/avatar/avatar";
 import { Badge, BadgeWithDot } from "@/components/base/badges/badges";
-import { Button } from "@/components/base/buttons/button";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
 import { Input } from "@/components/base/input/input";
 import { cx } from "@/utils/cx";
+import { useBanco, type CanalMetrica, type Evento as EventoBanco, type HistoricoVendas, type IngressoEmitido, type Pedido as PedidoBanco } from "@/plataforma";
 import { BackstageLayout } from "../../components/Backstage";
+import { useTodosOsEventos } from "../../components/escopo-dos-relatorios";
+import { eventos as eventosDaOrganizacao, useEventoAtual } from "../../eventos/data/eventos";
 import { ExportMenu, RelatorioPageHeader } from "../components/RelatorioPageHeader";
-import { RelatorioFiltersProvider, matchRow, useRelatorioFilters, type FilterFieldDef } from "../components/relatorio-filters";
-import { DetalhesDaLinha, linhaQueAbre, useLinhaAberta } from "../components/TabelaLista";
+import { RelatorioFiltersProvider, inDateRange, matchRow, periodoCompleto, useRelatorioFilters, type FilterFieldDef } from "../components/relatorio-filters";
+import { AbrirDaLinha, AlternarDaArvore, DetalhesDaLinha, PainelLateral, linhaQueAbre, useLinhaAberta } from "../components/TabelaLista";
+import { CarregandoRelatorio, useItemNaUrl, useLinhaFilhaAnimada, useRelatorioCarregando } from "../components/estado-dos-relatorios";
+import { BarraDePontos, MetricaDoRelatorio, PainelDeMetricas } from "../components/visual-dos-relatorios";
 import { useBreakpoint } from "@/hooks/use-breakpoint";
 import { SortableHeader } from "../components/SortableHeader";
 import { useSortableTable } from "../utils/useSortableTable";
-import { EVENT, numberFormatter } from "../data/event";
-import { consultarPeriodo, GRUPOS as GRUPOS_EVENTO, PERIODO_PADRAO } from "@/reports/event-dataset";
+import { dataEHora, numberFormatter, useEventoDosRelatorios } from "../data/event";
+import { useDatasetDoEvento, type DatasetDoEvento } from "../data/vendas-banco";
 
-const HIDE_TREND_AND_MENU = "[&_.top-4.right-4]:hidden [&_.md\\:top-5]:hidden [&_p+div]:hidden";
 
 /* ------------------------------------------------------------------ */
-/*  Mock data — árvore Setor → Ingresso → Tipo                        */
+/*  Dados do evento em contexto (ou de todos os eventos, BKS-27)       */
+/*                                                                     */
+/*  Totais, faixas de horário e validação por grupo vêm do dataset do  */
+/*  banco (`useDatasetDoEvento`), no período aplicado. A lista de      */
+/*  portadores junta os ingressos emitidos de verdade (tabela          */
+/*  `ingressos`) com portadores fictícios gerados do catálogo e do     */
+/*  histórico de vendas do próprio evento.                             */
 /* ------------------------------------------------------------------ */
 
 interface AcessoNode {
@@ -34,31 +42,11 @@ interface AcessoNode {
     children?: AcessoNode[];
 }
 
-// Fonte única: acesso do evento (src/reports), agregado do período completo.
-const ACESSO = consultarPeriodo(null).acesso;
+type AcessoDoPeriodo = ReturnType<DatasetDoEvento["consultar"]>["acesso"];
+
 const slugSetor = (s: string) => s.toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, "").replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
-
-// Setor (grupo de ingresso) → Inteira/Meia. Validados = comparecimento (taxa por grupo).
-const setores: AcessoNode[] = ACESSO.porGrupo.map((g) => {
-    const id = slugSetor(g.grupo);
-    const rate = g.vendido ? g.validado / g.vendido : 0;
-    const inteira = Math.round(g.vendido * 0.6);
-    const meia = g.vendido - inteira;
-    return {
-        id,
-        nome: g.grupo,
-        children: [
-            { id: `${id}-int`, nome: "Inteira", vendidos: inteira, validados: Math.round(inteira * rate) },
-            { id: `${id}-mei`, nome: "Meia-entrada", vendidos: meia, validados: Math.round(meia * rate) },
-        ],
-    };
-});
-
-// Check-ins ao longo da noite do evento (faixas de horário do dataset).
-const CHECKINS_FAIXAS: { hora: string; checkins: number }[] = ACESSO.porFaixaHorario.map((f) => ({ hora: f.faixa, checkins: f.checkins }));
-
-const TOTAL_VALIDADOS = ACESSO.validados;
-const TOTAL_VENDIDOS = ACESSO.validados + ACESSO.naoValidados;
+const p2 = (n: number) => String(n).padStart(2, "0");
+const pad = (n: number, len: number) => String(n).padStart(len, "0");
 
 const sumVendidos = (node: AcessoNode): number => (node.children?.length ? node.children.reduce((s, c) => s + sumVendidos(c), 0) : node.vendidos ?? 0);
 const sumValidados = (node: AcessoNode): number => (node.children?.length ? node.children.reduce((s, c) => s + sumValidados(c), 0) : node.validados ?? 0);
@@ -78,9 +66,12 @@ const ACESSO_STATUS: Record<StatusAcesso, { label: string; color: "success" | "g
 
 interface PortadorAcesso {
     id: string;
+    /** Nome do evento do ingresso: a origem da linha em "Todos os eventos" (REL-227). */
+    evento: string;
     sessaoId: string;
     portador: string;
     emailPortador: string;
+    /** Vazio nos ingressos reais: o banco não guarda CPF do titular. */
     cpf: string;
     comprador: string;
     emailComprador: string;
@@ -91,71 +82,323 @@ interface PortadorAcesso {
     canal: string;
     grupo: string;
     tipoIngresso: string;
-    operadorVendas: string;
     portao?: string;
     status: StatusAcesso;
     horario?: string;
+    /** Quando o ingresso foi comprado (ms): filtra a lista pelo período. */
+    compradoEm: number;
 }
 
-const CANAIS = ["Online", "Offline"];
-const GRUPOS = GRUPOS_EVENTO.filter((g) => g.categoria === "Ingressos").map((g) => g.nome);
-const TIPOS = ["Inteira", "Meia-entrada", "Cortesia"];
-const PORTOES = ACESSO.porPortao.map((p) => p.portao);
-const OPERADORES = ["Giovanna Batista", "Josué da Fonseca Lima", "Bilheteria Praia de Carneiros", "Loja Oficial Réveillon Carneiros"];
-const SESSAO = { id: "reveillon-31-12", descricao: "31/12 · 22h00 · Praia de Carneiros" };
+/** Setor (grupo de ingressos) do catálogo, com o nome usado no dataset. */
+interface SetorDoEvento {
+    nome: string;
+    eventoId: string;
+    /** Tipos de ingresso do setor, com o peso de venda do histórico. */
+    tipos: { nome: string; peso: number }[];
+    sessoes: { id: string; descricao: string }[];
+    portoes: string[];
+}
 
-const NOMES = [
-    "João Barbosa", "Mariana Lopes", "Gabriel Souza", "Rafael Silva", "Camila Rodrigues",
-    "Pedro Henrique Costa", "Beatriz Carvalho", "Davi Marinho", "Vinicius Cayres", "Letícia Andrade",
-    "Thiago Nogueira", "Aline Ribeiro", "Larissa Almeida", "Roberto Santos", "Fernanda Dias",
-    "Lucas Pereira", "Juliana Martins", "Bruno Azevedo", "Patrícia Gomes", "Marcelo Tavares",
-    "Carolina Freitas", "Eduardo Ramos", "Sofia Cardoso", "Henrique Moraes",
-];
+/** O que o gerador precisa de cada evento: início da sessão, dia a dia de vendas e canais. */
+interface EventoDoAcesso {
+    id: string;
+    nome: string;
+    /** Minuto do dia em que a primeira sessão começa. */
+    inicioMin: number;
+    /** Primeiro dia da série de vendas (00:00). */
+    inicio: Date;
+    pesoDoDia: number[];
+    canais: { nome: string; peso: number }[];
+}
+
+interface AcessoDoEvento {
+    setores: Map<string, SetorDoEvento>;
+    eventos: Map<string, EventoDoAcesso>;
+    portadores: PortadorAcesso[];
+    grupos: string[];
+    tipos: string[];
+    canais: string[];
+    consultar: DatasetDoEvento["consultar"];
+}
+
+const CANAL_DA_METRICA: Record<CanalMetrica, string> = { online: "Online", bilheteria: "Bilheteria", cortesia: "Cortesia" };
+const CANAL_DO_PEDIDO: Record<PedidoBanco["canal"], string> = { site: "Online", link: "Online", app: "Online", bilheteria: "Bilheteria", cortesia: "Cortesia" };
+const ORDEM_DOS_CANAIS = ["Online", "Bilheteria", "Cortesia"];
+
+/** Faixas de entrada (minutos a partir do início da sessão, 30 min cada), com pico meia hora antes. */
+const LARGURA_DA_FAIXA = 30;
+const FAIXAS_DE_ENTRADA = [-150, -120, -90, -60, -30, 0, 30, 60].map((offset) => ({ offset, peso: Math.exp(-((offset + 30) ** 2) / (2 * 55 ** 2)) }));
+const minutoDoDia = (min: number) => ((min % 1440) + 1440) % 1440;
+const rotuloDaFaixa = (min: number) => `${p2(Math.floor(minutoDoDia(min) / 60))}h${p2(minutoDoDia(min) % 60)}`;
+const horaDe = (min: number) => `${p2(Math.floor(minutoDoDia(min) / 60))}:${p2(minutoDoDia(min) % 60)}`;
+
+/** Nomes fictícios e genéricos para os portadores gerados. */
+const PRIMEIROS = ["Ana", "Bruno", "Camila", "Diego", "Eduarda", "Felipe", "Gabriela", "Henrique", "Isabela", "João", "Larissa", "Lucas", "Mariana", "Nicolas", "Olívia", "Pedro", "Rafaela", "Samuel", "Tatiana", "Vinícius", "Beatriz", "Caio", "Letícia", "Mateus"];
+const SOBRENOMES = ["Silva", "Souza", "Oliveira", "Santos", "Lima", "Costa", "Pereira", "Almeida", "Ribeiro", "Carvalho", "Gomes", "Martins", "Rocha", "Barbosa", "Araújo", "Melo", "Cardoso", "Teixeira", "Moreira", "Nunes"];
 const PROVEDORES = ["gmail.com", "hotmail.com", "outlook.com", "yahoo.com"];
 
-const pad = (n: number, len: number) => String(n).padStart(len, "0");
-const pick = <T,>(arr: T[], i: number): T => arr[((i % arr.length) + arr.length) % arr.length];
+/** Até quantos portadores fictícios por evento (o histórico pode ter dezenas de milhares de ingressos). */
+const MAXIMO_POR_EVENTO = 3000;
 
-// Dataset determinístico (estável entre recargas) — 247 portadores.
-const portadores: PortadorAcesso[] = Array.from({ length: 247 }, (_, idx) => {
-    const nome = pick(NOMES, idx * 7 + (idx % 5));
-    const primeiro = nome.split(" ")[0].toLowerCase();
-    const ultimo = nome.split(" ").slice(-1)[0].toLowerCase();
-    const email = `${primeiro}.${ultimo}${(idx % 9) + 1}@${pick(PROVEDORES, idx)}`;
-    const validado = (idx * 13 + 7) % 100 < 78; // ~78% validados
-    const sessao = SESSAO;
-    return {
-        id: String(idx + 1),
-        sessaoId: sessao.id,
-        portador: nome,
-        emailPortador: email,
-        cpf: pad((12000000000 + idx * 83729123) % 100000000000, 11),
-        comprador: nome,
-        emailComprador: email,
-        idTransacao: `TRX-${840192 - idx}`,
-        idIngresso: `ING-${pad(451 + idx, 4)}`,
-        qrCode: pad((idx * 48271) % 100000000, 8),
-        sessao: sessao.descricao,
-        canal: pick(CANAIS, idx + (idx % 3)),
-        grupo: pick(GRUPOS, idx * 3 + (idx % 6)),
-        tipoIngresso: pick(TIPOS, idx * 2 + (idx % 3)),
-        operadorVendas: pick(OPERADORES, idx + (idx % 4)),
-        portao: validado ? pick(PORTOES, idx) : undefined,
-        status: validado ? "validado" : "pendente",
-        horario: validado ? `${20 + (idx % 4)}:${pad((idx * 7) % 60, 2)}` : undefined,
+function mulberry32(seed: number) {
+    return function () {
+        seed |= 0;
+        seed = (seed + 0x6d2b79f5) | 0;
+        let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
     };
-});
+}
+const sementeDe = (s: string) => [...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7);
+const emailDe = (nome: string, sufixo: number, provedor: string) =>
+    `${nome.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z]+/g, ".")}${sufixo}@${provedor}`;
+
+function descricaoDaSessao(ev: EventoBanco, inicio: string, todos: boolean) {
+    const d = new Date(inicio);
+    // Um formato de data só (T9): "26 nov 2026, 20:00, Local".
+    const base = `${dataEHora(d)}${ev.local ? `, ${ev.local}` : ""}`;
+    return todos ? `${ev.nome}, ${base}` : base;
+}
+
+/** Junta os setores do evento (por nome, como no dataset) e o contexto de geração dele. */
+function lerCatalogo(ev: EventoBanco, historico: HistoricoVendas | undefined, todos: boolean, setores: Map<string, SetorDoEvento>, eventos: Map<string, EventoDoAcesso>) {
+    const nomeDoGrupo = (g: string) => (todos ? `${g} (${ev.nome})` : g);
+    for (const s of ev.sessoes)
+        for (const g of s.grupos) {
+            const nome = nomeDoGrupo(g.nome);
+            const setor = setores.get(nome) ?? { nome, eventoId: ev.id, tipos: [], sessoes: [], portoes: [] };
+            if (!setor.sessoes.some((x) => x.id === s.id)) setor.sessoes.push({ id: s.id, descricao: descricaoDaSessao(ev, s.inicio, todos) });
+            if (g.acesso && !setor.portoes.includes(g.acesso)) setor.portoes.push(g.acesso);
+            for (const t of g.ingressos) {
+                const peso = t.lotes.reduce((n, l) => n + (historico?.porLote[l.id] ?? 0), 0);
+                const atual = setor.tipos.find((x) => x.nome === t.nome);
+                if (atual) atual.peso += peso;
+                else setor.tipos.push({ nome: t.nome, peso });
+            }
+            setores.set(nome, setor);
+        }
+    // Setor sem histórico: os tipos dividem por igual.
+    for (const setor of setores.values()) if (setor.eventoId === ev.id && setor.tipos.every((t) => t.peso === 0)) setor.tipos.forEach((t) => (t.peso = 1));
+
+    const primeira = ev.sessoes.map((s) => new Date(s.inicio)).sort((a, b) => a.getTime() - b.getTime())[0] ?? new Date(ev.data);
+    const serie = historico?.serie ?? [];
+    const hoje = new Date();
+    const canais = historico
+        ? (Object.entries(historico.porCanal) as [CanalMetrica, number][]).filter(([, n]) => n > 0).map(([c, n]) => ({ nome: CANAL_DA_METRICA[c], peso: n }))
+        : [];
+    eventos.set(ev.id, {
+        id: ev.id,
+        nome: ev.nome,
+        inicioMin: primeira.getHours() * 60 + primeira.getMinutes(),
+        inicio: new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() - serie.length),
+        pesoDoDia: serie.map(([i]) => i),
+        canais: canais.length ? canais : [{ nome: "Online", peso: 1 }],
+    });
+}
+
+/** Ingressos emitidos de verdade (válidos e utilizados), com o titular e o comprador reais. */
+function portadoresDosIngressos(ingressos: IngressoEmitido[], pedidos: Record<string, PedidoBanco>, evs: Map<string, EventoBanco>, setores: Map<string, SetorDoEvento>, todos: boolean): PortadorAcesso[] {
+    return ingressos.flatMap((i): PortadorAcesso[] => {
+        const ev = evs.get(i.eventoId);
+        // Transferido: o código antigo não entra mais (o ingresso novo aparece no lugar). Cancelado não entra.
+        if (!ev || (i.status !== "valido" && i.status !== "utilizado")) return [];
+        const pedido = pedidos[i.pedidoId];
+        const grupo = todos ? `${i.rotulo.grupo} (${ev.nome})` : i.rotulo.grupo;
+        const sessao = ev.sessoes.find((s) => s.id === i.sessaoId);
+        const validado = i.status === "utilizado";
+        const entrada = new Date(i.atualizadoEm);
+        return [
+            {
+                id: i.id,
+                evento: ev.nome,
+                sessaoId: i.sessaoId,
+                portador: i.titular.nome,
+                emailPortador: i.titular.email,
+                cpf: "",
+                comprador: pedido?.comprador.nome ?? i.titular.nome,
+                emailComprador: pedido?.comprador.email ?? i.titular.email,
+                idTransacao: i.pedidoId,
+                idIngresso: i.id,
+                qrCode: i.codigo,
+                sessao: sessao ? descricaoDaSessao(ev, sessao.inicio, todos) : "—",
+                canal: pedido ? CANAL_DO_PEDIDO[pedido.canal] : "Online",
+                grupo,
+                tipoIngresso: i.rotulo.ingresso,
+                portao: validado ? (i.rotulo.acesso ?? setores.get(grupo)?.portoes[0]) : undefined,
+                status: validado ? "validado" : "pendente",
+                horario: validado ? horaDe(entrada.getHours() * 60 + entrada.getMinutes()) : undefined,
+                compradoEm: new Date(i.emitidoEm).getTime(),
+            },
+        ];
+    });
+}
+
+/**
+ * Portadores fictícios que completam os vendidos de cada grupo (menos os ingressos reais já
+ * listados): tipos, sessões, canais e dias de compra sorteados pelo histórico do evento, e a
+ * mesma taxa de validação do dataset. Determinístico por evento e setor.
+ */
+function gerarPortadores(porGrupo: AcessoDoPeriodo["porGrupo"], setores: Map<string, SetorDoEvento>, eventos: Map<string, EventoDoAcesso>, reaisPorGrupo: Map<string, number>): PortadorAcesso[] {
+    const faltam = porGrupo.map((g) => ({ g, n: Math.max(0, g.vendido - (reaisPorGrupo.get(g.grupo) ?? 0)) }));
+    const porEvento = new Map<string, number>();
+    for (const { g, n } of faltam) {
+        const s = setores.get(g.grupo);
+        if (s) porEvento.set(s.eventoId, (porEvento.get(s.eventoId) ?? 0) + n);
+    }
+    const rows: PortadorAcesso[] = [];
+    for (const { g, n } of faltam) {
+        const setor = setores.get(g.grupo);
+        const ev = setor ? eventos.get(setor.eventoId) : undefined;
+        if (!setor || !ev || n <= 0 || setor.sessoes.length === 0) continue;
+        const quantidade = Math.round(n * Math.min(1, MAXIMO_POR_EVENTO / (porEvento.get(ev.id) || 1)));
+        const taxa = g.vendido ? g.validado / g.vendido : 0;
+        const rng = mulberry32(sementeDe(`${ev.id}|${setor.nome}`));
+        const um = <T,>(arr: T[]) => arr[Math.floor(rng() * arr.length)];
+        const pesado = <T extends { peso: number }>(arr: T[]): T => {
+            let r = rng() * arr.reduce((s, x) => s + x.peso, 0);
+            for (const x of arr) {
+                r -= x.peso;
+                if (r <= 0) return x;
+            }
+            return arr[arr.length - 1];
+        };
+        const acumulado = ev.pesoDoDia.reduce<number[]>((acc, p) => [...acc, (acc[acc.length - 1] ?? 0) + Math.max(0, p)], []);
+        const totalDias = acumulado[acumulado.length - 1] ?? 0;
+        const tipos = setor.tipos.filter((t) => t.peso > 0);
+        const slug = slugSetor(setor.nome);
+        for (let i = 0; i < quantidade; i++) {
+            const tipo = tipos.length ? pesado(tipos).nome : setor.nome;
+            const sessao = um(setor.sessoes);
+            const canal = pesado(ev.canais).nome;
+            const validado = rng() < taxa;
+            const comprado = new Date(ev.inicio);
+            if (totalDias > 0) {
+                const r = rng() * totalDias;
+                const dia = acumulado.findIndex((a) => a >= r);
+                comprado.setDate(comprado.getDate() + (dia < 0 ? ev.pesoDoDia.length - 1 : dia));
+            }
+            comprado.setHours(Math.floor(rng() * 24), Math.floor(rng() * 60));
+            const comprador = `${um(PRIMEIROS)} ${um(SOBRENOMES)}`;
+            const emailComprador = emailDe(comprador, Math.floor(rng() * 90 + 10), um(PROVEDORES));
+            const paraOutro = rng() < 0.3;
+            const portador = paraOutro ? `${um(PRIMEIROS)} ${um(SOBRENOMES)}` : comprador;
+            const emailPortador = paraOutro ? emailDe(portador, Math.floor(rng() * 90 + 10), um(PROVEDORES)) : emailComprador;
+            const faixa = pesado(FAIXAS_DE_ENTRADA);
+            const entrada = ev.inicioMin + faixa.offset + Math.floor(rng() * LARGURA_DA_FAIXA);
+            rows.push({
+                id: `${ev.id}-${slug}-${i}`,
+                evento: ev.nome,
+                sessaoId: sessao.id,
+                portador,
+                emailPortador,
+                cpf: String(Math.floor(rng() * 9e10 + 1e10)),
+                comprador,
+                emailComprador,
+                idTransacao: `TRX-${Math.floor(rng() * 9e6 + 1e6)}`,
+                idIngresso: `ING-${pad(Math.floor(rng() * 1e6), 6)}`,
+                qrCode: pad(Math.floor(rng() * 1e8), 8),
+                sessao: sessao.descricao,
+                canal,
+                grupo: setor.nome,
+                tipoIngresso: tipo,
+                portao: validado && setor.portoes.length ? um(setor.portoes) : undefined,
+                status: validado ? "validado" : "pendente",
+                horario: validado ? horaDe(entrada) : undefined,
+                compradoEm: comprado.getTime(),
+            });
+        }
+    }
+    return rows;
+}
+
+/** Catálogo, portadores e consulta do evento em contexto (ou de todos), refeitos quando o banco muda. */
+function useAcessoDoEvento(): AcessoDoEvento {
+    const ctx = useEventoAtual();
+    const todos = useTodosOsEventos();
+    const { tabelas } = useBanco();
+    const dataset = useDatasetDoEvento();
+    return useMemo(() => {
+        const ids = todos ? eventosDaOrganizacao.map((e) => e.id) : [ctx.id];
+        const evs = new Map(ids.map((id) => [id, tabelas.eventos[id]] as const).filter((x): x is [string, EventoBanco] => !!x[1]));
+        const setores = new Map<string, SetorDoEvento>();
+        const eventos = new Map<string, EventoDoAcesso>();
+        for (const ev of evs.values()) lerCatalogo(ev, tabelas.historico[ev.id], todos, setores, eventos);
+
+        const reais = portadoresDosIngressos(Object.values(tabelas.ingressos ?? {}), tabelas.pedidos, evs, setores, todos);
+        const reaisPorGrupo = new Map<string, number>();
+        for (const r of reais) reaisPorGrupo.set(r.grupo, (reaisPorGrupo.get(r.grupo) ?? 0) + 1);
+        const ficticios = gerarPortadores(dataset.consultar(null).acesso.porGrupo, setores, eventos, reaisPorGrupo);
+        // Reais primeiro (o que o produtor acabou de emitir), depois os fictícios; cada bloco da compra mais recente para a mais antiga.
+        const recentes = (a: PortadorAcesso, b: PortadorAcesso) => b.compradoEm - a.compradoEm;
+        const portadores = [...reais.sort(recentes), ...ficticios.sort(recentes)];
+
+        const unicos = (lista: string[]) => [...new Set(lista)];
+        const canais = unicos(portadores.map((p) => p.canal)).sort((a, b) => ORDEM_DOS_CANAIS.indexOf(a) - ORDEM_DOS_CANAIS.indexOf(b));
+        return {
+            setores,
+            eventos,
+            portadores,
+            grupos: unicos([...setores.keys(), ...reais.map((r) => r.grupo)]),
+            tipos: unicos([...[...setores.values()].flatMap((s) => s.tipos.map((t) => t.nome)), ...reais.map((r) => r.tipoIngresso)]),
+            canais,
+            consultar: dataset.consultar,
+        };
+    }, [ctx.id, todos, tabelas.eventos, tabelas.historico, tabelas.ingressos, tabelas.pedidos, dataset]);
+}
+
+/** Divide `total` pelos pesos, pelo maior resto, para a soma bater. */
+function repartir(total: number, pesos: number[]): number[] {
+    const soma = pesos.reduce((a, b) => a + b, 0);
+    if (!soma) return pesos.map((_, i) => (i === 0 ? total : 0));
+    const brutos = pesos.map((p) => (total * p) / soma);
+    const base = brutos.map(Math.floor);
+    let resto = total - base.reduce((a, b) => a + b, 0);
+    for (const [, i] of brutos.map((b, i) => [b - base[i], i] as const).sort((a, b) => b[0] - a[0])) {
+        if (resto <= 0) break;
+        base[i]++;
+        resto--;
+    }
+    return base;
+}
+
+/** Grupo → tipos de ingresso do catálogo, com vendidos e validados do período divididos pelo peso de venda de cada tipo. */
+function arvoreDeSetores(porGrupo: AcessoDoPeriodo["porGrupo"], setores: Map<string, SetorDoEvento>): AcessoNode[] {
+    return porGrupo.map((g, idx) => {
+        const id = `${idx}-${slugSetor(g.grupo)}`;
+        const tipos = setores.get(g.grupo)?.tipos.filter((t) => t.peso > 0) ?? [];
+        if (tipos.length === 0) return { id, nome: g.grupo, vendidos: g.vendido, validados: g.validado };
+        const vendidos = repartir(g.vendido, tipos.map((t) => t.peso));
+        const validados = repartir(g.validado, vendidos);
+        return {
+            id,
+            nome: g.grupo,
+            children: tipos.map((t, i) => ({ id: `${id}-${i}`, nome: t.nome, vendidos: vendidos[i], validados: Math.min(vendidos[i], validados[i]) })),
+        };
+    });
+}
+
+/** Check-ins por faixa de 30 min em torno do início da sessão de cada evento. */
+function faixasDeEntrada(porGrupo: AcessoDoPeriodo["porGrupo"], setores: Map<string, SetorDoEvento>, eventos: Map<string, EventoDoAcesso>) {
+    const somaPesos = FAIXAS_DE_ENTRADA.reduce((s, f) => s + f.peso, 0);
+    const porFaixa = new Map<string, { ordem: number; checkins: number }>();
+    for (const g of porGrupo) {
+        const ev = eventos.get(setores.get(g.grupo)?.eventoId ?? "");
+        if (!ev) continue;
+        for (const f of FAIXAS_DE_ENTRADA) {
+            const min = ev.inicioMin + f.offset;
+            const rotulo = rotuloDaFaixa(min);
+            const atual = porFaixa.get(rotulo) ?? { ordem: min, checkins: 0 };
+            atual.ordem = Math.min(atual.ordem, min);
+            atual.checkins += (g.validado * f.peso) / somaPesos;
+            porFaixa.set(rotulo, atual);
+        }
+    }
+    return [...porFaixa.entries()].sort((a, b) => a[1].ordem - b[1].ordem).map(([hora, v]) => ({ hora, checkins: Math.round(v.checkins) }));
+}
 
 /* ------------------------------------------------------------------ */
-/*  Filtros — campos do slideout global                                */
+/*  Filtros — campos do slideout global (opções do próprio evento)     */
 /* ------------------------------------------------------------------ */
-
-const FILTER_FIELDS: FilterFieldDef[] = [
-    { id: "canal", label: "Canal", multi: { options: CANAIS.map((c) => ({ id: c, label: c })) } },
-    { id: "grupo", label: "Grupo", multi: { options: GRUPOS.map((g) => ({ id: g, label: g })) } },
-    { id: "tipoIngresso", label: "Tipo de ingresso", multi: { options: TIPOS.map((t) => ({ id: t, label: t })) } },
-    { id: "status", label: "Status", multi: { options: [{ id: "Validado", label: "Validado" }, { id: "Não validado", label: "Não validado" }] } },
-];
 
 function getFieldValue(p: PortadorAcesso, field: string): string {
     switch (field) {
@@ -174,6 +417,7 @@ function getFieldValue(p: PortadorAcesso, field: string): string {
 
 const formatCPF = (raw: string) => {
     const d = raw.replace(/\D/g, "").slice(0, 11);
+    if (!d) return "—";
     if (d.length > 9) return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}`;
     if (d.length > 6) return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6)}`;
     if (d.length > 3) return `${d.slice(0, 3)}.${d.slice(3)}`;
@@ -192,9 +436,22 @@ const getInitials = (name: string) => {
 /* ------------------------------------------------------------------ */
 
 export function Acesso() {
+    // Assina o evento dos relatórios: a janela de vendas muda com o evento e o escopo, e o período inicial acompanha.
+    const ev = useEventoDosRelatorios();
+    const dados = useAcessoDoEvento();
+    const carregando = useRelatorioCarregando();
+    const fields = useMemo<FilterFieldDef[]>(
+        () => [
+            { id: "canal", label: "Canal", multi: { options: dados.canais.map((c) => ({ id: c, label: c })) } },
+            { id: "grupo", label: "Grupo", multi: { options: dados.grupos.map((g) => ({ id: g, label: g })) } },
+            { id: "tipoIngresso", label: "Tipo de ingresso", multi: { options: dados.tipos.map((t) => ({ id: t, label: t })) } },
+            { id: "status", label: "Status", multi: { options: [{ id: "Validado", label: "Validado" }, { id: "Não validado", label: "Não validado" }] } },
+        ],
+        [dados.canais, dados.grupos, dados.tipos],
+    );
     return (
         <BackstageLayout activeSection="relatorios" activeItem="acesso">
-            <RelatorioFiltersProvider fields={FILTER_FIELDS} initialDateRange={PERIODO_PADRAO}>
+            <RelatorioFiltersProvider fields={fields} key={`${ev.salesStart}|${ev.salesEnd}`} initialDateRange={periodoCompleto()}>
                 <div className="flex min-w-0 flex-1 flex-col">
                     <main className="flex flex-1 flex-col gap-6">
                         <RelatorioPageHeader
@@ -202,7 +459,7 @@ export function Acesso() {
                             splitControls
                             actions={<ExportMenu onExport={(f) => toast.success(`Exportando ${f.toUpperCase()}`, { description: "A lista de entradas será exportada." })} />}
                         />
-                        <AcessoBody />
+                        {carregando ? <CarregandoRelatorio rotulo="Carregando acesso" /> : <AcessoBody dados={dados} />}
                     </main>
                 </div>
             </RelatorioFiltersProvider>
@@ -210,30 +467,31 @@ export function Acesso() {
     );
 }
 
-const AcessoBody = () => {
-    const { sessao, filters } = useRelatorioFilters();
+const AcessoBody = ({ dados }: { dados: AcessoDoEvento }) => {
+    const { dateRange, sessao, filters } = useRelatorioFilters();
 
     const filteredPortadores = useMemo(() => {
         const validFilters = filters.filter((f) => f.field && f.value);
-        return portadores.filter((p) => {
+        return dados.portadores.filter((p) => {
             if (sessao !== "all" && p.sessaoId !== sessao) return false;
+            if (!inDateRange(new Date(p.compradoEm), dateRange)) return false;
             if (!matchRow(p, validFilters, getFieldValue)) return false;
             return true;
         });
-    }, [sessao, filters]);
+    }, [dados.portadores, dateRange, sessao, filters]);
 
-    // Totais reais do histórico de validação (23.181 validados de 23.909 vendidos).
-    const totals = useMemo(() => ({ validados: TOTAL_VALIDADOS, pendentes: TOTAL_VENDIDOS - TOTAL_VALIDADOS, total: TOTAL_VENDIDOS }), []);
-
-    // Check-ins por faixa de 15 min — histórico real de validação do jogo.
-    const faixas = CHECKINS_FAIXAS;
+    // Acesso do período aplicado (vendidos do evento × taxa de validação do dataset).
+    const acesso = useMemo(() => dados.consultar(dateRange).acesso, [dados, dateRange]);
+    const totals = useMemo(() => ({ validados: acesso.validados, pendentes: acesso.naoValidados, total: acesso.validados + acesso.naoValidados }), [acesso]);
+    const faixas = useMemo(() => faixasDeEntrada(acesso.porGrupo, dados.setores, dados.eventos), [acesso, dados.setores, dados.eventos]);
+    const setores = useMemo(() => arvoreDeSetores(acesso.porGrupo, dados.setores), [acesso, dados.setores]);
 
     // Árvore filtrada pelos grupos selecionados (se houver).
     const selectedGrupos = useMemo(() => {
         const grupoFilter = filters.find((f) => f.field === "grupo" && f.value);
         return grupoFilter ? new Set(grupoFilter.value.split(",").filter(Boolean)) : null;
     }, [filters]);
-    const setoresView = useMemo(() => (selectedGrupos ? setores.filter((s) => selectedGrupos.has(s.nome)) : setores), [selectedGrupos]);
+    const setoresView = useMemo(() => (selectedGrupos ? setores.filter((s) => selectedGrupos.has(s.nome)) : setores), [setores, selectedGrupos]);
 
     return (
         <>
@@ -249,63 +507,26 @@ const AcessoBody = () => {
 /*  Métricas                                                          */
 /* ------------------------------------------------------------------ */
 
-const MetricsRow = ({ validados, pendentes, total }: { validados: number; pendentes: number; total: number }) => (
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-        <MetricsIcon03 icon={CheckCircle} title={numberFormatter.format(validados)} subtitle="Validados" change={null} changeTrend="positive" actions={false} className={HIDE_TREND_AND_MENU} />
-        <MetricsIcon03 icon={ClockFastForward} title={numberFormatter.format(pendentes)} subtitle="Não validados" change={null} changeTrend="positive" actions={false} className={HIDE_TREND_AND_MENU} />
-        <ValidacaoMetric validados={validados} total={total} />
-    </div>
-);
-
-const ValidacaoMetric = ({ validados, total }: { validados: number; total: number }) => {
+// O painel de métricas comum dos relatórios (REL-221); a taxa usa a barra de pontos, como a ocupação de Vendas.
+const MetricsRow = ({ validados, pendentes, total }: { validados: number; pendentes: number; total: number }) => {
     const pct = total === 0 ? 0 : Math.round((validados / total) * 100);
-    const legendas = [{ label: "Validado", pct, className: "bg-fg-brand-primary" }];
     return (
-        <div className="rounded-xl bg-primary shadow-xs ring-1 ring-secondary ring-inset">
-            <div className="flex h-full items-center gap-6 px-4 py-5 md:px-5">
-                <ValidacaoDonut value={pct} />
-                <ul className="flex min-w-0 flex-1 flex-col gap-2.5">
-                    {legendas.map((item) => (
-                        <li key={item.label} className="flex items-center justify-between gap-3">
-                            <span className="flex items-center gap-2 text-sm text-secondary">
-                                <span className={cx("size-2.5 shrink-0 rounded-full", item.className)} />
-                                {item.label}
-                            </span>
-                            <span className="text-sm font-semibold text-primary tabular-nums">{item.pct}%</span>
-                        </li>
-                    ))}
-                </ul>
-            </div>
-        </div>
+        <PainelDeMetricas rotulo="Resumo do acesso" className="sm:grid-cols-3 xl:grid-cols-3">
+            <MetricaDoRelatorio rotulo="Validados" valor={numberFormatter.format(validados)} destaque />
+            <MetricaDoRelatorio rotulo="Não validados" valor={numberFormatter.format(pendentes)} />
+            <MetricaDoRelatorio rotulo="Taxa de validação" valor={`${pct}%`} complemento={`${numberFormatter.format(validados)} de ${numberFormatter.format(total)}`}>
+                <BarraDePontos valor={validados} total={total} pontos={32} className="mt-1" />
+            </MetricaDoRelatorio>
+        </PainelDeMetricas>
     );
 };
-
-const ValidacaoDonut = ({ value }: { value: number }) => {
-    const size = 92;
-    const stroke = 12;
-    const radius = (size - stroke) / 2;
-    const circumference = 2 * Math.PI * radius;
-    const offset = circumference - (value / 100) * circumference;
-    return (
-        <div className="shrink-0" style={{ width: size, height: size }}>
-            <svg width={size} height={size} className="-rotate-90">
-                <circle cx={size / 2} cy={size / 2} r={radius} fill="none" strokeWidth={stroke} style={{ stroke: "var(--color-bg-quaternary)" }} />
-                <circle cx={size / 2} cy={size / 2} r={radius} fill="none" strokeWidth={stroke} strokeLinecap="round" strokeDasharray={circumference} strokeDashoffset={offset} className="stroke-fg-brand-primary transition-[stroke-dashoffset] duration-500" />
-            </svg>
-        </div>
-    );
-};
-
-/* ------------------------------------------------------------------ */
-/*  Entradas por faixa de horário                                     */
-/* ------------------------------------------------------------------ */
 
 const ChartTooltip = ({ active, label, payload }: { active?: boolean; label?: string; payload?: { value: number | string }[] }) => {
     if (!active || !payload || payload.length === 0) return null;
     return (
         <div className="rounded-lg bg-primary-solid px-3 py-2.5 shadow-xl ring-1 ring-secondary_alt">
             <p className="mb-1 text-sm font-semibold text-white">{label}</p>
-            <p className="text-sm text-white/70">
+            <p className="text-sm text-tooltip-supporting-text">
                 <span className="font-semibold text-white">{numberFormatter.format(Number(payload[0].value))}</span> check-ins
             </p>
         </div>
@@ -348,6 +569,7 @@ const ValidacaoPorSetorCard = ({ setores: setoresView }: { setores: AcessoNode[]
     const celular = !useBreakpoint("md");
     const linha = useLinhaAberta<{ titulo: string; apoio?: string; vendidos: number; validados: number }>();
     const [expanded, setExpanded] = useState<Set<string>>(new Set());
+    const entrada = useLinhaFilhaAnimada();
     const indent = (depth: number) => 16 + depth * 24;
 
     const toggleExpanded = (id: string) =>
@@ -386,25 +608,30 @@ const ValidacaoPorSetorCard = ({ setores: setoresView }: { setores: AcessoNode[]
 
             const labelClass = depth === 0 ? "font-medium text-primary" : "text-secondary";
 
+            const abrirDetalhes = () => linha.abrir({ titulo: node.nome, apoio: parent?.nome, vendidos, validados });
             out.push(
                 <Fragment key={node.id}>
-                    <tr
-                        {...(hasChildren
-                            ? linhaQueAbre(true, () => toggleExpanded(node.id))
-                            : linhaQueAbre(celular, () => linha.abrir({ titulo: node.nome, apoio: parent?.nome, vendidos, validados })))}
-                        aria-expanded={hasChildren ? isExpanded : undefined}
+                    {/* Linha de tabela, não botão (REL-226): o botão da 1ª célula alterna o grupo; as filhas entram com transição (REL-224). */}
+                    <motion.tr
+                        {...(depth > 0 ? entrada : {})}
+                        {...(hasChildren ? { onClick: () => toggleExpanded(node.id), style: { cursor: "pointer" } } : linhaQueAbre(celular, abrirDetalhes))}
                         className={cx("border-b border-secondary transition duration-100 ease-linear", depth === 0 ? "bg-primary" : "bg-secondary/60", (hasChildren || celular) && "cursor-pointer hover:bg-primary_hover")}
                     >
                         <td className="py-3.5 pr-4 text-sm" style={{ paddingLeft: indent(depth) }}>
-                            <span className="flex items-center gap-2">
-                                <ChevronDown aria-hidden="true" className={cx("size-4 shrink-0 text-fg-quaternary transition-transform duration-150", !hasChildren && "invisible", isExpanded && "rotate-180")} />
-                                <span className={cx("line-clamp-2", labelClass)}>{node.nome}</span>
-                            </span>
+                            {hasChildren ? (
+                                <AlternarDaArvore aberto={isExpanded} onAlternar={() => toggleExpanded(node.id)}>
+                                    <span title={node.nome} className={cx("line-clamp-2", labelClass)}>{node.nome}</span>
+                                </AlternarDaArvore>
+                            ) : (
+                                <AbrirDaLinha ativa={celular} onAbrir={abrirDetalhes} className={cx("line-clamp-2 pl-6", labelClass)}>
+                                    {node.nome}
+                                </AbrirDaLinha>
+                            )}
                         </td>
                         <td className="hidden px-4 py-3.5 text-right text-sm text-tertiary md:table-cell">{numberFormatter.format(vendidos)}</td>
                         <td className="hidden px-4 py-3.5 text-right text-sm text-tertiary md:table-cell">{numberFormatter.format(validados)}</td>
                         <td className="px-4 py-3.5">{bar}</td>
-                    </tr>
+                    </motion.tr>
                     {hasChildren && isExpanded && renderNodes(node.children!, depth + 1, node)}
                 </Fragment>,
             );
@@ -424,7 +651,7 @@ const ValidacaoPorSetorCard = ({ setores: setoresView }: { setores: AcessoNode[]
                     </colgroup>
                     <thead className="bg-secondary">
                         <tr className="border-b border-secondary text-left">
-                            <th className="px-4 py-3 text-sm font-semibold text-tertiary">Grupo · Ingresso · Tipo</th>
+                            <th className="px-4 py-3 text-sm font-semibold text-tertiary">Grupo e tipo de ingresso</th>
                             <th className="hidden px-4 py-3 text-right text-sm font-semibold text-tertiary md:table-cell">Vendidos</th>
                             <th className="hidden px-4 py-3 text-right text-sm font-semibold text-tertiary md:table-cell">Validados</th>
                             <th className="px-4 py-3 text-sm font-semibold text-tertiary">Taxa de validação</th>
@@ -516,14 +743,17 @@ const SORT_ACCESSORS: Partial<Record<string, (p: PortadorAcesso) => string | num
 const ControleDeAcessoCard = ({ rows }: { rows: PortadorAcesso[] }) => {
     const [search, setSearch] = useState("");
     const [page, setPage] = useState(1);
-    const [selected, setSelected] = useState<PortadorAcesso | null>(null);
+    // Entrada aberta na URL (?item=<id>, REL-223): recarregar ou mandar o link abre a mesma.
+    const aberta = useItemNaUrl();
+    const selected = useMemo(() => (aberta.id ? (rows.find((p) => p.id === aberta.id) ?? null) : null), [rows, aberta.id]);
+    const todos = useTodosOsEventos();
 
     const searched = useMemo(() => {
         const term = search.trim().toLowerCase();
         const digits = search.replace(/\D/g, "");
         if (!term) return rows;
         return rows.filter((p) => {
-            const haystack = [p.portador, p.comprador, p.idTransacao, p.idIngresso, p.qrCode, p.grupo, p.canal, p.tipoIngresso].join(" ").toLowerCase();
+            const haystack = [p.portador, p.comprador, p.idTransacao, p.idIngresso, p.qrCode, p.grupo, p.canal, p.tipoIngresso, p.evento].join(" ").toLowerCase();
             const cpfMatch = digits.length > 0 && p.cpf.includes(digits);
             return haystack.includes(term) || cpfMatch;
         });
@@ -588,24 +818,29 @@ const ControleDeAcessoCard = ({ rows }: { rows: PortadorAcesso[] }) => {
                             const isLast = i === pageRows.length - 1;
                             const statusMeta = ACESSO_STATUS[p.status];
                             return (
+                                // Linha de tabela, não botão (REL-226): o nome do portador é o botão que abre os detalhes.
                                 <tr
                                     key={p.id}
-                                    role="button"
-                                    tabIndex={0}
-                                    onClick={() => setSelected(p)}
-                                    onKeyDown={(e) => {
-                                        if (e.key === "Enter" || e.key === " ") {
-                                            e.preventDefault();
-                                            setSelected(p);
-                                        }
-                                    }}
+                                    onClick={() => aberta.abrir(p.id)}
                                     className={cx("group cursor-pointer transition duration-100 ease-linear hover:bg-primary_hover", !isLast && "border-b border-secondary")}
                                 >
                                     <td className="px-4 py-3">
                                         <div className="flex items-center gap-3">
-                                            <Avatar size="sm" initials={getInitials(p.portador)} status={p.status === "validado" ? "online" : undefined} />
+                                            {/* Sem o ponto verde de "online": validado é status, e o selo da coluna Status já diz (REL-229). */}
+                                            <Avatar size="sm" initials={getInitials(p.portador)} />
                                             <div className="flex min-w-0 flex-col">
-                                                <span className="truncate text-sm font-medium text-primary">{p.portador}</span>
+                                                <button
+                                                    type="button"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        aberta.abrir(p.id);
+                                                    }}
+                                                    className="truncate rounded-sm text-left text-sm font-medium text-primary outline-focus-ring focus-visible:outline-2"
+                                                >
+                                                    {p.portador}
+                                                </button>
+                                                {/* Em "Todos os eventos", de qual evento é a entrada (REL-227). */}
+                                                {todos && <span className="truncate text-sm text-tertiary">{p.evento}</span>}
                                                 <span className="truncate text-sm text-tertiary tabular-nums">{formatCPF(p.cpf)}</span>
                                                 <span className="truncate text-sm text-tertiary sm:hidden">{statusMeta.label}</span>
                                             </div>
@@ -648,7 +883,7 @@ const ControleDeAcessoCard = ({ rows }: { rows: PortadorAcesso[] }) => {
                 </div>
             </div>
 
-            <AcessoDetailsSlideOut isOpen={selected !== null} row={selected} onClose={() => setSelected(null)} />
+            {selected && <AcessoDetailsSlideOut row={selected} onClose={aberta.fechar} />}
         </Card>
     );
 };
@@ -657,72 +892,51 @@ const ControleDeAcessoCard = ({ rows }: { rows: PortadorAcesso[] }) => {
 /*  Slideout — detalhes da entrada                                    */
 /* ------------------------------------------------------------------ */
 
-const AcessoDetailsSlideOut = ({ isOpen, row, onClose }: { isOpen: boolean; row: PortadorAcesso | null; onClose: () => void }) => (
-    <AriaModalOverlay
-        isOpen={isOpen}
-        onOpenChange={(open) => {
-            if (!open) onClose();
-        }}
-        isDismissable
-        className="fixed inset-0 z-50 flex justify-end outline-hidden"
+// Detalhes no painel lateral do DS (REL-225), no lugar do modal feito à mão de 520 px.
+const AcessoDetailsSlideOut = ({ row, onClose }: { row: PortadorAcesso; onClose: () => void }) => (
+    <PainelLateral
+        titulo="Detalhes da entrada"
+        subtitulo={
+            <BadgeWithDot size="sm" color={ACESSO_STATUS[row.status].color} type="pill-color" className="w-fit">
+                {row.horario ? `${ACESSO_STATUS[row.status].label} às ${row.horario}` : ACESSO_STATUS[row.status].label}
+            </BadgeWithDot>
+        }
+        onFechar={onClose}
     >
-        <AriaModal className={({ isEntering, isExiting }) => cx("h-full w-full max-w-[520px] bg-primary shadow-xl outline-hidden", isEntering && "duration-300 ease-out animate-in slide-in-from-right", isExiting && "duration-200 ease-in animate-out slide-out-to-right")}>
-            <AriaDialog className="flex h-full flex-col outline-hidden">
-                <div className="flex items-center justify-between gap-4 border-b border-secondary px-6 py-5">
-                    <h2 className="text-lg font-semibold text-primary">Detalhes da entrada</h2>
-                    <ButtonUtility size="sm" color="tertiary" icon={XClose} tooltip="Fechar" onClick={onClose} />
-                </div>
+        <div className="flex flex-col divide-y divide-secondary">
+            <section className="flex flex-col gap-3 py-5">
+                <h3 className="text-md font-semibold text-primary">Portador</h3>
+                <dl className="flex flex-col gap-3">
+                <DetailRow label="Nome" value={row.portador} />
+                <DetailRow label="E-mail" value={row.emailPortador} isEmail />
+                <DetailRow label="CPF" value={formatCPF(row.cpf)} />
+                </dl>
+            </section>
 
-                <div className="flex min-h-0 flex-1 flex-col divide-y divide-secondary overflow-y-auto px-6">
-                    {row && (
-                        <>
-                            <div className="flex items-center gap-4 py-6">
-                                <Avatar size="lg" initials={getInitials(row.portador)} status={row.status === "validado" ? "online" : undefined} />
-                                <div className="flex min-w-0 flex-1 flex-col gap-1">
-                                    <span className="truncate text-md font-semibold text-primary">{row.portador}</span>
-                                    <BadgeWithDot size="sm" color={ACESSO_STATUS[row.status].color} type="pill-color" className="w-fit">
-                                        {ACESSO_STATUS[row.status].label}
-                                        {row.horario ? ` · ${row.horario}` : ""}
-                                    </BadgeWithDot>
-                                </div>
-                            </div>
+            <section className="flex flex-col gap-3 py-5">
+                <h3 className="text-md font-semibold text-primary">Ingresso</h3>
+                <dl className="flex flex-col gap-3">
+                <DetailRow label="Evento" value={row.evento} />
+                <DetailRow label="Code" value={row.qrCode} isMono />
+                <DetailRow label="ID do ingresso" value={row.idIngresso} isMono />
+                <DetailRow label="ID da transação" value={row.idTransacao} isMono />
+                <DetailRow label="Sessão" value={row.sessao} />
+                <DetailRow label="Canal" value={row.canal} />
+                <DetailRow label="Grupo de ingressos" value={row.grupo} />
+                <DetailRow label="Tipo de ingresso" value={row.tipoIngresso} />
+                <DetailRow label="Portão de entrada" value={row.portao ?? "—"} />
+                </dl>
+            </section>
 
-                            <div className="flex flex-col gap-3 py-6">
-                                <h3 className="text-md font-semibold text-primary">Portador</h3>
-                                <DetailRow label="Nome" value={row.portador} />
-                                <DetailRow label="E-mail" value={row.emailPortador} isEmail />
-                                <DetailRow label="CPF" value={formatCPF(row.cpf)} />
-                            </div>
-
-                            <div className="flex flex-col gap-3 py-6">
-                                <h3 className="text-md font-semibold text-primary">Ingresso</h3>
-                                <DetailRow label="Code" value={row.qrCode} isMono />
-                                <DetailRow label="ID do ingresso" value={row.idIngresso} isMono />
-                                <DetailRow label="ID da transação" value={row.idTransacao} isMono />
-                                <DetailRow label="Sessão" value={row.sessao} />
-                                <DetailRow label="Canal" value={row.canal} />
-                                <DetailRow label="Grupo de ingressos" value={row.grupo} />
-                                <DetailRow label="Tipo de ingresso" value={row.tipoIngresso} />
-                                <DetailRow label="Portão de entrada" value={row.portao ?? "—"} />
-                            </div>
-
-                            <div className="flex flex-col gap-3 py-6">
-                                <h3 className="text-md font-semibold text-primary">Comprador</h3>
-                                <DetailRow label="Nome" value={row.comprador} />
-                                <DetailRow label="E-mail" value={row.emailComprador} isEmail />
-                            </div>
-                        </>
-                    )}
-                </div>
-
-                <div className="flex items-center justify-end gap-2 border-t border-secondary px-6 py-4">
-                    <Button size="sm" color="secondary" onClick={onClose}>
-                        Fechar
-                    </Button>
-                </div>
-            </AriaDialog>
-        </AriaModal>
-    </AriaModalOverlay>
+            <section className="flex flex-col gap-3 py-5">
+                <h3 className="text-md font-semibold text-primary">Comprador</h3>
+                <dl className="flex flex-col gap-3">
+                <DetailRow label="Nome" value={row.comprador} />
+                <DetailRow label="E-mail" value={row.emailComprador} isEmail />
+                </dl>
+            </section>
+        </div>
+    </PainelLateral>
 );
 
 const DetailRow = ({ label, value, isEmail = false, isMono = false }: { label: string; value: string; isEmail?: boolean; isMono?: boolean }) => (

@@ -882,7 +882,7 @@ const MeioPagamentosCard = ({ rows }: { rows: MeioPagamentoRow[] }) => {
             </Card>
         );
     }
-    const fillFor = (id: string) => MEIO_FILL[id] ?? "var(--color-utility-gray-400)";
+    const fillFor = (id: string) => MEIO_FILL[id] ?? "var(--color-utility-neutral-400)";
     const totalValor = rows.reduce((s, r) => s + r.valor, 0);
     const pctOf = (v: number) => (totalValor === 0 ? 0 : Math.round((v / totalValor) * 100));
     return (

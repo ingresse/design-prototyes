@@ -79,6 +79,26 @@ export interface Filtro {
     valor: string;
     opcoes: { id: string; label: string }[];
     onChange: (v: string) => void;
+    /** Muitas opções (sessões, grupos): o filtro vira combobox com busca (UI-LST-001). */
+    comBusca?: boolean;
+}
+
+/** Filtro com busca: digitar filtra as opções; sair sem escolher volta ao que estava escolhido. */
+function FiltroComBusca({ f }: { f: Filtro }) {
+    const atual = f.opcoes.find((o) => o.id === f.valor);
+    return (
+        <Select.ComboBox
+            size="sm"
+            aria-label={f.rotulo}
+            placeholder={atual?.label ?? f.rotulo}
+            shortcut={false}
+            items={f.opcoes}
+            selectedKey={f.valor}
+            onSelectionChange={(k) => k && f.onChange(String(k))}
+        >
+            {(o) => <Select.Item id={o.id}>{o.label}</Select.Item>}
+        </Select.ComboBox>
+    );
 }
 
 /**
@@ -113,10 +133,14 @@ export function BarraDeFiltros({
             </div>
             <div className="grid grid-cols-2 gap-3 md:flex md:flex-wrap">
                 {filtros.map((f) => (
-                    <div key={f.id} className="md:w-48">
-                        <Select size="sm" aria-label={f.rotulo} selectedKey={f.valor} onSelectionChange={(k) => k && f.onChange(String(k))} items={f.opcoes}>
-                            {(o) => <Select.Item id={o.id}>{o.label}</Select.Item>}
-                        </Select>
+                    <div key={f.id} className={f.comBusca ? "md:w-60" : "md:w-48"}>
+                        {f.comBusca ? (
+                            <FiltroComBusca f={f} />
+                        ) : (
+                            <Select size="sm" aria-label={f.rotulo} selectedKey={f.valor} onSelectionChange={(k) => k && f.onChange(String(k))} items={f.opcoes}>
+                                {(o) => <Select.Item id={o.id}>{o.label}</Select.Item>}
+                            </Select>
+                        )}
                     </div>
                 ))}
             </div>
@@ -194,7 +218,18 @@ export function useMostrarMais<T>(lista: T[], passo = PASSO_MOSTRAR) {
     };
 }
 
-export function BotaoMostrarMais({ restantes, onClick, passo = PASSO_MOSTRAR }: { restantes: number; onClick: () => void; passo?: number }) {
+export function BotaoMostrarMais({
+    restantes,
+    onClick,
+    passo = PASSO_MOSTRAR,
+    unidade,
+}: {
+    restantes: number;
+    onClick: () => void;
+    passo?: number;
+    /** O que falta, no singular e no plural (ex.: grupos); padrão "itens". */
+    unidade?: { one: string; other: string };
+}) {
     const { plural, numero } = useTextosItens();
     if (restantes <= 0) return null;
     return (
@@ -202,20 +237,28 @@ export function BotaoMostrarMais({ restantes, onClick, passo = PASSO_MOSTRAR }: 
             <Button color="secondary" size="sm" onClick={onClick}>
                 {formatar(T.mostrarMais, { n: numero(Math.min(passo, restantes)) })}
             </Button>
-            <span className="text-sm text-tertiary">{plural(T.restantes, restantes)}</span>
+            <span className="text-sm text-tertiary">{unidade ? plural({ one: `Falta ${unidade.one}`, other: `Faltam ${unidade.other}` }, restantes) : plural(T.restantes, restantes)}</span>
         </div>
     );
 }
 
-/** Faixa da simulação de escala: diz que nada é gravado e oferece sair. */
+/**
+ * Faixa da simulação de escala, em toda tela que lê o catálogo (ITM-85): diz o tamanho simulado, que nada
+ * é gravado e oferece sair.
+ */
 export function AvisoDeEscala() {
-    const { simulado } = useCatalogo();
-    const { numero } = useTextosItens();
-    if (!simulado) return null;
+    const { escala } = useCatalogo();
+    const { plural, locale } = useTextosItens();
+    if (!escala) return null;
+    const tamanho = new Intl.ListFormat(locale, { style: "long", type: "conjunction" }).format([
+        plural({ one: "{n} sessão", other: "{n} sessões" }, escala.sessoes),
+        plural({ one: "{n} grupo por sessão", other: "{n} grupos por sessão" }, escala.grupos),
+        plural({ one: "{n} ingresso", other: "{n} ingressos" }, escala.total),
+    ]);
     return (
         <div role="status" className="flex flex-col gap-2 rounded-xl bg-warning-primary px-4 py-3 md:flex-row md:items-center md:justify-between">
             <p className="text-sm text-warning-primary">
-                {formatar("Catálogo simulado com {n} ingressos para testar a escala. Nada do que você mudar aqui é gravado.", { n: numero(simulado) })}
+                {formatar("Catálogo simulado com {tamanho}, para testar a escala. Nada do que você mudar aqui é gravado.", { tamanho })}
             </p>
             <Button color="secondary" size="sm" onClick={sairDaSimulacao}>
                 Sair da simulação

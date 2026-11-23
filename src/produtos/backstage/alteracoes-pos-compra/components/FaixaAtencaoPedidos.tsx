@@ -1,7 +1,7 @@
 import { useEffect, useId, useState } from "react";
 import { AlertTriangle, ChevronDown } from "@untitledui/icons";
 import { cx } from "@/utils/cx";
-import { formatarContagem } from "./pos-compra-ui";
+import { FOCO, formatarContagem } from "./pos-compra-ui";
 import { getConta, getEvento, type Pedido } from "../data/pos-compra-store";
 
 const JANELA_URGENTE_MS = 15 * 60 * 1000;
@@ -62,7 +62,7 @@ export function FaixaAtencaoPedidos({ pedidos, onAbrir }: { pedidos: Pedido[]; o
                 onClick={() => setRecolhida((atual) => !atual)}
                 aria-expanded={!recolhida}
                 aria-controls={idLista}
-                className="flex w-full items-center gap-2 py-3 text-left text-sm font-semibold text-warning-primary md:hidden"
+                className={cx("flex w-full items-center gap-2 py-3 text-left text-sm font-semibold text-warning-primary md:hidden", FOCO)}
             >
                 <AlertTriangle className="size-4 shrink-0 text-fg-warning-secondary" aria-hidden="true" />
                 <span className="min-w-0 flex-1 truncate">{titulo}</span>
@@ -89,6 +89,7 @@ export function FaixaAtencaoPedidos({ pedidos, onAbrir }: { pedidos: Pedido[]; o
                                        de 36px para 66px. */
                                     "max-md:flex-col max-md:gap-0.5 max-md:py-3",
                                     "md:items-center md:justify-between md:py-2",
+                                    FOCO,
                                 )}
                             >
                                 <span className="min-w-0 truncate text-sm text-primary">

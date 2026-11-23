@@ -1,10 +1,18 @@
 import { useEffect, useState } from "react";
+import { cx } from "@/utils/cx";
 import { motion, useReducedMotion } from "motion/react";
 import { CampoDeParticulas } from "../../components/campo-de-particulas";
 import { useCorDasParticulas } from "../utils/cor-das-particulas";
 
 /** Tempo para ler as duas linhas e achar o painel. Clicar em qualquer lugar encerra antes (GDC-14). */
 const PERMANENCIA_MS = 9000;
+
+/**
+ * TEMPORÁRIO (20/11/2026, pedido do Victor para trabalhar no visual): o holofote fica sempre na tela,
+ * junto com o painel do guia, sem os 9 s e sem fechar no clique. Voltar para `false` restaura o padrão
+ * (GDC-14).
+ */
+export const HOLOFOTE_FIXO = false;
 
 /**
  * O teste de usabilidade cobre o protótipo com perguntas e briefings e marca o <body> com
@@ -39,7 +47,7 @@ const TEXTO = {
  * lugar; o clique segue para o que estava embaixo (pointer-events-none), então clicar numa opção do
  * guia já faz a ação (GDC-14). É aria-hidden: a informação que importa está no painel.
  */
-export function HolofoteDoGuia({ onConcluir }: { onConcluir: () => void }) {
+export function HolofoteDoGuia({ onConcluir, noTopo = false }: { onConcluir: () => void; noTopo?: boolean }) {
     const reduzir = useReducedMotion();
     const cor = useCorDasParticulas("holofote");
 
@@ -47,7 +55,7 @@ export function HolofoteDoGuia({ onConcluir }: { onConcluir: () => void }) {
 
     // Os 9 s e o clique para fechar só valem com o holofote à vista (no teste, depois do "Começar").
     useEffect(() => {
-        if (coberto) return;
+        if (coberto || HOLOFOTE_FIXO) return;
         const t = window.setTimeout(onConcluir, PERMANENCIA_MS);
         // Cliques na camada do teste de usabilidade (barra da tarefa) não contam: o holofote é do protótipo.
         const fechar = (e: PointerEvent) => {
@@ -65,22 +73,24 @@ export function HolofoteDoGuia({ onConcluir }: { onConcluir: () => void }) {
 
     return (
         <motion.div aria-hidden="true" className="pointer-events-none fixed inset-0 z-20 overflow-hidden" {...(reduzir ? {} : ESMAECER)}>
-            {/* Camadas, na ordem do DOM: escurecer, acender, texturizar. */}
-            <div className="absolute inset-0 bg-[radial-gradient(190%_180%_at_100%_100%,var(--color-bg-overlay)_0%,color-mix(in_srgb,var(--color-bg-overlay)_58%,transparent)_38%,transparent_100%)]" />
-            <div className="absolute inset-0 bg-[linear-gradient(to_right,var(--color-bg-warning-solid)_32%,var(--color-bg-error-solid)_92%)] opacity-80 [mask-image:radial-gradient(82%_82%_at_100%_100%,black_18%,transparent_70%)]" />
+            {/* Camadas, na ordem do DOM: desfocar, escurecer, acender, texturizar. No topo, a luz sai do canto superior direito (GDC-16). */}
+            {/* Desfoca a tela inteira por trás, junto com o escurecer; o painel do guia fica acima e nítido (GDC-14). */}
+            <div className="absolute inset-0 backdrop-blur-[6px]" />
+            <div className={cx("absolute inset-0 bg-[radial-gradient(190%_180%_at_100%_100%,var(--color-bg-overlay)_0%,color-mix(in_srgb,var(--color-bg-overlay)_58%,transparent)_38%,transparent_100%)]", noTopo && "sm:bg-[radial-gradient(190%_180%_at_100%_0%,var(--color-bg-overlay)_0%,color-mix(in_srgb,var(--color-bg-overlay)_58%,transparent)_38%,transparent_100%)]")} />
+            <div className={cx("absolute inset-0 bg-[linear-gradient(to_right,var(--color-bg-warning-solid)_32%,var(--color-bg-error-solid)_92%)] opacity-80 [mask-image:radial-gradient(82%_82%_at_100%_100%,black_18%,transparent_70%)]", noTopo && "sm:[mask-image:radial-gradient(82%_82%_at_100%_0%,black_18%,transparent_70%)]")} />
             <CampoDeParticulas
                 cor={cor}
                 densidade={1}
                 escala={5}
                 parada={0}
-                className="absolute inset-0 size-full [mask-image:radial-gradient(75%_75%_at_100%_100%,black_0%,transparent_72%)]"
+                className={cx("absolute inset-0 size-full [mask-image:radial-gradient(75%_75%_at_100%_100%,black_0%,transparent_72%)]", noTopo && "sm:[mask-image:radial-gradient(75%_75%_at_100%_0%,black_0%,transparent_72%)]")}
             />
             <motion.div
-                className="absolute inset-x-6 bottom-[23rem] flex flex-col items-start gap-3 sm:inset-x-auto sm:right-[26rem] sm:bottom-10 sm:max-w-md"
+                className={cx("absolute inset-x-6 bottom-[23rem] flex flex-col items-start gap-3 sm:inset-x-auto sm:right-[26rem] sm:bottom-10 sm:max-w-md", noTopo && "sm:top-24 sm:bottom-auto")}
                 {...(reduzir ? {} : TEXTO)}
             >
-                <h2 className="text-display-sm font-semibold text-[#fff]">Evento criado! Agora, configure as vendas</h2>
-                <p className="text-md text-[#fff]/80">Siga as etapas do guia para criar os ingressos, programar as vendas e publicar o evento.</p>
+                <h2 className="text-display-sm font-semibold text-primary_on-brand">Evento criado! Agora, configure as vendas</h2>
+                <p className="text-md text-secondary_on-brand">Siga as etapas do guia para criar os ingressos, programar as vendas e publicar o evento.</p>
             </motion.div>
         </motion.div>
     );

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import { AnimatePresence, motion } from "motion/react";
-import { ArrowLeft, ChevronDown, Trash01 } from "@untitledui/icons";
+import { ChevronDown, Trash01 } from "@untitledui/icons";
 import { toast } from "sonner";
 import { Badge } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
@@ -10,10 +10,10 @@ import { Checkbox } from "@/components/base/checkbox/checkbox";
 import { Input } from "@/components/base/input/input";
 import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
+import { CabecalhoDaPagina } from "../../components/cabecalho-da-pagina";
 import { CheckboxSelect } from "../../components/CheckboxSelect";
 import { AcessoEditor, Avatar, Collapse } from "../components/acesso-ui";
 import { EVENTOS, MEMBROS_V2, acessosIniciais, addGrupoV2, membroV2ById, normalizarAcesso, type FeatureAccess } from "../data/membros-v2-store";
-import { TITULO_PAGINA } from "@/produtos/backstage/components/titulo-pagina";
 
 interface MembroDraft {
     membroId: string;
@@ -79,17 +79,15 @@ export function NovoGrupoV2() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.28, ease: "easeOut" }}
             >
-                <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex items-center gap-3">
-                        <Button size="sm" color="secondary" iconLeading={ArrowLeft} onClick={voltar}>
-                            Membros
+                <CabecalhoDaPagina
+                    voltar={{ rotulo: "Membros", onClick: voltar }}
+                    titulo="Novo grupo"
+                    acoes={
+                        <Button size="md" color="primary" isDisabled={!podeCriar} onClick={criar}>
+                            Criar grupo
                         </Button>
-                        <h1 className={TITULO_PAGINA}>Novo grupo</h1>
-                    </div>
-                    <Button size="md" color="primary" isDisabled={!podeCriar} onClick={criar}>
-                        Criar grupo
-                    </Button>
-                </header>
+                    }
+                />
 
                 <main className="mx-auto flex w-full max-w-[860px] flex-1 flex-col gap-6">
                     {/* Nome */}

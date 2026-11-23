@@ -12,9 +12,10 @@ import { Input } from "@/components/base/input/input";
 import { Select } from "@/components/base/select/select";
 import { DURACAO_TRANSICAO, Surgir } from "@/components/foundations/transicao";
 import type { OpcaoDaPergunta, Pergunta, TipoDePergunta } from "@/plataforma";
-import { TITULO_PAGINA } from "@/produtos/backstage/components/titulo-pagina";
+import { CabecalhoDaPagina } from "../../components/cabecalho-da-pagina";
+import { AvisoDeEscala } from "../../itens/components/escala";
 import { BackstageLayout } from "../../components/Backstage";
-import { SeletorDeIngressos } from "../../aberturas-de-vendas/components/SeletorDeIngressos";
+import { SeletorDeIngressos } from "../../components/seletor-de-ingressos";
 import { BarraDeSalvar, ConfirmarSaida, EscolhaEmLista, ListaDeEscolhas, SecaoDoItem, irParaPrimeiroErro } from "../../itens/components/comuns";
 import { SeletorDeLista } from "../../itens/components/SeletorDeLista";
 import { novoId, salvarPerguntas, useCatalogo } from "../../itens/data/catalogo";
@@ -176,7 +177,8 @@ function Editor({ original }: { original: Pergunta | null }) {
         try {
             await salvarPerguntas(evento, prox);
             toast.success(nova ? T.criada : T.salvo);
-            if (nova) navigate(`${LISTA}/${limpa.id}`, { replace: true });
+            // Criou: volta para a lista de perguntas (QST-17, pedido do Victor em 23/11/2026). Editar fica na tela.
+            if (nova) navigate(LISTA, { replace: true });
             else setTentou(false);
         } catch {
             toast.error(T.erro);
@@ -194,12 +196,8 @@ function Editor({ original }: { original: Pergunta | null }) {
 
     return (
         <div className="flex min-w-0 flex-1 flex-col gap-6">
-            <header className="flex flex-col gap-3">
-                <Button color="tertiary" size="md" iconLeading={ArrowLeft} onClick={voltar} className="-ml-3 self-start">
-                    {T.voltar}
-                </Button>
-                <h1 className={`${TITULO_PAGINA} break-words`}>{original?.titulo ?? (p.titulo.trim() || T.nova)}</h1>
-            </header>
+            <CabecalhoDaPagina voltar={{ rotulo: T.voltar, onClick: voltar }} titulo={original?.titulo ?? (p.titulo.trim() || T.nova)} />
+            <AvisoDeEscala />
 
             <div className="mx-auto flex w-full max-w-[732px] flex-col gap-4">
                 <SecaoDoItem
@@ -283,7 +281,8 @@ function Editor({ original }: { original: Pergunta | null }) {
                     </Surgir>
                 </SecaoDoItem>
 
-                <SecaoDoItem titulo={T.onde} alerta={p.itens.length === 0}>
+                {/* Pergunta nova não nasce em alerta: o aviso de "sem itens" aparece depois de tentar salvar (M11). */}
+                <SecaoDoItem titulo={T.onde} alerta={(tentou || !nova) && p.itens.length === 0}>
                     <p className="text-sm text-tertiary">{T.ondeDica}</p>
                     <ListaDeEscolhas>
                         <EscolhaEmLista
@@ -299,7 +298,7 @@ function Editor({ original }: { original: Pergunta | null }) {
                             onEscolher={() => setSeletor("combos")}
                         />
                     </ListaDeEscolhas>
-                    <Surgir visivel={p.itens.length === 0}>
+                    <Surgir visivel={(tentou || !nova) && p.itens.length === 0}>
                         <p role="status" className="text-sm text-warning-primary">
                             {T.semItens}
                         </p>

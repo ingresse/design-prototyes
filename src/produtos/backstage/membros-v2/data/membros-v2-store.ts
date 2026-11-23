@@ -1,5 +1,16 @@
 import { useSyncExternalStore } from "react";
-import { EVENTOS, eventoById } from "../../components/membros-store";
+import type { EventoRef } from "../../components/membros-store";
+
+/** Eventos de exemplo desta exploração (sem rota desde 21/11/2026, BKS-35). */
+const EVENTOS: EventoRef[] = [
+    { id: "e-botafogo", nome: "Botafogo x Chapecoense - Copa do Brasil" },
+    { id: "e-coquetel", nome: "Coquetel de Rebranding" },
+    { id: "e-nutris", nome: "ENCONTRO NUTRIS DA CASA" },
+    { id: "e-operacoes", nome: "Evento TESTE (Operações Entretenimento)" },
+    { id: "e-teste", nome: "Teste" },
+    { id: "e-samba", nome: "Samba Independente" },
+];
+const eventoById = (id: string) => EVENTOS.find((e) => e.id === id);
 
 /* ------------------------------------------------------------------ */
 /*  Membros v2 — permissionamento avançado por ACL (none/read/write).  */

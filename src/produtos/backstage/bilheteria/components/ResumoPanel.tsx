@@ -1,5 +1,6 @@
-import { InfoCircle, Ticket02, Trash01 } from "@untitledui/icons";
+import { Ticket02, Trash01 } from "@untitledui/icons";
 import { Button } from "@/components/base/buttons/button";
+import { ButtonUtility } from "@/components/base/buttons/button-utility";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { cx } from "@/utils/cx";
 import { cartLinesByKind, cartTotal, type Cart, type CartKind, type CartLine } from "../data/carrinho";
@@ -47,7 +48,7 @@ export function ResumoPanel({ cart, onRemove, onRemoveAll, showTotal = true, adv
         <div className={cx("flex min-h-[408px] flex-col rounded-xl bg-primary ring-1 ring-border-secondary", className)}>
             <div className="flex items-center justify-between gap-3 px-4 py-3">
                 <h2 className="text-sm font-semibold text-primary">Resumo</h2>
-                <Button size="sm" color="link-gray" onClick={onRemoveAll}>
+                <Button size="sm" color="link-gray" onClick={onRemoveAll} className="max-md:min-h-11">
                     Remover todos
                 </Button>
             </div>
@@ -65,10 +66,10 @@ export function ResumoPanel({ cart, onRemove, onRemoveAll, showTotal = true, adv
 
             {showTotal && (
                 <div className="flex flex-col gap-3 border-t border-secondary px-4 py-4">
-                    <div className="flex items-center gap-1.5">
+                    {/* O "ⓘ" saiu: não explicava nada. A taxa depende do meio, escolhido no passo seguinte. */}
+                    <div className="flex flex-col">
                         <p className="text-md font-semibold text-primary">{formatBRL(cartTotal(cart))}</p>
-                        <span className="text-sm text-tertiary">+ taxas</span>
-                        <InfoCircle className="size-4 text-fg-quaternary" aria-hidden="true" />
+                        <span className="text-sm text-tertiary">Mais as taxas do meio de pagamento, escolhido no próximo passo.</span>
                     </div>
                     {/* A ação fica junto do total, onde a decisão de seguir é tomada. */}
                     {advanceButton && <div className="flex flex-col [&>*]:w-full">{advanceButton}</div>}
@@ -87,13 +88,14 @@ const ResumoLine = ({ line, onRemove }: { line: CartLine; onRemove: () => void }
             {line.date && <p className="text-sm text-quaternary">{line.date}</p>}
             {line.composicao && <ComboComposition entries={line.composicao} />}
         </div>
-        <button
-            type="button"
+        {/* Lixeira do DS (`ButtonUtility`), com o nome na dica; 44 px de alvo no celular. */}
+        <ButtonUtility
+            size="xs"
+            color="tertiary"
+            icon={Trash01}
+            tooltip={`Remover ${line.name}`}
             onClick={onRemove}
-            aria-label={`Remover ${line.name} do resumo`}
-            className="shrink-0 rounded-md p-1 text-fg-quaternary transition duration-100 ease-linear hover:text-fg-error-secondary"
-        >
-            <Trash01 className="size-4" aria-hidden="true" />
-        </button>
+            className="shrink-0 max-md:size-11 max-md:justify-center"
+        />
     </div>
 );

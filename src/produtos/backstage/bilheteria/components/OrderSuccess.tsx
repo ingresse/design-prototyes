@@ -51,7 +51,8 @@ export function OrderSuccess({
         <div className="flex w-full max-w-[800px] flex-col items-center gap-5 pt-12">
             <div className="flex flex-col items-center gap-3">
                 <FeaturedIcon icon={CheckCircle} color="success" theme="dark" size="lg" className="rounded-full" />
-                <h2 className="text-display-xs font-bold text-primary">Pedido emitido!</h2>
+                {/* O título diz o que aconteceu: no link, nenhum ingresso saiu ainda (BIL-50). */}
+                <h2 className="text-display-xs font-bold text-primary">{channel === "link" ? "Link de pagamento criado" : "Ingressos emitidos"}</h2>
                 {/* O número vem depois do título: primeiro a confirmação, depois a referência. */}
                 <span className="rounded-md bg-secondary px-2 py-1 text-sm text-tertiary ring-1 ring-border-secondary">{orderId}</span>
             </div>
@@ -97,7 +98,7 @@ export function OrderSuccess({
                                 <InputBase isReadOnly value={paymentLink} />
                             </InputGroup>
                             <Button size="md" color="secondary" iconLeading={WhatsAppBadge} onClick={() => setCanal("whatsapp")}>
-                                Enviar por Whatsapp
+                                Enviar por WhatsApp
                             </Button>
                             <Button size="md" color="secondary" iconLeading={Mail01} onClick={() => setCanal("email")}>
                                 Enviar por e-mail
@@ -135,7 +136,7 @@ export function OrderSuccess({
                             <p className="text-sm text-tertiary">Prefere enviar o PDF direto para o comprador?</p>
                             <div className="flex flex-wrap gap-2">
                                 <Button size="md" color="secondary" iconLeading={WhatsAppBadge} onClick={() => setCanal("whatsapp")}>
-                                    Enviar por Whatsapp
+                                    Enviar por WhatsApp
                                 </Button>
                                 <Button size="md" color="secondary" iconLeading={Mail01} onClick={() => setCanal("email")}>
                                     Enviar por e-mail
@@ -154,15 +155,8 @@ export function OrderSuccess({
                         <Avatar size="md" initials={buyer.initials} alt={buyer.name} />
                         <div className="flex min-w-0 flex-col">
                             <span className="truncate text-sm font-semibold text-primary">{buyer.name}</span>
-                            <span className="truncate text-sm text-tertiary">
-                                {buyer.email}
-                                {buyer.maskedDocument && (
-                                    <>
-                                        <span aria-hidden="true"> • </span>
-                                        {buyer.maskedDocument}
-                                    </>
-                                )}
-                            </span>
+                            <span className="text-sm break-all text-tertiary">{buyer.email}</span>
+                            {buyer.maskedDocument && <span className="truncate text-sm text-tertiary">{buyer.maskedDocument}</span>}
                         </div>
                     </div>
                 ) : fallbackEmail ? (
@@ -180,7 +174,7 @@ export function OrderSuccess({
 
             <div className="flex w-full flex-col-reverse gap-3 md:flex-row md:justify-end">
                 <Button size="md" color="secondary" onClick={onManageOrders}>
-                    Gerir pedidos
+                    Ver pedidos
                 </Button>
                 <Button size="md" color="primary" onClick={onNewSale}>
                     Nova venda
@@ -216,7 +210,7 @@ const DownloadCard = ({ label, icon, onClick }: { label: string; icon: React.Rea
 /** Glifo de marca do WhatsApp — não existe no @untitledui/icons. */
 /** Selo verde do WhatsApp: no print o glifo é branco sobre o círculo da marca. */
 const WhatsAppBadge = () => (
-    <span data-icon className="flex size-5 shrink-0 items-center justify-center rounded-full bg-[#25d366]">
+    <span data-icon className="flex size-5 shrink-0 items-center justify-center rounded-full bg-success-solid">
         <WhatsAppIcon aria-hidden="true" className="size-3.5 text-base-white" />
     </span>
 );

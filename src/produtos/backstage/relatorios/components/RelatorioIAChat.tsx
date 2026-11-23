@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { ArrowUp, ChevronLeft, ChevronRight } from "@untitledui/icons";
 import { cx } from "@/utils/cx";
-import { chamarIA, type Bloco, type Mensagem, type PeriodoSelecionado } from "../data/relatorio-ia";
+import { chamarIA, type Bloco, type FonteDoRelatorio, type Mensagem, type PeriodoSelecionado } from "../data/relatorio-ia";
 
 /** Sugestão: `label` curto exibido no chip; `query` é o texto enviado à IA. */
 interface Sugestao {
@@ -34,11 +34,14 @@ const batch = (offset: number, n = 3): Sugestao[] => Array.from({ length: n }, (
 
 export function useRelatorioChat({
     periodo,
+    fonte,
     onResult,
     onPendingChange,
     onUser,
 }: {
     periodo: PeriodoSelecionado;
+    /** Dados do evento em contexto (useFonteDoRelatorio). */
+    fonte: FonteDoRelatorio;
     onResult: (resposta: string, blocos: Bloco[]) => void;
     onPendingChange?: (pending: boolean) => void;
     /** Chamado quando o usuário envia uma mensagem (para montar a thread visível). */
@@ -50,6 +53,9 @@ export function useRelatorioChat({
     const [offset, setOffset] = useState(0);
     const [mensagens, setMensagens] = useState<Mensagem[]>([]);
     const [sugestoes, setSugestoes] = useState<Sugestao[]>(batch(0));
+    // Sempre a fonte mais recente (o banco pode mudar enquanto a conversa acontece).
+    const fonteRef = useRef(fonte);
+    fonteRef.current = fonte;
 
     const enviar = async (texto: string) => {
         const msg = texto.trim();
@@ -62,7 +68,7 @@ export function useRelatorioChat({
         setCarregando(true);
         onPendingChange?.(true);
         try {
-            const r = await chamarIA(historico, periodo);
+            const r = await chamarIA(historico, periodo, fonteRef.current);
             setMensagens((prev) => [...prev, { autor: "assistant", texto: r.resposta || "" }]);
             onResult(r.resposta || "", r.blocos);
             // Novas recomendações após cada pedido: rotaciona o pool (labels curtos e objetivos).
@@ -78,7 +84,7 @@ export function useRelatorioChat({
         }
     };
 
-    return { entrada, setEntrada, carregando, erro, sugestoes, enviar };
+    return { entrada, setEntrada, carregando, erro, sugestoes, enviar, todos: fonte.todos };
 }
 
 export type ChatState = ReturnType<typeof useRelatorioChat>;
@@ -89,7 +95,7 @@ export type ChatState = ReturnType<typeof useRelatorioChat>;
 /* ------------------------------------------------------------------ */
 
 export function ComposerIA({ chat, attached = false }: { chat: ChatState; attached?: boolean }) {
-    const { entrada, setEntrada, carregando, erro, sugestoes, enviar } = chat;
+    const { entrada, setEntrada, carregando, erro, sugestoes, enviar, todos } = chat;
 
     // Scroll horizontal dos chips (attached): fade + seta quando há mais fora da tela.
     const scrollRef = useRef<HTMLDivElement>(null);
@@ -189,7 +195,7 @@ export function ComposerIA({ chat, attached = false }: { chat: ChatState; attach
             <input
                 value={entrada}
                 onChange={(e) => setEntrada(e.target.value)}
-                placeholder="Peça um ou vários gráficos sobre o evento…"
+                placeholder={todos ? "Peça um ou vários gráficos sobre os eventos da organização…" : "Peça um ou vários gráficos sobre o evento…"}
                 className="min-w-0 flex-1 bg-transparent py-1.5 text-md text-primary outline-none placeholder:text-placeholder"
             />
             <button

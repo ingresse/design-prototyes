@@ -220,7 +220,7 @@ export const ManageColumnsModal = ({ isOpen, onClose, selected, onSelectedChange
                         <div>
                             <h2 className="text-lg font-semibold text-primary">Editar colunas</h2>
                             <p className="mt-1 text-sm text-tertiary">
-                                Selecione até 50 colunas que para exibir na lista de transações. Para consultar mais colunas simultaneamente, você
+                                Selecione até 50 colunas para exibir na lista de transações. Para consultar mais colunas simultaneamente, você
                                 deverá exportar o relatório.
                             </p>
                         </div>
@@ -232,7 +232,7 @@ export const ManageColumnsModal = ({ isOpen, onClose, selected, onSelectedChange
                         onSelectionChange={(key) => setPainelAtivo(key as PainelAtivo)}
                         className="shrink-0 px-4 md:hidden"
                     >
-                        <Tabs.List type="button-border" size="sm" fullWidth className="!bg-[#262626]">
+                        <Tabs.List type="button-border" size="sm" fullWidth>
                             <Tabs.Item id="opcoes" className={({ isSelected }) => cx("*:min-w-0", isSelected && "!bg-primary")}>
                                 <span className="truncate">Opções de colunas</span>
                             </Tabs.Item>
@@ -276,7 +276,7 @@ export const ManageColumnsModal = ({ isOpen, onClose, selected, onSelectedChange
                                     return (
                                         <div key={group.id} className="group flex flex-col gap-2.5">
                                             <div className="flex items-center gap-2">
-                                                <p className="text-xs font-semibold tracking-wide text-quaternary uppercase">{group.title}</p>
+                                                <p className="text-xs font-semibold text-quaternary">{group.title}</p>
                                                 <button
                                                     type="button"
                                                     onClick={toggleGroupSelectAll}

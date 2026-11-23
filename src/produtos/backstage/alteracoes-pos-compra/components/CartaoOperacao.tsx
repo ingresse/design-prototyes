@@ -241,7 +241,12 @@ export function CartaoOperacao({ pedido, solicitacao }: { pedido: Pedido; solici
             <details className="group border-t border-secondary pt-3">
                 {/* Abaixo de md o gatilho ocupa a linha toda e ganha 44px: `w-fit` deixava um
                     alvo da altura do texto para abrir a quebra da cobrança. */}
-                <summary className="flex w-fit cursor-pointer list-none items-center gap-1 rounded-md text-sm font-semibold text-tertiary transition duration-100 ease-linear hover:text-tertiary_hover max-md:min-h-11 max-md:w-full max-md:justify-between [&::-webkit-details-marker]:hidden">
+                <summary
+                    className={cx(
+                        "flex w-fit cursor-pointer list-none items-center gap-1 rounded-md text-sm font-semibold text-tertiary transition duration-100 ease-linear hover:text-tertiary_hover max-md:min-h-11 max-md:w-full max-md:justify-between [&::-webkit-details-marker]:hidden",
+                        FOCO,
+                    )}
+                >
                     Detalhes da cobrança
                     <ChevronDown className="size-4 text-fg-quaternary transition-transform duration-100 ease-linear group-open:rotate-180" aria-hidden="true" />
                 </summary>
@@ -278,6 +283,7 @@ const LinhaDaFolha = ({ icone: Icone, destrutiva = false, onClick, children }: {
         className={cx(
             "flex min-h-12 items-center gap-3 rounded-xl px-3 text-left text-sm font-medium transition duration-100 ease-linear",
             destrutiva ? "text-error-primary hover:bg-error-primary" : "text-primary hover:bg-primary_hover",
+            FOCO,
         )}
     >
         <Icone className={cx("size-5 shrink-0", destrutiva ? "text-fg-error-secondary" : "text-fg-quaternary")} aria-hidden="true" />

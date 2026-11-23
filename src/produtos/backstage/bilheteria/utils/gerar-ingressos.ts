@@ -14,7 +14,7 @@ import type { Pedido } from "../data/pedidos";
 const nomeDoEvento = (pedido: Pedido) => (pedido.eventoId && lerDoc("eventos", pedido.eventoId)?.nome) || "Evento";
 const EVENT_DATE = "21 JUN";
 const EVENT_TIME = "14:00";
-const EVENT_ADDRESS = "Arena das Dunas • Natal, RN";
+const EVENT_ADDRESS = "Arena das Dunas, Natal, RN";
 const PRODUCER = "Ingresse";
 
 /** Margem esquerda e topo do conteúdo, em pontos (A4 = 595 x 842). */
@@ -191,7 +191,7 @@ export function gerarIngressosCsv(pedido: Pedido) {
         String(ticket.sequencia),
         ticket.codigo,
         pedido.id,
-        [ticket.itemName, ticket.itemSubtitle].filter(Boolean).join(" — "),
+        [ticket.itemName, ticket.itemSubtitle].filter(Boolean).join(", "),
         ticket.lote ?? "—",
     ]);
 

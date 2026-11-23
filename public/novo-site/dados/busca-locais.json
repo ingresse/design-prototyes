@@ -1,0 +1,5602 @@
+{
+ "versao": 1,
+ "sintetico": true,
+ "agora": "2026-10-29T00:00:00-03:00",
+ "total": 131,
+ "locais": [
+  {
+   "id": "arena-fonte-nova",
+   "nome": "Arena Fonte Nova",
+   "aliases": [
+    "fonte nova"
+   ],
+   "busca": "arena fonte nova fonte nova",
+   "tipo": "Estádio",
+   "meta": "Estádio · Salvador",
+   "cidade": "Salvador",
+   "uf": "BA",
+   "lugar": {
+    "cidade": "br-ba-salvador",
+    "uf": "br-ba",
+    "regiao": "br-nordeste",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [],
+   "generoRotulos": [],
+   "foto": "./assets/palcos/arena-fonte-nova-680.jpg",
+   "fotoSrcset": "./assets/palcos/arena-fonte-nova-680.jpg 680w, ./assets/palcos/arena-fonte-nova-1360.jpg 1360w",
+   "fotoAlt": "Arena Fonte Nova vista de dentro, com a cobertura aberta para o céu, a arquibancada e o gramado",
+   "fotoCredito": "",
+   "fotoFonte": "marcacao",
+   "eventos": 3,
+   "proximo": {
+    "id": 3011,
+    "nome": "Bahia x Fortaleza",
+    "iso": "2026-11-08T16:00:00-03:00"
+   },
+   "eventoIds": [
+    3011,
+    3012,
+    3010
+   ],
+   "emDestaque": true,
+   "origem": "v5.3",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=arena-fonte-nova"
+  },
+  {
+   "id": "arena-anhembi",
+   "nome": "Arena Anhembi",
+   "aliases": [
+    "anhembi",
+    "sambodromo do anhembi"
+   ],
+   "busca": "arena anhembi anhembi sambodromo do anhembi",
+   "tipo": "Shows",
+   "meta": "Shows · São Paulo",
+   "cidade": "São Paulo",
+   "uf": "SP",
+   "lugar": {
+    "cidade": "br-sp-sao-paulo",
+    "uf": "br-sp",
+    "regiao": "br-sudeste",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [
+    "samba-pagode"
+   ],
+   "generoRotulos": [
+    "Samba e pagode"
+   ],
+   "foto": "./assets/palcos/arena-anhembi-680.jpg",
+   "fotoSrcset": "./assets/palcos/arena-anhembi-680.jpg 680w, ./assets/palcos/arena-anhembi-1360.jpg 1360w",
+   "fotoAlt": "Interior da Arena Anhembi com a treliça do teto e as luzes",
+   "fotoCredito": "",
+   "fotoFonte": "marcacao",
+   "eventos": 1,
+   "proximo": {
+    "id": 194,
+    "nome": "Sorriso Eu Gosto no Pagode — São Paulo",
+    "iso": "2026-11-08T13:00:00-03:00"
+   },
+   "eventoIds": [
+    194
+   ],
+   "emDestaque": true,
+   "origem": "v5.3",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=arena-anhembi"
+  },
+  {
+   "id": "autodromo-de-interlagos",
+   "nome": "Autódromo de Interlagos",
+   "aliases": [
+    "interlagos",
+    "autodromo",
+    "autodromo jose carlos pace"
+   ],
+   "busca": "autodromo de interlagos interlagos autodromo autodromo jose carlos pace",
+   "tipo": "Festivais",
+   "meta": "Festivais · São Paulo",
+   "cidade": "São Paulo",
+   "uf": "SP",
+   "lugar": {
+    "cidade": "br-sp-sao-paulo",
+    "uf": "br-sp",
+    "regiao": "br-sudeste",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [
+    "pop"
+   ],
+   "generoRotulos": [
+    "Pop"
+   ],
+   "foto": "./assets/palcos/autodromo-de-interlagos-680.jpg",
+   "fotoSrcset": "./assets/palcos/autodromo-de-interlagos-680.jpg 680w, ./assets/palcos/autodromo-de-interlagos-924.jpg 924w",
+   "fotoAlt": "Vista aérea do Autódromo de Interlagos",
+   "fotoCredito": "",
+   "fotoFonte": "marcacao",
+   "eventos": 1,
+   "proximo": null,
+   "eventoIds": [],
+   "emDestaque": true,
+   "origem": "v5.3",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=autodromo-de-interlagos"
+  },
+  {
+   "id": "d-edge-sao-paulo",
+   "nome": "D-EDGE São Paulo",
+   "aliases": [
+    "d-edge",
+    "dedge",
+    "d-edge club"
+   ],
+   "busca": "d edge sao paulo d edge dedge d edge club",
+   "tipo": "Club",
+   "meta": "Club · Barra Funda",
+   "cidade": "São Paulo",
+   "uf": "SP",
+   "lugar": {
+    "cidade": "br-sp-sao-paulo",
+    "uf": "br-sp",
+    "regiao": "br-sudeste",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [],
+   "generoRotulos": [],
+   "foto": "./assets/palcos/d-edge-sao-paulo-680.jpg",
+   "fotoSrcset": "./assets/palcos/d-edge-sao-paulo-680.jpg 680w, ./assets/palcos/d-edge-sao-paulo-824.jpg 824w",
+   "fotoAlt": "Pista do D-EDGE com lasers",
+   "fotoCredito": "",
+   "fotoFonte": "marcacao",
+   "eventos": 0,
+   "proximo": null,
+   "eventoIds": [],
+   "emDestaque": true,
+   "origem": "v5.3",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=d-edge-sao-paulo"
+  },
+  {
+   "id": "laroc-club",
+   "nome": "Laroc Club",
+   "aliases": [
+    "laroc"
+   ],
+   "busca": "laroc club laroc",
+   "tipo": "Club",
+   "meta": "Club · Valinhos",
+   "cidade": "Valinhos",
+   "uf": "SP",
+   "lugar": {
+    "cidade": "br-sp-valinhos",
+    "uf": "br-sp",
+    "regiao": "br-sudeste",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [],
+   "generoRotulos": [],
+   "foto": "./assets/palcos/laroc-club-680.jpg",
+   "fotoSrcset": "./assets/palcos/laroc-club-680.jpg 680w, ./assets/palcos/laroc-club-870.jpg 870w",
+   "fotoAlt": "Palco do Laroc com a placa I love Laroc",
+   "fotoCredito": "",
+   "fotoFonte": "marcacao",
+   "eventos": 0,
+   "proximo": null,
+   "eventoIds": [],
+   "emDestaque": true,
+   "origem": "v5.3",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=laroc-club"
+  },
+  {
+   "id": "villa-planetario-gavea",
+   "nome": "Villa, Planetário Gávea",
+   "aliases": [
+    "villa",
+    "planetario gavea",
+    "planetario da gavea",
+    "gavea",
+    "villa gavea"
+   ],
+   "busca": "villa planetario gavea villa planetario gavea planetario da gavea gavea villa gavea",
+   "tipo": "Samba e club",
+   "meta": "Samba e club · Rio",
+   "cidade": "Rio de Janeiro",
+   "uf": "RJ",
+   "lugar": {
+    "cidade": "br-rj-rio-de-janeiro",
+    "uf": "br-rj",
+    "regiao": "br-sudeste",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [],
+   "generoRotulos": [],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 0,
+   "proximo": null,
+   "eventoIds": [],
+   "emDestaque": true,
+   "origem": "v5.3",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=villa-planetario-gavea"
+  },
+  {
+   "id": "parque-orla-leste-rio-de-janeiro",
+   "nome": "Parque Orla Leste",
+   "aliases": [
+    "Orla Leste"
+   ],
+   "busca": "parque orla leste orla leste",
+   "tipo": "Parque",
+   "meta": "Parque · Rio de Janeiro",
+   "cidade": "Rio de Janeiro",
+   "uf": "RJ",
+   "lugar": {
+    "cidade": "br-rj-rio-de-janeiro",
+    "uf": "br-rj",
+    "regiao": "br-sudeste",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [
+    "mpb",
+    "samba-pagode",
+    "funk",
+    "pop",
+    "eletronica",
+    "rap",
+    "axe",
+    "jazz-blues"
+   ],
+   "generoRotulos": [
+    "MPB",
+    "Samba e pagode",
+    "Funk",
+    "Pop",
+    "Eletrônica",
+    "Rap e trap",
+    "Axé",
+    "Jazz e blues"
+   ],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 10,
+   "proximo": {
+    "id": 155,
+    "nome": "Festival Samba e Pagode do Litoral",
+    "iso": "2026-11-22T13:00:00-03:00"
+   },
+   "eventoIds": [
+    155,
+    163,
+    178,
+    124,
+    170,
+    105,
+    139,
+    131,
+    31,
+    44
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=parque-orla-leste-rio-de-janeiro"
+  },
+  {
+   "id": "arena-aurora-sao-paulo",
+   "nome": "Arena Aurora",
+   "aliases": [
+    "Aurora"
+   ],
+   "busca": "arena aurora aurora",
+   "tipo": "Arena",
+   "meta": "Arena · São Paulo",
+   "cidade": "São Paulo",
+   "uf": "SP",
+   "lugar": {
+    "cidade": "br-sp-sao-paulo",
+    "uf": "br-sp",
+    "regiao": "br-sudeste",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [
+    "rock",
+    "sertanejo",
+    "pop",
+    "eletronica",
+    "rap"
+   ],
+   "generoRotulos": [
+    "Rock",
+    "Sertanejo",
+    "Pop",
+    "Eletrônica",
+    "Rap e trap"
+   ],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 6,
+   "proximo": {
+    "id": 169,
+    "nome": "Pop Night Aurora",
+    "iso": "2026-11-20T21:00:00-03:00"
+   },
+   "eventoIds": [
+    169,
+    129,
+    112,
+    189,
+    29,
+    41
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=arena-aurora-sao-paulo"
+  },
+  {
+   "id": "maracana-rio-de-janeiro",
+   "nome": "Maracanã",
+   "aliases": [],
+   "busca": "maracana",
+   "tipo": "",
+   "meta": " · Rio de Janeiro",
+   "cidade": "Rio de Janeiro",
+   "uf": "RJ",
+   "lugar": {
+    "cidade": "br-rj-rio-de-janeiro",
+    "uf": "br-rj",
+    "regiao": "br-sudeste",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [],
+   "generoRotulos": [],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 6,
+   "proximo": {
+    "id": 1126,
+    "nome": "Fluminense x São Paulo",
+    "iso": "2026-11-15T16:00:00-03:00"
+   },
+   "eventoIds": [
+    1126,
+    1133,
+    45,
+    1148,
+    1137,
+    1153
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=maracana-rio-de-janeiro"
+  },
+  {
+   "id": "arena-mangue-recife",
+   "nome": "Arena Mangue",
+   "aliases": [
+    "Mangue"
+   ],
+   "busca": "arena mangue mangue",
+   "tipo": "Arena",
+   "meta": "Arena · Recife",
+   "cidade": "Recife",
+   "uf": "PE",
+   "lugar": {
+    "cidade": "br-pe-recife",
+    "uf": "br-pe",
+    "regiao": "br-nordeste",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [
+    "samba-pagode",
+    "pop",
+    "rock",
+    "forro",
+    "arrocha"
+   ],
+   "generoRotulos": [
+    "Samba e pagode",
+    "Pop",
+    "Rock",
+    "Forró",
+    "Arrocha"
+   ],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 5,
+   "proximo": {
+    "id": 192,
+    "nome": "Rock Anos 90",
+    "iso": "2026-12-05T22:00:00-03:00"
+   },
+   "eventoIds": [
+    192,
+    117,
+    159,
+    144,
+    176
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=arena-mangue-recife"
+  },
+  {
+   "id": "espaco-serra-azul-belo-horizonte",
+   "nome": "Espaço Serra Azul",
+   "aliases": [
+    "Serra Azul"
+   ],
+   "busca": "espaco serra azul serra azul",
+   "tipo": "Espaço",
+   "meta": "Espaço · Belo Horizonte",
+   "cidade": "Belo Horizonte",
+   "uf": "MG",
+   "lugar": {
+    "cidade": "br-mg-belo-horizonte",
+    "uf": "br-mg",
+    "regiao": "br-sudeste",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [
+    "pop",
+    "sertanejo",
+    "rock",
+    "tribal"
+   ],
+   "generoRotulos": [
+    "Pop",
+    "Sertanejo",
+    "Rock",
+    "Tribal"
+   ],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 5,
+   "proximo": {
+    "id": 171,
+    "nome": "Júlia Marés ao Vivo",
+    "iso": "2026-11-14T21:00:00-03:00"
+   },
+   "eventoIds": [
+    171,
+    111,
+    188,
+    149,
+    30
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=espaco-serra-azul-belo-horizonte"
+  },
+  {
+   "id": "galpao-ferrovia-sao-paulo",
+   "nome": "Galpão Ferrovia",
+   "aliases": [
+    "Ferrovia"
+   ],
+   "busca": "galpao ferrovia ferrovia",
+   "tipo": "Galpão",
+   "meta": "Galpão · São Paulo",
+   "cidade": "São Paulo",
+   "uf": "SP",
+   "lugar": {
+    "cidade": "br-sp-sao-paulo",
+    "uf": "br-sp",
+    "regiao": "br-sudeste",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [
+    "eletronica",
+    "rock",
+    "rap",
+    "tribal"
+   ],
+   "generoRotulos": [
+    "Eletrônica",
+    "Rock",
+    "Rap e trap",
+    "Tribal"
+   ],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 5,
+   "proximo": {
+    "id": 146,
+    "nome": "Tribal Halloween",
+    "iso": "2026-10-31T23:00:00-03:00"
+   },
+   "eventoIds": [
+    146,
+    185,
+    161,
+    130,
+    40
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=galpao-ferrovia-sao-paulo"
+  },
+  {
+   "id": "largo-do-farol-salvador",
+   "nome": "Largo do Farol",
+   "aliases": [
+    "Farol"
+   ],
+   "busca": "largo do farol farol",
+   "tipo": "Largo",
+   "meta": "Largo · Salvador",
+   "cidade": "Salvador",
+   "uf": "BA",
+   "lugar": {
+    "cidade": "br-ba-salvador",
+    "uf": "br-ba",
+    "regiao": "br-nordeste",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [
+    "axe",
+    "samba-pagode",
+    "arrocha"
+   ],
+   "generoRotulos": [
+    "Axé",
+    "Samba e pagode",
+    "Arrocha"
+   ],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 5,
+   "proximo": {
+    "id": 135,
+    "nome": "Axé Pé na Areia",
+    "iso": "2026-11-14T16:00:00-03:00"
+   },
+   "eventoIds": [
+    135,
+    142,
+    157,
+    138,
+    35
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=largo-do-farol-salvador"
+  },
+  {
+   "id": "arena-cerrado-brasilia",
+   "nome": "Arena Cerrado",
+   "aliases": [
+    "Cerrado"
+   ],
+   "busca": "arena cerrado cerrado",
+   "tipo": "Arena",
+   "meta": "Arena · Brasília",
+   "cidade": "Brasília",
+   "uf": "DF",
+   "lugar": {
+    "cidade": "br-df-brasilia",
+    "uf": "br-df",
+    "regiao": "br-centro-oeste",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [
+    "sertanejo",
+    "rock",
+    "eletronica",
+    "rap"
+   ],
+   "generoRotulos": [
+    "Sertanejo",
+    "Rock",
+    "Eletrônica",
+    "Rap e trap"
+   ],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 4,
+   "proximo": {
+    "id": 114,
+    "nome": "Sunset Sertanejo",
+    "iso": "2026-11-14T17:00:00-03:00"
+   },
+   "eventoIds": [
+    114,
+    165,
+    133,
+    190
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=arena-cerrado-brasilia"
+  },
+  {
+   "id": "casa-de-shows-farol-rio-de-janeiro",
+   "nome": "Casa de Shows Farol",
+   "aliases": [
+    "Farol"
+   ],
+   "busca": "casa de shows farol farol",
+   "tipo": "Casa de Shows",
+   "meta": "Casa de Shows · Rio de Janeiro",
+   "cidade": "Rio de Janeiro",
+   "uf": "RJ",
+   "lugar": {
+    "cidade": "br-rj-rio-de-janeiro",
+    "uf": "br-rj",
+    "regiao": "br-sudeste",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [
+    "samba-pagode",
+    "rock",
+    "mpb",
+    "jazz-blues"
+   ],
+   "generoRotulos": [
+    "Samba e pagode",
+    "Rock",
+    "MPB",
+    "Jazz e blues"
+   ],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 4,
+   "proximo": {
+    "id": 153,
+    "nome": "Pagode de Quintal",
+    "iso": "2026-11-06T20:00:00-03:00"
+   },
+   "eventoIds": [
+    153,
+    123,
+    187,
+    184
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=casa-de-shows-farol-rio-de-janeiro"
+  },
+  {
+   "id": "club-vila-nova-sao-paulo",
+   "nome": "Club Vila Nova",
+   "aliases": [
+    "Vila Nova"
+   ],
+   "busca": "club vila nova vila nova",
+   "tipo": "Club",
+   "meta": "Club · São Paulo",
+   "cidade": "São Paulo",
+   "uf": "SP",
+   "lugar": {
+    "cidade": "br-sp-sao-paulo",
+    "uf": "br-sp",
+    "regiao": "br-sudeste",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [
+    "samba-pagode",
+    "pop",
+    "forro",
+    "rap"
+   ],
+   "generoRotulos": [
+    "Samba e pagode",
+    "Pop",
+    "Forró",
+    "Rap e trap"
+   ],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 4,
+   "proximo": {
+    "id": 128,
+    "nome": "Batalha de Rima: Final Estadual",
+    "iso": "2026-11-07T20:00:00-03:00"
+   },
+   "eventoIds": [
+    128,
+    158,
+    173,
+    119
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=club-vila-nova-sao-paulo"
+  },
+  {
+   "id": "distrito-anhembi-sao-paulo",
+   "nome": "Distrito Anhembi",
+   "aliases": [],
+   "busca": "distrito anhembi",
+   "tipo": "",
+   "meta": " · São Paulo",
+   "cidade": "São Paulo",
+   "uf": "SP",
+   "lugar": {
+    "cidade": "br-sp-sao-paulo",
+    "uf": "br-sp",
+    "regiao": "br-sudeste",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [],
+   "generoRotulos": [],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 4,
+   "proximo": {
+    "id": 1757,
+    "nome": "Gamescom latam 2027",
+    "iso": "2027-04-30T10:00:00-03:00"
+   },
+   "eventoIds": [
+    1757,
+    1756,
+    1773,
+    1772
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=distrito-anhembi-sao-paulo"
+  },
+  {
+   "id": "estadio-coxilha-verde-porto-alegre",
+   "nome": "Estádio Coxilha Verde",
+   "aliases": [
+    "Coxilha Verde"
+   ],
+   "busca": "estadio coxilha verde coxilha verde",
+   "tipo": "Estádio",
+   "meta": "Estádio · Porto Alegre",
+   "cidade": "Porto Alegre",
+   "uf": "RS",
+   "lugar": {
+    "cidade": "br-rs-porto-alegre",
+    "uf": "br-rs",
+    "regiao": "br-sul",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [
+    "sertanejo",
+    "funk",
+    "pop",
+    "rock"
+   ],
+   "generoRotulos": [
+    "Sertanejo",
+    "Funk",
+    "Pop",
+    "Rock"
+   ],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 4,
+   "proximo": {
+    "id": 186,
+    "nome": "Festival Distorção",
+    "iso": "2026-11-28T14:00:00-03:00"
+   },
+   "eventoIds": [
+    186,
+    104,
+    172,
+    113
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=estadio-coxilha-verde-porto-alegre"
+  },
+  {
+   "id": "neo-quimica-arena-sao-paulo",
+   "nome": "Neo Química Arena",
+   "aliases": [],
+   "busca": "neo quimica arena",
+   "tipo": "",
+   "meta": " · São Paulo",
+   "cidade": "São Paulo",
+   "uf": "SP",
+   "lugar": {
+    "cidade": "br-sp-sao-paulo",
+    "uf": "br-sp",
+    "regiao": "br-sudeste",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [],
+   "generoRotulos": [],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 4,
+   "proximo": {
+    "id": 1156,
+    "nome": "Corinthians x Botafogo",
+    "iso": "2026-11-29T20:00:00-03:00"
+   },
+   "eventoIds": [
+    1156,
+    42,
+    1135,
+    1149
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=neo-quimica-arena-sao-paulo"
+  },
+  {
+   "id": "pavilhao-planalto-belo-horizonte",
+   "nome": "Pavilhão Planalto",
+   "aliases": [
+    "Planalto"
+   ],
+   "busca": "pavilhao planalto planalto",
+   "tipo": "Pavilhão",
+   "meta": "Pavilhão · Belo Horizonte",
+   "cidade": "Belo Horizonte",
+   "uf": "MG",
+   "lugar": {
+    "cidade": "br-mg-belo-horizonte",
+    "uf": "br-mg",
+    "regiao": "br-sudeste",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [
+    "forro",
+    "mpb",
+    "axe",
+    "jazz-blues"
+   ],
+   "generoRotulos": [
+    "Forró",
+    "MPB",
+    "Axé",
+    "Jazz e blues"
+   ],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 4,
+   "proximo": {
+    "id": 116,
+    "nome": "Piseiro das Gerais",
+    "iso": "2026-11-28T22:00:00-03:00"
+   },
+   "eventoIds": [
+    116,
+    182,
+    136,
+    125
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=pavilhao-planalto-belo-horizonte"
+  },
+  {
+   "id": "teatro-jacaranda-sao-paulo",
+   "nome": "Teatro Jacarandá",
+   "aliases": [
+    "Jacarandá"
+   ],
+   "busca": "teatro jacaranda jacaranda",
+   "tipo": "Teatro",
+   "meta": "Teatro · São Paulo",
+   "cidade": "São Paulo",
+   "uf": "SP",
+   "lugar": {
+    "cidade": "br-sp-sao-paulo",
+    "uf": "br-sp",
+    "regiao": "br-sudeste",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [
+    "mpb",
+    "jazz-blues"
+   ],
+   "generoRotulos": [
+    "MPB",
+    "Jazz e blues"
+   ],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 4,
+   "proximo": {
+    "id": 181,
+    "nome": "Helô Sabará Canta Clássicos",
+    "iso": "2026-12-18T20:00:00-03:00"
+   },
+   "eventoIds": [
+    181,
+    127,
+    34,
+    43
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=teatro-jacaranda-sao-paulo"
+  },
+  {
+   "id": "allianz-parque-sao-paulo",
+   "nome": "Allianz Parque",
+   "aliases": [],
+   "busca": "allianz parque",
+   "tipo": "",
+   "meta": " · São Paulo",
+   "cidade": "São Paulo",
+   "uf": "SP",
+   "lugar": {
+    "cidade": "br-sp-sao-paulo",
+    "uf": "br-sp",
+    "regiao": "br-sudeste",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [],
+   "generoRotulos": [],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 3,
+   "proximo": {
+    "id": 3003,
+    "nome": "Palmeiras x Flamengo",
+    "iso": "2026-11-07T19:00:00-03:00"
+   },
+   "eventoIds": [
+    3003,
+    1144,
+    1140
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=allianz-parque-sao-paulo"
+  },
+  {
+   "id": "arena-castelao-fortaleza",
+   "nome": "Arena Castelão",
+   "aliases": [
+    "Castelão"
+   ],
+   "busca": "arena castelao castelao",
+   "tipo": "Arena",
+   "meta": "Arena · Fortaleza",
+   "cidade": "Fortaleza",
+   "uf": "CE",
+   "lugar": {
+    "cidade": "br-ce-fortaleza",
+    "uf": "br-ce",
+    "regiao": "br-nordeste",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [],
+   "generoRotulos": [],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 3,
+   "proximo": {
+    "id": 1142,
+    "nome": "Ceará x Juventude",
+    "iso": "2026-11-14T19:00:00-03:00"
+   },
+   "eventoIds": [
+    1142,
+    1134,
+    1157
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=arena-castelao-fortaleza"
+  },
+  {
+   "id": "arena-reconcavo-salvador",
+   "nome": "Arena Recôncavo",
+   "aliases": [
+    "Recôncavo"
+   ],
+   "busca": "arena reconcavo reconcavo",
+   "tipo": "Arena",
+   "meta": "Arena · Salvador",
+   "cidade": "Salvador",
+   "uf": "BA",
+   "lugar": {
+    "cidade": "br-ba-salvador",
+    "uf": "br-ba",
+    "regiao": "br-nordeste",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [
+    "funk",
+    "pop",
+    "arrocha"
+   ],
+   "generoRotulos": [
+    "Funk",
+    "Pop",
+    "Arrocha"
+   ],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 3,
+   "proximo": {
+    "id": 141,
+    "nome": "Arrocha Apaixonado",
+    "iso": "2026-12-04T21:00:00-03:00"
+   },
+   "eventoIds": [
+    141,
+    175,
+    107
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=arena-reconcavo-salvador"
+  },
+  {
+   "id": "casa-de-shows-coxilha-porto-alegre",
+   "nome": "Casa de Shows Coxilha",
+   "aliases": [
+    "Coxilha"
+   ],
+   "busca": "casa de shows coxilha coxilha",
+   "tipo": "Casa de Shows",
+   "meta": "Casa de Shows · Porto Alegre",
+   "cidade": "Porto Alegre",
+   "uf": "RS",
+   "lugar": {
+    "cidade": "br-rs-porto-alegre",
+    "uf": "br-rs",
+    "regiao": "br-sul",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [
+    "samba-pagode",
+    "rap",
+    "jazz-blues"
+   ],
+   "generoRotulos": [
+    "Samba e pagode",
+    "Rap e trap",
+    "Jazz e blues"
+   ],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 3,
+   "proximo": {
+    "id": 132,
+    "nome": "Noite Boom Bap",
+    "iso": "2026-11-21T21:00:00-03:00"
+   },
+   "eventoIds": [
+    132,
+    126,
+    156
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=casa-de-shows-coxilha-porto-alegre"
+  },
+  {
+   "id": "casa-de-shows-pedra-alta-belo-horizonte",
+   "nome": "Casa de Shows Pedra Alta",
+   "aliases": [
+    "Pedra Alta"
+   ],
+   "busca": "casa de shows pedra alta pedra alta",
+   "tipo": "Casa de Shows",
+   "meta": "Casa de Shows · Belo Horizonte",
+   "cidade": "Belo Horizonte",
+   "uf": "MG",
+   "lugar": {
+    "cidade": "br-mg-belo-horizonte",
+    "uf": "br-mg",
+    "regiao": "br-sudeste",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [
+    "samba-pagode",
+    "funk",
+    "mpb"
+   ],
+   "generoRotulos": [
+    "Samba e pagode",
+    "Funk",
+    "MPB"
+   ],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 3,
+   "proximo": {
+    "id": 154,
+    "nome": "Samba da Gente",
+    "iso": "2026-11-13T20:00:00-03:00"
+   },
+   "eventoIds": [
+    154,
+    179,
+    106
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=casa-de-shows-pedra-alta-belo-horizonte"
+  },
+  {
+   "id": "centro-de-convencoes-salvador-salvador",
+   "nome": "Centro de Convenções Salvador",
+   "aliases": [],
+   "busca": "centro de convencoes salvador",
+   "tipo": "",
+   "meta": " · Salvador",
+   "cidade": "Salvador",
+   "uf": "BA",
+   "lugar": {
+    "cidade": "br-ba-salvador",
+    "uf": "br-ba",
+    "regiao": "br-nordeste",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [
+    "funk",
+    "axe"
+   ],
+   "generoRotulos": [
+    "Funk",
+    "Axé"
+   ],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 3,
+   "proximo": {
+    "id": 1711,
+    "nome": "Calourada UFBA 2027",
+    "iso": "2027-03-13T21:00:00-03:00"
+   },
+   "eventoIds": [
+    1711,
+    1775,
+    1726
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=centro-de-convencoes-salvador-salvador"
+  },
+  {
+   "id": "club-jacaranda-salvador",
+   "nome": "Club Jacarandá",
+   "aliases": [
+    "Jacarandá"
+   ],
+   "busca": "club jacaranda jacaranda",
+   "tipo": "Club",
+   "meta": "Club · Salvador",
+   "cidade": "Salvador",
+   "uf": "BA",
+   "lugar": {
+    "cidade": "br-ba-salvador",
+    "uf": "br-ba",
+    "regiao": "br-nordeste",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [
+    "eletronica",
+    "arrocha",
+    "tribal"
+   ],
+   "generoRotulos": [
+    "Eletrônica",
+    "Arrocha",
+    "Tribal"
+   ],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 3,
+   "proximo": {
+    "id": 140,
+    "nome": "Noite do Arrocha",
+    "iso": "2026-11-20T22:00:00-03:00"
+   },
+   "eventoIds": [
+    140,
+    168,
+    151
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=club-jacaranda-salvador"
+  },
+  {
+   "id": "comedians-comedy-club-sao-paulo",
+   "nome": "Comedians Comedy Club",
+   "aliases": [],
+   "busca": "comedians comedy club",
+   "tipo": "",
+   "meta": " · São Paulo",
+   "cidade": "São Paulo",
+   "uf": "SP",
+   "lugar": {
+    "cidade": "br-sp-sao-paulo",
+    "uf": "br-sp",
+    "regiao": "br-sudeste",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [],
+   "generoRotulos": [],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 3,
+   "proximo": {
+    "id": 1747,
+    "nome": "Comedians: Noite de Stand-up",
+    "iso": "2026-11-26T21:00:00-03:00"
+   },
+   "eventoIds": [
+    1747,
+    1748,
+    1749
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=comedians-comedy-club-sao-paulo"
+  },
+  {
+   "id": "espaco-baia-larga-salvador",
+   "nome": "Espaço Baía Larga",
+   "aliases": [
+    "Baía Larga"
+   ],
+   "busca": "espaco baia larga baia larga",
+   "tipo": "Espaço",
+   "meta": "Espaço · Salvador",
+   "cidade": "Salvador",
+   "uf": "BA",
+   "lugar": {
+    "cidade": "br-ba-salvador",
+    "uf": "br-ba",
+    "regiao": "br-nordeste",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [
+    "forro",
+    "mpb",
+    "axe"
+   ],
+   "generoRotulos": [
+    "Forró",
+    "MPB",
+    "Axé"
+   ],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 3,
+   "proximo": {
+    "id": 118,
+    "nome": "Forró Pé na Areia",
+    "iso": "2027-01-16T17:00:00-03:00"
+   },
+   "eventoIds": [
+    118,
+    183,
+    134
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=espaco-baia-larga-salvador"
+  },
+  {
+   "id": "espaco-boa-vista-sao-paulo",
+   "nome": "Espaço Boa Vista",
+   "aliases": [
+    "Boa Vista"
+   ],
+   "busca": "espaco boa vista boa vista",
+   "tipo": "Espaço",
+   "meta": "Espaço · São Paulo",
+   "cidade": "São Paulo",
+   "uf": "SP",
+   "lugar": {
+    "cidade": "br-sp-sao-paulo",
+    "uf": "br-sp",
+    "regiao": "br-sudeste",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [
+    "pop",
+    "mpb",
+    "jazz-blues"
+   ],
+   "generoRotulos": [
+    "Pop",
+    "MPB",
+    "Jazz e blues"
+   ],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 3,
+   "proximo": {
+    "id": 122,
+    "nome": "Noite de Jazz no Boa Vista",
+    "iso": "2026-11-06T21:00:00-03:00"
+   },
+   "eventoIds": [
+    122,
+    177,
+    174
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=espaco-boa-vista-sao-paulo"
+  },
+  {
+   "id": "espaco-ciranda-porto-alegre",
+   "nome": "Espaço Ciranda",
+   "aliases": [
+    "Ciranda"
+   ],
+   "busca": "espaco ciranda ciranda",
+   "tipo": "Espaço",
+   "meta": "Espaço · Porto Alegre",
+   "cidade": "Porto Alegre",
+   "uf": "RS",
+   "lugar": {
+    "cidade": "br-rs-porto-alegre",
+    "uf": "br-rs",
+    "regiao": "br-sul",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [
+    "samba-pagode",
+    "forro"
+   ],
+   "generoRotulos": [
+    "Samba e pagode",
+    "Forró"
+   ],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 3,
+   "proximo": {
+    "id": 160,
+    "nome": "Noite do Cavaco",
+    "iso": "2027-01-15T21:00:00-03:00"
+   },
+   "eventoIds": [
+    160,
+    39,
+    121
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=espaco-ciranda-porto-alegre"
+  },
+  {
+   "id": "espaco-unimed-sao-paulo",
+   "nome": "Espaço Unimed",
+   "aliases": [
+    "Unimed"
+   ],
+   "busca": "espaco unimed unimed",
+   "tipo": "Espaço",
+   "meta": "Espaço · São Paulo",
+   "cidade": "São Paulo",
+   "uf": "SP",
+   "lugar": {
+    "cidade": "br-sp-sao-paulo",
+    "uf": "br-sp",
+    "regiao": "br-sudeste",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [
+    "pop"
+   ],
+   "generoRotulos": [
+    "Pop"
+   ],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 3,
+   "proximo": {
+    "id": 1728,
+    "nome": "Thiago Ventura: Stand-up",
+    "iso": "2026-12-04T21:00:00-03:00"
+   },
+   "eventoIds": [
+    1728,
+    1751,
+    1707
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=espaco-unimed-sao-paulo"
+  },
+  {
+   "id": "expominas-belo-horizonte",
+   "nome": "Expominas",
+   "aliases": [],
+   "busca": "expominas",
+   "tipo": "",
+   "meta": " · Belo Horizonte",
+   "cidade": "Belo Horizonte",
+   "uf": "MG",
+   "lugar": {
+    "cidade": "br-mg-belo-horizonte",
+    "uf": "br-mg",
+    "regiao": "br-sudeste",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [
+    "sertanejo"
+   ],
+   "generoRotulos": [
+    "Sertanejo"
+   ],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 3,
+   "proximo": {
+    "id": 1761,
+    "nome": "Semana Internacional do Café 2026",
+    "iso": "2026-11-18T10:00:00-03:00"
+   },
+   "eventoIds": [
+    1761,
+    1709,
+    1717
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=expominas-belo-horizonte"
+  },
+  {
+   "id": "ilha-do-retiro-recife",
+   "nome": "Ilha do Retiro",
+   "aliases": [],
+   "busca": "ilha do retiro",
+   "tipo": "",
+   "meta": " · Recife",
+   "cidade": "Recife",
+   "uf": "PE",
+   "lugar": {
+    "cidade": "br-pe-recife",
+    "uf": "br-pe",
+    "regiao": "br-nordeste",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [],
+   "generoRotulos": [],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 3,
+   "proximo": {
+    "id": 1136,
+    "nome": "Sport x Atlético Mineiro",
+    "iso": "2026-12-02T21:30:00-03:00"
+   },
+   "eventoIds": [
+    1136,
+    1143,
+    1145
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=ilha-do-retiro-recife"
+  },
+  {
+   "id": "memorial-da-america-latina-sao-paulo",
+   "nome": "Memorial da América Latina",
+   "aliases": [],
+   "busca": "memorial da america latina",
+   "tipo": "",
+   "meta": " · São Paulo",
+   "cidade": "São Paulo",
+   "uf": "SP",
+   "lugar": {
+    "cidade": "br-sp-sao-paulo",
+    "uf": "br-sp",
+    "regiao": "br-sudeste",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [],
+   "generoRotulos": [],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 3,
+   "proximo": {
+    "id": 1760,
+    "nome": "Feira Preta 2026",
+    "iso": "2026-12-12T11:00:00-03:00"
+   },
+   "eventoIds": [
+    1760,
+    1769,
+    1750
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=memorial-da-america-latina-sao-paulo"
+  },
+  {
+   "id": "morumbis-sao-paulo",
+   "nome": "Morumbis",
+   "aliases": [],
+   "busca": "morumbis",
+   "tipo": "",
+   "meta": " · São Paulo",
+   "cidade": "São Paulo",
+   "uf": "SP",
+   "lugar": {
+    "cidade": "br-sp-sao-paulo",
+    "uf": "br-sp",
+    "regiao": "br-sudeste",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [],
+   "generoRotulos": [],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 3,
+   "proximo": {
+    "id": 1127,
+    "nome": "São Paulo x Palmeiras",
+    "iso": "2027-02-21T18:30:00-03:00"
+   },
+   "eventoIds": [
+    1127,
+    1160,
+    1139
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=morumbis-sao-paulo"
+  },
+  {
+   "id": "sao-paulo-expo-sao-paulo",
+   "nome": "São Paulo Expo",
+   "aliases": [],
+   "busca": "sao paulo expo",
+   "tipo": "",
+   "meta": " · São Paulo",
+   "cidade": "São Paulo",
+   "uf": "SP",
+   "lugar": {
+    "cidade": "br-sp-sao-paulo",
+    "uf": "br-sp",
+    "regiao": "br-sudeste",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [],
+   "generoRotulos": [],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 3,
+   "proximo": {
+    "id": 1753,
+    "nome": "CCXP 2026",
+    "iso": "2026-12-03T11:00:00-03:00"
+   },
+   "eventoIds": [
+    1753,
+    1754,
+    1766
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=sao-paulo-expo-sao-paulo"
+  },
+  {
+   "id": "vivo-rio-rio-de-janeiro",
+   "nome": "Vivo Rio",
+   "aliases": [],
+   "busca": "vivo rio",
+   "tipo": "",
+   "meta": " · Rio de Janeiro",
+   "cidade": "Rio de Janeiro",
+   "uf": "RJ",
+   "lugar": {
+    "cidade": "br-rj-rio-de-janeiro",
+    "uf": "br-rj",
+    "regiao": "br-sudeste",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [
+    "axe"
+   ],
+   "generoRotulos": [
+    "Axé"
+   ],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 3,
+   "proximo": {
+    "id": 1729,
+    "nome": "Afonso Padilha ao Vivo",
+    "iso": "2026-12-11T21:00:00-03:00"
+   },
+   "eventoIds": [
+    1729,
+    1723,
+    1745
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=vivo-rio-rio-de-janeiro"
+  },
+  {
+   "id": "arena-do-gremio-porto-alegre",
+   "nome": "Arena do Grêmio",
+   "aliases": [
+    "Grêmio"
+   ],
+   "busca": "arena do gremio gremio",
+   "tipo": "Arena",
+   "meta": "Arena · Porto Alegre",
+   "cidade": "Porto Alegre",
+   "uf": "RS",
+   "lugar": {
+    "cidade": "br-rs-porto-alegre",
+    "uf": "br-rs",
+    "regiao": "br-sul",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [],
+   "generoRotulos": [],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 2,
+   "proximo": {
+    "id": 1130,
+    "nome": "Grêmio x Juventude",
+    "iso": "2026-11-28T16:00:00-03:00"
+   },
+   "eventoIds": [
+    1130,
+    32
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=arena-do-gremio-porto-alegre"
+  },
+  {
+   "id": "audio-sao-paulo",
+   "nome": "Audio",
+   "aliases": [],
+   "busca": "audio",
+   "tipo": "",
+   "meta": " · São Paulo",
+   "cidade": "São Paulo",
+   "uf": "SP",
+   "lugar": {
+    "cidade": "br-sp-sao-paulo",
+    "uf": "br-sp",
+    "regiao": "br-sudeste",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [
+    "funk"
+   ],
+   "generoRotulos": [
+    "Funk"
+   ],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 2,
+   "proximo": {
+    "id": 1708,
+    "nome": "Cervejada da Poli USP",
+    "iso": "2026-11-28T22:00:00-03:00"
+   },
+   "eventoIds": [
+    1708,
+    1722
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=audio-sao-paulo"
+  },
+  {
+   "id": "auditorio-araujo-vianna-porto-alegre",
+   "nome": "Auditório Araújo Vianna",
+   "aliases": [],
+   "busca": "auditorio araujo vianna",
+   "tipo": "",
+   "meta": " · Porto Alegre",
+   "cidade": "Porto Alegre",
+   "uf": "RS",
+   "lugar": {
+    "cidade": "br-rs-porto-alegre",
+    "uf": "br-rs",
+    "regiao": "br-sul",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [
+    "eletronica"
+   ],
+   "generoRotulos": [
+    "Eletrônica"
+   ],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 2,
+   "proximo": {
+    "id": 1725,
+    "nome": "Calourada Integrada Porto Alegre",
+    "iso": "2027-03-13T22:00:00-03:00"
+   },
+   "eventoIds": [
+    1725,
+    1746
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=auditorio-araujo-vianna-porto-alegre"
+  },
+  {
+   "id": "barradao-salvador",
+   "nome": "Barradão",
+   "aliases": [],
+   "busca": "barradao",
+   "tipo": "",
+   "meta": " · Salvador",
+   "cidade": "Salvador",
+   "uf": "BA",
+   "lugar": {
+    "cidade": "br-ba-salvador",
+    "uf": "br-ba",
+    "regiao": "br-nordeste",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [],
+   "generoRotulos": [],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 2,
+   "proximo": {
+    "id": 1129,
+    "nome": "Vitória x Bahia",
+    "iso": "2027-02-28T16:00:00-03:00"
+   },
+   "eventoIds": [
+    1129,
+    1159
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=barradao-salvador"
+  },
+  {
+   "id": "casa-de-shows-cobalto-sao-paulo",
+   "nome": "Casa de Shows Cobalto",
+   "aliases": [
+    "Cobalto"
+   ],
+   "busca": "casa de shows cobalto cobalto",
+   "tipo": "Casa de Shows",
+   "meta": "Casa de Shows · São Paulo",
+   "cidade": "São Paulo",
+   "uf": "SP",
+   "lugar": {
+    "cidade": "br-sp-sao-paulo",
+    "uf": "br-sp",
+    "regiao": "br-sudeste",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [
+    "axe",
+    "arrocha"
+   ],
+   "generoRotulos": [
+    "Axé",
+    "Arrocha"
+   ],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 2,
+   "proximo": {
+    "id": 137,
+    "nome": "Axé Night",
+    "iso": "2026-12-11T22:00:00-03:00"
+   },
+   "eventoIds": [
+    137,
+    143
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=casa-de-shows-cobalto-sao-paulo"
+  },
+  {
+   "id": "centro-de-convencoes-ulysses-guimaraes-brasilia",
+   "nome": "Centro de Convenções Ulysses Guimarães",
+   "aliases": [],
+   "busca": "centro de convencoes ulysses guimaraes",
+   "tipo": "",
+   "meta": " · Brasília",
+   "cidade": "Brasília",
+   "uf": "DF",
+   "lugar": {
+    "cidade": "br-df-brasilia",
+    "uf": "br-df",
+    "regiao": "br-centro-oeste",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [],
+   "generoRotulos": [],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 2,
+   "proximo": {
+    "id": 1740,
+    "nome": "Mhel Marrer: Stand-up",
+    "iso": "2027-01-29T21:00:00-03:00"
+   },
+   "eventoIds": [
+    1740,
+    1774
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=centro-de-convencoes-ulysses-guimaraes-brasilia"
+  },
+  {
+   "id": "centro-de-eventos-do-ceara-fortaleza",
+   "nome": "Centro de Eventos do Ceará",
+   "aliases": [],
+   "busca": "centro de eventos do ceara",
+   "tipo": "",
+   "meta": " · Fortaleza",
+   "cidade": "Fortaleza",
+   "uf": "CE",
+   "lugar": {
+    "cidade": "br-ce-fortaleza",
+    "uf": "br-ce",
+    "regiao": "br-nordeste",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [
+    "forro"
+   ],
+   "generoRotulos": [
+    "Forró"
+   ],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 2,
+   "proximo": {
+    "id": 1730,
+    "nome": "Whindersson Nunes: Turnê 2027",
+    "iso": "2027-01-23T20:00:00-03:00"
+   },
+   "eventoIds": [
+    1730,
+    1713
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=centro-de-eventos-do-ceara-fortaleza"
+  },
+  {
+   "id": "centro-de-eventos-fiergs-porto-alegre",
+   "nome": "Centro de Eventos Fiergs",
+   "aliases": [],
+   "busca": "centro de eventos fiergs",
+   "tipo": "",
+   "meta": " · Porto Alegre",
+   "cidade": "Porto Alegre",
+   "uf": "RS",
+   "lugar": {
+    "cidade": "br-rs-porto-alegre",
+    "uf": "br-rs",
+    "regiao": "br-sul",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [
+    "sertanejo"
+   ],
+   "generoRotulos": [
+    "Sertanejo"
+   ],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 2,
+   "proximo": {
+    "id": 1776,
+    "nome": "Exposição Mundo Pixar",
+    "iso": "2027-01-15T10:00:00-03:00"
+   },
+   "eventoIds": [
+    1776,
+    1714
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=centro-de-eventos-fiergs-porto-alegre"
+  },
+  {
+   "id": "cidade-das-artes-rio-de-janeiro",
+   "nome": "Cidade das Artes",
+   "aliases": [],
+   "busca": "cidade das artes",
+   "tipo": "",
+   "meta": " · Rio de Janeiro",
+   "cidade": "Rio de Janeiro",
+   "uf": "RJ",
+   "lugar": {
+    "cidade": "br-rj-rio-de-janeiro",
+    "uf": "br-rj",
+    "regiao": "br-sudeste",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [],
+   "generoRotulos": [],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 2,
+   "proximo": {
+    "id": 1771,
+    "nome": "Exposição Imersiva Van Gogh Live 8K",
+    "iso": "2027-01-08T10:00:00-03:00"
+   },
+   "eventoIds": [
+    1771,
+    1763
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=cidade-das-artes-rio-de-janeiro"
+  },
+  {
+   "id": "engenho-central-piracicaba",
+   "nome": "Engenho Central",
+   "aliases": [],
+   "busca": "engenho central",
+   "tipo": "",
+   "meta": " · Piracicaba",
+   "cidade": "Piracicaba",
+   "uf": "SP",
+   "lugar": {
+    "cidade": "br-sp-piracicaba",
+    "uf": "br-sp",
+    "regiao": "br-sudeste",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [
+    "funk",
+    "eletronica"
+   ],
+   "generoRotulos": [
+    "Funk",
+    "Eletrônica"
+   ],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 2,
+   "proximo": {
+    "id": 1704,
+    "nome": "Engenharíadas Paulista 2027: Festa de Abertura",
+    "iso": "2027-05-01T22:00:00-03:00"
+   },
+   "eventoIds": [
+    1704,
+    1705
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=engenho-central-piracicaba"
+  },
+  {
+   "id": "espaco-ponta-azul-fortaleza",
+   "nome": "Espaço Ponta Azul",
+   "aliases": [
+    "Ponta Azul"
+   ],
+   "busca": "espaco ponta azul ponta azul",
+   "tipo": "Espaço",
+   "meta": "Espaço · Fortaleza",
+   "cidade": "Fortaleza",
+   "uf": "CE",
+   "lugar": {
+    "cidade": "br-ce-fortaleza",
+    "uf": "br-ce",
+    "regiao": "br-nordeste",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [
+    "forro",
+    "arrocha"
+   ],
+   "generoRotulos": [
+    "Forró",
+    "Arrocha"
+   ],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 2,
+   "proximo": {
+    "id": 115,
+    "nome": "Forró no Farol",
+    "iso": "2026-11-13T21:00:00-03:00"
+   },
+   "eventoIds": [
+    115,
+    145
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=espaco-ponta-azul-fortaleza"
+  },
+  {
+   "id": "estadio-nilton-santos-rio-de-janeiro",
+   "nome": "Estádio Nilton Santos",
+   "aliases": [
+    "Nilton Santos"
+   ],
+   "busca": "estadio nilton santos nilton santos",
+   "tipo": "Estádio",
+   "meta": "Estádio · Rio de Janeiro",
+   "cidade": "Rio de Janeiro",
+   "uf": "RJ",
+   "lugar": {
+    "cidade": "br-rj-rio-de-janeiro",
+    "uf": "br-rj",
+    "regiao": "br-sudeste",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [],
+   "generoRotulos": [],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 2,
+   "proximo": {
+    "id": 3001,
+    "nome": "Botafogo x Fluminense",
+    "iso": "2026-11-08T16:00:00-03:00"
+   },
+   "eventoIds": [
+    3001,
+    1154
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=estadio-nilton-santos-rio-de-janeiro"
+  },
+  {
+   "id": "jockey-club-brasileiro-rio-de-janeiro",
+   "nome": "Jockey Club Brasileiro",
+   "aliases": [],
+   "busca": "jockey club brasileiro",
+   "tipo": "",
+   "meta": " · Rio de Janeiro",
+   "cidade": "Rio de Janeiro",
+   "uf": "RJ",
+   "lugar": {
+    "cidade": "br-rj-rio-de-janeiro",
+    "uf": "br-rj",
+    "regiao": "br-sudeste",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [
+    "funk"
+   ],
+   "generoRotulos": [
+    "Funk"
+   ],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 2,
+   "proximo": {
+    "id": 1702,
+    "nome": "Chopada da Medicina UFRJ",
+    "iso": "2027-03-13T22:00:00-03:00"
+   },
+   "eventoIds": [
+    1702,
+    1768
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=jockey-club-brasileiro-rio-de-janeiro"
+  },
+  {
+   "id": "ligga-arena-curitiba",
+   "nome": "Ligga Arena",
+   "aliases": [],
+   "busca": "ligga arena",
+   "tipo": "",
+   "meta": " · Curitiba",
+   "cidade": "Curitiba",
+   "uf": "PR",
+   "lugar": {
+    "cidade": "br-pr-curitiba",
+    "uf": "br-pr",
+    "regiao": "br-sul",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [],
+   "generoRotulos": [],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 2,
+   "proximo": {
+    "id": 1147,
+    "nome": "Athletico Paranaense x Corinthians",
+    "iso": "2027-03-17T21:30:00-03:00"
+   },
+   "eventoIds": [
+    1147,
+    1158
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=ligga-arena-curitiba"
+  },
+  {
+   "id": "marina-ponta-azul-rio-de-janeiro",
+   "nome": "Marina Ponta Azul",
+   "aliases": [
+    "Ponta Azul"
+   ],
+   "busca": "marina ponta azul ponta azul",
+   "tipo": "Marina",
+   "meta": "Marina · Rio de Janeiro",
+   "cidade": "Rio de Janeiro",
+   "uf": "RJ",
+   "lugar": {
+    "cidade": "br-rj-rio-de-janeiro",
+    "uf": "br-rj",
+    "regiao": "br-sudeste",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [
+    "tribal"
+   ],
+   "generoRotulos": [
+    "Tribal"
+   ],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 2,
+   "proximo": {
+    "id": 150,
+    "nome": "Tribal Réveillon",
+    "iso": "2026-12-31T21:00:00-03:00"
+   },
+   "eventoIds": [
+    150,
+    37
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=marina-ponta-azul-rio-de-janeiro"
+  },
+  {
+   "id": "mineirao-belo-horizonte",
+   "nome": "Mineirão",
+   "aliases": [],
+   "busca": "mineirao",
+   "tipo": "",
+   "meta": " · Belo Horizonte",
+   "cidade": "Belo Horizonte",
+   "uf": "MG",
+   "lugar": {
+    "cidade": "br-mg-belo-horizonte",
+    "uf": "br-mg",
+    "regiao": "br-sudeste",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [],
+   "generoRotulos": [],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 2,
+   "proximo": {
+    "id": 1125,
+    "nome": "Cruzeiro x Ceará",
+    "iso": "2026-11-28T18:30:00-03:00"
+   },
+   "eventoIds": [
+    1125,
+    1132
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=mineirao-belo-horizonte"
+  },
+  {
+   "id": "mineirinho-belo-horizonte",
+   "nome": "Mineirinho",
+   "aliases": [],
+   "busca": "mineirinho",
+   "tipo": "",
+   "meta": " · Belo Horizonte",
+   "cidade": "Belo Horizonte",
+   "uf": "MG",
+   "lugar": {
+    "cidade": "br-mg-belo-horizonte",
+    "uf": "br-mg",
+    "regiao": "br-sudeste",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [
+    "sertanejo"
+   ],
+   "generoRotulos": [
+    "Sertanejo"
+   ],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 2,
+   "proximo": {
+    "id": 1703,
+    "nome": "Calourada UFMG 2027",
+    "iso": "2027-03-06T21:00:00-03:00"
+   },
+   "eventoIds": [
+    1703,
+    1752
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=mineirinho-belo-horizonte"
+  },
+  {
+   "id": "pavilhao-aurora-curitiba",
+   "nome": "Pavilhão Aurora",
+   "aliases": [
+    "Aurora"
+   ],
+   "busca": "pavilhao aurora aurora",
+   "tipo": "Pavilhão",
+   "meta": "Pavilhão · Curitiba",
+   "cidade": "Curitiba",
+   "uf": "PR",
+   "lugar": {
+    "cidade": "br-pr-curitiba",
+    "uf": "br-pr",
+    "regiao": "br-sul",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [
+    "rock",
+    "eletronica"
+   ],
+   "generoRotulos": [
+    "Rock",
+    "Eletrônica"
+   ],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 2,
+   "proximo": {
+    "id": 191,
+    "nome": "Garagem Sessions",
+    "iso": "2026-11-13T21:00:00-03:00"
+   },
+   "eventoIds": [
+    191,
+    164
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=pavilhao-aurora-curitiba"
+  },
+  {
+   "id": "qualistage-rio-de-janeiro",
+   "nome": "Qualistage",
+   "aliases": [],
+   "busca": "qualistage",
+   "tipo": "",
+   "meta": " · Rio de Janeiro",
+   "cidade": "Rio de Janeiro",
+   "uf": "RJ",
+   "lugar": {
+    "cidade": "br-rj-rio-de-janeiro",
+    "uf": "br-rj",
+    "regiao": "br-sudeste",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [
+    "funk"
+   ],
+   "generoRotulos": [
+    "Funk"
+   ],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 2,
+   "proximo": {
+    "id": 1733,
+    "nome": "Rafael Portugal: Stand-up",
+    "iso": "2027-03-05T21:00:00-03:00"
+   },
+   "eventoIds": [
+    1733,
+    1718
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=qualistage-rio-de-janeiro"
+  },
+  {
+   "id": "recinto-da-agrishow-ribeirao-preto",
+   "nome": "Recinto da Agrishow",
+   "aliases": [],
+   "busca": "recinto da agrishow",
+   "tipo": "",
+   "meta": " · Ribeirão Preto",
+   "cidade": "Ribeirão Preto",
+   "uf": "SP",
+   "lugar": {
+    "cidade": "br-sp-ribeirao-preto",
+    "uf": "br-sp",
+    "regiao": "br-sudeste",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [
+    "sertanejo"
+   ],
+   "generoRotulos": [
+    "Sertanejo"
+   ],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 2,
+   "proximo": {
+    "id": 1706,
+    "nome": "Intermed 2027: Noite Sertaneja",
+    "iso": "2027-04-17T22:00:00-03:00"
+   },
+   "eventoIds": [
+    1706,
+    1764
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=recinto-da-agrishow-ribeirao-preto"
+  },
+  {
+   "id": "rooftop-satelite-sao-paulo",
+   "nome": "Rooftop Satélite",
+   "aliases": [
+    "Satélite"
+   ],
+   "busca": "rooftop satelite satelite",
+   "tipo": "Rooftop",
+   "meta": "Rooftop · São Paulo",
+   "cidade": "São Paulo",
+   "uf": "SP",
+   "lugar": {
+    "cidade": "br-sp-sao-paulo",
+    "uf": "br-sp",
+    "regiao": "br-sudeste",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [
+    "eletronica",
+    "tribal"
+   ],
+   "generoRotulos": [
+    "Eletrônica",
+    "Tribal"
+   ],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 2,
+   "proximo": {
+    "id": 162,
+    "nome": "Sunset House Sessions",
+    "iso": "2026-11-15T16:00:00-03:00"
+   },
+   "eventoIds": [
+    162,
+    148
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=rooftop-satelite-sao-paulo"
+  },
+  {
+   "id": "teatro-castro-mendes-campinas",
+   "nome": "Teatro Castro Mendes",
+   "aliases": [
+    "Castro Mendes"
+   ],
+   "busca": "teatro castro mendes castro mendes",
+   "tipo": "Teatro",
+   "meta": "Teatro · Campinas",
+   "cidade": "Campinas",
+   "uf": "SP",
+   "lugar": {
+    "cidade": "br-sp-campinas",
+    "uf": "br-sp",
+    "regiao": "br-sudeste",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [
+    "eletronica"
+   ],
+   "generoRotulos": [
+    "Eletrônica"
+   ],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 2,
+   "proximo": {
+    "id": 1741,
+    "nome": "Victor Sarro ao Vivo",
+    "iso": "2026-12-18T21:00:00-03:00"
+   },
+   "eventoIds": [
+    1741,
+    1715
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=teatro-castro-mendes-campinas"
+  },
+  {
+   "id": "teatro-guaira-curitiba",
+   "nome": "Teatro Guaíra",
+   "aliases": [
+    "Guaíra"
+   ],
+   "busca": "teatro guaira guaira",
+   "tipo": "Teatro",
+   "meta": "Teatro · Curitiba",
+   "cidade": "Curitiba",
+   "uf": "PR",
+   "lugar": {
+    "cidade": "br-pr-curitiba",
+    "uf": "br-pr",
+    "regiao": "br-sul",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [
+    "eletronica"
+   ],
+   "generoRotulos": [
+    "Eletrônica"
+   ],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 2,
+   "proximo": {
+    "id": 1738,
+    "nome": "Diogo Portugal: Stand-up",
+    "iso": "2027-03-12T21:00:00-03:00"
+   },
+   "eventoIds": [
+    1738,
+    1721
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=teatro-guaira-curitiba"
+  },
+  {
+   "id": "teatro-guararapes-recife",
+   "nome": "Teatro Guararapes",
+   "aliases": [
+    "Guararapes"
+   ],
+   "busca": "teatro guararapes guararapes",
+   "tipo": "Teatro",
+   "meta": "Teatro · Recife",
+   "cidade": "Recife",
+   "uf": "PE",
+   "lugar": {
+    "cidade": "br-pe-recife",
+    "uf": "br-pe",
+    "regiao": "br-nordeste",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [
+    "forro"
+   ],
+   "generoRotulos": [
+    "Forró"
+   ],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 2,
+   "proximo": {
+    "id": 1742,
+    "nome": "Estevam Nabote: Stand-up",
+    "iso": "2027-02-27T20:00:00-03:00"
+   },
+   "eventoIds": [
+    1742,
+    1712
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=teatro-guararapes-recife"
+  },
+  {
+   "id": "teatro-renault-sao-paulo",
+   "nome": "Teatro Renault",
+   "aliases": [
+    "Renault"
+   ],
+   "busca": "teatro renault renault",
+   "tipo": "Teatro",
+   "meta": "Teatro · São Paulo",
+   "cidade": "São Paulo",
+   "uf": "SP",
+   "lugar": {
+    "cidade": "br-sp-sao-paulo",
+    "uf": "br-sp",
+    "regiao": "br-sudeste",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [],
+   "generoRotulos": [],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 2,
+   "proximo": {
+    "id": 1732,
+    "nome": "Dani Calabresa ao Vivo",
+    "iso": "2027-02-19T21:00:00-03:00"
+   },
+   "eventoIds": [
+    1732,
+    1744
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=teatro-renault-sao-paulo"
+  },
+  {
+   "id": "villa-country-sao-paulo",
+   "nome": "Villa Country",
+   "aliases": [],
+   "busca": "villa country",
+   "tipo": "",
+   "meta": " · São Paulo",
+   "cidade": "São Paulo",
+   "uf": "SP",
+   "lugar": {
+    "cidade": "br-sp-sao-paulo",
+    "uf": "br-sp",
+    "regiao": "br-sudeste",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [
+    "sertanejo",
+    "funk"
+   ],
+   "generoRotulos": [
+    "Sertanejo",
+    "Funk"
+   ],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 2,
+   "proximo": {
+    "id": 1724,
+    "nome": "Formatura Day: Festa dos Formandos SP",
+    "iso": "2026-12-19T22:00:00-03:00"
+   },
+   "eventoIds": [
+    1724,
+    1716
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=villa-country-sao-paulo"
+  },
+  {
+   "id": "warehouse-shoreditch-londres",
+   "nome": "Warehouse Shoreditch",
+   "aliases": [
+    "Shoreditch"
+   ],
+   "busca": "warehouse shoreditch shoreditch",
+   "tipo": "Warehouse",
+   "meta": "Warehouse · Londres",
+   "cidade": "Londres",
+   "uf": "Reino Unido",
+   "lugar": {
+    "cidade": "gb-inglaterra-londres",
+    "uf": "gb-inglaterra",
+    "regiao": "europa",
+    "pais": "gb",
+    "continente": "europa"
+   },
+   "generos": [
+    "samba-pagode",
+    "eletronica"
+   ],
+   "generoRotulos": [
+    "Samba e pagode",
+    "Eletrônica"
+   ],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 2,
+   "proximo": {
+    "id": 1824,
+    "nome": "Samba Londres Warehouse",
+    "iso": "2026-12-19T22:00:00+00:00"
+   },
+   "eventoIds": [
+    1824,
+    1826
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=warehouse-shoreditch-londres"
+  },
+  {
+   "id": "anfiteatro-do-parque-azul-barcelona",
+   "nome": "Anfiteatro do Parque Azul",
+   "aliases": [
+    "Parque Azul"
+   ],
+   "busca": "anfiteatro do parque azul parque azul",
+   "tipo": "Anfiteatro",
+   "meta": "Anfiteatro · Barcelona",
+   "cidade": "Barcelona",
+   "uf": "Espanha",
+   "lugar": {
+    "cidade": "es-catalunha-barcelona",
+    "uf": "es-catalunha",
+    "regiao": "europa",
+    "pais": "es",
+    "continente": "europa"
+   },
+   "generos": [
+    "jazz-blues"
+   ],
+   "generoRotulos": [
+    "Jazz e blues"
+   ],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 1,
+   "proximo": {
+    "id": 1811,
+    "nome": "Jazz no Anfiteatro",
+    "iso": "2027-04-10T19:00:00+02:00"
+   },
+   "eventoIds": [
+    1811
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=anfiteatro-do-parque-azul-barcelona"
+  },
+  {
+   "id": "arena-baia-larga-rio-de-janeiro",
+   "nome": "Arena Baía Larga",
+   "aliases": [
+    "Baía Larga"
+   ],
+   "busca": "arena baia larga baia larga",
+   "tipo": "Arena",
+   "meta": "Arena · Rio de Janeiro",
+   "cidade": "Rio de Janeiro",
+   "uf": "RJ",
+   "lugar": {
+    "cidade": "br-rj-rio-de-janeiro",
+    "uf": "br-rj",
+    "regiao": "br-sudeste",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [
+    "funk"
+   ],
+   "generoRotulos": [
+    "Funk"
+   ],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 1,
+   "proximo": {
+    "id": 103,
+    "nome": "Baile da Maré Cheia",
+    "iso": "2026-12-12T23:00:00-03:00"
+   },
+   "eventoIds": [
+    103
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=arena-baia-larga-rio-de-janeiro"
+  },
+  {
+   "id": "arena-biscayne-miami",
+   "nome": "Arena Biscayne",
+   "aliases": [
+    "Biscayne"
+   ],
+   "busca": "arena biscayne biscayne",
+   "tipo": "Arena",
+   "meta": "Arena · Miami",
+   "cidade": "Miami",
+   "uf": "Estados Unidos",
+   "lugar": {
+    "cidade": "us-florida-miami",
+    "uf": "us-florida",
+    "regiao": "america-do-norte",
+    "pais": "us",
+    "continente": "america-do-norte"
+   },
+   "generos": [
+    "jazz-blues"
+   ],
+   "generoRotulos": [
+    "Jazz e blues"
+   ],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 1,
+   "proximo": {
+    "id": 1823,
+    "nome": "Miami Jazz Night",
+    "iso": "2027-01-30T20:00:00-05:00"
+   },
+   "eventoIds": [
+    1823
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=arena-biscayne-miami"
+  },
+  {
+   "id": "arena-mapocho-santiago",
+   "nome": "Arena Mapocho",
+   "aliases": [
+    "Mapocho"
+   ],
+   "busca": "arena mapocho mapocho",
+   "tipo": "Arena",
+   "meta": "Arena · Santiago",
+   "cidade": "Santiago",
+   "uf": "Chile",
+   "lugar": {
+    "cidade": "cl-santiago-santiago",
+    "uf": "cl-santiago",
+    "regiao": "america-do-sul",
+    "pais": "cl",
+    "continente": "america-do-sul"
+   },
+   "generos": [
+    "eletronica"
+   ],
+   "generoRotulos": [
+    "Eletrônica"
+   ],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 1,
+   "proximo": {
+    "id": 1817,
+    "nome": "Festival Andino Eletrônico",
+    "iso": "2027-02-06T16:00:00-03:00"
+   },
+   "eventoIds": [
+    1817
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=arena-mapocho-santiago"
+  },
+  {
+   "id": "arena-mrv-belo-horizonte",
+   "nome": "Arena MRV",
+   "aliases": [
+    "MRV"
+   ],
+   "busca": "arena mrv mrv",
+   "tipo": "Arena",
+   "meta": "Arena · Belo Horizonte",
+   "cidade": "Belo Horizonte",
+   "uf": "MG",
+   "lugar": {
+    "cidade": "br-mg-belo-horizonte",
+    "uf": "br-mg",
+    "regiao": "br-sudeste",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [],
+   "generoRotulos": [],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 1,
+   "proximo": {
+    "id": 3002,
+    "nome": "Atlético Mineiro x Grêmio",
+    "iso": "2026-11-14T16:30:00-03:00"
+   },
+   "eventoIds": [
+    3002
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=arena-mrv-belo-horizonte"
+  },
+  {
+   "id": "arena-orla-norte-florianopolis",
+   "nome": "Arena Orla Norte",
+   "aliases": [
+    "Orla Norte"
+   ],
+   "busca": "arena orla norte orla norte",
+   "tipo": "Arena",
+   "meta": "Arena · Florianópolis",
+   "cidade": "Florianópolis",
+   "uf": "SC",
+   "lugar": {
+    "cidade": "br-sc-florianopolis",
+    "uf": "br-sc",
+    "regiao": "br-sul",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [
+    "eletronica"
+   ],
+   "generoRotulos": [
+    "Eletrônica"
+   ],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 1,
+   "proximo": {
+    "id": 167,
+    "nome": "Réveillon Eletrônico",
+    "iso": "2026-12-31T22:00:00-03:00"
+   },
+   "eventoIds": [
+    167
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=arena-orla-norte-florianopolis"
+  },
+  {
+   "id": "arena-planalto-campinas",
+   "nome": "Arena Planalto",
+   "aliases": [
+    "Planalto"
+   ],
+   "busca": "arena planalto planalto",
+   "tipo": "Arena",
+   "meta": "Arena · Campinas",
+   "cidade": "Campinas",
+   "uf": "SP",
+   "lugar": {
+    "cidade": "br-sp-campinas",
+    "uf": "br-sp",
+    "regiao": "br-sudeste",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [
+    "sertanejo"
+   ],
+   "generoRotulos": [
+    "Sertanejo"
+   ],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 1,
+   "proximo": {
+    "id": 108,
+    "nome": "Sertanejo no Planalto",
+    "iso": "2026-11-21T21:00:00-03:00"
+   },
+   "eventoIds": [
+    108
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=arena-planalto-campinas"
+  },
+  {
+   "id": "arena-puerto-norte-buenos-aires",
+   "nome": "Arena Puerto Norte",
+   "aliases": [
+    "Puerto Norte"
+   ],
+   "busca": "arena puerto norte puerto norte",
+   "tipo": "Arena",
+   "meta": "Arena · Buenos Aires",
+   "cidade": "Buenos Aires",
+   "uf": "Argentina",
+   "lugar": {
+    "cidade": "ar-buenos-aires-buenos-aires",
+    "uf": "ar-buenos-aires",
+    "regiao": "america-do-sul",
+    "pais": "ar",
+    "continente": "america-do-sul"
+   },
+   "generos": [
+    "pop"
+   ],
+   "generoRotulos": [
+    "Pop"
+   ],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 1,
+   "proximo": {
+    "id": 1815,
+    "nome": "Pop na Arena Puerto",
+    "iso": "2027-03-20T20:00:00-03:00"
+   },
+   "eventoIds": [
+    1815
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=arena-puerto-norte-buenos-aires"
+  },
+  {
+   "id": "arena-retiro-norte-madri",
+   "nome": "Arena Retiro Norte",
+   "aliases": [
+    "Retiro Norte"
+   ],
+   "busca": "arena retiro norte retiro norte",
+   "tipo": "Arena",
+   "meta": "Arena · Madri",
+   "cidade": "Madri",
+   "uf": "Espanha",
+   "lugar": {
+    "cidade": "es-madri-madri",
+    "uf": "es-madri",
+    "regiao": "europa",
+    "pais": "es",
+    "continente": "europa"
+   },
+   "generos": [
+    "eletronica"
+   ],
+   "generoRotulos": [
+    "Eletrônica"
+   ],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 1,
+   "proximo": {
+    "id": 1809,
+    "nome": "Festival Tierra Eléctrica",
+    "iso": "2027-05-29T16:00:00+02:00"
+   },
+   "eventoIds": [
+    1809
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=arena-retiro-norte-madri"
+  },
+  {
+   "id": "armazem-do-tejo-lisboa",
+   "nome": "Armazém do Tejo",
+   "aliases": [
+    "Tejo"
+   ],
+   "busca": "armazem do tejo tejo",
+   "tipo": "Armazém",
+   "meta": "Armazém · Lisboa",
+   "cidade": "Lisboa",
+   "uf": "Portugal",
+   "lugar": {
+    "cidade": "pt-lisboa-lisboa",
+    "uf": "pt-lisboa",
+    "regiao": "europa",
+    "pais": "pt",
+    "continente": "europa"
+   },
+   "generos": [
+    "forro"
+   ],
+   "generoRotulos": [
+    "Forró"
+   ],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 1,
+   "proximo": {
+    "id": 1802,
+    "nome": "Forró Pé de Serra em Lisboa",
+    "iso": "2026-12-05T22:00:00+00:00"
+   },
+   "eventoIds": [
+    1802
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=armazem-do-tejo-lisboa"
+  },
+  {
+   "id": "azotea-lavapies-madri",
+   "nome": "Azotea Lavapiés",
+   "aliases": [
+    "Lavapiés"
+   ],
+   "busca": "azotea lavapies lavapies",
+   "tipo": "Azotea",
+   "meta": "Azotea · Madri",
+   "cidade": "Madri",
+   "uf": "Espanha",
+   "lugar": {
+    "cidade": "es-madri-madri",
+    "uf": "es-madri",
+    "regiao": "europa",
+    "pais": "es",
+    "continente": "europa"
+   },
+   "generos": [
+    "pop"
+   ],
+   "generoRotulos": [
+    "Pop"
+   ],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 1,
+   "proximo": {
+    "id": 1808,
+    "nome": "Noche Latina Madri",
+    "iso": "2027-02-20T22:00:00+01:00"
+   },
+   "eventoIds": [
+    1808
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=azotea-lavapies-madri"
+  },
+  {
+   "id": "beach-club-south-point-miami",
+   "nome": "Beach Club South Point",
+   "aliases": [
+    "South Point"
+   ],
+   "busca": "beach club south point south point",
+   "tipo": "Beach Club",
+   "meta": "Beach Club · Miami",
+   "cidade": "Miami",
+   "uf": "Estados Unidos",
+   "lugar": {
+    "cidade": "us-florida-miami",
+    "uf": "us-florida",
+    "regiao": "america-do-norte",
+    "pais": "us",
+    "continente": "america-do-norte"
+   },
+   "generos": [
+    "samba-pagode"
+   ],
+   "generoRotulos": [
+    "Samba e pagode"
+   ],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 1,
+   "proximo": {
+    "id": 1819,
+    "nome": "Festa Brasil em Miami",
+    "iso": "2027-02-27T15:00:00-05:00"
+   },
+   "eventoIds": [
+    1819
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=beach-club-south-point-miami"
+  },
+  {
+   "id": "casa-da-ribeira-porto",
+   "nome": "Casa da Ribeira",
+   "aliases": [],
+   "busca": "casa da ribeira",
+   "tipo": "",
+   "meta": " · Porto",
+   "cidade": "Porto",
+   "uf": "Portugal",
+   "lugar": {
+    "cidade": "pt-porto-porto",
+    "uf": "pt-porto",
+    "regiao": "europa",
+    "pais": "pt",
+    "continente": "europa"
+   },
+   "generos": [
+    "samba-pagode"
+   ],
+   "generoRotulos": [
+    "Samba e pagode"
+   ],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 1,
+   "proximo": {
+    "id": 1805,
+    "nome": "Pagode na Ribeira",
+    "iso": "2026-11-28T21:00:00+00:00"
+   },
+   "eventoIds": [
+    1805
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=casa-da-ribeira-porto"
+  },
+  {
+   "id": "centro-de-eventos-fenadoce-pelotas",
+   "nome": "Centro de Eventos Fenadoce",
+   "aliases": [],
+   "busca": "centro de eventos fenadoce",
+   "tipo": "",
+   "meta": " · Pelotas",
+   "cidade": "Pelotas",
+   "uf": "RS",
+   "lugar": {
+    "cidade": "br-rs-pelotas",
+    "uf": "br-rs",
+    "regiao": "br-sul",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [],
+   "generoRotulos": [],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 1,
+   "proximo": {
+    "id": 1767,
+    "nome": "Fenadoce 2027",
+    "iso": "2027-06-02T13:00:00-03:00"
+   },
+   "eventoIds": [
+    1767
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=centro-de-eventos-fenadoce-pelotas"
+  },
+  {
+   "id": "cine-theatro-central-juiz-de-fora",
+   "nome": "Cine-Theatro Central",
+   "aliases": [],
+   "busca": "cine theatro central",
+   "tipo": "",
+   "meta": " · Juiz de Fora",
+   "cidade": "Juiz de Fora",
+   "uf": "MG",
+   "lugar": {
+    "cidade": "br-mg-juiz-de-fora",
+    "uf": "br-mg",
+    "regiao": "br-sudeste",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [
+    "sertanejo"
+   ],
+   "generoRotulos": [
+    "Sertanejo"
+   ],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 1,
+   "proximo": {
+    "id": 1720,
+    "nome": "Sertanejo Universitário: Open Bar das Federais",
+    "iso": "2027-04-17T22:00:00-03:00"
+   },
+   "eventoIds": [
+    1720
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=cine-theatro-central-juiz-de-fora"
+  },
+  {
+   "id": "club-bellavista-santiago",
+   "nome": "Club Bellavista",
+   "aliases": [
+    "Bellavista"
+   ],
+   "busca": "club bellavista bellavista",
+   "tipo": "Club",
+   "meta": "Club · Santiago",
+   "cidade": "Santiago",
+   "uf": "Chile",
+   "lugar": {
+    "cidade": "cl-santiago-santiago",
+    "uf": "cl-santiago",
+    "regiao": "america-do-sul",
+    "pais": "cl",
+    "continente": "america-do-sul"
+   },
+   "generos": [
+    "rock"
+   ],
+   "generoRotulos": [
+    "Rock"
+   ],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 1,
+   "proximo": {
+    "id": 1816,
+    "nome": "Rock Nocturno Santiago",
+    "iso": "2026-11-20T21:00:00-03:00"
+   },
+   "eventoIds": [
+    1816
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=club-bellavista-santiago"
+  },
+  {
+   "id": "club-mangue-rio-de-janeiro",
+   "nome": "Club Mangue",
+   "aliases": [
+    "Mangue"
+   ],
+   "busca": "club mangue mangue",
+   "tipo": "Club",
+   "meta": "Club · Rio de Janeiro",
+   "cidade": "Rio de Janeiro",
+   "uf": "RJ",
+   "lugar": {
+    "cidade": "br-rj-rio-de-janeiro",
+    "uf": "br-rj",
+    "regiao": "br-sudeste",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [
+    "tribal"
+   ],
+   "generoRotulos": [
+    "Tribal"
+   ],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 1,
+   "proximo": {
+    "id": 147,
+    "nome": "Noite Tribal: Batuque Sintético",
+    "iso": "2026-11-21T23:00:00-03:00"
+   },
+   "eventoIds": [
+    147
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=club-mangue-rio-de-janeiro"
+  },
+  {
+   "id": "club-pedra-alta-curitiba",
+   "nome": "Club Pedra Alta",
+   "aliases": [
+    "Pedra Alta"
+   ],
+   "busca": "club pedra alta pedra alta",
+   "tipo": "Club",
+   "meta": "Club · Curitiba",
+   "cidade": "Curitiba",
+   "uf": "PR",
+   "lugar": {
+    "cidade": "br-pr-curitiba",
+    "uf": "br-pr",
+    "regiao": "br-sul",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [
+    "eletronica"
+   ],
+   "generoRotulos": [
+    "Eletrônica"
+   ],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 1,
+   "proximo": {
+    "id": 166,
+    "nome": "Eletrônica na Pedreira",
+    "iso": "2026-12-05T22:00:00-03:00"
+   },
+   "eventoIds": [
+    166
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=club-pedra-alta-curitiba"
+  },
+  {
+   "id": "espaco-cerrado-goiania",
+   "nome": "Espaço Cerrado",
+   "aliases": [
+    "Cerrado"
+   ],
+   "busca": "espaco cerrado cerrado",
+   "tipo": "Espaço",
+   "meta": "Espaço · Goiânia",
+   "cidade": "Goiânia",
+   "uf": "GO",
+   "lugar": {
+    "cidade": "br-go-goiania",
+    "uf": "br-go",
+    "regiao": "br-centro-oeste",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [
+    "sertanejo"
+   ],
+   "generoRotulos": [
+    "Sertanejo"
+   ],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 1,
+   "proximo": {
+    "id": 109,
+    "nome": "Noite Sertaneja Cerrado",
+    "iso": "2026-11-27T22:00:00-03:00"
+   },
+   "eventoIds": [
+    109
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=espaco-cerrado-goiania"
+  },
+  {
+   "id": "estadio-do-comercial-ribeirao-preto",
+   "nome": "Estádio do Comercial",
+   "aliases": [
+    "Comercial"
+   ],
+   "busca": "estadio do comercial comercial",
+   "tipo": "Estádio",
+   "meta": "Estádio · Ribeirão Preto",
+   "cidade": "Ribeirão Preto",
+   "uf": "SP",
+   "lugar": {
+    "cidade": "br-sp-ribeirao-preto",
+    "uf": "br-sp",
+    "regiao": "br-sudeste",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [
+    "samba-pagode"
+   ],
+   "generoRotulos": [
+    "Samba e pagode"
+   ],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 1,
+   "proximo": {
+    "id": 193,
+    "nome": "Sorriso Eu Gosto no Pagode — Ribeirão Preto",
+    "iso": "2026-10-31T15:00:00-03:00"
+   },
+   "eventoIds": [
+    193
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=estadio-do-comercial-ribeirao-preto"
+  },
+  {
+   "id": "estadio-nabi-abi-chedid-braganca-paulista",
+   "nome": "Estádio Nabi Abi Chedid",
+   "aliases": [
+    "Nabi Abi Chedid"
+   ],
+   "busca": "estadio nabi abi chedid nabi abi chedid",
+   "tipo": "Estádio",
+   "meta": "Estádio · Bragança Paulista",
+   "cidade": "Bragança Paulista",
+   "uf": "SP",
+   "lugar": {
+    "cidade": "br-sp-braganca-paulista",
+    "uf": "br-sp",
+    "regiao": "br-sudeste",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [],
+   "generoRotulos": [],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 1,
+   "proximo": {
+    "id": 1151,
+    "nome": "Red Bull Bragantino x Santos",
+    "iso": "2027-03-14T16:00:00-03:00"
+   },
+   "eventoIds": [
+    1151
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=estadio-nabi-abi-chedid-braganca-paulista"
+  },
+  {
+   "id": "estadio-rei-pele-maceio",
+   "nome": "Estádio Rei Pelé",
+   "aliases": [
+    "Rei Pelé"
+   ],
+   "busca": "estadio rei pele rei pele",
+   "tipo": "Estádio",
+   "meta": "Estádio · Maceió",
+   "cidade": "Maceió",
+   "uf": "AL",
+   "lugar": {
+    "cidade": "br-al-maceio",
+    "uf": "br-al",
+    "regiao": "br-nordeste",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [],
+   "generoRotulos": [],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 1,
+   "proximo": {
+    "id": 1146,
+    "nome": "CRB x CSA",
+    "iso": "2026-11-07T16:00:00-03:00"
+   },
+   "eventoIds": [
+    1146
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=estadio-rei-pele-maceio"
+  },
+  {
+   "id": "expo-barra-funda-sao-paulo",
+   "nome": "Expo Barra Funda",
+   "aliases": [],
+   "busca": "expo barra funda",
+   "tipo": "",
+   "meta": " · São Paulo",
+   "cidade": "São Paulo",
+   "uf": "SP",
+   "lugar": {
+    "cidade": "br-sp-sao-paulo",
+    "uf": "br-sp",
+    "regiao": "br-sudeste",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [
+    "funk"
+   ],
+   "generoRotulos": [
+    "Funk"
+   ],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 1,
+   "proximo": {
+    "id": 1701,
+    "nome": "Calourada Unificada SP 2027",
+    "iso": "2027-02-27T22:00:00-03:00"
+   },
+   "eventoIds": [
+    1701
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=expo-barra-funda-sao-paulo"
+  },
+  {
+   "id": "expo-center-norte-sao-paulo",
+   "nome": "Expo Center Norte",
+   "aliases": [],
+   "busca": "expo center norte",
+   "tipo": "",
+   "meta": " · São Paulo",
+   "cidade": "São Paulo",
+   "uf": "SP",
+   "lugar": {
+    "cidade": "br-sp-sao-paulo",
+    "uf": "br-sp",
+    "regiao": "br-sudeste",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [],
+   "generoRotulos": [],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 1,
+   "proximo": {
+    "id": 1765,
+    "nome": "Brasil Game Show 2027",
+    "iso": "2027-10-08T11:00:00-03:00"
+   },
+   "eventoIds": [
+    1765
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=expo-center-norte-sao-paulo"
+  },
+  {
+   "id": "galpon-palermo-buenos-aires",
+   "nome": "Galpón Palermo",
+   "aliases": [
+    "Palermo"
+   ],
+   "busca": "galpon palermo palermo",
+   "tipo": "Galpón",
+   "meta": "Galpón · Buenos Aires",
+   "cidade": "Buenos Aires",
+   "uf": "Argentina",
+   "lugar": {
+    "cidade": "ar-buenos-aires-buenos-aires",
+    "uf": "ar-buenos-aires",
+    "regiao": "america-do-sul",
+    "pais": "ar",
+    "continente": "america-do-sul"
+   },
+   "generos": [
+    "eletronica"
+   ],
+   "generoRotulos": [
+    "Eletrônica"
+   ],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 1,
+   "proximo": {
+    "id": 1814,
+    "nome": "Palermo Open Air",
+    "iso": "2026-11-14T23:00:00-03:00"
+   },
+   "eventoIds": [
+    1814
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=galpon-palermo-buenos-aires"
+  },
+  {
+   "id": "ginasio-nilson-nelson-brasilia",
+   "nome": "Ginásio Nilson Nelson",
+   "aliases": [
+    "Nilson Nelson"
+   ],
+   "busca": "ginasio nilson nelson nilson nelson",
+   "tipo": "Ginásio",
+   "meta": "Ginásio · Brasília",
+   "cidade": "Brasília",
+   "uf": "DF",
+   "lugar": {
+    "cidade": "br-df-brasilia",
+    "uf": "br-df",
+    "regiao": "br-centro-oeste",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [
+    "funk"
+   ],
+   "generoRotulos": [
+    "Funk"
+   ],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 1,
+   "proximo": {
+    "id": 1710,
+    "nome": "Integração dos Calouros UnB",
+    "iso": "2027-03-27T22:00:00-03:00"
+   },
+   "eventoIds": [
+    1710
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=ginasio-nilson-nelson-brasilia"
+  },
+  {
+   "id": "ginasio-vale-do-sol-belo-horizonte",
+   "nome": "Ginásio Vale do Sol",
+   "aliases": [
+    "Vale do Sol"
+   ],
+   "busca": "ginasio vale do sol vale do sol",
+   "tipo": "Ginásio",
+   "meta": "Ginásio · Belo Horizonte",
+   "cidade": "Belo Horizonte",
+   "uf": "MG",
+   "lugar": {
+    "cidade": "br-mg-belo-horizonte",
+    "uf": "br-mg",
+    "regiao": "br-sudeste",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [],
+   "generoRotulos": [],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 1,
+   "proximo": {
+    "id": 33,
+    "nome": "Liga Vale do Sol de Vôlei: Rodada 1",
+    "iso": "2027-02-05T19:00:00-03:00"
+   },
+   "eventoIds": [
+    33
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=ginasio-vale-do-sol-belo-horizonte"
+  },
+  {
+   "id": "grande-teatro-cemig-palacio-das-artes-belo-horizonte",
+   "nome": "Grande Teatro Cemig Palácio das Artes",
+   "aliases": [],
+   "busca": "grande teatro cemig palacio das artes",
+   "tipo": "",
+   "meta": " · Belo Horizonte",
+   "cidade": "Belo Horizonte",
+   "uf": "MG",
+   "lugar": {
+    "cidade": "br-mg-belo-horizonte",
+    "uf": "br-mg",
+    "regiao": "br-sudeste",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [],
+   "generoRotulos": [],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 1,
+   "proximo": {
+    "id": 1731,
+    "nome": "Paulo Vieira: Stand-up",
+    "iso": "2027-02-06T21:00:00-03:00"
+   },
+   "eventoIds": [
+    1731
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=grande-teatro-cemig-palacio-das-artes-belo-horizonte"
+  },
+  {
+   "id": "hall-international-drive-orlando",
+   "nome": "Hall International Drive",
+   "aliases": [
+    "International Drive"
+   ],
+   "busca": "hall international drive international drive",
+   "tipo": "Hall",
+   "meta": "Hall · Orlando",
+   "cidade": "Orlando",
+   "uf": "Estados Unidos",
+   "lugar": {
+    "cidade": "us-florida-orlando",
+    "uf": "us-florida",
+    "regiao": "america-do-norte",
+    "pais": "us",
+    "continente": "america-do-norte"
+   },
+   "generos": [
+    "sertanejo"
+   ],
+   "generoRotulos": [
+    "Sertanejo"
+   ],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 1,
+   "proximo": {
+    "id": 1821,
+    "nome": "Sertanejo em Orlando",
+    "iso": "2026-12-05T21:00:00-05:00"
+   },
+   "eventoIds": [
+    1821
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=hall-international-drive-orlando"
+  },
+  {
+   "id": "marina-da-gloria-rio-de-janeiro",
+   "nome": "Marina da Glória",
+   "aliases": [
+    "Glória"
+   ],
+   "busca": "marina da gloria gloria",
+   "tipo": "Marina",
+   "meta": "Marina · Rio de Janeiro",
+   "cidade": "Rio de Janeiro",
+   "uf": "RJ",
+   "lugar": {
+    "cidade": "br-rj-rio-de-janeiro",
+    "uf": "br-rj",
+    "regiao": "br-sudeste",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [],
+   "generoRotulos": [],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 1,
+   "proximo": {
+    "id": 1759,
+    "nome": "ArtRio 2027",
+    "iso": "2027-09-15T13:00:00-03:00"
+   },
+   "eventoIds": [
+    1759
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=marina-da-gloria-rio-de-janeiro"
+  },
+  {
+   "id": "mercado-patio-das-cozinhas-sao-paulo",
+   "nome": "Mercado Pátio das Cozinhas",
+   "aliases": [
+    "Pátio das Cozinhas"
+   ],
+   "busca": "mercado patio das cozinhas patio das cozinhas",
+   "tipo": "Mercado",
+   "meta": "Mercado · São Paulo",
+   "cidade": "São Paulo",
+   "uf": "SP",
+   "lugar": {
+    "cidade": "br-sp-sao-paulo",
+    "uf": "br-sp",
+    "regiao": "br-sudeste",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [],
+   "generoRotulos": [],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 1,
+   "proximo": {
+    "id": 38,
+    "nome": "Mesa Longa do Pátio",
+    "iso": "2027-04-10T19:30:00-03:00"
+   },
+   "eventoIds": [
+    38
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=mercado-patio-das-cozinhas-sao-paulo"
+  },
+  {
+   "id": "mis-experience-sao-paulo",
+   "nome": "MIS Experience",
+   "aliases": [],
+   "busca": "mis experience",
+   "tipo": "",
+   "meta": " · São Paulo",
+   "cidade": "São Paulo",
+   "uf": "SP",
+   "lugar": {
+    "cidade": "br-sp-sao-paulo",
+    "uf": "br-sp",
+    "regiao": "br-sudeste",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [],
+   "generoRotulos": [],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 1,
+   "proximo": {
+    "id": 1770,
+    "nome": "Leonardo da Vinci: 500 Anos de um Gênio",
+    "iso": "2026-11-17T10:00:00-03:00"
+   },
+   "eventoIds": [
+    1770
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=mis-experience-sao-paulo"
+  },
+  {
+   "id": "museu-farol-antigo-salvador",
+   "nome": "Museu Farol Antigo",
+   "aliases": [
+    "Farol Antigo"
+   ],
+   "busca": "museu farol antigo farol antigo",
+   "tipo": "Museu",
+   "meta": "Museu · Salvador",
+   "cidade": "Salvador",
+   "uf": "BA",
+   "lugar": {
+    "cidade": "br-ba-salvador",
+    "uf": "br-ba",
+    "regiao": "br-nordeste",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [],
+   "generoRotulos": [],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 1,
+   "proximo": {
+    "id": 36,
+    "nome": "Exposição Mares de Papel",
+    "iso": "2027-01-16T10:00:00-03:00"
+   },
+   "eventoIds": [
+    36
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=museu-farol-antigo-salvador"
+  },
+  {
+   "id": "palco-alfama-lisboa",
+   "nome": "Palco Alfama",
+   "aliases": [
+    "Alfama"
+   ],
+   "busca": "palco alfama alfama",
+   "tipo": "Palco",
+   "meta": "Palco · Lisboa",
+   "cidade": "Lisboa",
+   "uf": "Portugal",
+   "lugar": {
+    "cidade": "pt-lisboa-lisboa",
+    "uf": "pt-lisboa",
+    "regiao": "europa",
+    "pais": "pt",
+    "continente": "europa"
+   },
+   "generos": [
+    "samba-pagode"
+   ],
+   "generoRotulos": [
+    "Samba e pagode"
+   ],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 1,
+   "proximo": {
+    "id": 1801,
+    "nome": "Roda de Samba no Tejo",
+    "iso": "2026-11-21T20:00:00+00:00"
+   },
+   "eventoIds": [
+    1801
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=palco-alfama-lisboa"
+  },
+  {
+   "id": "parque-de-exposicoes-cerrado-ribeirao-preto",
+   "nome": "Parque de Exposições Cerrado",
+   "aliases": [
+    "Cerrado"
+   ],
+   "busca": "parque de exposicoes cerrado cerrado",
+   "tipo": "Parque de Exposições",
+   "meta": "Parque de Exposições · Ribeirão Preto",
+   "cidade": "Ribeirão Preto",
+   "uf": "SP",
+   "lugar": {
+    "cidade": "br-sp-ribeirao-preto",
+    "uf": "br-sp",
+    "regiao": "br-sudeste",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [
+    "sertanejo"
+   ],
+   "generoRotulos": [
+    "Sertanejo"
+   ],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 1,
+   "proximo": {
+    "id": 110,
+    "nome": "Rodeio Cerrado 2027",
+    "iso": "2027-04-24T20:00:00-03:00"
+   },
+   "eventoIds": [
+    110
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=parque-de-exposicoes-cerrado-ribeirao-preto"
+  },
+  {
+   "id": "parque-ribeirinho-lisboa",
+   "nome": "Parque Ribeirinho",
+   "aliases": [
+    "Ribeirinho"
+   ],
+   "busca": "parque ribeirinho ribeirinho",
+   "tipo": "Parque",
+   "meta": "Parque · Lisboa",
+   "cidade": "Lisboa",
+   "uf": "Portugal",
+   "lugar": {
+    "cidade": "pt-lisboa-lisboa",
+    "uf": "pt-lisboa",
+    "regiao": "europa",
+    "pais": "pt",
+    "continente": "europa"
+   },
+   "generos": [
+    "mpb"
+   ],
+   "generoRotulos": [
+    "MPB"
+   ],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 1,
+   "proximo": {
+    "id": 1803,
+    "nome": "Festival Brasil em Lisboa",
+    "iso": "2027-06-12T15:00:00+01:00"
+   },
+   "eventoIds": [
+    1803
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=parque-ribeirinho-lisboa"
+  },
+  {
+   "id": "pavilhao-da-bienal-sao-paulo",
+   "nome": "Pavilhão da Bienal",
+   "aliases": [
+    "Bienal"
+   ],
+   "busca": "pavilhao da bienal bienal",
+   "tipo": "Pavilhão",
+   "meta": "Pavilhão · São Paulo",
+   "cidade": "São Paulo",
+   "uf": "SP",
+   "lugar": {
+    "cidade": "br-sp-sao-paulo",
+    "uf": "br-sp",
+    "regiao": "br-sudeste",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [],
+   "generoRotulos": [],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 1,
+   "proximo": {
+    "id": 1758,
+    "nome": "SP-Arte 2027",
+    "iso": "2027-04-07T13:00:00-03:00"
+   },
+   "eventoIds": [
+    1758
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=pavilhao-da-bienal-sao-paulo"
+  },
+  {
+   "id": "pavilhao-do-douro-porto",
+   "nome": "Pavilhão do Douro",
+   "aliases": [
+    "Douro"
+   ],
+   "busca": "pavilhao do douro douro",
+   "tipo": "Pavilhão",
+   "meta": "Pavilhão · Porto",
+   "cidade": "Porto",
+   "uf": "Portugal",
+   "lugar": {
+    "cidade": "pt-porto-porto",
+    "uf": "pt-porto",
+    "regiao": "europa",
+    "pais": "pt",
+    "continente": "europa"
+   },
+   "generos": [
+    "rock"
+   ],
+   "generoRotulos": [
+    "Rock"
+   ],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 1,
+   "proximo": {
+    "id": 1806,
+    "nome": "Noite de Rock no Douro",
+    "iso": "2027-01-23T21:00:00+00:00"
+   },
+   "eventoIds": [
+    1806
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=pavilhao-do-douro-porto"
+  },
+  {
+   "id": "pavilhao-do-lago-verde-orlando",
+   "nome": "Pavilhão do Lago Verde",
+   "aliases": [
+    "Lago Verde"
+   ],
+   "busca": "pavilhao do lago verde lago verde",
+   "tipo": "Pavilhão",
+   "meta": "Pavilhão · Orlando",
+   "cidade": "Orlando",
+   "uf": "Estados Unidos",
+   "lugar": {
+    "cidade": "us-florida-orlando",
+    "uf": "us-florida",
+    "regiao": "america-do-norte",
+    "pais": "us",
+    "continente": "america-do-norte"
+   },
+   "generos": [
+    "forro"
+   ],
+   "generoRotulos": [
+    "Forró"
+   ],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 1,
+   "proximo": {
+    "id": 1822,
+    "nome": "Forró no Lago Verde",
+    "iso": "2027-03-13T20:00:00-05:00"
+   },
+   "eventoIds": [
+    1822
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=pavilhao-do-lago-verde-orlando"
+  },
+  {
+   "id": "pavilhao-jacaranda-fortaleza",
+   "nome": "Pavilhão Jacarandá",
+   "aliases": [
+    "Jacarandá"
+   ],
+   "busca": "pavilhao jacaranda jacaranda",
+   "tipo": "Pavilhão",
+   "meta": "Pavilhão · Fortaleza",
+   "cidade": "Fortaleza",
+   "uf": "CE",
+   "lugar": {
+    "cidade": "br-ce-fortaleza",
+    "uf": "br-ce",
+    "regiao": "br-nordeste",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [
+    "forro"
+   ],
+   "generoRotulos": [
+    "Forró"
+   ],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 1,
+   "proximo": {
+    "id": 120,
+    "nome": "Vaquejada Sertão Forte",
+    "iso": "2027-03-13T15:00:00-03:00"
+   },
+   "eventoIds": [
+    120
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=pavilhao-jacaranda-fortaleza"
+  },
+  {
+   "id": "pavilhao-pampa-porto-alegre",
+   "nome": "Pavilhão Pampa",
+   "aliases": [
+    "Pampa"
+   ],
+   "busca": "pavilhao pampa pampa",
+   "tipo": "Pavilhão",
+   "meta": "Pavilhão · Porto Alegre",
+   "cidade": "Porto Alegre",
+   "uf": "RS",
+   "lugar": {
+    "cidade": "br-rs-porto-alegre",
+    "uf": "br-rs",
+    "regiao": "br-sul",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [
+    "mpb"
+   ],
+   "generoRotulos": [
+    "MPB"
+   ],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 1,
+   "proximo": {
+    "id": 180,
+    "nome": "Festival MPB Cultural 2027",
+    "iso": "2027-04-17T15:00:00-03:00"
+   },
+   "eventoIds": [
+    180
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=pavilhao-pampa-porto-alegre"
+  },
+  {
+   "id": "pavilhao-ponte-velha-sao-paulo",
+   "nome": "Pavilhão Ponte Velha",
+   "aliases": [
+    "Ponte Velha"
+   ],
+   "busca": "pavilhao ponte velha ponte velha",
+   "tipo": "Pavilhão",
+   "meta": "Pavilhão · São Paulo",
+   "cidade": "São Paulo",
+   "uf": "SP",
+   "lugar": {
+    "cidade": "br-sp-sao-paulo",
+    "uf": "br-sp",
+    "regiao": "br-sudeste",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [
+    "funk"
+   ],
+   "generoRotulos": [
+    "Funk"
+   ],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 1,
+   "proximo": {
+    "id": 102,
+    "nome": "Funk na Laje Open Air",
+    "iso": "2026-11-14T22:00:00-03:00"
+   },
+   "eventoIds": [
+    102
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=pavilhao-ponte-velha-sao-paulo"
+  },
+  {
+   "id": "pedreira-paulo-leminski-curitiba",
+   "nome": "Pedreira Paulo Leminski",
+   "aliases": [
+    "Paulo Leminski"
+   ],
+   "busca": "pedreira paulo leminski paulo leminski",
+   "tipo": "Pedreira",
+   "meta": "Pedreira · Curitiba",
+   "cidade": "Curitiba",
+   "uf": "PR",
+   "lugar": {
+    "cidade": "br-pr-curitiba",
+    "uf": "br-pr",
+    "regiao": "br-sul",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [
+    "eletronica"
+   ],
+   "generoRotulos": [
+    "Eletrônica"
+   ],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 1,
+   "proximo": null,
+   "eventoIds": [],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=pedreira-paulo-leminski-curitiba"
+  },
+  {
+   "id": "praia-de-marceneiro-marceneiro",
+   "nome": "Praia de Marceneiro",
+   "aliases": [
+    "Marceneiro"
+   ],
+   "busca": "praia de marceneiro marceneiro",
+   "tipo": "Praia de",
+   "meta": "Praia de · Marceneiro",
+   "cidade": "Marceneiro",
+   "uf": "AL",
+   "lugar": {
+    "cidade": "br-al-marceneiro",
+    "uf": "br-al",
+    "regiao": "br-nordeste",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [],
+   "generoRotulos": [],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 1,
+   "proximo": null,
+   "eventoIds": [],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=praia-de-marceneiro-marceneiro"
+  },
+  {
+   "id": "quadra-ponte-velha-rio-de-janeiro",
+   "nome": "Quadra Ponte Velha",
+   "aliases": [
+    "Ponte Velha"
+   ],
+   "busca": "quadra ponte velha ponte velha",
+   "tipo": "Quadra",
+   "meta": "Quadra · Rio de Janeiro",
+   "cidade": "Rio de Janeiro",
+   "uf": "RJ",
+   "lugar": {
+    "cidade": "br-rj-rio-de-janeiro",
+    "uf": "br-rj",
+    "regiao": "br-sudeste",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [
+    "funk"
+   ],
+   "generoRotulos": [
+    "Funk"
+   ],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 1,
+   "proximo": {
+    "id": 101,
+    "nome": "Baile de Halloween do Tamborzão",
+    "iso": "2026-10-31T23:00:00-03:00"
+   },
+   "eventoIds": [
+    101
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=quadra-ponte-velha-rio-de-janeiro"
+  },
+  {
+   "id": "riocentro-rio-de-janeiro",
+   "nome": "Riocentro",
+   "aliases": [],
+   "busca": "riocentro",
+   "tipo": "",
+   "meta": " · Rio de Janeiro",
+   "cidade": "Rio de Janeiro",
+   "uf": "RJ",
+   "lugar": {
+    "cidade": "br-rj-rio-de-janeiro",
+    "uf": "br-rj",
+    "regiao": "br-sudeste",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [],
+   "generoRotulos": [],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 1,
+   "proximo": {
+    "id": 1755,
+    "nome": "Bienal do Livro Rio 2027",
+    "iso": "2027-06-11T09:00:00-03:00"
+   },
+   "eventoIds": [
+    1755
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=riocentro-rio-de-janeiro"
+  },
+  {
+   "id": "rooftop-wynwood-miami",
+   "nome": "Rooftop Wynwood",
+   "aliases": [
+    "Wynwood"
+   ],
+   "busca": "rooftop wynwood wynwood",
+   "tipo": "Rooftop",
+   "meta": "Rooftop · Miami",
+   "cidade": "Miami",
+   "uf": "Estados Unidos",
+   "lugar": {
+    "cidade": "us-florida-miami",
+    "uf": "us-florida",
+    "regiao": "america-do-norte",
+    "pais": "us",
+    "continente": "america-do-norte"
+   },
+   "generos": [
+    "eletronica"
+   ],
+   "generoRotulos": [
+    "Eletrônica"
+   ],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 1,
+   "proximo": {
+    "id": 1820,
+    "nome": "Miami Rooftop Sessions",
+    "iso": "2026-12-11T22:00:00-05:00"
+   },
+   "eventoIds": [
+    1820
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=rooftop-wynwood-miami"
+  },
+  {
+   "id": "sala-malasana-madri",
+   "nome": "Sala Malasaña",
+   "aliases": [
+    "Malasaña"
+   ],
+   "busca": "sala malasana malasana",
+   "tipo": "Sala",
+   "meta": "Sala · Madri",
+   "cidade": "Madri",
+   "uf": "Espanha",
+   "lugar": {
+    "cidade": "es-madri-madri",
+    "uf": "es-madri",
+    "regiao": "europa",
+    "pais": "es",
+    "continente": "europa"
+   },
+   "generos": [
+    "mpb"
+   ],
+   "generoRotulos": [
+    "MPB"
+   ],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 1,
+   "proximo": {
+    "id": 1807,
+    "nome": "MPB em Madri",
+    "iso": "2026-11-27T21:00:00+01:00"
+   },
+   "eventoIds": [
+    1807
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=sala-malasana-madri"
+  },
+  {
+   "id": "sala-poblenou-barcelona",
+   "nome": "Sala Poblenou",
+   "aliases": [
+    "Poblenou"
+   ],
+   "busca": "sala poblenou poblenou",
+   "tipo": "Sala",
+   "meta": "Sala · Barcelona",
+   "cidade": "Barcelona",
+   "uf": "Espanha",
+   "lugar": {
+    "cidade": "es-catalunha-barcelona",
+    "uf": "es-catalunha",
+    "regiao": "europa",
+    "pais": "es",
+    "continente": "europa"
+   },
+   "generos": [
+    "eletronica"
+   ],
+   "generoRotulos": [
+    "Eletrônica"
+   ],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 1,
+   "proximo": {
+    "id": 1810,
+    "nome": "Pulso Sessions Barcelona",
+    "iso": "2026-12-12T23:00:00+01:00"
+   },
+   "eventoIds": [
+    1810
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=sala-poblenou-barcelona"
+  },
+  {
+   "id": "sala-san-telmo-buenos-aires",
+   "nome": "Sala San Telmo",
+   "aliases": [
+    "San Telmo"
+   ],
+   "busca": "sala san telmo san telmo",
+   "tipo": "Sala",
+   "meta": "Sala · Buenos Aires",
+   "cidade": "Buenos Aires",
+   "uf": "Argentina",
+   "lugar": {
+    "cidade": "ar-buenos-aires-buenos-aires",
+    "uf": "ar-buenos-aires",
+    "regiao": "america-do-sul",
+    "pais": "ar",
+    "continente": "america-do-sul"
+   },
+   "generos": [
+    "samba-pagode"
+   ],
+   "generoRotulos": [
+    "Samba e pagode"
+   ],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 1,
+   "proximo": {
+    "id": 1813,
+    "nome": "Samba em Buenos Aires",
+    "iso": "2027-01-16T21:00:00-03:00"
+   },
+   "eventoIds": [
+    1813
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=sala-san-telmo-buenos-aires"
+  },
+  {
+   "id": "sala-thames-hall-londres",
+   "nome": "Sala Thames Hall",
+   "aliases": [
+    "Thames Hall"
+   ],
+   "busca": "sala thames hall thames hall",
+   "tipo": "Sala",
+   "meta": "Sala · Londres",
+   "cidade": "Londres",
+   "uf": "Reino Unido",
+   "lugar": {
+    "cidade": "gb-inglaterra-londres",
+    "uf": "gb-inglaterra",
+    "regiao": "europa",
+    "pais": "gb",
+    "continente": "europa"
+   },
+   "generos": [
+    "jazz-blues"
+   ],
+   "generoRotulos": [
+    "Jazz e blues"
+   ],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 1,
+   "proximo": {
+    "id": 1825,
+    "nome": "Noite de Jazz em Londres",
+    "iso": "2027-03-06T20:00:00+00:00"
+   },
+   "eventoIds": [
+    1825
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=sala-thames-hall-londres"
+  },
+  {
+   "id": "teatro-bradesco-sao-paulo",
+   "nome": "Teatro Bradesco",
+   "aliases": [
+    "Bradesco"
+   ],
+   "busca": "teatro bradesco bradesco",
+   "tipo": "Teatro",
+   "meta": "Teatro · São Paulo",
+   "cidade": "São Paulo",
+   "uf": "SP",
+   "lugar": {
+    "cidade": "br-sp-sao-paulo",
+    "uf": "br-sp",
+    "regiao": "br-sudeste",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [],
+   "generoRotulos": [],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 1,
+   "proximo": {
+    "id": 1727,
+    "nome": "Fábio Porchat ao Vivo",
+    "iso": "2026-11-27T21:00:00-03:00"
+   },
+   "eventoIds": [
+    1727
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=teatro-bradesco-sao-paulo"
+  },
+  {
+   "id": "teatro-castro-alves-salvador",
+   "nome": "Teatro Castro Alves",
+   "aliases": [
+    "Castro Alves"
+   ],
+   "busca": "teatro castro alves castro alves",
+   "tipo": "Teatro",
+   "meta": "Teatro · Salvador",
+   "cidade": "Salvador",
+   "uf": "BA",
+   "lugar": {
+    "cidade": "br-ba-salvador",
+    "uf": "br-ba",
+    "regiao": "br-nordeste",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [],
+   "generoRotulos": [],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 1,
+   "proximo": {
+    "id": 1737,
+    "nome": "Nando Viana ao Vivo",
+    "iso": "2027-02-13T20:00:00-03:00"
+   },
+   "eventoIds": [
+    1737
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=teatro-castro-alves-salvador"
+  },
+  {
+   "id": "teatro-costanera-buenos-aires",
+   "nome": "Teatro Costanera",
+   "aliases": [
+    "Costanera"
+   ],
+   "busca": "teatro costanera costanera",
+   "tipo": "Teatro",
+   "meta": "Teatro · Buenos Aires",
+   "cidade": "Buenos Aires",
+   "uf": "Argentina",
+   "lugar": {
+    "cidade": "ar-buenos-aires-buenos-aires",
+    "uf": "ar-buenos-aires",
+    "regiao": "america-do-sul",
+    "pais": "ar",
+    "continente": "america-do-sul"
+   },
+   "generos": [
+    "rock"
+   ],
+   "generoRotulos": [
+    "Rock"
+   ],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 1,
+   "proximo": {
+    "id": 1812,
+    "nome": "Rock en la Costanera",
+    "iso": "2026-12-04T21:00:00-03:00"
+   },
+   "eventoIds": [
+    1812
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=teatro-costanera-buenos-aires"
+  },
+  {
+   "id": "teatro-do-bourbon-country-porto-alegre",
+   "nome": "Teatro do Bourbon Country",
+   "aliases": [
+    "Bourbon Country"
+   ],
+   "busca": "teatro do bourbon country bourbon country",
+   "tipo": "Teatro",
+   "meta": "Teatro · Porto Alegre",
+   "cidade": "Porto Alegre",
+   "uf": "RS",
+   "lugar": {
+    "cidade": "br-rs-porto-alegre",
+    "uf": "br-rs",
+    "regiao": "br-sul",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [],
+   "generoRotulos": [],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 1,
+   "proximo": {
+    "id": 1736,
+    "nome": "Murilo Couto: Stand-up",
+    "iso": "2027-01-16T21:00:00-03:00"
+   },
+   "eventoIds": [
+    1736
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=teatro-do-bourbon-country-porto-alegre"
+  },
+  {
+   "id": "teatro-frei-caneca-sao-paulo",
+   "nome": "Teatro Frei Caneca",
+   "aliases": [
+    "Frei Caneca"
+   ],
+   "busca": "teatro frei caneca frei caneca",
+   "tipo": "Teatro",
+   "meta": "Teatro · São Paulo",
+   "cidade": "São Paulo",
+   "uf": "SP",
+   "lugar": {
+    "cidade": "br-sp-sao-paulo",
+    "uf": "br-sp",
+    "regiao": "br-sudeste",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [],
+   "generoRotulos": [],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 1,
+   "proximo": {
+    "id": 1739,
+    "nome": "Rodrigo Marques ao Vivo",
+    "iso": "2026-11-20T21:00:00-03:00"
+   },
+   "eventoIds": [
+    1739
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=teatro-frei-caneca-sao-paulo"
+  },
+  {
+   "id": "teatro-positivo-curitiba",
+   "nome": "Teatro Positivo",
+   "aliases": [
+    "Positivo"
+   ],
+   "busca": "teatro positivo positivo",
+   "tipo": "Teatro",
+   "meta": "Teatro · Curitiba",
+   "cidade": "Curitiba",
+   "uf": "PR",
+   "lugar": {
+    "cidade": "br-pr-curitiba",
+    "uf": "br-pr",
+    "regiao": "br-sul",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [],
+   "generoRotulos": [],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 1,
+   "proximo": {
+    "id": 1735,
+    "nome": "Bruna Louise ao Vivo",
+    "iso": "2026-12-05T21:00:00-03:00"
+   },
+   "eventoIds": [
+    1735
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=teatro-positivo-curitiba"
+  },
+  {
+   "id": "teatro-providencia-santiago",
+   "nome": "Teatro Providencia",
+   "aliases": [
+    "Providencia"
+   ],
+   "busca": "teatro providencia providencia",
+   "tipo": "Teatro",
+   "meta": "Teatro · Santiago",
+   "cidade": "Santiago",
+   "uf": "Chile",
+   "lugar": {
+    "cidade": "cl-santiago-santiago",
+    "uf": "cl-santiago",
+    "regiao": "america-do-sul",
+    "pais": "cl",
+    "continente": "america-do-sul"
+   },
+   "generos": [
+    "rap"
+   ],
+   "generoRotulos": [
+    "Rap e trap"
+   ],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 1,
+   "proximo": {
+    "id": 1818,
+    "nome": "Rap en el Barrio",
+    "iso": "2027-01-09T20:00:00-03:00"
+   },
+   "eventoIds": [
+    1818
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=teatro-providencia-santiago"
+  },
+  {
+   "id": "teatro-riachuelo-rio-rio-de-janeiro",
+   "nome": "Teatro Riachuelo Rio",
+   "aliases": [
+    "Riachuelo Rio"
+   ],
+   "busca": "teatro riachuelo rio riachuelo rio",
+   "tipo": "Teatro",
+   "meta": "Teatro · Rio de Janeiro",
+   "cidade": "Rio de Janeiro",
+   "uf": "RJ",
+   "lugar": {
+    "cidade": "br-rj-rio-de-janeiro",
+    "uf": "br-rj",
+    "regiao": "br-sudeste",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [],
+   "generoRotulos": [],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 1,
+   "proximo": {
+    "id": 1734,
+    "nome": "Marcelo Adnet: Improviso e Stand-up",
+    "iso": "2026-11-21T20:00:00-03:00"
+   },
+   "eventoIds": [
+    1734
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=teatro-riachuelo-rio-rio-de-janeiro"
+  },
+  {
+   "id": "teatro-sesc-palladium-belo-horizonte",
+   "nome": "Teatro Sesc Palladium",
+   "aliases": [
+    "Sesc Palladium"
+   ],
+   "busca": "teatro sesc palladium sesc palladium",
+   "tipo": "Teatro",
+   "meta": "Teatro · Belo Horizonte",
+   "cidade": "Belo Horizonte",
+   "uf": "MG",
+   "lugar": {
+    "cidade": "br-mg-belo-horizonte",
+    "uf": "br-mg",
+    "regiao": "br-sudeste",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [],
+   "generoRotulos": [],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 1,
+   "proximo": {
+    "id": 1743,
+    "nome": "Igor Guimarães ao Vivo",
+    "iso": "2027-03-19T21:00:00-03:00"
+   },
+   "eventoIds": [
+    1743
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=teatro-sesc-palladium-belo-horizonte"
+  },
+  {
+   "id": "tenda-dos-autores-paraty",
+   "nome": "Tenda dos Autores",
+   "aliases": [],
+   "busca": "tenda dos autores",
+   "tipo": "",
+   "meta": " · Paraty",
+   "cidade": "Paraty",
+   "uf": "RJ",
+   "lugar": {
+    "cidade": "br-rj-paraty",
+    "uf": "br-rj",
+    "regiao": "br-sudeste",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [],
+   "generoRotulos": [],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 1,
+   "proximo": {
+    "id": 1762,
+    "nome": "FLIP 2027: Mesas na Tenda dos Autores",
+    "iso": "2027-07-28T10:00:00-03:00"
+   },
+   "eventoIds": [
+    1762
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=tenda-dos-autores-paraty"
+  },
+  {
+   "id": "terraco-miradouro-lisboa",
+   "nome": "Terraço Miradouro",
+   "aliases": [
+    "Miradouro"
+   ],
+   "busca": "terraco miradouro miradouro",
+   "tipo": "Terraço",
+   "meta": "Terraço · Lisboa",
+   "cidade": "Lisboa",
+   "uf": "Portugal",
+   "lugar": {
+    "cidade": "pt-lisboa-lisboa",
+    "uf": "pt-lisboa",
+    "regiao": "europa",
+    "pais": "pt",
+    "continente": "europa"
+   },
+   "generos": [
+    "eletronica"
+   ],
+   "generoRotulos": [
+    "Eletrônica"
+   ],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 1,
+   "proximo": {
+    "id": 1804,
+    "nome": "Sunset Eletrônico Lisboa",
+    "iso": "2027-02-13T17:00:00+00:00"
+   },
+   "eventoIds": [
+    1804
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=terraco-miradouro-lisboa"
+  },
+  {
+   "id": "terreirao-do-samba-pedra-alta-sao-paulo",
+   "nome": "Terreirão do Samba Pedra Alta",
+   "aliases": [
+    "Pedra Alta"
+   ],
+   "busca": "terreirao do samba pedra alta pedra alta",
+   "tipo": "Terreirão do Samba",
+   "meta": "Terreirão do Samba · São Paulo",
+   "cidade": "São Paulo",
+   "uf": "SP",
+   "lugar": {
+    "cidade": "br-sp-sao-paulo",
+    "uf": "br-sp",
+    "regiao": "br-sudeste",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [
+    "samba-pagode"
+   ],
+   "generoRotulos": [
+    "Samba e pagode"
+   ],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 1,
+   "proximo": {
+    "id": 152,
+    "nome": "Roda de Samba do Terreirão",
+    "iso": "2026-11-01T15:00:00-03:00"
+   },
+   "eventoIds": [
+    152
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=terreirao-do-samba-pedra-alta-sao-paulo"
+  },
+  {
+   "id": "tokio-marine-hall-sao-paulo",
+   "nome": "Tokio Marine Hall",
+   "aliases": [],
+   "busca": "tokio marine hall",
+   "tipo": "",
+   "meta": " · São Paulo",
+   "cidade": "São Paulo",
+   "uf": "SP",
+   "lugar": {
+    "cidade": "br-sp-sao-paulo",
+    "uf": "br-sp",
+    "regiao": "br-sudeste",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [
+    "pop"
+   ],
+   "generoRotulos": [
+    "Pop"
+   ],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 1,
+   "proximo": {
+    "id": 1719,
+    "nome": "Festa Neon Universitária SP",
+    "iso": "2026-12-05T23:00:00-03:00"
+   },
+   "eventoIds": [
+    1719
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=tokio-marine-hall-sao-paulo"
+  },
+  {
+   "id": "vila-belmiro-santos",
+   "nome": "Vila Belmiro",
+   "aliases": [],
+   "busca": "vila belmiro",
+   "tipo": "",
+   "meta": " · Santos",
+   "cidade": "Santos",
+   "uf": "SP",
+   "lugar": {
+    "cidade": "br-sp-santos",
+    "uf": "br-sp",
+    "regiao": "br-sudeste",
+    "pais": "br",
+    "continente": "america-do-sul"
+   },
+   "generos": [],
+   "generoRotulos": [],
+   "foto": null,
+   "fotoSrcset": "",
+   "fotoAlt": "",
+   "fotoCredito": "",
+   "fotoFonte": null,
+   "eventos": 1,
+   "proximo": {
+    "id": 1150,
+    "nome": "Santos x Corinthians",
+    "iso": "2027-03-03T21:30:00-03:00"
+   },
+   "eventoIds": [
+    1150
+   ],
+   "emDestaque": false,
+   "origem": "sintetico",
+   "href": "Venue.dc.html",
+   "hrefAlvo": "Venue.dc.html?l=vila-belmiro-santos"
+  }
+ ]
+}

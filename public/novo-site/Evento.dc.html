@@ -1,0 +1,740 @@
+<!doctype html>
+<html lang="pt-BR" data-pagina="evento" data-superficie="chao">
+<head>
+<meta charset="utf-8">
+<script src="./ponte-backstage.js" data-ponte-backstage></script>
+<script src="./transicao-evento.js" data-previa-te></script>
+<script data-mvp-cedo>(function () {
+  var r = document.documentElement, v = null;
+  try {
+    var m = new URLSearchParams(location.search).get('modo');
+    if (m === 'mvp' || m === 'completo') localStorage.setItem('previa-modo', m);
+    v = localStorage.getItem('previa-modo') || 'mvp'; // padrão no design-prototypes: modo MVP
+  } catch (e) {}
+  if (v === 'mvp') { r.setAttribute('data-modo', 'mvp'); window.IngresseMvp = true; }
+})();</script>
+<script data-previa-esportes-cedo>(function () {
+  var root = document.documentElement, qs = new URLSearchParams(location.search), v = null;
+  try {
+    if (qs.get('dados') === 'mock' || qs.get('dados') === 'bff') localStorage.setItem('previa-dados', qs.get('dados'));
+    v = localStorage.getItem('previa-dados') || 'bff'; // padrão no design-prototypes: dados do Backstage (ponte-backstage.js)
+  } catch (e) {}
+  root.setAttribute('data-dados', v === 'bff' ? 'bff' : 'mock');
+  if (v !== 'bff' || !window.fetch) return;
+  var f0 = window.fetch;
+  window.fetch = function (u, o) {
+    var url = typeof u === 'string' ? u : (u && u.url) || '', alvo = null, md;
+    if (/\/api\/eventos(\.json)?(\?|$)/.test(url)) alvo = url.replace(/\/api\/eventos(\.json)?/, '/api/bff/eventos');
+    else if ((md = /(?:^|\/)dados\/((?:busca-artistas|busca-locais|catalogo-indice|sorteio-pool|home-reais|categoria-[a-z0-9-]+)\.json)(\?|$)/.exec(url))) alvo = '/api/bff/dados/' + md[1]; // os índices e as categorias também saem do BFF
+    if (!alvo) return f0.apply(this, arguments);
+    var self = this, args = arguments;
+    return f0.call(this, alvo, o).then(function (r) {
+      if (r.ok) { root.setAttribute('data-dados-ok', ''); return r; }
+      return r.clone().json().catch(function () { return {}; }).then(function (d) { root.setAttribute('data-dados-falha', (d && d.error) || ('HTTP ' + r.status)); return f0.apply(self, args); });
+    }, function () { root.setAttribute('data-dados-falha', 'sem conexão com o servidor local'); return f0.apply(self, args); });
+  };
+})();
+(function () {
+  var root = document.documentElement, qs = new URLSearchParams(location.search), v = null;
+  try {
+    if (qs.get('esportes') === 'on' || qs.get('esportes') === 'off') localStorage.setItem('previa-esportes', qs.get('esportes'));
+    v = localStorage.getItem('previa-esportes');
+  } catch (e) {}
+  var ligado = v === 'on';
+  root.setAttribute('data-esportes', ligado ? 'on' : 'off');
+  var DESCOBERTA = ['home', 'busca', 'categoria', 'artista', 'venue', 'colecao'];
+  if (ligado || DESCOBERTA.indexOf(root.getAttribute('data-pagina')) < 0 || qs.get('escopo') === 'esportes') return;
+  root.setAttribute('data-esportes-ocultar', '');
+  var prova = function (e) { var c = (e && e.cats) || []; return c.indexOf('corridas') >= 0 || (c.indexOf('esportes') >= 0 && c.indexOf('futebol') < 0); };
+  var f0 = window.fetch;
+  if (!f0) return;
+  window.fetch = function (u) {
+    var url = typeof u === 'string' ? u : (u && u.url) || '', p = f0.apply(this, arguments);
+    if (!/\/api\/eventos(\.json)?(\?|$)/.test(url)) return p;
+    return p.then(function (r) {
+      if (!r.ok) return r;
+      return r.clone().json().then(function (d) {
+        if (!d || !d.events) return r;
+        d.events = d.events.filter(function (e) { return !prova(e); });
+        if (d.categories) d.categories = d.categories.filter(function (c) { return c.id !== 'corridas'; });
+        return new Response(JSON.stringify(d), { status: r.status, statusText: r.statusText, headers: { 'Content-Type': 'application/json' } });
+      }).catch(function () { return r; });
+    });
+  };
+})();</script>
+<script data-previa-nav-cedo>(function () {
+  try {
+    var h = document.documentElement;
+    var tema = localStorage.getItem('prototipo-theme');
+    if (tema !== 'dark' && tema !== 'light') tema = window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    if (/\/(Ingressos|Checkout|Pagamento)\.dc\.html$/.test(location.pathname) || (/\/Evento\.dc\.html$/.test(location.pathname) && sessionStorage.getItem('mov:de'))) {
+      // chegada do movimento-compra.js (ele tem o seu portão e a sua entrada): aqui só o fundo da última tela vista, que fecha o quadro
+      // branco do tema escuro entre a saída e a entrada. Sai em movimento-navegacao.js quando o portão dele abre.
+      h.setAttribute('data-mov-dona', '');
+      var bgc = localStorage.getItem('mov:bg:' + tema);
+      if (bgc) {
+        h.style.setProperty('background-color', bgc, 'important');
+        h.setAttribute('data-mov-bgcompra', '');
+        setTimeout(function () { h.removeAttribute('data-mov-bgcompra'); h.style.removeProperty('background-color'); }, 3000);
+      }
+      return;
+    }
+    var j = sessionStorage.getItem('mov:nav');
+    var o = j ? JSON.parse(j) : null;
+    // o registro vale para esta URL (ou para qualquer uma, quando a tela anterior saiu sem clique nosso: Voltar, URL digitada, recarregar)
+    if (!o || o.v !== 1 || Date.now() - o.t > 6000 || (o.para && o.para !== location.pathname)) {
+      o = { v: 1, padrao: 'direta', bg: localStorage.getItem('mov:bg:' + tema) || '' };
+    }
+    h.setAttribute('data-mov-nav', o.padrao || '');
+    h.setAttribute('data-mov-nav-gate', '');
+    var g = document.createElement('style');
+    g.id = 'mov-nav-portao';
+    // sem transições (data-mov-nav, que sai 2 quadros depois do portão abrir): os estilos chegam com a tela escondida e, sem isto, cores e bordas
+    // ainda estariam em transição de 160 ms quando ela aparece (e, em movimento reduzido, a própria visibilidade levaria um quadro para virar)
+    g.textContent = 'html[data-mov-nav-gate] #dc-root{visibility:hidden}html[data-mov-nav] #dc-root,html[data-mov-nav] #dc-root *,html[data-mov-nav] #dc-root *::before,html[data-mov-nav] #dc-root *::after{transition:none !important}';
+    (document.head || h).appendChild(g);
+    if (o.bg) h.style.setProperty('background-color', o.bg, 'important');
+    if (o.ponte && o.ponte.html) {
+      // a fonte da ponte tem nome próprio (ElzaPonte): a identidade da tela nova declara "Elza" com font-display swap e, se a ponte usasse
+      // esse nome, o texto trocaria para a fonte de sistema quando o CSS novo chegasse. Os dados (base64, guardados pela tela anterior)
+      // entram por FontFace binária, sem espera; sem eles, cai na URL (block = texto invisível até a fonte chegar).
+      var r4 = sessionStorage.getItem('mov:fonte400'), r6 = sessionStorage.getItem('mov:fonte600');
+      var bin = function (b64) { var t = atob(b64), u = new Uint8Array(t.length), i; for (i = 0; i < t.length; i++) u[i] = t.charCodeAt(i); return u.buffer; };
+      var doDados = false;
+      if (r4 && r6 && window.FontFace) {
+        // FontFace com dados binários fica pronta na hora (status "loaded" no mesmo instante): o texto da ponte já nasce na fonte certa
+        try {
+          document.fonts.add(new FontFace('ElzaPonte', bin(r4), { weight: '400 500' }));
+          document.fonts.add(new FontFace('ElzaPonte', bin(r6), { weight: '600 700' }));
+          doDados = true;
+        } catch (e) {}
+      }
+      if (!doDados) {
+        var f = document.createElement('style');
+        f.id = 'mov-ponte-fonte';
+        f.textContent = '@font-face{font-family:"ElzaPonte";src:url(./fontes/Elza-Regular.woff2) format("woff2");font-weight:400 500;font-display:block}' +
+          '@font-face{font-family:"ElzaPonte";src:url(./fontes/Elza-Semibold.woff2) format("woff2");font-weight:600 700;font-display:block}';
+        (document.head || h).appendChild(f);
+      }
+      // dentro de um shadow root: o CSS da tela nova (div, span, a, svg…) não alcança a ponte enquanto ela espera
+      var d = document.createElement('div');
+      d.id = 'mov-ponte';
+      d.setAttribute('aria-hidden', 'true');
+      d.style.cssText = 'all:initial;position:fixed;left:0;top:' + (o.ponte.top || 0) + 'px;width:' + o.ponte.w + 'px;height:' + o.ponte.h + 'px;z-index:2147483000;pointer-events:none;overflow:hidden;display:block';
+      var sr = d.attachShadow ? d.attachShadow({ mode: 'open' }) : d;
+      sr.innerHTML = o.ponte.html;
+      h.appendChild(d);
+    }
+    if (o.poster && o.poster.src) {
+      var im = document.createElement('img');
+      im.id = 'mov-ponte-poster';
+      im.alt = '';
+      im.setAttribute('aria-hidden', 'true');
+      im.src = o.poster.src;
+      im.style.cssText = 'all:initial;position:fixed;left:' + o.poster.x + 'px;top:' + o.poster.y + 'px;width:' + o.poster.w + 'px;height:' + o.poster.h + 'px;object-fit:cover;border-radius:' + (o.poster.r || '0') + ';z-index:' + (o.poster.z || 1) + ';pointer-events:none;display:block';
+      h.appendChild(im);
+    }
+    setTimeout(function () {
+      var pp = document.getElementById('mov-ponte-poster');
+      if (pp) pp.remove();
+      var p = document.getElementById('mov-ponte');
+      if (p) p.remove();
+      var s = document.getElementById('mov-ponte-fonte');
+      if (s) s.remove();
+      h.removeAttribute('data-mov-nav-gate');
+      h.removeAttribute('data-mov-nav');
+      h.style.removeProperty('background-color');
+    }, 3000);
+  } catch (e) {}
+})();</script>
+<!-- ee:cedo:ini -->
+<script data-ee-cedo>(function(){try{var q=location.search;if(!/[?&](esporte|e)=/.test(q))return;var p=new URLSearchParams(q),id=p.get("esporte"),sl=p.get("e");if(!id&&!(sl&&/-(19|20)\d\d$/.test(sl)))return;var h=document.documentElement;h.setAttribute("data-ee","pend");h.setAttribute("data-marca","esportes");var s=document.createElement("style");s.id="ee-cedo";s.textContent="html[data-ee] .ev-hero:not(.ee-hero), html[data-ee] .ev-hero:not(.ee-hero) ~ *:not(#ee-root):not(.ee-proto) { display: none !important; } html[data-ee] #dc-root > div, html[data-ee] #dc-root > .sc-host > div { min-height: 0 !important; } html[data-ee] nav.crumbs:not(.ee-crumbs) { display: none !important; } html[data-ee] .ee-crumbs { display: flex; } html[data-ee] .hdr-logo img { display: none !important; } html[data-ee] .hdr-logo::before { content: \"\"; display: block; height: calc(var(--size-icon-md) + var(--space-1)); width: calc((var(--size-icon-md) + var(--space-1)) * 586.5 / 73); background-color: currentColor; -webkit-mask: url(\"./assets/brand/ingresse-sports.svg\") left center / contain no-repeat; mask: url(\"./assets/brand/ingresse-sports.svg\") left center / contain no-repeat; } @media (max-width: 640px) { html[data-ee] .hdr-logo::before { height: var(--size-icon-md); width: calc(var(--size-icon-md) * 84 / 64); -webkit-mask: url(\"./assets/brand/ingresse-glifo.svg\") left center / contain no-repeat; mask: url(\"./assets/brand/ingresse-glifo.svg\") left center / contain no-repeat; } } @media (min-width: 641px) { html[data-ee] .hdr > div:has(.crumbs) .hdr-logo, html[data-ee] .hdr-row:has(.crumbs) .hdr-logo { width: auto !important; flex: 0 0 auto !important; overflow: visible !important; } }";(document.head||h).appendChild(s);}catch(e){}})();</script>
+<!-- ee:cedo:fim -->
+<!-- ef:cedo:ini -->
+<script data-ef-cedo>(function(){try{if(!/[?&]jogo=/.test(location.search))return;var h=document.documentElement;h.setAttribute("data-ef","pend");var s=document.createElement("style");s.id="ef-cedo";s.textContent="html[data-ef] .ev-hero, html[data-ef] .ev-hero ~ *:not(#ef-root):not(.ef-proto) { display: none !important; } html[data-ef] #dc-root > div, html[data-ef] #dc-root > .sc-host > div { min-height: 0 !important; } html[data-ef] nav.crumbs:not(.ef-crumbs) { display: none !important; } html[data-ef] .ef-crumbs { display: flex; }";(document.head||h).appendChild(s);}catch(e){}})();</script>
+<script data-ef-titulo>try{var q=new URLSearchParams(location.search).get("jogo"),T={"32":["Grêmio x Internacional","Campeonato Gaúcho"],"42":["Corinthians x Palmeiras","Campeonato Paulista"],"45":["Flamengo x Vasco","Campeonato Carioca"],"1125":["Cruzeiro x Ceará","Brasileirão Série A"],"1126":["Fluminense x São Paulo","Brasileirão Série A"],"1127":["São Paulo x Palmeiras","Campeonato Paulista"],"1128":["Santos x Palmeiras","Campeonato Paulista"],"1129":["Vitória x Bahia","Campeonato Baiano"],"1130":["Grêmio x Juventude","Brasileirão Série A"],"1131":["Vasco x Botafogo","Campeonato Carioca"],"1132":["Cruzeiro x Atlético Mineiro","Campeonato Mineiro"],"1133":["Flamengo x Athletico Paranaense","Brasileirão Série A"],"1134":["Fortaleza x Ceará","Amistoso"],"1135":["Corinthians x Racing Club","Copa Sul-Americana"],"1136":["Sport x Atlético Mineiro","Brasileirão Série A"],"1137":["Flamengo x River Plate","Copa Libertadores"],"1138":["Internacional x Fortaleza","Brasileirão Série A"],"1139":["São Paulo x Flamengo","Copa do Brasil"],"1140":["Palmeiras x Peñarol","Copa Libertadores"],"1141":["Bahia x Juazeirense","Campeonato Baiano"],"1142":["Ceará x Juventude","Brasileirão Série A"],"1143":["Sport x Náutico","Amistoso"],"1144":["Palmeiras x Internacional","Brasileirão Série A"],"1145":["Sport x Ceará","Copa do Brasil"],"1146":["CRB x CSA","Brasileirão Série B"],"1147":["Athletico Paranaense x Corinthians","Copa do Brasil"],"1148":["Fluminense x Botafogo","Campeonato Carioca"],"1149":["Brasil x Uruguai","Eliminatórias"],"1150":["Santos x Corinthians","Campeonato Paulista"],"1151":["Red Bull Bragantino x Santos","Campeonato Paulista"],"1152":["Flamengo x Corinthians","Brasileirão Série A"],"1153":["Brasil x Argentina","Eliminatórias"],"1154":["Botafogo x Universitario","Copa Libertadores"],"1155":["Juventude x Grêmio","Campeonato Gaúcho"],"1156":["Corinthians x Botafogo","Brasileirão Série A"],"1157":["Fortaleza x Atlético Nacional","Copa Libertadores"],"1158":["Athletico Paranaense x Vélez Sarsfield","Copa Sul-Americana"],"1159":["Vitória x Fortaleza","Copa do Brasil"],"1160":["São Paulo x Libertad","Copa Sul-Americana"],"3001":["Botafogo x Fluminense","Brasileirão Série A"],"3002":["Atlético Mineiro x Grêmio","Copa do Brasil"],"3003":["Palmeiras x Flamengo","Brasileirão Série A"],"3004":["Santos x São Paulo","Brasileirão Série A"],"3005":["Vasco x Grêmio","Brasileirão Série A"],"3010":["Bahia x Vitória","Brasileirão Série A"],"3011":["Bahia x Fortaleza","Brasileirão Série A"],"3012":["Bahia x Cruzeiro","Brasileirão Série A"]};if(q&&T[q]){document.title=T[q][0]+" — "+T[q][1]+", ingressos e informações | Ingresse";}}catch(e){}</script>
+<!-- ef:cedo:fim -->
+<!-- evbff:cedo:ini -->
+<script data-evbff-cedo>if(/[?&]bff=\d/.test(location.search))document.documentElement.setAttribute("data-evbff","pend");</script>
+<style data-evbff-cedo>html[data-evbff="pend"] .ev-hero, html[data-evbff="pend"] main, html[data-evbff="pend"] aside.buy, html[data-evbff="pend"] .mbar { visibility: hidden; }</style>
+<!-- evbff:cedo:fim -->
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#F5F4F2">
+<meta name="format-detection" content="telephone=no">
+<link rel="preload" href="./fontes/Elza-Semibold.woff2" as="font" type="font/woff2" crossorigin data-previa>
+<link rel="preload" href="./fontes/Elza-Regular.woff2" as="font" type="font/woff2" crossorigin data-previa>
+<title>Sorriso Eu Gosto no Pagode — São Paulo 2026 — Ingressos | Ingresse</title>
+<script src="./vendor/react.js"></script>
+<script src="./vendor/react-dom.js"></script>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<script src="./destinos.js" defer data-previa></script>
+<style>
+/* Estilos específicos desta tela. Componentes: base.css */
+.bp-ghost{background:rgba(255,255,255,.14) !important;color:#fff !important;box-shadow:none;border:1px solid rgba(255,255,255,.3)}
+.bp-ink{background:var(--inverse) !important;color:#fff !important;box-shadow:none}
+.tag.on-dark{background:rgba(255,255,255,.14);color:#fff}
+
+@media (max-width:760px){.mbar{display:flex !important}.buy{position:static !important}}
+
+@media (max-width:760px){.crumbs .crumb-mid{display:none}.crumb-back::before{content:'‹ ';font-weight:700}}
+.ev-hero{position:relative;overflow:hidden;background:#0A0A0B;color:#fff}
+.ev-hero-bg{position:absolute;inset:-48px;width:calc(100% + 96px);height:calc(100% + 96px);object-fit:cover;filter:blur(40px) brightness(.42) saturate(1.2)}
+.ev-hero-in{position:relative;max-width:1280px;margin:0 auto;padding:40px 24px;box-sizing:border-box;display:flex;align-items:center;gap:48px}
+.ev-ambient{position:absolute;inset:0;pointer-events:none;background:radial-gradient(55% 90% at 22% 55%,rgb(var(--amb,232 33 19) / .55),transparent 70%),radial-gradient(40% 60% at 85% 10%,rgb(var(--amb2,255 92 138) / .28),transparent 70%);transition:background 1.2s ease}
+.ev-hero::after{content:'';position:absolute;inset:0;pointer-events:none;opacity:.07;mix-blend-mode:overlay;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+.ev-stage{flex:0 0 auto;width:min(300px,28vw);display:flex;flex-direction:column;align-items:stretch;perspective:1100px}
+.ev-tilt{position:relative;border-radius:14px;transform-style:preserve-3d;transform:rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg));transition:transform .5s cubic-bezier(.2,.8,.2,1);box-shadow:0 30px 70px rgba(0,0,0,.55),0 0 90px rgb(var(--amb,232 33 19) / .35)}
+.ev-tilt.is-live{transition:transform .08s linear}
+.ev-poster{display:block;width:100%;aspect-ratio:3/4;object-fit:cover;border-radius:14px 14px 0 0}
+.ev-sheen{position:absolute;inset:0;border-radius:inherit;pointer-events:none;opacity:0;transition:opacity .4s;background:radial-gradient(circle at var(--mx,50%) var(--my,30%),rgba(255,255,255,.38),transparent 45%),conic-gradient(from 210deg at var(--mx,50%) var(--my,30%),rgba(255,39,26,.0),rgba(255,92,138,.16),rgba(120,200,255,.14),rgba(255,230,120,.14),rgba(255,39,26,0));mix-blend-mode:soft-light}
+.ev-tilt:hover .ev-sheen,.ev-tilt.is-live .ev-sheen{opacity:1}
+.ev-stub{position:relative;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 18px;background:#fff;color:#0A0A0B;border-radius:0 0 14px 14px;font-size:13px;font-weight:700;letter-spacing:.02em}
+.ev-stub::before{content:'';position:absolute;left:14px;right:14px;top:-1px;border-top:2px dashed rgba(10,10,11,.22)}
+.ev-stub-date{display:flex;flex-direction:column;line-height:1.15}
+.ev-stub-date small{font-size:10px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:#6B6B70}
+.ev-stub-count{display:inline-flex;align-items:center;gap:6px;background:var(--ing-orange);color:var(--ing-ink);border-radius:999px;padding:6px 10px;font-size:12px;white-space:nowrap}
+.ev-stub-count::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--ing-ink);animation:evPulse 1.6s ease-in-out infinite}
+
+@keyframes evPulse{50%{opacity:.25}}
+.ev-reflect{display:block;width:100%;height:56px;object-fit:cover;object-position:bottom;transform:scaleY(-1);margin-top:6px;border-radius:14px;opacity:.28;filter:blur(6px);-webkit-mask-image:linear-gradient(to top,#000,transparent);mask-image:linear-gradient(to top,#000,transparent)}
+
+@supports (animation-timeline:view()){
+  @media (prefers-reduced-motion:no-preference){
+    .ev-stage{animation:evStageOut linear both;animation-timeline:view();animation-range:exit 0% exit 90%}
+    .ev-hero-bg{animation:evBgOut linear both;animation-timeline:view();animation-range:exit 0% exit 100%}
+    @keyframes evStageOut{to{transform:translateY(60px) scale(.92);opacity:.35}}
+    @keyframes evBgOut{to{transform:scale(1.15);filter:blur(56px) brightness(.25) saturate(1.2)}}
+  }
+}
+
+@media (prefers-reduced-motion:reduce){.ev-tilt{transform:none !important}.ev-stub-count::before{animation:none}}
+.ev-hero-info{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:20px;max-width:720px}
+.ev-title{margin:0;font-size:clamp(36px,4.2vw,56px);font-weight:700;letter-spacing:-.025em;line-height:1.04;text-wrap:balance}
+.ev-facts{display:flex;flex-wrap:wrap;gap:12px 32px}
+.ev-facts>div{display:flex;flex-direction:column;gap:2px}
+.ev-k{font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.6)}
+.ev-v{font-size:16px;font-weight:600;color:#fff}
+.ev-v a{color:#fff;text-decoration:underline;text-underline-offset:3px;text-decoration-color:rgba(255,255,255,.4)}
+.ev-v a:hover{color:#fff;text-decoration-color:#fff}
+.ev-hero-cta{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.ev-price{font-size:15px;color:rgba(255,255,255,.75)}
+.ev-title-m{display:none}
+
+@media (max-width:760px){
+  .ev-hero-in{height:380px;padding:28px 24px;justify-content:center}
+  .ev-stage{width:auto;height:100%;max-width:100%;animation:none}
+  .ev-tilt{height:100%;transform:none}
+  .ev-poster{width:auto;height:100%;max-width:100%;border-radius:14px}
+  .ev-stub,.ev-reflect,.ev-sheen{display:none}
+  .ev-hero-info{display:none}
+  .ev-title-m{display:block}
+}
+</style>
+<style data-pb>
+/* lupa de busca do menu (pilula-busca.mjs) */
+.hdr-search.hdr-lupa { flex: 0 0 auto !important; display: inline-flex !important; align-items: center; justify-content: center; width: var(--size-touch-default); height: var(--size-touch-default); min-height: var(--size-touch-default) !important; padding: 0 !important; margin: 0 0 0 auto !important; max-width: none; border-radius: var(--radius-base); color: var(--color-text-primary) !important; cursor: pointer; }
+.hdr-search.hdr-lupa svg { stroke: currentColor; }
+.hdr .crumbs { min-width: 0; flex: 0 1 auto; overflow: hidden; }
+.hdr .crumbs .crumb-cur, .hdr .crumbs [aria-current] { overflow: hidden; text-overflow: ellipsis; }
+</style>
+<link rel="stylesheet" href="./theme.css">
+<link rel="stylesheet" href="./base.css">
+<script src="./theme.js"></script>
+<link rel="stylesheet" href="./ux.css">
+<link rel="stylesheet" href="./ds.css">
+<script src="./ux.js" defer></script>
+<script src="./hero-fx.js" defer></script>
+<link rel="stylesheet" href="./identidade-v1.css" data-previa>
+<style data-ib>
+/* ícone animado de botão (Lottie): 24 px, o traço segue a cor do texto do botão, no claro e no escuro */
+.btn-ic { flex: 0 0 auto; width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; }
+.btn-ic svg { width: 24px; height: 24px; display: block; }
+.btn-ic [stroke]:not([stroke="none"]) { stroke: currentColor; }
+/* "Quero ir" ligado: coração cheio na cor da marca (o Lottie traz fill-opacity 0, então os dois valores) */
+/* chip e botão: o ícone respira em relação ao texto */
+.chip > .btn-ic { margin-right: var(--space-2); } /* .bs e .bp já têm gap */
+/* barra de compra móvel do Evento: com o ícone do estado o rótulo é mais largo; se não couber ao lado do preço, a barra quebra e o botão ocupa a linha de baixo (antes o botão pisava no texto do preço) */
+.mbar { flex-wrap: wrap !important; }
+html .mbar > div { flex: 1 1 9rem !important; min-width: 9rem !important; } /* inline: flex: 1; min-width: 0 */ /* o preço não encolhe abaixo de 9rem: se o botão não couber ao lado, ele desce e ocupa a linha */
+.mbar .bp:has(.btn-ic) { flex: 1 1 auto; min-width: 0; justify-content: center; }
+button[aria-pressed="true"] .btn-ic-heart { color: var(--color-fg-wish); } /* alias de fg.brand: vermelho na Ingresse, azul na Ingresse Sports (decisão de 27/10/2026) */
+button[aria-pressed="true"] .btn-ic-heart svg [stroke]:not([stroke="none"]) { fill: currentColor; fill-opacity: 1; }
+</style>
+<script src="./vendor/lottie_svg.min.js" defer data-previa></script>
+<script src="./icones-motion.js" defer data-previa></script>
+<style data-mapa>
+/* mapa embutido em cinza: o iframe preenche o lugar reservado; o marcador (32 px) fica no centro do mapa e o botão no canto */
+.mapa-cinza { position: relative; flex: 2 1 320px; min-height: 280px; overflow: hidden; background: var(--color-bg-subtle); }
+.mapa-cinza__frame { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; filter: grayscale(1) contrast(1.05); }
+html[data-theme="dark"] .mapa-cinza__frame { filter: grayscale(1) invert(.92) contrast(.9); }
+@media (prefers-color-scheme: dark) { html:not([data-theme="light"]) .mapa-cinza__frame { filter: grayscale(1) invert(.92) contrast(.9); } }
+.mapa-cinza__frame:focus-visible { outline: var(--focus-width) solid var(--color-focus-ring); outline-offset: calc(var(--focus-width) * -1); } /* o iframe é focável: anel de 2 px por dentro */
+.mapa-cinza__pin { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -100%); color: var(--color-fg-brand); pointer-events: none; }
+.mapa-cinza__abrir { position: absolute; left: var(--space-4); bottom: var(--space-4); background-color: var(--color-bg-surface); }
+.mapa-cinza--venue { flex: none; width: 100%; min-height: 220px; height: 220px; }
+</style>
+<script src="./previa.js" defer data-previa></script>
+<script src="./movimento-compra.js" defer data-previa></script>
+<script src="./movimento-navegacao.js" defer data-previa></script>
+<link rel="stylesheet" href="./cidade-cabecalho.css" data-previa>
+<script src="./modal-uui.js" defer data-previa></script>
+<script src="./local.js" defer data-previa></script>
+<script src="./local-ui.js" defer data-previa></script>
+<script src="./lugares-consulta.js" defer data-previa></script>
+<script src="./cidade-cabecalho.js" defer data-previa></script>
+<link rel="stylesheet" href="./lembretes.css" data-previa>
+<script src="./lembretes.js" defer data-previa></script>
+<!-- ee:ini -->
+<link rel="stylesheet" href="./esportes-cabecalho.css" data-previa>
+<script src="./esportes-cabecalho.js" defer data-previa></script>
+<link rel="stylesheet" href="./evento-esportes.css" data-previa>
+<script src="./evento-esportes.js" defer data-previa></script>
+<!-- ee:fim -->
+<!-- ef:ini -->
+<script src="./futebol-ondas.js" defer data-previa></script>
+<link rel="stylesheet" href="./evento-futebol.css" data-previa>
+<script src="./evento-futebol.js" defer data-previa></script>
+<!-- ef:fim -->
+<link rel="stylesheet" href="./menu-conta.css" data-previa>
+<script src="./menu-conta.js" defer data-previa></script>
+<script src="./cartao-evento.js" defer data-previa></script>
+<script src="./lacunas.js" defer data-previa></script>
+<link rel="stylesheet" href="./mvp.css" data-previa data-mvp>
+<script src="./mvp.js" defer data-previa data-mvp></script>
+<link rel="stylesheet" href="./transicao-evento.css" data-previa data-previa-te>
+<!-- evbff:ini -->
+<script src="./evento-bff.js" defer data-previa></script>
+<!-- evbff:fim -->
+</helmet>
+
+<div style="min-height: 100vh; background: var(--pagina-bg)">
+<header class="hdr">
+  <div class="hdr-row" style="max-width: 1280px; margin: 0 auto; padding: 14px 24px; display: flex; align-items: center; gap: 24px; flex-wrap: wrap">
+    <a href="Main.dc.html" aria-label="Ingresse — início" class="hdr-logo"><img src="./assets/8703fb5f412b57860d569f5abeea2cae.svg" alt="Ingresse"></a>
+    <nav aria-label="Trilha" class="crumbs">
+      <span class="crumb-mid"><a href="Main.dc.html" style="color: var(--muted)">Início</a> / </span><a href="Categoria.dc.html?c=shows" class="crumb-back" style="color: var(--muted)">Shows</a><span class="crumb-mid"> / <span style="color: var(--ink)" aria-current="page">Sorriso Eu Gosto no Pagode</span></span><!-- mvp:trilha:ini --><span class="mvp-so mvp-trilha" data-mvp-trilha data-atual="shows"><button type="button" class="mvp-trilha__b" aria-haspopup="menu" aria-expanded="false" aria-controls="mvp-trilha-m" aria-label="Categoria: Shows. Trocar de categoria"><span class="mvp-trilha__ic"><span class="btn-ic" aria-hidden="true" data-lottie="./assets/icones/cat-mvp-shows.json" data-repouso="0" data-loop="0"></span></span><span class="mvp-trilha__n">Shows</span><svg class="ico ico-14" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button><span class="mvp-trilha__m" id="mvp-trilha-m" hidden><span class="mvp-trilha__topo"><strong>Categorias</strong><button type="button" class="mvp-trilha__fechar" aria-label="Fechar o menu de categorias"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button></span><ul role="menu" aria-label="Categorias"><li role="none"><a role="menuitem" href="Categoria.dc.html?c=shows" data-slug="shows"><span class="btn-ic" aria-hidden="true" data-lottie="./assets/icones/cat-mvp-shows.json" data-repouso="0" data-loop="0"></span><span>Shows</span></a></li><li role="none"><a role="menuitem" href="Categoria.dc.html?c=festivais" data-slug="festivais"><span class="btn-ic" aria-hidden="true" data-lottie="./assets/icones/cat-mvp-festivais.json" data-repouso="0" data-loop="0"></span><span>Festivais</span></a></li><li role="none"><a role="menuitem" href="Categoria.dc.html?c=baladas" data-slug="baladas"><span class="btn-ic" aria-hidden="true" data-lottie="./assets/icones/cat-mvp-festas.json" data-repouso="0" data-loop="1"></span><span>Festas e Baladas</span></a></li><li role="none"><a role="menuitem" href="Categoria.dc.html?c=universitario" data-slug="universitario"><span class="btn-ic" aria-hidden="true" data-lottie="./assets/icones/cat-mvp-universitario.json" data-repouso="0" data-loop="0"></span><span>Universitário</span></a></li><li role="none"><a role="menuitem" href="Categoria.dc.html?c=futebol" data-slug="futebol"><span class="btn-ic" aria-hidden="true" data-lottie="./assets/icones/mvp-cat-futebol.json" data-repouso="0" data-loop="0"></span><span>Futebol</span></a></li><li role="none"><a role="menuitem" href="Categoria.dc.html?c=esportes" data-slug="esportes"><span class="btn-ic" aria-hidden="true" data-lottie="./assets/icones/cat-mvp-esportes.json" data-repouso="0" data-loop="0"></span><span>Esportes</span></a></li><li role="none"><a role="menuitem" href="Categoria.dc.html?c=teatro" data-slug="teatro"><span class="btn-ic" aria-hidden="true" data-lottie="./assets/icones/mvp-cat-teatro.json" data-repouso="0" data-loop="0"></span><span>Teatro</span></a></li><li role="none"><a role="menuitem" href="Categoria.dc.html?c=stand-up" data-slug="stand-up"><span class="btn-ic" aria-hidden="true" data-lottie="./assets/icones/cat-mvp-stand-up.json" data-repouso="0" data-loop="0"></span><span>Stand-up</span></a></li><li role="none"><a role="menuitem" href="Categoria.dc.html?c=infantil" data-slug="infantil"><span class="btn-ic" aria-hidden="true" data-lottie="./assets/icones/cat-mvp-infantil.json" data-repouso="0" data-loop="0"></span><span>Kids e Família</span></a></li><li role="none"><a role="menuitem" href="Categoria.dc.html?c=feiras" data-slug="feiras"><span class="btn-ic" aria-hidden="true" data-lottie="./assets/icones/mvp-cat-feiras.json" data-repouso="0" data-loop="0"></span><span>Feiras e Exposições</span></a></li></ul></span></span><!-- mvp:trilha:fim -->
+    </nav>
+    <!-- ee:crumbs:ini --><nav class="crumbs ee-crumbs" aria-label="Trilha"></nav><!-- ee:crumbs:fim -->
+    <!-- ef:crumbs:ini --><nav class="crumbs ef-crumbs" aria-label="Trilha"></nav><!-- ef:crumbs:fim -->
+    <!-- mvp:busca-nav:ini --><form class="mvp-so mvp-nb" role="search" action="Busca.dc.html" method="get" data-mvp-nb><button type="button" class="hdr-search hdr-lupa mvp-nb__abrir" aria-expanded="false" aria-controls="mvp-nb-campo" aria-label="Buscar evento, prova, time, artista ou local"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg></button><span class="mvp-nb__veu" aria-hidden="true"></span><span class="mvp-nb__fundo ilha" aria-hidden="true"></span><div class="mvp-nb__campo ilha" id="mvp-nb-campo"><span class="mvp-nb__lupa" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg></span><input class="mvp-nb__in" type="search" name="q" enterkeyhint="search" autocomplete="off" aria-label="Buscar evento, prova, time, artista ou local" placeholder="Evento, prova, time, artista, local..."><button type="submit" class="bp bp-sm">Buscar</button><button type="button" class="mvp-nb__fechar" aria-label="Fechar a busca"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div><p class="mvp-nb__dica ilha" aria-hidden="true"><span class="mvp-nb__dica-r">Experimente buscar</span> <span class="mvp-nb__tw"></span><span class="mvp-nb__cursor"></span></p></form><!-- mvp:busca-nav:fim --><a href="Busca.dc.html" class="hdr-search hdr-lupa" aria-label="Buscar evento, prova, time, artista ou local" title="Buscar">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+    </a>
+    <span class="cid" data-cidade>
+      <button type="button" class="bs cid-btn" data-cidade-btn data-marcado="true" aria-haspopup="dialog" aria-expanded="false" aria-label="Cidade: São Paulo. Trocar">
+        <span class="btn-ic cid-pin" aria-hidden="true" data-lottie="./assets/icones/esp-perto-de-voce.json" data-repouso="0" data-loop="0"></span>
+        <span class="cid-nome" data-cidade-nome>São Paulo</span>
+        <svg class="cid-chev ico ico-14" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+      </button>
+    </span>
+        <!-- mvp:revenda:ini --><a class="bs mvp-so mvp-revenda" href="https://revenda.ingresse.com" target="_blank" rel="noopener noreferrer" aria-label="Revenda Oficial, abre em nova aba"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 8V7m0 5.5v-1m0 5.5v-1M5.2 4h13.6c1.12 0 1.68 0 2.108.218a2 2 0 0 1 .874.874C22 5.52 22 6.08 22 7.2v1.3a3.5 3.5 0 1 0 0 7v1.3c0 1.12 0 1.68-.218 2.108a2 2 0 0 1-.874.874C20.48 20 19.92 20 18.8 20H5.2c-1.12 0-1.68 0-2.108-.218a2 2 0 0 1-.874-.874C2 18.48 2 17.92 2 16.8v-1.3a3.5 3.5 0 1 0 0-7V7.2c0-1.12 0-1.68.218-2.108a2 2 0 0 1 .874-.874C3.52 4 4.08 4 5.2 4Z"/></svg><span class="mvp-revenda__t">Revenda</span></a><!-- mvp:revenda:fim --><!-- mc:ini --><button type="button" class="avatar-hdr mc-av" data-menu-conta data-conta="true" aria-haspopup="menu" aria-expanded="false" aria-label="Minha conta"><span class="uui-avatar uui-avatar--lg" aria-hidden="true"><span class="uui-avatar__content"><span class="mc-ini" aria-hidden="true">PE</span><svg class="mc-gen" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 21a8 8 0 0 0-16 0"/><path d="M12 13a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"/></svg><img src="./assets/pessoas/pessoa-exemplo.jpg" srcset="./assets/pessoas/pessoa-exemplo.jpg 96w, ./assets/pessoas/pessoa-exemplo@2x.jpg 192w" sizes="48px" width="48" height="48" alt=""></span></span><span class="mc-n" data-mc-n data-vazio="true" aria-hidden="true">0</span></button><!-- mc:fim -->
+  </div>
+<!-- mvp:evento-barra:ini -->
+<span class="mvp-so mvp-evbar" data-mvp-evbar aria-hidden="true">
+  <span class="mvp-evbar__in">
+    <img class="mvp-evbar__img" src="./assets/real/104717.avif" alt="">
+    <span class="mvp-evbar__txt"><strong>Sorriso Eu Gosto no Pagode — São Paulo</strong><span>{{quandoMain}} · Arena Anhembi · São Paulo</span></span>
+  </span>
+</span>
+<!-- mvp:evento-barra:fim -->
+</header>
+
+<!-- CAPA -->
+<section class="ev-hero">
+  <img src="./assets/real/104717.avif" alt="" aria-hidden="true" class="ev-hero-bg">
+  <div class="ev-ambient" aria-hidden="true"></div>
+  <div aria-hidden="true" style="position: absolute; top: 0; left: 0; right: 0; height: 4px; z-index: 1; background: linear-gradient(125deg,#FF271A 0%,#FF3B5C 55%,#FF5C8A 100%)"></div>
+  <div class="ev-hero-in">
+    <div class="ev-stage">
+      <div class="ev-tilt">
+        <img src="./assets/real/104717.avif" alt="Pôster da turnê Sorriso Eu Gosto no Pagode" class="ev-poster">
+        <span class="ev-sheen" aria-hidden="true"></span>
+        <div class="ev-stub" data-event-date="{{stubIso}}">
+          <span class="ev-stub-date"><small>Entrada</small>{{stubDate}}</span>
+          <span class="ev-stub-count" data-countdown>Em breve</span>
+        </div>
+      </div>
+      <img src="./assets/real/104717.avif" alt="" aria-hidden="true" class="ev-reflect">
+    </div>
+    <div class="ev-hero-info">
+      <span class="tag tag-lg {{tagHeroClass}}" data-sit="{{stateSit}}" style="align-self: flex-start"><sc-if value="{{isAdiado}}" hint-placeholder-val="{{false}}"><svg class="ico sit-ico" data-ico="adiado" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg></sc-if><sc-if value="{{isAlterado}}" hint-placeholder-val="{{false}}"><svg class="ico sit-ico" data-ico="alterado" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8v4m0 4h.01M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10Z"></path></svg></sc-if>{{stateLabel}}</span>
+      <h1 class="ev-title">Sorriso Eu Gosto no Pagode — São Paulo</h1>
+      <div class="ev-facts">
+        <div><span class="ev-k">Quando</span><span class="ev-v">{{quandoMain}} <span style="font-weight: 500; color: rgba(255,255,255,.75)">{{quandoExtra}}</span></span></div>
+        <div><span class="ev-k">Onde</span><span class="ev-v"><a href="#local">Arena Anhembi</a> · São Paulo</span></div>
+        <div><span class="ev-k">Atração</span><span class="ev-v"><a href="Artista.dc.html">Sorriso Maroto</a></span></div>
+      </div>
+      <div class="ev-hero-cta">
+        <a href="{{ctaHref}}" class="bp bp-lg {{ctaHeroClass}}" data-toast="{{ctaToast}}" data-lembrete-id="{{ctaLembrete}}" role="{{ctaRole}}" data-track-lembrete="alternar"><sc-if value="{{ctaVenda}}" hint-placeholder-val="{{true}}"><span class="btn-ic btn-ic-ticket mvp-so" aria-hidden="true" data-lottie="./assets/icones/ingresso-mvp.json" data-repouso="0" data-loop="0"></span></sc-if><!-- mvp:ic-hero --><sc-if value="{{ctaAvisar}}" hint-placeholder-val="{{false}}"><span class="btn-ic btn-ic-bell" aria-hidden="true" data-lottie="./assets/icones/avisar.json" data-repouso="0" data-loop="0"></span></sc-if><sc-if value="{{ctaFila}}" hint-placeholder-val="{{false}}"><span class="btn-ic btn-ic-queue" aria-hidden="true" data-lottie="./assets/icones/fila.json" data-repouso="0" data-loop="0"></span></sc-if><sc-if value="{{ctaProx}}" hint-placeholder-val="{{false}}"><span class="btn-ic btn-ic-next" aria-hidden="true" data-lottie="./assets/icones/proximas-datas.json" data-repouso="0" data-loop="0"></span></sc-if><sc-if value="{{ctaReemb}}" hint-placeholder-val="{{false}}"><span class="btn-ic btn-ic-refund" aria-hidden="true" data-lottie="./assets/icones/reembolso.json" data-repouso="0" data-loop="0"></span></sc-if>{{ctaLabel}}</a>
+        <span class="ev-price">{{priceLine}}</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div style="max-width: 1280px; margin: 0 auto; padding: 40px 24px 80px; display: flex; flex-wrap: wrap; gap: 32px; align-items: flex-start">
+  <main style="flex: 999 1 620px; min-width: 0; display: flex; flex-direction: column; gap: 40px">
+    <div class="ev-title-m">
+      <span class="tag tag-lg {{tagClass}}" data-sit="{{stateSit}}"><sc-if value="{{isAdiado}}" hint-placeholder-val="{{false}}"><svg class="ico sit-ico" data-ico="adiado" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg></sc-if><sc-if value="{{isAlterado}}" hint-placeholder-val="{{false}}"><svg class="ico sit-ico" data-ico="alterado" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8v4m0 4h.01M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10Z"></path></svg></sc-if>{{stateLabel}}</span>
+      <h2 style="margin: 14px 0 8px; font-size: clamp(32px, 4vw, 48px); font-weight: 700; letter-spacing: -.02em; line-height: 1.08">Sorriso Eu Gosto no Pagode — São Paulo</h2>
+      <div style="font-size: 16px; color: var(--ink-2)"><a href="Artista.dc.html" class="u">Sorriso Maroto</a> · <a href="#local" class="u">Arena Anhembi</a> · {{quandoMain}}</div>
+      <div style="margin-top: 12px; font-size: 16px; color: var(--ink-2)">{{priceLine}}</div>
+    </div>
+
+    <!-- estado:aviso -->
+    <sc-if value="{{isCancelado}}" hint-placeholder-val="{{false}}">
+      <div id="aviso-estado" class="uui-alert uui-alert--error ev-aviso ev-aviso--movel" role="status">
+        <span class="uui-alert__icon"><svg class="uui-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8v4m0 4h.01M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10Z"/></svg></span>
+        <div class="uui-alert__body"><p class="uui-alert__title">Sorriso Eu Gosto no Pagode foi cancelado</p><p class="uui-alert__text">Você recebe o reembolso na forma de pagamento original, em até <span data-exemplo="Prazo de exemplo">10 dias úteis</span>, sem precisar pedir.</p></div>
+      </div>
+    </sc-if>
+    <sc-if value="{{isAdiado}}" hint-placeholder-val="{{false}}">
+      <div id="aviso-estado" class="uui-alert uui-alert--warning ev-aviso" role="status">
+        <span class="uui-alert__icon"><svg class="uui-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6v6l4 2m6-2c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10Z"/></svg></span>
+        <div class="uui-alert__body"><p class="uui-alert__title">Sorriso Eu Gosto no Pagode foi adiado</p><p class="uui-alert__text">Nova data: <span data-exemplo="Data de exemplo">Sáb 28 nov 2026, às 15h</span>. Seu ingresso continua válido. Se não puder ir, peça reembolso até <span data-exemplo="Prazo de exemplo">20 nov</span>.</p><div class="uui-alert__actions"><a href="#q6" class="linkbtn">Ver detalhes</a></div></div>
+      </div>
+    </sc-if>
+    <sc-if value="{{isAlterado}}" hint-placeholder-val="{{false}}">
+      <div id="aviso-estado" class="uui-alert uui-alert--neutral ev-aviso" role="status">
+        <span class="uui-alert__icon"><svg class="uui-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16v-4m0-4h.01M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10Z"/></svg></span>
+        <div class="uui-alert__body"><p class="uui-alert__text">Horário do show: agora é <span data-exemplo="Horário de exemplo">14h (antes, 13h)</span>. Seu ingresso segue válido. Você não precisa fazer nada.</p><div class="uui-alert__actions"><a href="#q6" class="linkbtn">Ver detalhes</a></div></div>
+      </div>
+    </sc-if>
+    <!-- /estado:aviso -->
+
+    <sc-if value="{{showAntes}}" hint-placeholder-val="{{true}}">
+    <section aria-labelledby="q6">
+      <div class="over" id="q6" style="margin-bottom: 12px">Antes de ir</div>
+      <div class="card" style="padding: 8px 24px">
+        <dl class="facts">
+          <div><dt>Portões</dt><dd><strong>{{gateOpen}}</strong> · show às {{showAt}} · fim previsto {{endAt}}</dd></div>
+          <div><dt>Atração</dt><dd><strong><a href="Artista.dc.html" class="u">Sorriso Maroto</a></strong> · convidados a anunciar: avisamos quem marcar “Quero ir”</dd></div>
+          <div><dt>Onde</dt><dd><strong><a href="#local" class="u">Arena Anhembi</a></strong> · Av. Olavo Fontoura, 1209 · Santana, São Paulo</dd></div>
+          <div><dt>Como chegar</dt><dd>Metrô Portuguesa-Tietê (Linha 1-Azul) e transfer gratuito. Estacionamento no local, vendido à parte: compre junto com o ingresso, em Produtos.</dd></div>
+          <div><dt>Como entrar</dt><dd>QR da Carteira, funciona sem internet · entrada acessível pelo Portão 1</dd></div>
+          <div><dt>Classificação</dt><dd>16+ · menores de 16 com responsável · meia-entrada com comprovante</dd></div>
+        </dl>
+      </div>
+    </section>
+    </sc-if>
+
+    <section>
+      <div class="over" style="margin-bottom: 12px">Sobre</div>
+      <div class="card" style="padding: 24px; font-size: 16px; line-height: 1.6; color: var(--ink-2)">
+        O Sorriso Maroto leva a turnê Sorriso Eu Gosto no Pagode a São Paulo {{aboutWhen}}, na Arena Anhembi. É para quem quer ouvir os clássicos do grupo ao vivo, com convidados e estrutura de festival: praça de alimentação, bares e área coberta.
+      </div>
+    </section>
+
+<!-- mvp:evento-sobre:ini -->
+    <section class="mvp-so mvp-sobre" aria-labelledby="mvp-sobre-h">
+      <h2 class="over" id="mvp-sobre-h">Sobre o evento</h2>
+      <div class="card mvp-sobre__card">
+        <p class="mvp-sobre__abre">O Sorriso Maroto leva a turnê Sorriso Eu Gosto no Pagode a São Paulo {{aboutWhen}}, na Arena Anhembi.</p>
+        <p>É para quem quer ouvir os clássicos do grupo ao vivo, com convidados e estrutura de festival: praça de alimentação, bares e área coberta.</p>
+        <h3 class="mvp-sobre__h">Informações gerais</h3>
+        <dl class="mvp-sobre__info">
+          <div><dt>Horários</dt><dd>Portões às {{gateOpen}} · show às {{showAt}} · fim previsto às {{endAt}}</dd></div>
+          <div><dt>Classificação</dt><dd>16 anos. Menores de 16 entram com responsável.</dd></div>
+          <div><dt>Meia-entrada</dt><dd>Com comprovante na entrada.</dd></div>
+          <div><dt>Entrada</dt><dd>QR Code da Carteira, que funciona sem internet.</dd></div>
+          <div><dt>Acessibilidade</dt><dd>Entrada acessível pelo Portão 1.</dd></div>
+        </dl>
+      </div>
+    </section>
+<!-- mvp:evento-sobre:fim -->
+    <sc-if value="{{showSocial}}" hint-placeholder-val="{{true}}">
+    <section>
+      <div class="over" style="margin-bottom: 12px">Quem vai</div>
+      <!-- qvai:card -->
+      <div class="card qvai-card">
+        <div class="qvai-who">
+          <!-- uui:avatar-group -->
+          <sc-if value="{{wantOff}}" hint-placeholder-val="{{true}}"><span class="uui-avatar-group" role="group" aria-label="Pessoas confirmadas: Ju, Pedro, Lari e mais 2">
+            <span class="uui-avatar uui-avatar--md" role="img" aria-label="Ju"><span class="uui-avatar__content">JU<img src="./assets/pessoas/ju.jpg" alt="" width="160" height="160" loading="lazy"></span></span>
+            <span class="uui-avatar uui-avatar--md" role="img" aria-label="Pedro"><span class="uui-avatar__content">PD<img src="./assets/pessoas/pedro.jpg" alt="" width="160" height="160" loading="lazy"></span></span>
+            <span class="uui-avatar uui-avatar--md" role="img" aria-label="Lari"><span class="uui-avatar__content">LA<img src="./assets/pessoas/lari.jpg" alt="" width="160" height="160" loading="lazy"></span></span>
+            <span class="uui-avatar uui-avatar--md" role="img" aria-label="Mais 2 pessoas"><span class="uui-avatar__content">+2</span></span>
+          </span>
+          </sc-if>
+          <sc-if value="{{wantOn}}" hint-placeholder-val="{{false}}"><span class="uui-avatar-group" role="group" aria-label="Pessoas confirmadas: Você, Ju, Pedro e mais 3">
+            <span class="uui-avatar uui-avatar--md uui-avatar--voce" role="img" aria-label="Você"><span class="uui-avatar__content">PE</span></span>
+            <span class="uui-avatar uui-avatar--md" role="img" aria-label="Ju"><span class="uui-avatar__content">JU<img src="./assets/pessoas/ju.jpg" alt="" width="160" height="160" loading="lazy"></span></span>
+            <span class="uui-avatar uui-avatar--md" role="img" aria-label="Pedro"><span class="uui-avatar__content">PD<img src="./assets/pessoas/pedro.jpg" alt="" width="160" height="160" loading="lazy"></span></span>
+            <span class="uui-avatar uui-avatar--md" role="img" aria-label="Mais 3 pessoas"><span class="uui-avatar__content">+3</span></span>
+          </span>
+          </sc-if>
+          <!-- /uui:avatar-group -->
+          <div class="qvai-text">
+            <span class="qvai-title" aria-live="polite">{{wantNames}}</span>
+            <span class="qvai-sub">{{wantCount}} pessoas marcaram “Quero ir”</span>
+          </div>
+        </div>
+        <div class="qvai-actions">
+          <button type="button" class="bs" onClick="{{toggleWant}}" aria-pressed="{{wantPressed}}"><span class="btn-ic btn-ic-heart" aria-hidden="true" data-lottie="./assets/icones/quero-ir.json" data-repouso="0" data-loop="0"></span>{{wantLabel}}</button>
+          <button type="button" class="bs bs-ink" data-share="Bora no Sorriso Eu Gosto no Pagode? Dom 8 nov no Anhembi"><span class="btn-ic btn-ic-share" aria-hidden="true" data-lottie="./assets/icones/compartilhar.json" data-repouso="0" data-loop="0"></span> Chamar a galera</button>
+        </div>
+      </div>
+      <!-- /qvai:card -->
+      <ul class="social-links" aria-label="Mais sobre quem vai">
+        <li><span class="over">Atração</span> Você segue Sorriso Maroto · <a href="Artista.dc.html" class="u">Ver perfil</a></li>
+        <li><span class="over">Rolê em grupo</span> Ju montou um rolê para o setor Pista · <a href="#" class="u">Entrar no rolê</a></li>
+        <li><span class="over">Caravanas</span> Saindo de Campinas, Santos e São José dos Campos · <a href="#" class="u">Ver caravanas</a></li>
+        <li><span class="over">Última edição</span> Fotos e vídeos de quem foi em Campinas · <a href="#" class="u">Ver galeria</a></li>
+      </ul>
+    </section>
+    </sc-if>
+
+<!-- ig:ini -->
+    <section class="ev-ig" aria-labelledby="ev-ig-t">
+      <div class="over" id="ev-ig-t">Instagram do evento</div>
+      <div class="card ev-ig__card">
+        <span class="uui-featured-icon ev-ig__ico" aria-hidden="true"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><path d="M17.5 6.5h.01"/></svg></span>
+        <div class="ev-ig__txt">
+          <p class="ev-ig__t">Siga @sorrisomaroto</p>
+          <p class="ev-ig__s">Fique por dentro do que rola no evento até a abertura dos portões: convidados, horários e novidades.</p>
+        </div>
+        <a class="bs ev-ig__bt" href="https://www.instagram.com/sorrisomaroto/" target="_blank" rel="noopener noreferrer" aria-label="Seguir @sorrisomaroto no Instagram (abre em nova aba)">Seguir no Instagram</a>
+      </div>
+    </section>
+<!-- ig:fim -->
+    <section id="local">
+      <div class="over" style="margin-bottom: 12px">Local · como chegar</div>
+      <div class="card" style="display: flex; flex-wrap: wrap">
+        <!-- mapa:ini -->
+        <div class="mapa-cinza ">
+          <iframe class="mapa-cinza__frame" src="https://maps.google.com/maps?ll=-23.5163,-46.6385&z=16&hl=pt-BR&output=embed" title="Mapa: Arena Anhembi" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen></iframe>
+          <svg class="mapa-cinza__pin" width="32" height="32" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22s7-5.6 7-12a7 7 0 1 0-14 0c0 6.4 7 12 7 12Z" fill="currentColor"/><circle cx="12" cy="10" r="2.6" fill="#fff"/></svg>
+          <a class="bs mapa-cinza__abrir" href="https://www.google.com/maps/search/?api=1&query=Arena+Anhembi+S%C3%A3o+Paulo" target="_blank" rel="noopener" aria-label="Abrir Arena Anhembi no mapa">Abrir no mapa <svg class="ico ico-14" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M8 7h9v9"/></svg></a>
+        </div>
+        <!-- mapa:fim -->
+        <div class="loc-info" style="flex: 1 1 240px">
+          <!-- loc-foto:ini -->
+          <div class="loc-foto"><img src="./assets/palcos/arena-anhembi-680.jpg" srcset="./assets/palcos/arena-anhembi-680.jpg 680w, ./assets/palcos/arena-anhembi-1360.jpg 1360w" sizes="(max-width: 640px) 100vw, 300px" loading="lazy" decoding="async" alt="Interior da Arena Anhembi com a treliça do teto e as luzes"></div>
+          <!-- loc-foto:fim -->
+          <div style="padding: 24px">
+          <div style="font-size: 18px; font-weight: 700">Arena Anhembi</div>
+          <div style="font-size: 14px; color: var(--muted); margin: 4px 0 16px">Av. Olavo Fontoura, 1209 · Santana, São Paulo</div>
+          <div style="font-size: 14px; line-height: 1.6; color: var(--ink-2)">Metrô Portuguesa-Tietê + transfer gratuito · estacionamento no local · entrada acessível pelo Portão 1.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="over" style="margin-bottom: 12px">Mesma turnê</div>
+      <!-- evt:ini -->
+      <div class="ev-lista">
+        <sc-for list="{{mesmaTurne}}" as="e" hint-placeholder-count="3">
+        <article class="ev-card" data-tipo="show" data-situacao="{{e.cSit}}" data-quieto="{{e.cQuieto}}" data-ini="{{e.cIni}}" data-sem-sincronia="1">
+          <div class="ev-card__caixa">
+            <a class="ev-card__link" href="{{e.cHref}}" target="{{e.cTarget}}" rel="{{e.cRel}}" aria-label="{{e.cAria}}">
+            <span class="ev-card__midia">
+              <img class="ev-card__img" src="{{e.cImg}}" alt="" loading="lazy" decoding="async" width="810" height="1080">
+              <span class="ev-card__ver ilha" aria-hidden="true">Ver detalhes</span>
+            </span>
+            <span class="ev-card__corpo">
+              <sc-if value="{{e.cTemEstado}}" hint-placeholder-val="{{false}}"><span class="tag ev-card__estado" data-sit="{{e.cSit}}"><span class="ev-ic" data-i="{{e.cEstadoIcone}}" aria-hidden="true"></span>{{e.cEstado}}</span></sc-if>
+              <h3 class="ev-card__titulo">{{e.cNome}}</h3>
+              <span class="ev-card__meta"><span class="ev-card__data">{{e.cData}}</span><span class="ev-card__local">{{e.cLocal}}</span></span>
+            </span>
+            </a>
+            <sc-if value="{{e.cCtaTem}}" hint-placeholder-val="{{true}}"><a class="bs bs-ink ev-card__cta" href="{{e.cCtaHref}}" target="{{e.cCtaTarget}}" rel="{{e.cCtaRel}}" aria-label="{{e.cCtaAria}}"><span class="ev-card__cta-t">{{e.cCtaRotulo}}</span><svg class="ico ev-card__seta" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M8 7h9v9"/></svg></a></sc-if>
+          </div>
+        </article>
+        </sc-for>
+      </div>
+      <!-- evt:fim -->
+    </section>
+<!-- fk:tags -->
+    <section aria-label="Tags do evento">
+      <div class="over" style="margin-bottom: 12px">O que rola</div>
+      <div style="display: flex; flex-wrap: wrap; gap: 8px">
+        <a href="Busca.dc.html?tags=show" class="chip">Show</a>
+        <a href="Busca.dc.html?tags=samba-pagode" class="chip">Samba e pagode</a>
+        <a href="Busca.dc.html?tags=role-em-grupo" class="chip">Rolê em grupo</a>
+        <a href="Busca.dc.html?tags=pra-familia" class="chip">Pra curtir com a família</a>
+        <a href="Busca.dc.html?tags=roda-de-samba" class="chip">Roda de samba</a>
+      </div>
+    </section>
+
+<!-- /fk:tags -->
+  </main>
+
+  <aside class="buy" style="flex: 1 1 320px; min-width: 0; display: flex; flex-direction: column; gap: 12px; position: sticky; top: 88px">
+    <div class="card" style="padding: 24px; box-shadow: 0 16px 40px rgba(10,10,11,.14)">
+<!-- mvp:evento-img-compra:ini -->
+      <img class="mvp-so mvp-buy-img" src="./assets/real/104717.avif" alt="Pôster da turnê Sorriso Eu Gosto no Pagode">
+<!-- mvp:evento-img-compra:fim -->
+      <div class="over" style="margin-bottom: 8px">Compra</div>
+      <div style="font-size: 26px; font-weight: 700">{{priceLine}}</div>
+      <div style="font-size: 13px; color: var(--muted); margin: 4px 0 18px">{{stateNote}}</div>
+      <a href="{{ctaHref}}" class="bp bp-lg {{ctaClass}}" style="width: 100%; box-sizing: border-box" data-toast="{{ctaToast}}" data-lembrete-id="{{ctaLembrete}}" role="{{ctaRole}}" data-track-lembrete="alternar"><sc-if value="{{ctaVenda}}" hint-placeholder-val="{{true}}"><img src="./assets/5e6864b6ac2cc4ced2d84c5a16a3ae48.svg" alt="" aria-hidden="true" style="width: 22px; height: auto; display: block"><span class="btn-ic btn-ic-ticket mvp-so" aria-hidden="true" data-lottie="./assets/icones/ingresso-mvp.json" data-repouso="0" data-loop="0"></span></sc-if><sc-if value="{{ctaAvisar}}" hint-placeholder-val="{{false}}"><span class="btn-ic btn-ic-bell" aria-hidden="true" data-lottie="./assets/icones/avisar.json" data-repouso="0" data-loop="0"></span></sc-if><sc-if value="{{ctaFila}}" hint-placeholder-val="{{false}}"><span class="btn-ic btn-ic-queue" aria-hidden="true" data-lottie="./assets/icones/fila.json" data-repouso="0" data-loop="0"></span></sc-if><sc-if value="{{ctaProx}}" hint-placeholder-val="{{false}}"><span class="btn-ic btn-ic-next" aria-hidden="true" data-lottie="./assets/icones/proximas-datas.json" data-repouso="0" data-loop="0"></span></sc-if><sc-if value="{{ctaReemb}}" hint-placeholder-val="{{false}}"><span class="btn-ic btn-ic-refund" aria-hidden="true" data-lottie="./assets/icones/reembolso.json" data-repouso="0" data-loop="0"></span></sc-if>{{ctaLabel}}</a>
+      <!-- rev:ini -->
+      <sc-if value="{{ctaFila}}" hint-placeholder-val="{{false}}"><a href="Ingressos.dc.html?revenda=1" class="bs bp-lg" style="width: 100%; box-sizing: border-box; margin-top: 10px" data-track-select-item="revenda-oficial">Ver Revenda Oficial</a></sc-if>
+      <!-- rev:fim -->
+      <sc-if value="{{showSocial}}" hint-placeholder-val="{{true}}">
+      <div class="buy-social">
+        <button type="button" class="bs" onClick="{{toggleWant}}" aria-pressed="{{wantPressed}}"><span class="btn-ic btn-ic-heart" aria-hidden="true" data-lottie="./assets/icones/quero-ir.json" data-repouso="0" data-loop="0"></span>{{wantLabel}}</button>
+        <button type="button" class="bs bs-ink" data-share="Bora no Sorriso Eu Gosto no Pagode? Dom 8 nov no Anhembi"><span class="btn-ic btn-ic-share" aria-hidden="true" data-lottie="./assets/icones/compartilhar.json" data-repouso="0" data-loop="0"></span> Chamar a galera</button>
+      </div>
+      <ul class="trust" aria-label="Garantias da compra">
+        <li>Preço final mostrado antes do pagamento, sem surpresas</li>
+        <li>Ingresso oficial, emitido pela produtora</li>
+        <li>Revenda Oficial pela Ingresse, se você não puder ir</li>
+      </ul>
+      </sc-if>
+    </div>
+  </aside>
+</div>
+<div class="mbar" style="display: none; position: sticky; bottom: 0; z-index: 60; background: rgba(255,255,255,.92); backdrop-filter: saturate(1.4) blur(16px); border-top: 1px solid var(--line); padding: 12px 16px; align-items: center; gap: 12px">
+  <div style="flex: 1; min-width: 0"><div style="font-size: 12px; color: var(--muted)">{{mbarDia}} · Arena Anhembi</div><div style="font-size: 16px; font-weight: 700">{{priceShort}}</div></div>
+  <a href="{{ctaHref}}" class="bp {{ctaClass}}" style="box-shadow: none" data-toast="{{ctaToast}}" data-lembrete-id="{{ctaLembrete}}" role="{{ctaRole}}" data-track-lembrete="alternar"><sc-if value="{{ctaVenda}}" hint-placeholder-val="{{true}}"><img src="./assets/5e6864b6ac2cc4ced2d84c5a16a3ae48.svg" alt="" aria-hidden="true" style="width: 20px; height: auto; display: block"><span class="btn-ic btn-ic-ticket mvp-so" aria-hidden="true" data-lottie="./assets/icones/ingresso-mvp.json" data-repouso="0" data-loop="0"></span></sc-if><sc-if value="{{ctaAvisar}}" hint-placeholder-val="{{false}}"><span class="btn-ic btn-ic-bell" aria-hidden="true" data-lottie="./assets/icones/avisar.json" data-repouso="0" data-loop="0"></span></sc-if><sc-if value="{{ctaFila}}" hint-placeholder-val="{{false}}"><span class="btn-ic btn-ic-queue" aria-hidden="true" data-lottie="./assets/icones/fila.json" data-repouso="0" data-loop="0"></span></sc-if><sc-if value="{{ctaProx}}" hint-placeholder-val="{{false}}"><span class="btn-ic btn-ic-next" aria-hidden="true" data-lottie="./assets/icones/proximas-datas.json" data-repouso="0" data-loop="0"></span></sc-if><sc-if value="{{ctaReemb}}" hint-placeholder-val="{{false}}"><span class="btn-ic btn-ic-refund" aria-hidden="true" data-lottie="./assets/icones/reembolso.json" data-repouso="0" data-loop="0"></span></sc-if>{{ctaLabel}}</a>
+</div>
+<details class="proto">
+  <summary>Protótipo · estado da página</summary>
+  <div class="proto-in" role="group" aria-label="Estado do evento">
+    <sc-for list="{{states}}" as="s" hint-placeholder-count="6">
+      <button type="button" class="chip chip-sm" onClick="{{s.pick}}" aria-pressed="{{s.pressed}}">{{s.label}}</button>
+    </sc-for>
+    <div class="over">Dados de exemplo</div>
+    <button type="button" class="chip chip-sm" aria-pressed="{{exOn}}" onClick="{{toggleEx}}">Mostrar o que é exemplo</button>
+  </div>
+</details>
+<footer class="rp" aria-label="Rodapé">
+  <div class="rp-in">
+    <div class="rp-topo">
+      <a href="Main.dc.html" class="rp-marca" aria-label="Ingresse — início"><img src="./assets/8703fb5f412b57860d569f5abeea2cae.svg" alt="Ingresse"></a>
+      <div class="rp-cols">
+      <nav class="rp-col" aria-labelledby="rp-c0">
+        <h2 class="rp-col__t" id="rp-c0">A Ingresse</h2>
+        <ul class="rp-lista">
+          <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Sobre a Ingresse</a></li>
+          <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Trabalhe conosco</a></li>
+          <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Diversidade e inclusão</a></li>
+          <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Imprensa</a></li>
+        </ul>
+      </nav>
+      <nav class="rp-col" aria-labelledby="rp-c1">
+        <h2 class="rp-col__t" id="rp-c1">Ajuda</h2>
+        <ul class="rp-lista">
+          <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Central de ajuda</a></li>
+          <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Perguntas frequentes</a></li>
+          <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Pedir reembolso</a></li>
+          <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Regras de meia‑entrada</a></li>
+        </ul>
+      </nav>
+      <nav class="rp-col" aria-labelledby="rp-c2">
+        <h2 class="rp-col__t" id="rp-c2">Descubra</h2>
+        <ul class="rp-lista">
+          <li><a class="rp-link" href="Busca.dc.html?escopo=artistas">Artistas</a></li>
+          <li><a class="rp-link" href="Busca.dc.html?escopo=locais">Locais</a></li>
+          <li><a class="rp-link" href="https://revenda.ingresse.com" target="_blank" rel="noopener noreferrer" aria-label="Revenda Oficial, abre em nova aba">Revenda Oficial</a></li>
+          <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Para <span class="rp-nw">produtores<svg class="rp-ico rp-ico--sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M8 7h9v9"/></svg></span></a></li>
+        </ul>
+      </nav>
+      </div>
+    </div>
+    <div class="rp-linha">
+      <div class="rp-apps" role="group" aria-label="Baixe o app">
+        <a class="bs rp-app" href="#" data-toast="O link da App Store entra quando o app novo for publicado" aria-label="Baixar o app da Ingresse para iOS"><svg class="rp-ico" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16.37 12.83c-.02-2.3 1.88-3.4 1.97-3.46-1.07-1.57-2.74-1.78-3.33-1.8-1.42-.14-2.77.83-3.49.83-.72 0-1.83-.81-3.01-.79-1.55.02-2.98.9-3.78 2.29-1.61 2.8-.41 6.94 1.16 9.21.77 1.11 1.68 2.36 2.88 2.31 1.16-.05 1.59-.75 2.99-.75 1.4 0 1.79.75 3.01.72 1.24-.02 2.03-1.13 2.79-2.25.88-1.29 1.24-2.54 1.26-2.6-.03-.01-2.42-.93-2.45-3.71zM14.08 6.07c.64-.77 1.07-1.85.95-2.92-.92.04-2.03.61-2.69 1.38-.59.68-1.11 1.78-.97 2.83 1.02.08 2.07-.52 2.71-1.29z"/></svg><span>iOS</span></a>
+        <a class="bs rp-app" href="#" data-toast="O link do Google Play entra quando o app novo for publicado" aria-label="Baixar o app da Ingresse para Android"><svg class="rp-ico" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 18c0 .55.45 1 1 1h1v3.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5V19h2v3.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5V19h1c.55 0 1-.45 1-1V8H6v10zM3.5 8C2.67 8 2 8.67 2 9.5v7c0 .83.67 1.5 1.5 1.5S5 17.33 5 16.5v-7C5 8.67 4.33 8 3.5 8zm17 0c-.83 0-1.5.67-1.5 1.5v7c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5v-7c0-.83-.67-1.5-1.5-1.5zm-4.97-5.84l1.3-1.3c.2-.2.2-.51 0-.71-.2-.2-.51-.2-.71 0l-1.48 1.48A5.84 5.84 0 0 0 12 1c-.96 0-1.86.23-2.66.63L7.85.15c-.2-.2-.51-.2-.71 0-.2.2-.2.51 0 .71l1.31 1.31A5.98 5.98 0 0 0 6 7h12c0-1.99-.97-3.75-2.47-4.84zM10 5H9V4h1v1zm5 0h-1V4h1v1z"/></svg><span>Android</span></a>
+      </div>
+      <ul class="rp-redes" aria-label="Ingresse nas redes">
+        <li><a class="bs bs-icone rp-rede" href="https://www.instagram.com/ingresse/" target="_blank" rel="noopener noreferrer" aria-label="Ingresse no Instagram (abre em nova aba)"><svg class="rp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><path d="M17.5 6.5h.01"/></svg></a></li>
+        <li><a class="bs bs-icone rp-rede" href="https://www.tiktok.com/@ingresse" target="_blank" rel="noopener noreferrer" aria-label="Ingresse no TikTok (abre em nova aba)"><svg class="rp-ico" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16.6 5.82A4.28 4.28 0 0 1 15.54 3h-3.09v12.4a2.59 2.59 0 0 1-2.59 2.5c-1.42 0-2.6-1.16-2.6-2.6 0-1.72 1.66-3.01 3.37-2.48V9.66c-3.45-.46-6.47 2.22-6.47 5.64 0 3.33 2.76 5.7 5.69 5.7 3.14 0 5.69-2.55 5.69-5.7V9.01a7.35 7.35 0 0 0 4.3 1.38V7.3s-1.88.09-3.24-1.48z"/></svg></a></li>
+        <li><a class="bs bs-icone rp-rede" href="https://www.linkedin.com/company/ingresse/" target="_blank" rel="noopener noreferrer" aria-label="Ingresse no LinkedIn (abre em nova aba)"><svg class="rp-ico" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.45 20.45h-3.56v-5.57c0-1.33-.02-3.04-1.85-3.04-1.85 0-2.14 1.45-2.14 2.94v5.67H9.35V9h3.41v1.56h.05c.48-.9 1.64-1.85 3.37-1.85 3.6 0 4.27 2.37 4.27 5.46v6.28zM5.34 7.43a2.06 2.06 0 1 1 0-4.13 2.06 2.06 0 0 1 0 4.13zM7.12 20.45H3.56V9h3.56v11.45z"/></svg></a></li>
+      </ul>
+    </div>
+    <div class="rp-base">
+      <p class="rp-direitos">© 2026 Ingresse</p>
+      <details class="rp-idioma">
+        <summary class="rp-idioma__b" aria-haspopup="menu"><span class="sr-only">Idioma do site: </span><img class="rp-band" src="./assets/flags/br.svg" alt="" width="24" height="18" data-pv-lang-band><span data-pv-lang-nome>Português (Brasil)</span><svg class="rp-ico rp-ico--sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary>
+        <ul class="rp-idioma__lista" role="menu" aria-label="Idioma do site">
+          <li role="none"><button type="button" class="rp-idioma__op" role="menuitemradio" data-pv-lang="PT" aria-checked="true" tabindex="-1" lang="pt-BR"><img class="rp-band" src="./assets/flags/br.svg" alt="" width="24" height="18">Português (Brasil)</button></li>
+          <li role="none"><button type="button" class="rp-idioma__op" role="menuitemradio" data-pv-lang="PT-PT" aria-checked="false" tabindex="-1" lang="pt-PT"><img class="rp-band" src="./assets/flags/pt.svg" alt="" width="24" height="18">Português (Portugal)</button></li>
+          <li role="none"><button type="button" class="rp-idioma__op" role="menuitemradio" data-pv-lang="ES" aria-checked="false" tabindex="-1" lang="es"><img class="rp-band" src="./assets/flags/es.svg" alt="" width="24" height="18">Español</button></li>
+          <li role="none"><button type="button" class="rp-idioma__op" role="menuitemradio" data-pv-lang="EN" aria-checked="false" tabindex="-1" lang="en"><img class="rp-band" src="./assets/flags/us.svg" alt="" width="24" height="18">English</button></li>
+        </ul>
+      </details>
+      <ul class="rp-legais" aria-label="Termos e políticas">
+        <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Política de privacidade</a></li>
+        <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Termos de uso</a></li>
+        <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Termos de compra</a></li>
+        <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Configurações de cookies</a></li>
+      </ul>
+    </div>
+    <div class="rp-grupo">
+      <h2 class="rp-grupo__t" id="rp-grupo">Empresas do Grupo Ingresse</h2>
+      <ul class="rp-grupo__lista" aria-labelledby="rp-grupo">
+        <li><a class="rp-link" href="https://ingresse.com/" target="_blank" rel="noopener noreferrer" aria-label="Ingresse (ingresse.com, abre em nova aba)">Ingresse</a></li>
+        <li><a class="rp-link" href="https://ticketsports.com.br/" target="_blank" rel="noopener noreferrer" aria-label="TicketSports (ticketsports.com.br, abre em nova aba)">TicketSports</a></li>
+        <li><a class="rp-link" href="https://outgo.com.br/" target="_blank" rel="noopener noreferrer" aria-label="OutGo (outgo.com.br, abre em nova aba)">OutGo</a></li>
+        <li><a class="rp-link" href="https://ingressonacional.com.br/" target="_blank" rel="noopener noreferrer" aria-label="Ingresso Nacional (ingressonacional.com.br, abre em nova aba)">Ingresso Nacional</a></li>
+        <li><a class="rp-link" href="https://ingressolive.com/" target="_blank" rel="noopener noreferrer" aria-label="Ingresso Live (ingressolive.com, abre em nova aba)">Ingresso Live</a></li>
+        <li><a class="rp-link" href="https://blacktag.com.br/" target="_blank" rel="noopener noreferrer" aria-label="Blacktag (blacktag.com.br, abre em nova aba)">Blacktag</a></li>
+        <li><a class="rp-link" href="https://pixelticket.com.br/" target="_blank" rel="noopener noreferrer" aria-label="PixelTicket (pixelticket.com.br, abre em nova aba)">PixelTicket</a></li>
+        <li><a class="rp-link" href="https://meep.com.br/" target="_blank" rel="noopener noreferrer" aria-label="Meep (meep.com.br, abre em nova aba)">Meep</a></li>
+      </ul>
+    </div>
+  </div>
+</footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":2300}}'>
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = { st: 'venda', want: false, ex: typeof document !== 'undefined' && document.documentElement.hasAttribute('data-exemplos') }; }
+  componentDidMount() {
+    this.lbEvento = () => { if (this.state.st === 'breve') this.setState({ lbT: Date.now() }); };
+    document.addEventListener('previa:lembretes', this.lbEvento);
+    this.lbTic = setInterval(this.lbEvento, 1000);
+  }
+  componentWillUnmount() { document.removeEventListener('previa:lembretes', this.lbEvento); clearInterval(this.lbTic); }
+  renderVals() {
+    const S = {
+      venda: { label: 'À venda', price: 'a partir de R$ 99', note: 'Preço final, já com taxa · 2 datas · até 6× sem juros', cta: 'Escolher ingressos', href: 'Ingressos.dc.html', on: true },
+      pre: { label: 'Pré-venda', price: 'Pré-venda aberta', note: 'Exclusiva para quem tem código de acesso. Você informa o código ao escolher os ingressos.', cta: 'Escolher ingressos', href: 'Ingressos.dc.html', on: true },
+      breve: { label: 'Venda não aberta', price: 'As vendas abrem em 3 dias e 14 horas', note: 'Avisamos você quando a venda abrir.', cta: 'Me avisar quando abrir', href: '#', on: false, toast: 'Pronto. Avisamos você quando a venda abrir.' },
+      esgotado: { label: 'Esgotado', price: 'Esgotado', note: 'Entre na fila e avisamos se aparecer ingresso. Também dá para ver a Revenda Oficial.', cta: 'Entrar na fila', href: '#', on: false, toast: 'Você está na fila. Se aparecer um ingresso, você fica sabendo primeiro.' },
+      cancelado: { label: 'Cancelado', price: 'Sorriso Eu Gosto no Pagode foi cancelado', short: 'Evento cancelado', note: 'Você recebe o reembolso na forma de pagamento original, em até 10 dias úteis, sem precisar pedir.', cta: 'Ver meu reembolso', href: '#', on: false, toast: 'Reembolso em andamento. O valor volta na forma de pagamento original em até 10 dias úteis.' },
+      encerrado: { label: 'Encerrado', price: 'Este evento já aconteceu', note: 'Veja as próximas datas da turnê.', cta: 'Ver próximas datas', href: 'Colecao.dc.html', on: false },
+      // adiado e data/horário alterado (27/10/2026): a venda segue como está (decisão de produto a confirmar); o aviso e as regras do estado vêm do Guia de Escrita (RC-20, RC-21)
+      adiado: { label: 'Adiado', price: 'a partir de R$ 99', note: 'Preço final, já com taxa · 2 datas · até 6× sem juros', cta: 'Escolher ingressos', href: 'Ingressos.dc.html', on: true, neutro: true,
+        d: { quandoMain: 'Sáb 28 nov 2026 · 15h', quandoExtra: '· antes, Dom 8 nov', stubDate: 'SÁB 28 NOV · 15H', stubIso: '2026-11-28T15:00:00-03:00', gateOpen: '14h', showAt: '15h', endAt: '23h', mbarDia: 'Sáb 28 nov', aboutWhen: 'no sábado, 28 de novembro de 2026, às 15h' } },
+      alterado: { label: 'Alterado', chip: 'Data ou horário alterado', price: 'a partir de R$ 99', note: 'Preço final, já com taxa · 2 datas · até 6× sem juros', cta: 'Escolher ingressos', href: 'Ingressos.dc.html', on: true, neutro: true,
+        d: { quandoMain: 'Dom 8 nov 2026 · 14h', quandoExtra: '· antes, 13h', stubDate: 'DOM 08 NOV · 14H', gateOpen: '13h', showAt: '14h', endAt: '23h', aboutWhen: 'no domingo, 8 de novembro de 2026, às 14h' } }
+    };
+    /* mvp:preco:ini */ if (window.IngresseMvp) for (const k of ['venda', 'adiado', 'alterado']) { S[k].price = ''; S[k].note = ''; } /* mvp:preco:fim */
+    const st = this.state.st;
+    const cur = S[st];
+    /* lb:ini */
+    // venda não aberta: a abertura sai do relógio do protótipo (lembretes.js) e o botão usa o mesmo lembrete da Coleção
+    const LB = window.IngresseLembretes;
+    const LB_ITEM = { id: 'evento:sorriso-sao-paulo', evento: 'Sorriso Eu Gosto no Pagode', praca: 'São Paulo', abreEm: '2026-10-31T12:00:00-03:00', href: 'Ingressos.dc.html' };
+    const lb = st === 'breve' && LB ? LB.abertura(LB_ITEM) : null;
+    /* lb:fim */
+    const D = { quandoMain: 'Dom 8 nov 2026 · 13h', quandoExtra: '', /* 16/11/2026: saiu «· data extra Sáb 7» do «Quando» do hero (repetia a data); adiado e alterado seguem com o «antes» */ stubDate: 'DOM 08 NOV · 13H', stubIso: '2026-11-08T13:00:00-03:00', gateOpen: '12h', showAt: '13h', endAt: '22h', mbarDia: 'Dom 8 nov', aboutWhen: 'no domingo, 8 de novembro de 2026, às 13h', ...(cur.d || {}) };
+    const SIT = { venda: 'venda', pre: 'pre', breve: 'nao-aberto', esgotado: 'esgotado', cancelado: 'cancelado', encerrado: 'encerrado', adiado: 'adiado', alterado: 'alterado' };
+    const toggleEx = () => { const on = document.documentElement.toggleAttribute('data-exemplos'); this.setState({ ex: on }); };
+    const states = Object.keys(S).map(k => {
+      const on = k === this.state.st;
+      return { label: S[k].chip || S[k].label, pressed: on ? 'true' : 'false', pick: () => this.setState({ st: k }) };
+    });
+    const want = this.state.want;
+    return {
+      mesmaTurne: /* evt-dados */ (window.IngresseCartao ? [["Campinas","Sambódromo de Paulínia · Paulínia","2026-10-17","encerrado"],["Ribeirão Preto","Estádio do Comercial · Ribeirão Preto","2026-10-31","esgotado"],["Belo Horizonte","Mineirinho · Belo Horizonte","2026-11-14","nao-aberto"]].map(([c, local, iso, sit]) => window.IngresseCartao.agenda({ nome: 'Sorriso Eu Gosto no Pagode — ' + c, local, iso, sit, href: 'Evento.dc.html', img: ({"Campinas":"./assets/real/105383.avif","Ribeirão Preto":"./assets/real/91221.avif","São Paulo":"./assets/real/104717.avif","Belo Horizonte":"./assets/real/105383.avif"})[c] })) : []), /* evt-dados:fim */ states, ctaToast: lb ? '' : (cur.toast || ''), stateLabel: cur.label.toLowerCase(), priceLine: lb ? (lb.aberto ? 'A venda abriu' : 'A venda abre ' + lb.quando + (lb.falta ? ' (' + lb.falta + ')' : '')) : cur.price, stateNote: lb && lb.avisarAtivo && !lb.aberto ? lb.avisoNota : cur.note, ctaLabel: lb ? (lb.aberto ? 'Escolher ingressos' : lb.avisarRotulo) : cur.cta, ctaLembrete: lb && !lb.aberto ? LB_ITEM.id : '', ctaRole: lb && !lb.aberto ? 'button' : 'link', ctaHref: lb && lb.aberto ? 'Ingressos.dc.html' : cur.href, ctaVenda: cur.on, ctaAvisar: this.state.st === 'breve', ctaFila: this.state.st === 'esgotado', ctaProx: this.state.st === 'encerrado', ctaReemb: this.state.st === 'cancelado',
+      ctaHeroClass: cur.on ? '' : 'bp-ghost', ctaClass: cur.on ? '' : 'bp-ink',
+      tagHeroClass: cur.on && !cur.neutro ? 'tag-brand' : 'on-dark', tagClass: cur.on && !cur.neutro ? 'tag-hot' : '',
+      stateSit: SIT[st], isCancelado: st === 'cancelado', isAdiado: st === 'adiado', isAlterado: st === 'alterado', showAntes: st !== 'cancelado', showSocial: st !== 'cancelado',
+      ...D, exOn: this.state.ex ? 'true' : 'false', toggleEx,
+      priceShort: cur.short || cur.price,
+      wantLabel: want ? 'Quero ir' : 'Quero ir', wantOn: want, wantOff: !want, wantNames: want ? 'Você, Ju, Pedro e mais 3 pessoas vão' : 'Ju, Pedro, Lari e mais 2 pessoas vão', wantCount: want ? '1.249' : '1.248', wantPressed: want ? 'true' : 'false', toggleWant: () => { this.setState({ want: !want }); if (window.IX) IX.toast(want ? 'Você saiu da lista de quem vai.' : 'Você entrou na lista de quem vai.', want ? 'info' : 'ok'); }
+    };
+  }
+}
+</script>
+</body>
+</html>

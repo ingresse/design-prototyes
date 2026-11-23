@@ -28,6 +28,8 @@ interface FilterPopoverProps {
     onOpenChange?: (open: boolean) => void;
     /** Classes de largura do popover no desktop. */
     className?: string;
+    /** Lado em que o popover se alinha ao botão no desktop. Botão à esquerda da página → "bottom start", para não cobrir a navegação. */
+    placement?: "bottom start" | "bottom end";
     /** Conteúdo do overlay; recebe `close` para fechar programaticamente. */
     children: (close: () => void) => ReactNode;
 }
@@ -36,7 +38,7 @@ interface FilterPopoverProps {
  * Dropdown no desktop; bottom sheet no mobile. Mesmo conteúdo nos dois,
  * escolhido por media query.
  */
-export function FilterPopover({ trigger, onOpenChange, className, children }: FilterPopoverProps) {
+export function FilterPopover({ trigger, onOpenChange, className, placement = "bottom end", children }: FilterPopoverProps) {
     const isMobile = useIsMobile();
 
     return (
@@ -75,7 +77,7 @@ export function FilterPopover({ trigger, onOpenChange, className, children }: Fi
                 </AriaModalOverlay>
             ) : (
                 <AriaPopover
-                    placement="bottom end"
+                    placement={placement}
                     offset={4}
                     containerPadding={0}
                     className={(state) =>

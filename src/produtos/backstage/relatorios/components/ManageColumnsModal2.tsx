@@ -67,7 +67,7 @@ const ColunaSelecionadaItem = ({ id, label, onRemover }: { id: string; label: st
 const ANCHOR_FIELD_ID = "pedido_id";
 
 export const DEFAULT_DESCRIPTION =
-    "Selecione até 50 colunas que para exibir na lista de transações. Para consultar mais colunas simultaneamente, você deverá exportar o relatório.";
+    "Selecione até 50 colunas para exibir na lista de transações. Para consultar mais colunas simultaneamente, você deverá exportar o relatório.";
 
 export const DEFAULT_SELECTED = [
     ANCHOR_FIELD_ID,

@@ -1,10 +1,9 @@
 import type { ReactNode } from "react";
-import { getLocalTimeZone } from "@internationalized/date";
 import { ChevronDown, Clock, CurrencyDollarCircle, UploadCloud02, XClose } from "@untitledui/icons";
 import { Button } from "@/components/base/buttons/button";
 import { Dropdown } from "@/components/base/dropdown/dropdown";
 import { cx } from "@/utils/cx";
-import { EVENT, dateFormatter } from "../data/event";
+import { EVENT } from "../data/event";
 import { RelatorioFilterSlideout, RelatorioPeriodoButton } from "./RelatorioFilterSlideout";
 import { useRelatorioFilters } from "./relatorio-filters";
 import { TITULO_PAGINA } from "@/produtos/backstage/components/titulo-pagina";
@@ -84,9 +83,7 @@ const InfoChip = ({ icon: Icon, label }: { icon: typeof Clock; label: string }) 
 
 const FiltersStrip = ({ showMeta = true }: { showMeta?: boolean }) => {
     const { fields, sessoes, dateRange, sessao, filters, appliedCount, apply, clear } = useRelatorioFilters();
-    const tz = getLocalTimeZone();
 
-    const removeDate = () => apply({ dateRange: null, sessao, filters });
     const removeSessao = () => apply({ dateRange, sessao: "all", filters });
     const removeFilter = (id: string) => apply({ dateRange, sessao, filters: filters.filter((f) => f.id !== id) });
 
@@ -106,12 +103,6 @@ const FiltersStrip = ({ showMeta = true }: { showMeta?: boolean }) => {
 
             {showMeta && appliedCount > 0 && <span className="h-4 w-px bg-border-secondary" aria-hidden="true" />}
 
-            {dateRange && (
-                <FilterChip
-                    label={`${dateFormatter.format(dateRange.start.toDate(tz))} – ${dateFormatter.format(dateRange.end.toDate(tz))}`}
-                    onRemove={removeDate}
-                />
-            )}
             {sessao !== "all" && (
                 <FilterChip
                     label={`Sessão: ${sessoes.find((s) => s.id === sessao)?.label ?? sessao}`}
@@ -138,6 +129,17 @@ const FiltersStrip = ({ showMeta = true }: { showMeta?: boolean }) => {
     );
 };
 
+/** Período (sempre) e Filtros (só se o relatório tiver campos ou sessões). */
+const ControlesDeFiltro = ({ soPeriodo, placement }: { soPeriodo: boolean; placement: "bottom start" | "bottom end" }) => {
+    const { fields, sessoes } = useRelatorioFilters();
+    return (
+        <>
+            <RelatorioPeriodoButton />
+            {!soPeriodo && (fields.length > 0 || sessoes.length > 0) && <RelatorioFilterSlideout placement={placement} />}
+        </>
+    );
+};
+
 /* ------------------------------------------------------------------ */
 /*  Barra superior fixa                                               */
 /* ------------------------------------------------------------------ */
@@ -148,7 +150,7 @@ interface RelatorioPageHeaderProps {
     actions?: ReactNode;
     /** Renderiza o botão de Filtros + tira de filtros (exige RelatorioFiltersProvider). Default true. */
     withFilters?: boolean;
-    /** "full" = slideout de filtros; "period" = só botão de Período. Default "full". */
+    /** "full" = botão de Período + Filtros (se o relatório tiver campos ou sessões); "period" = só o Período. Default "full". */
     filter?: "full" | "period";
     /** Exibe a meta do evento (fuso horário / moeda) na tira. Default true. */
     showEventMeta?: boolean;
@@ -159,22 +161,26 @@ interface RelatorioPageHeaderProps {
 }
 
 export const RelatorioPageHeader = ({ title, actions, withFilters = true, filter = "full", showEventMeta = true, toolbar, splitControls = false }: RelatorioPageHeaderProps) => {
-    const FilterControl = filter === "period" ? RelatorioPeriodoButton : RelatorioFilterSlideout;
+    // Um controle de período só, o botão de datas, em todos os relatórios (REL-220). Filtros abre só os campos e a sessão.
+    // O popover de Filtros abre para a direita do botão: aberto para a esquerda, cobria a lista de relatórios (REL-220).
+    const filterControl = <ControlesDeFiltro soPeriodo={filter === "period"} placement="bottom start" />;
     return (
-        <div className={cx("sticky top-[var(--bs-header-offset,0px)] z-40 -mx-2 -mt-6 flex flex-col gap-3 border-x-8 border-[var(--color-bg-secondary)] bg-secondary pb-3 pt-6 shadow-[-8px_0_0_0_var(--color-bg-secondary),8px_0_0_0_var(--color-bg-secondary)] dark:border-[#0a0a0a] dark:bg-[#0a0a0a] dark:shadow-[-8px_0_0_0_#0a0a0a,8px_0_0_0_#0a0a0a]")}>
+        // O fundo é o da página (bg-primary_alt, o mesmo do shell do Backstage) nos dois modos: o que rola por baixo some sem faixa.
+        <div className={cx("sticky top-[var(--bs-header-offset,0px)] z-40 -mx-2 -mt-6 flex flex-col gap-3 border-x-8 border-[var(--color-bg-primary_alt)] bg-primary_alt pb-3 pt-6 shadow-[-8px_0_0_0_var(--color-bg-primary_alt),8px_0_0_0_var(--color-bg-primary_alt)]")}>
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                <h1 className={TITULO_PAGINA}>{title}</h1>
+                {/* `titulo-do-relatorio`: dentro dos Relatórios, só este h1 vai para leitor de tela (navegacao-de-secao). */}
+                <h1 className={cx(TITULO_PAGINA, "titulo-do-relatorio")}>{title}</h1>
                 {(actions || withFilters) && (
                     <div className="flex flex-wrap items-center gap-3">
                         {splitControls ? (
                             <>
-                                {withFilters && <FilterControl />}
+                                {withFilters && filterControl}
                                 {actions}
                             </>
                         ) : (
                             <>
                                 {actions}
-                                {withFilters && <FilterControl />}
+                                {withFilters && filterControl}
                             </>
                         )}
                     </div>

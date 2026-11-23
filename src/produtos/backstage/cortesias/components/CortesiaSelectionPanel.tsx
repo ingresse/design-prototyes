@@ -41,25 +41,19 @@ export function CortesiaSelectionPanel({
     }, [selectedIds]);
 
     return (
-        <aside
-            className={cx(
-                "sticky top-6 hidden h-[450px] w-[330px] shrink-0 flex-col overflow-hidden rounded-xl bg-primary ring-1 ring-border-secondary lg:flex",
-                className,
-            )}
-        >
-            <header className="flex bg-secondary shrink-0 items-baseline justify-between gap-2 border-b border-secondary px-4 py-3.5">
+        // Na coluna das etapas (COR-50, COR-21): ocupa a largura dela; no celular a contagem vai para a barra do pé.
+        <section aria-label="Cortesias selecionadas" className={cx("flex w-full flex-col overflow-hidden rounded-xl bg-primary ring-1 ring-border-secondary", className)}>
+            <header className="flex shrink-0 flex-col gap-0.5 border-b border-secondary px-4 py-3">
                 <h3 className="text-sm font-semibold text-primary">Cortesias</h3>
-                <span className="text-xs text-tertiary">
+                <span className="text-sm text-tertiary" aria-live="polite">
                     {count} de {MAX_SELECTIONS} cortesias selecionadas
                 </span>
             </header>
 
             {isEmpty ? (
-                <div className="flex flex-1 flex-col items-center justify-center gap-4 px-6 text-center">
-                    <FeaturedIcon icon={Ticket01} color="brand" theme="gradient" size="xl" />
-                    <p className="text-md text-primary">
-                        Você ainda não <br />selecionou cortesias
-                    </p>
+                <div className="flex flex-1 flex-col items-center justify-center gap-3 px-4 py-6 text-center">
+                    <FeaturedIcon icon={Ticket01} color="gray" theme="modern" size="lg" />
+                    <p className="text-sm text-tertiary">Você ainda não escolheu nenhum item.</p>
                 </div>
             ) : (
                 <div className="flex flex-1 flex-col gap-5 overflow-y-auto px-4 py-4">
@@ -94,7 +88,7 @@ export function CortesiaSelectionPanel({
                     )}
                 </div>
             )}
-        </aside>
+        </section>
     );
 }
 
@@ -138,9 +132,9 @@ const TicketRow = ({ item, onRemove }: RowProps<TicketItemDetails>) => (
         <div className="flex min-w-0 flex-1 flex-col">
             <span className="truncate text-sm font-medium text-primary">{item.name}</span>
             <span className="truncate text-sm text-tertiary">
-                {item.groupName} - {item.ticketType}
+                {item.groupName}, {item.ticketType}
             </span>
-            <span className="truncate text-xs text-tertiary">{item.sessionDate}</span>
+            <span className="truncate text-sm text-tertiary">{item.sessionDate}</span>
         </div>
         <Button size="xs" className="underline font-medium" color="link-gray" onClick={() => onRemove(item.id)}>
             Remover
@@ -176,7 +170,7 @@ const ComboRow = ({ item, onRemove }: RowProps<ComboItemDetails>) => (
         <ul className="flex flex-col gap-2.5">
             {item.subItems.map((sub, i) => (
                 <li key={`${item.id}-sub-${i}`} className="flex items-start gap-2.5">
-                    <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-quaternary text-[10px] font-semibold text-base-white">
+                    <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-quaternary text-sm font-semibold text-white">
                         {i + 1}
                     </span>
                     <div className="flex min-w-0 flex-1 flex-col">
@@ -185,8 +179,8 @@ const ComboRow = ({ item, onRemove }: RowProps<ComboItemDetails>) => (
                         </span>
                         <span className="truncate text-sm text-tertiary">{sub.type}</span>
                         {sub.date && (
-                            <span className="truncate text-xs text-tertiary">{sub.date}</span>
-                        )} 
+                            <span className="truncate text-sm text-tertiary">{sub.date}</span>
+                        )}
                     </div>
                 </li>
             ))}

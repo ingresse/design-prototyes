@@ -5,6 +5,8 @@
 > **Versão em uso:** pasta única, sem v2. O mesmo problema (quem emite cortesia e com que cota) também é tratado por `equipe-de-operacao` (v1/v2/v3) e por `equipe-e-permissoes`. Ver **Em aberto**.
 > **Revisado em:** 2026-11-07
 
+> **Desde 21/11/2026 sem rota:** a URL leva para Equipe e comissários (`/backstage/evento/equipe`), onde o canal Cortesia de cada grupo define quem emite, quais itens e a cota que a emissão aplica (BKS-35). Produção não tem esta tela. O código fica como histórico.
+
 Este arquivo é a fonte da verdade do comportamento da feature. Mudou uma regra no código, mude
 aqui no mesmo commit. Achou divergência entre código e este arquivo, registre em **Em aberto**
 em vez de escolher um lado em silêncio.

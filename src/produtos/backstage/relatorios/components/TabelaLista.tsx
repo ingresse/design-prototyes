@@ -1,5 +1,5 @@
 import { type ReactNode, useState } from "react";
-import { ChevronRight } from "@untitledui/icons";
+import { ChevronDown, ChevronRight } from "@untitledui/icons";
 import { SlideoutMenu } from "@/components/application/slideout-menus/slideout-menu";
 import { Button } from "@/components/base/buttons/button";
 import { cx } from "@/utils/cx";
@@ -24,15 +24,31 @@ export interface GrupoDoDetalhe {
     campos: CampoDoDetalhe[];
 }
 
-/** Painel com todos os campos de uma linha. Tela cheia no celular (UI-NAV-003). */
-export function DetalhesDaLinha({ titulo, subtitulo, grupos, onFechar }: { titulo: ReactNode; subtitulo?: ReactNode; grupos: GrupoDoDetalhe[]; onFechar: () => void }) {
+/**
+ * Painel lateral dos relatórios, sobre o `SlideoutMenu` do DS (REL-225): título, subtítulo, conteúdo que
+ * rola e "Fechar" no rodapé. Tela cheia no celular (UI-NAV-003). Todos os detalhes dos relatórios abrem nele.
+ */
+export function PainelLateral({ titulo, subtitulo, children, onFechar }: { titulo: ReactNode; subtitulo?: ReactNode; children: ReactNode; onFechar: () => void }) {
     return (
         <SlideoutMenu isOpen isDismissable onOpenChange={(v) => !v && onFechar()} className="z-50 pl-0" dialogClassName="gap-0">
             <SlideoutMenu.Header onClose={onFechar} className="flex flex-col gap-1 pb-4">
                 <h2 className="pr-8 text-lg font-semibold text-primary">{titulo}</h2>
-                {subtitulo && <p className="text-sm text-tertiary">{subtitulo}</p>}
+                {subtitulo && <div className="text-sm text-tertiary">{subtitulo}</div>}
             </SlideoutMenu.Header>
-            <SlideoutMenu.Content className="gap-0 border-t border-secondary">
+            <SlideoutMenu.Content className="gap-0 border-t border-secondary">{children}</SlideoutMenu.Content>
+            <SlideoutMenu.Footer className="flex justify-end">
+                <Button color="secondary" size="md" onClick={onFechar} className="w-full sm:w-auto">
+                    Fechar
+                </Button>
+            </SlideoutMenu.Footer>
+        </SlideoutMenu>
+    );
+}
+
+/** Painel com todos os campos de uma linha. */
+export function DetalhesDaLinha({ titulo, subtitulo, grupos, onFechar }: { titulo: ReactNode; subtitulo?: ReactNode; grupos: GrupoDoDetalhe[]; onFechar: () => void }) {
+    return (
+        <PainelLateral titulo={titulo} subtitulo={subtitulo} onFechar={onFechar}>
                 <div className="flex flex-col divide-y divide-secondary">
                     {grupos.map((g, i) => (
                         <section key={g.titulo ?? i} className="flex flex-col gap-3 py-5">
@@ -48,13 +64,7 @@ export function DetalhesDaLinha({ titulo, subtitulo, grupos, onFechar }: { titul
                         </section>
                     ))}
                 </div>
-            </SlideoutMenu.Content>
-            <SlideoutMenu.Footer className="flex justify-end">
-                <Button color="secondary" size="md" onClick={onFechar} className="w-full sm:w-auto">
-                    Fechar
-                </Button>
-            </SlideoutMenu.Footer>
-        </SlideoutMenu>
+        </PainelLateral>
     );
 }
 
@@ -129,21 +139,49 @@ export function useLinhaAberta<T>() {
 }
 
 /**
- * Linha final de uma tabela em árvore: no celular as colunas somem, então a linha vira botão que abre
- * os detalhes. No desktop (`ativa` falso), continua uma linha comum.
+ * Linha final de uma tabela em árvore: no celular as colunas somem, então o clique na linha abre os
+ * detalhes. A linha continua linha de tabela (sem `role="button"`, REL-226); o teclado usa o botão da
+ * primeira célula (`AbrirDaLinha`). No desktop (`ativa` falso), nada abre: todas as colunas estão na tela.
  */
 export function linhaQueAbre(ativa: boolean, abrir: () => void) {
     if (!ativa) return {};
-    return {
-        role: "button" as const,
-        tabIndex: 0,
-        onClick: abrir,
-        onKeyDown: (e: { key: string; preventDefault: () => void }) => {
-            if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                abrir();
-            }
-        },
-        style: { cursor: "pointer" },
-    };
+    return { onClick: abrir, style: { cursor: "pointer" } };
+}
+
+/** Rótulo da linha final: botão que abre os detalhes no celular (`ativa`); texto no desktop. */
+export function AbrirDaLinha({ ativa, onAbrir, children, className }: { ativa: boolean; onAbrir: () => void; children: ReactNode; className?: string }) {
+    if (!ativa) return <span className={className}>{children}</span>;
+    return (
+        <button
+            type="button"
+            onClick={(e) => {
+                e.stopPropagation();
+                onAbrir();
+            }}
+            className={cx("rounded-sm text-left outline-focus-ring focus-visible:outline-2", className)}
+        >
+            {children}
+        </button>
+    );
+}
+
+/**
+ * Abre e fecha um grupo da árvore. Fica na primeira célula: a linha continua linha de tabela, e o
+ * botão leva o `aria-expanded` (REL-226). O clique em qualquer ponto da linha também alterna.
+ */
+export function AlternarDaArvore({ aberto, onAlternar, children, className }: { aberto: boolean; onAlternar: () => void; children: ReactNode; className?: string }) {
+    return (
+        <button
+            type="button"
+            aria-expanded={aberto}
+            onClick={(e) => {
+                e.stopPropagation();
+                onAlternar();
+            }}
+            className={cx("flex w-full min-w-0 items-center gap-2 rounded-sm text-left outline-focus-ring focus-visible:outline-2", className)}
+        >
+            <ChevronDown aria-hidden="true" className={cx("size-4 shrink-0 text-fg-quaternary transition-transform duration-150 motion-reduce:transition-none", aberto && "rotate-180")} />
+            {children}
+        </button>
+    );
 }

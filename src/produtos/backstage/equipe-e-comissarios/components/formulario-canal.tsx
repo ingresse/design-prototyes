@@ -5,16 +5,15 @@ import { EmptyState } from "@/components/application/empty-state/empty-state";
 import { Button } from "@/components/base/buttons/button";
 import { Input } from "@/components/base/input/input";
 import { RadioButton, RadioGroup } from "@/components/base/radio-buttons/radio-buttons";
-import { Select } from "@/components/base/select/select";
 import { Toggle } from "@/components/base/toggle/toggle";
 import { Surgir } from "@/components/foundations/transicao";
 import { useDoc } from "@/plataforma";
-import { SeletorDeIngressos, useResumoDeIngressos } from "../../aberturas-de-vendas/components/SeletorDeIngressos";
+import { SeletorDeIngressos, useResumoDeIngressos } from "../../components/seletor-de-ingressos";
 import { useEventoAtual } from "../../eventos/data/eventos";
 import { EditorDeCondicoes, validarCondicoes } from "../../comissarios/components/condicoes";
 import { EscolhaEmLista, ListaDeEscolhas, irParaPrimeiroErro } from "../../itens/components/comuns";
 import { SeletorDeLista } from "../../itens/components/SeletorDeLista";
-import { COMBOS, INGRESSOS, ITEM_POR_ID, PRODUTOS } from "../data/catalogo-evento";
+import { COMBOS, INGRESSOS, ITEM_POR_ID, PRODUTOS, eventoDoCatalogo, naSimulacao } from "../data/catalogo-evento";
 import {
     CANAIS_GRUPO,
     canalNovo,
@@ -24,12 +23,14 @@ import {
     ROTULO_CANAL,
     salvarCanal,
     tornarComissario,
+    plural,
     type CanalGrupo,
     type Comissario,
     type Condicoes,
     type GrupoEquipe,
     type TipoCota,
 } from "../data/equipe";
+import { CampoDePessoa } from "./campo-de-pessoa";
 import { ModalDesativar } from "./modal-desativar";
 import { CotasPorItem, soNumero } from "./cotas-por-item";
 
@@ -93,6 +94,8 @@ export function FormularioCanal({
     const [seletor, setSeletor] = useState<TipoItem | null>(null);
     const evento = useEventoAtual();
     const doBanco = useDoc("eventos", evento.id);
+    // Na simulação de escala, o seletor abre o catálogo simulado, o mesmo da tela (UI-LST-005).
+    const eventoDoSeletor = naSimulacao() ? (eventoDoCatalogo() ?? doBanco) : doBanco;
     const resumir = useResumoDeIngressos();
 
     // Sair com algo mudado pede confirmação, como o "Descartar o evento?" do Criar evento (ECO-46).
@@ -113,6 +116,10 @@ export function FormularioCanal({
     // No link com "Todos os ingressos" a cota por item vale para os ingressos de hoje.
     const itensDaCota = ehLink && todos ? INGRESSOS.map((i) => i.id) : itens;
     const semCota = tipoCota === "por-item" ? itensDaCota.filter((id) => !((porItem[id] ?? 0) > 0)).length : 0;
+    // A cota nunca fica abaixo do já emitido, aqui como na edição no lugar (ECO-34).
+    const uso = atual?.uso ?? {};
+    const usadas = Object.entries(uso).reduce((soma, [id, n]) => (ITEM_POR_ID[id] ? soma + n : soma), 0);
+    const abaixoDoUso = tipoCota === "por-item" ? itensDaCota.filter((id) => (porItem[id] ?? 0) > 0 && (porItem[id] ?? 0) < (uso[id] ?? 0)).length : 0;
 
     // Outro canal do grupo já tem itens escolhidos: dá para reaproveitar em vez de escolher de novo (ECO-39).
     const reaproveitaveis = CANAIS_GRUPO.filter((c) => c !== canal && grupo.canais[c] && !grupo.canais[c]?.todos)
@@ -128,9 +135,13 @@ export function FormularioCanal({
             ? "Escolha como limitar as cortesias."
             : tipoCota === "compartilhada" && !(total > 0)
               ? "Informe a cota total do canal."
-              : semCota > 0
-                ? `Informe a cota de ${semCota === 1 ? "1 item" : `${semCota} itens`}. Use "Mesma cota para vários itens" para preencher de uma vez.`
-                : undefined,
+              : tipoCota === "compartilhada" && total < usadas
+                ? `O canal já emitiu ${usadas}: informe ${usadas} ou mais.`
+                : semCota > 0
+                  ? `Informe a cota de ${semCota === 1 ? "1 item" : `${semCota} itens`}. Use "Mesma cota para vários itens" para preencher de uma vez.`
+                  : abaixoDoUso > 0
+                    ? `${abaixoDoUso === 1 ? "1 item está" : `${abaixoDoUso} itens estão`} com a cota abaixo do já emitido. Informe o emitido ou mais.`
+                    : undefined,
     };
 
     // Erro no salvar: o campo marcado e a rolagem até ele bastam, sem toast (ECO-33).
@@ -153,7 +164,7 @@ export function FormularioCanal({
             },
             comissao: canal === "pdv" || canal === "bilheteria" ? comissao : undefined,
         });
-        toast.success(atual ? `${ROTULO_CANAL[canal]} atualizado.` : `${ROTULO_CANAL[canal]} configurado e ligado.`);
+        toast.success(atual ? `Canal ${ROTULO_CANAL[canal]} atualizado.` : `Canal ${ROTULO_CANAL[canal]} configurado e ligado.`);
         onSair();
     };
 
@@ -192,7 +203,8 @@ export function FormularioCanal({
             <div className="flex flex-col gap-6">
                 {ehLink && (
                     <Secao titulo="Código e responsável" data-alerta={tentou && (erros.codigo || erros.responsavel) ? true : undefined}>
-                        <div className="grid gap-4 sm:grid-cols-2">
+                        {/* Uma coluna no celular, com min-w-0: em 390 px a coluna tinha 438 px e cortava o campo (UI-MOB-004). */}
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 [&>*]:min-w-0">
                             <Input
                                 label="Código do link e do cupom"
                                 isRequired
@@ -201,22 +213,17 @@ export function FormularioCanal({
                                 isInvalid={(tentou && !!erros.codigo) || codigoRepetido}
                                 hint={(tentou || codigoRepetido) && erros.codigo ? erros.codigo : "Só letras e números. Vira o link e o cupom no checkout."}
                             />
-                            <Select
+                            {/* Com busca por nome ou e-mail: o grupo pode ter centenas de pessoas (ECO-94). */}
+                            <CampoDePessoa
                                 label="Responsável"
                                 isRequired
-                                placeholder="Escolha uma pessoa do grupo"
+                                placeholder="Buscar pessoa do grupo"
                                 hint={tentou && erros.responsavel ? erros.responsavel : "Vê tudo do comissário e recebe os repasses. As outras pessoas veem só o que venderam."}
                                 isInvalid={tentou && !!erros.responsavel}
-                                selectedKey={responsavel}
-                                onSelectionChange={(k) => k && setResponsavel(String(k))}
-                                items={pessoas.map((p) => ({ id: p.email, label: p.nome === p.email ? p.email : p.nome, supportingText: p.nome === p.email ? undefined : p.email }))}
-                            >
-                                {(item) => (
-                                    <Select.Item id={item.id} supportingText={item.supportingText}>
-                                        {item.label}
-                                    </Select.Item>
-                                )}
-                            </Select>
+                                valor={responsavel}
+                                onChange={setResponsavel}
+                                opcoes={pessoas.map((p) => ({ id: p.email, label: p.nome === p.email ? p.email : p.nome, supportingText: p.nome === p.email ? undefined : p.email }))}
+                            />
                         </div>
                     </Secao>
                 )}
@@ -292,14 +299,19 @@ export function FormularioCanal({
                                 placeholder="0"
                                 value={total ? String(total) : ""}
                                 onChange={(v) => setTotal(soNumero(v))}
-                                isInvalid={tentou && !!erros.cota}
-                                hint={tentou ? erros.cota : undefined}
+                                isInvalid={(tentou && !!erros.cota) || (total > 0 && total < usadas)}
+                                hint={(tentou || (total > 0 && total < usadas)) && erros.cota ? erros.cota : usadas > 0 ? `${plural(usadas, "já emitido", "já emitidos")}: a cota não pode ficar abaixo.` : undefined}
                             />
                         </div>
                     </Surgir>
                     <Surgir visivel={tipoCota === "por-item"}>
                         <div className="flex flex-col gap-3 pt-2">
-                            <CotasPorItem itens={itensDaCota} valores={porItem} onValores={(v) => setPorItem((p) => ({ ...p, ...v }))} mostrarErros={tentou} />
+                            {ehLink && todos && (
+                                <p className="text-sm text-tertiary">
+                                    A cota por item vale para os {INGRESSOS.length.toLocaleString("pt-BR")} ingressos de hoje. Ingresso criado depois entra no link sem cota: volte aqui para definir a dele.
+                                </p>
+                            )}
+                            <CotasPorItem itens={itensDaCota} valores={porItem} uso={uso} onValores={(v) => setPorItem((p) => ({ ...p, ...v }))} mostrarErros={tentou} />
                             {tentou && erros.cota && <p className="text-sm text-error-primary">{erros.cota}</p>}
                         </div>
                     </Surgir>
@@ -318,13 +330,17 @@ export function FormularioCanal({
                 )}
 
                 {ehLink && comissario && (
-                    <Secao titulo="Deixar de ser comissário">
-                        <div className="flex flex-col items-start gap-1">
-                            <Button color="link-destructive" size="sm" isDisabled={temVendas} onClick={() => setRemovendo(true)}>
-                                Deixar de ser comissário
-                            </Button>
-                            {temVendas && <p className="text-sm text-tertiary">Com vendas neste evento, ele fica: o histórico e o saldo continuam.</p>}
-                        </div>
+                    <Secao
+                        titulo="Comissário do grupo"
+                        descricao={
+                            temVendas
+                                ? "Com vendas neste evento, o grupo continua comissário: o histórico e o saldo ficam. Para parar de vender, desligue o canal."
+                                : "O canal volta para não configurado, o link e o cupom param e as pessoas perdem o cargo Comissário. Elas continuam no grupo."
+                        }
+                    >
+                        <Button color="secondary-destructive" size="md" className="self-start" isDisabled={temVendas} onClick={() => setRemovendo(true)}>
+                            Deixar de ser comissário
+                        </Button>
                     </Secao>
                 )}
             </div>
@@ -364,10 +380,10 @@ export function FormularioCanal({
                     onSair();
                 }}
             />
-            {seletor === "ingresso" && doBanco && (
+            {seletor === "ingresso" && eventoDoSeletor && (
                 <SeletorDeIngressos
                     titulo={`Ingressos: ${ROTULO_CANAL[canal]}`}
-                    evento={doBanco}
+                    evento={eventoDoSeletor}
                     itens={ingressos.map((id) => ({ tipo: "ingresso" as const, id }))}
                     onFechar={() => setSeletor(null)}
                     onConfirmar={(escolhidos) => {

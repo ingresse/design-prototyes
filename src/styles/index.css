@@ -124,6 +124,12 @@ html.tema-backstage {
   --color-brand-950: rgb(10 10 10);
   --color-bg-brand-solid: var(--color-brand-950);
   --color-bg-brand-solid_hover: var(--color-brand-800);
+  /* Contorno e bolinha do Toggle desligado (BKS-122): 4,7:1 sobre branco; no escuro, neutral-400. */
+  --color-toggle-off: var(--color-neutral-500);
+  /* Fundo do agrupador de ingressos (ITM-164): entre a página (branca) e os cards (brancos), um cinza bem leve. */
+  --color-bg-agrupador: var(--color-neutral-50);
+  /* Hover do card do ingresso (ITM-167): no claro, o hover de sempre (neutral-100). */
+  --color-bg-cartao_hover: var(--color-bg-primary_hover);
 }
 html.tema-backstage.dark-mode {
   /* No escuro, o sólido de marca é claro e o texto sobre ele, escuro. */
@@ -131,4 +137,40 @@ html.tema-backstage.dark-mode {
   --color-fg-white: var(--color-neutral-900);
   --color-bg-brand-solid: var(--color-brand-50);
   --color-bg-brand-solid_hover: var(--color-brand-200);
+  --color-toggle-off: var(--color-neutral-400);
+  /* No escuro, a meio caminho entre a página (neutral-950) e os cards (neutral-900). */
+  --color-bg-agrupador: color-mix(in srgb, var(--color-neutral-950) 50%, var(--color-neutral-900));
+  /* No escuro, o hover do DS (neutral-700) clareia demais o card e é a cor do fundo da barra de vendas (bg-quaternary),
+     que some. Aqui, a meio caminho entre o card (neutral-900) e a faixa "À venda" (neutral-800). */
+  --color-bg-cartao_hover: color-mix(in srgb, var(--color-neutral-900) 50%, var(--color-neutral-800));
+}
+
+/* Toggle desligado do DS (BKS-122): a trilha `bg-tertiary` some no fundo (1,09:1 no claro, ~1,9:1 no
+   escuro; WCAG 1.4.11 pede 3:1). No Backstage, desligado é trilha vazada com contorno e a bolinha na
+   cor do contorno, que passam de 3:1 sobre o fundo e o cartão nos dois temas; ligado segue o sólido de
+   marca com a bolinha clara. Só o Toggle (input com role="switch"), sem mexer em src/components. */
+html.tema-backstage label:has(input[role="switch"]):not([data-selected]) > div.rounded-full {
+  background-color: transparent;
+  box-shadow: inset 0 0 0 1.5px var(--color-toggle-off);
+}
+html.tema-backstage label:has(input[role="switch"]):not([data-selected]) > div.rounded-full > div.rounded-full {
+  background-color: var(--color-toggle-off);
+  border-color: transparent;
+  box-shadow: none;
+}
+
+/* Controle segmentado (ButtonGroup do DS) no Backstage (BKS-123): o selecionado é sólido, "controle
+   segmentado preto" (no claro, preto com texto branco; no escuro, o inverso), em vez do
+   `bg-primary_hover` quase igual ao branco (~1,1:1). */
+html.tema-backstage .group\/button-group[data-selected] {
+  background-color: var(--color-bg-brand-solid);
+  color: var(--color-text-white);
+  --tw-ring-color: var(--color-bg-brand-solid);
+}
+html.tema-backstage .group\/button-group[data-selected][data-hovered] {
+  background-color: var(--color-bg-brand-solid_hover);
+  --tw-ring-color: var(--color-bg-brand-solid_hover);
+}
+html.tema-backstage .group\/button-group[data-selected] svg {
+  color: inherit;
 }

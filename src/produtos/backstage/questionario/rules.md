@@ -1,11 +1,11 @@
 # Questionário: regras
 
 > **Rotas:** `/backstage/catalogo/questionario` e `/backstage/catalogo/questionario/:id` (`nova` para criar)
-> **No menu:** Backstage › menu do evento › Questionário (item próprio, abaixo de Itens; desktop e mobile).
+> **No menu:** Backstage › menu do evento › Ingressos e produtos › atalho Questionário (página própria, com "Ingressos e produtos" para voltar; `backstage/rules.md` BKS-119). Não tem item próprio no menu do evento.
 > **Versão em uso:** única (`questionario/`)
-> **Revisado em:** 2026-11-08 (primeira versão)
+> **Revisado em:** 2026-11-22
 
-> **Fora de Itens (12/11/2026):** o Questionário não é aba de Itens; tem item próprio no menu do evento, abaixo de Itens (`backstage/rules.md` BKS-18).
+> **Fora de Itens (12/11/2026):** o Questionário não é aba de Itens. Teve item próprio no menu do evento (BKS-18) até sair do menu; hoje abre pelo atalho de Ingressos e produtos. BKS-18 é da frente Shell e ainda fala do item no menu (Em aberto).
 
 Este arquivo é a fonte da verdade do comportamento da feature. Mudou uma regra no código, mude
 aqui no mesmo commit. Achou divergência entre código e este arquivo, registre em **Em aberto**
@@ -36,25 +36,30 @@ múltipla escolha, número, telefone e anexo.
 
 - **QST-01** Título "Questionário" e subtítulo "Perguntas que quem compra responde, uma vez por ingresso ou combo." (UI-VIS-014); "Nova pergunta" no topo quando já há perguntas. Vazio: "Nenhuma pergunta ainda" com "Nova pergunta". Carregando: esqueleto. _(pages/Questionario.tsx)_
 - **QST-02** A lista é a ordem do formulário. Cada linha: alça de arrastar (setas no teclado), título que abre a pergunta (a linha inteira é clicável), tipo, Obrigatória ou Opcional, "Editável na carteira" quando vale e onde aparece ("Aparece em 60 ingressos em 7 setores e 2 combos"), sem símbolo separador (UI-TXT-010). Sem item: "Não aparece em nenhum ingresso ou combo", em aviso. Ações na linha: Duplicar e Excluir; sem lápis, porque a linha já abre a pergunta (UI-VIS-016). Mover grava na hora. _(pages/Questionario.tsx)_
-- **QST-03** Acima de 8 perguntas, busca pelo texto com "N de M". Na busca a alça some e o contador diz "Limpe a busca para mudar a ordem." _(pages/Questionario.tsx)_
+- **QST-03** Acima de 8 perguntas, busca pelo texto. Sem busca, a contagem diz só o total ("48 perguntas"); buscando, "N de M. Limpe a busca para mudar a ordem." e a alça some (antes de 22/11/2026, "48 de 48" sem filtro). _(pages/Questionario.tsx)_
 - **QST-04** Duplicar cria "Cópia de <pergunta>" logo abaixo, com as mesmas opções e itens, sem confirmação, com toast. Excluir pede confirmação ("Ela sai do formulário de todos os ingressos e combos. Esta ação não pode ser desfeita."), na lista e na página. _(pages/Questionario.tsx, pages/PerguntaDetalhe.tsx)_
 - **QST-05** A pergunta abre como página (não modal): tem três seções e escolher itens abre um slideout por cima (UI-NAV-001, UI-NAV-002). Rascunho com barra de salvar e confirmação ao sair, como o detalhe do ingresso. Pergunta que não existe: "Pergunta não encontrada". _(pages/PerguntaDetalhe.tsx)_
 - **QST-06** Seção Pergunta: texto obrigatório (até 200 caracteres, "Escreva a pergunta.") e tipo de resposta; sem texto de apoio (decisão do Victor, 08/11/2026). Opção única e múltipla escolha mostram as opções (nome e estoque, vazio é "Sem limite", 0 mostra "Esgotada"), começam com duas vazias e somem ao trocar para outro tipo. Erros: "Crie pelo menos 2 opções.", "Dê um nome a cada opção.", "Duas opções têm o mesmo nome." (sem diferenciar maiúsculas). No celular, nome em cima e estoque embaixo (UI-MOB-004). _(pages/PerguntaDetalhe.tsx, data/questionario.ts)_
-- **QST-07** Seção Onde aparece: Ingressos abre o slideout agrupado por sessão e setor das aberturas (ABV-04), com "Ingressos criados depois não entram sozinhos."; Combos abre o seletor de lista (ITM-35). Sem item: aviso "Sem ingressos nem combos, a pergunta não aparece para ninguém.", sem bloquear o salvar. Grava só os itens marcados. _(pages/PerguntaDetalhe.tsx)_
+- **QST-07** Seção Onde aparece: Ingressos abre o seletor de ingressos compartilhado (`backstage/components/seletor-de-ingressos.tsx`, sessão › grupo › ingresso, `aberturas-de-vendas/rules.md` ABV-14; antes citava ABV-04, riscada), com "Ingressos criados depois não entram sozinhos."; Combos abre o seletor de lista (ITM-35). Sem item: aviso "Sem ingressos nem combos, a pergunta não aparece para ninguém.", sem bloquear o salvar; na pergunta nova, o aviso e o destaque da seção só aparecem depois de tentar salvar (antes de 22/11/2026, nasciam em alerta). Grava só os itens marcados. _(pages/PerguntaDetalhe.tsx)_
 - **QST-08** Seção Resposta: "Obrigatória" ("Sem resposta, a compra não termina."). Pergunta nova nasce obrigatória. A edição na carteira não fica na pergunta: é geral (QST-10). _(pages/PerguntaDetalhe.tsx)_
-- **QST-09** Salvar: "Pergunta criada." (vai para a página dela) ou "Alterações salvas."; com erro de campo, "Corrija os campos destacados para salvar." e a seção marcada; falha, "Tente de novo: não foi possível salvar." _(pages/PerguntaDetalhe.tsx)_
+- **QST-09** Salvar: "Pergunta criada." (~~vai para a página dela~~ volta para a lista de perguntas desde 23/11/2026, QST-17) ou "Alterações salvas."; com erro de campo, "Corrija os campos destacados para salvar." e a seção marcada; falha, "Tente de novo: não foi possível salvar." _(pages/PerguntaDetalhe.tsx)_
 - **QST-10** Edição na carteira é geral do evento (`Evento.edicaoNaCarteira`: início, fim e perguntas), decisão do Victor em 08/11/2026. Cartão no topo da lista: desligada, "Desligada. Depois da compra, as respostas não mudam." com "Configurar"; ligada, estado (Aberta agora, Agendada, Encerrada, pela hora atual), "De <início> até <fim>" e "N perguntas podem mudar" (com os nomes até 3), com "Editar" e "Desligar" (grava na hora, toast com "Desfazer"). _(components/EdicaoNaCarteira.tsx, pages/Questionario.tsx)_
-- **QST-11** "Configurar" e "Editar" abrem um slideout (tela cheia no celular) com Começa em, Termina em e "Perguntas que podem mudar" marcadas ali mesmo, sem outro overlay (UI-NAV-002); acima de 8 perguntas, busca, "N de M" e "Marcar todas as N". Erros: "Escolha data e hora.", "Escolha um fim depois do começo.", "Marque pelo menos uma pergunta." Grava as perguntas na ordem do questionário. _(components/EdicaoNaCarteira.tsx)_
+- **QST-11** "Configurar" e "Editar" abrem um slideout (tela cheia no celular) com ~~Começa em, Termina em~~ o período (data e hora separadas desde 23/11/2026, QST-16) e "Perguntas que podem mudar" marcadas ali mesmo, sem outro overlay (UI-NAV-002); acima de 8 perguntas, busca, "N de M" e "Marcar todas as N". Erros: ~~"Escolha data e hora."~~ "Escolha a data.", "Escolha a hora." (QST-16), "Escolha um fim depois do começo.", "Marque pelo menos uma pergunta." Grava as perguntas na ordem do questionário. _(components/EdicaoNaCarteira.tsx)_
 - **QST-12** A linha da pergunta mostra "Editável na carteira" quando ela está na edição geral. Pergunta excluída sai da edição. _(pages/Questionario.tsx, components/EdicaoNaCarteira.tsx)_
 - **QST-14** Com perguntas, o topo tem "Ver respostas", que abre Relatórios › Respostas do questionário: perguntas e respostas ligadas. _(pages/Questionario.tsx)_
+- **QST-15** O vazio fala de quem compra ("Crie as perguntas que quem compra responde…"), não de "formulário do participante". A faixa do catálogo simulado (`?escala`, ITM-85) aparece na lista e na pergunta. _(pages/Questionario.tsx, pages/PerguntaDetalhe.tsx)_
+- **QST-16** Edição na carteira com data e hora em campos separados (desde 23/11/2026, decisão do Victor: escolher dia e hora no mesmo calendário não funcionou; mesma regra do Criar evento e da abertura de vendas, ABV-17): "Data de início" e "Hora de início" numa linha, "Data de término" e "Hora de término" na outra, com a data (calendário que aceita digitação) à esquerda e a hora (24 h, digitável, 144 px) à direita, os `CampoData` e `CampoHora` de `backstage/components/campos-de-data-e-hora.tsx`. A data de término não deixa escolher dia antes da de início. Erros por campo: "Escolha a data.", "Escolha a hora." e, na data de término, "Escolha um fim depois do começo.". Antes era o `DateTimePicker` do DS (campo único). _(components/EdicaoNaCarteira.tsx)_
+- **QST-17** Criar uma pergunta volta para a lista de perguntas (`/backstage/catalogo/questionario`), com o aviso "Pergunta criada." (desde 23/11/2026, pedido do Victor). Salvar uma pergunta que já existe continua na página dela. Antes, criar levava à página da pergunta criada. _(pages/PerguntaDetalhe.tsx)_
 - **QST-13** Formulário da pergunta sem accordion: três cartões abertos (UI-FRM-006); salvar com erro rola até o primeiro campo inválido. _(pages/PerguntaDetalhe.tsx, itens/components/comuns.tsx)_
 
 ## Depende de / afeta
 
-- **Depende de:** evento em contexto e catálogo (`itens/`); seletores `SeletorDeIngressos` (aberturas) e `SeletorDeLista` (itens).
+- **Depende de:** evento em contexto e catálogo (`itens/`); seletores `SeletorDeIngressos` (`backstage/components/seletor-de-ingressos.tsx`) e `SeletorDeLista` (itens).
 - **Afeta:** **ainda não** afeta a compra: checkout, transferência e Carteira não leem `Evento.perguntas`. `TipoIngresso.perguntas` (ids) é antigo e não é usado.
 
 ## Em aberto
+
+- BKS-18 (frente Shell) e a nota de 12/11/2026 dizem que o Questionário tem item próprio no menu do evento; ele abre pelo atalho de Ingressos e produtos (BKS-07, BKS-119). Pedido à frente Shell.
 
 - Produtos recebem perguntas? Hoje só ingressos e combos (resposta do Victor citou só os dois).
 - Ingresso ou combo criado depois não entra sozinho nas perguntas; avisar no cadastro do item? A combinar.

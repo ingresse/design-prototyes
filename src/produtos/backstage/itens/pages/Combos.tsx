@@ -1,15 +1,15 @@
 import { useMemo, useState } from "react";
-import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useNavigate } from "react-router";
 import { toast } from "sonner";
 import { Package, PauseCircle, PlayCircle, Plus, Trash01 } from "@untitledui/icons";
-import { EmptyState } from "@/components/application/empty-state/empty-state";
 import { Dialog, Modal, ModalOverlay } from "@/components/application/modals/modal";
 import { Button } from "@/components/base/buttons/button";
-import { DURACAO_TRANSICAO, Surgir } from "@/components/foundations/transicao";
+import { ButtonGroup, ButtonGroupItem } from "@/components/base/button-group/button-group";
 import type { Combo, Evento, ItemDoCombo, ProdutoDaOrganizacao, Sessao } from "@/plataforma";
 import { EstadoBadge } from "../components/comuns";
-import { AcoesEmLote, AvisoDeEscala, BarraDeFiltros, BotaoMostrarMais, CaixaDeSelecao, paraBusca, useMostrarMais, useSelecao } from "../components/escala";
+import { AcoesEmLote, CaixaDeSelecao, paraBusca, useSelecao } from "../components/escala";
+import { RodapeDePaginacao, usePaginacao } from "../../components/rodape-de-paginacao";
+import { BarraDaLista, CabecalhoDaTabela, CarregandoTabela, CartaoDaTabela, Celula, LinhaDaTabela, SemResultados, TituloDaLinha, VazioDaTabela } from "../../components/tabela";
 import { acharIngresso, disponivelDoCombo, estadoDoCombo, ingressosDo, nomeDoItem, produtosDo, salvarCombos, somaAvulsa, useCatalogo, type EstadoItem } from "../data/catalogo";
 import { formatar, useTextosItens } from "../data/textos-itens";
 
@@ -17,9 +17,9 @@ import { formatar, useTextosItens } from "../data/textos-itens";
 /*  Combos do evento: pacotes de ingressos e produtos já existentes,   */
 /*  vendidos juntos pelo preço do combo.                               */
 /*                                                                     */
-/*  Escala de 1 a milhares (UI-LST-001): busca e filtro de estado,     */
-/*  contagem, seleção com ações em lote e "Mostrar mais" aparecem só   */
-/*  quando a lista cresce.                                             */
+/*  Lista do Backstage (BKS-110 a BKS-118): busca, filtro de estado em */
+/*  botões segmentados, tabela que vira blocos no estreito, paginação  */
+/*  acima de 10 e seleção com ações em lote.                           */
 /* ------------------------------------------------------------------ */
 
 /** Textos da lista de combos (UI-TXT-009). Plural por Intl.PluralRules. */
@@ -29,7 +29,7 @@ const TEXTOS = {
     subtituloVazio: "Pacotes de ingressos e produtos vendidos juntos, com preço próprio.",
     criar: "Criar combo",
     lista: "Combos do evento",
-    disponiveis: { zero: "Nenhum disponível", one: "1 disponível", other: "{n} disponíveis" },
+    disponiveis: { zero: "Nenhum", one: "1 disponível", other: "{n} disponíveis" },
     economia: "{valor} a menos que avulso",
     vazio: "Nenhum combo ainda",
     vazioDica: "Junte ingressos e produtos num pacote com preço próprio.",
@@ -39,10 +39,14 @@ const TEXTOS = {
     irParaProdutos: "Adicionar produtos",
     semItensNoCombo: "Nenhum item no combo",
     buscar: "Buscar por nome ou item do combo",
-    estado: "Estado",
-    todosOsEstados: "Todos os estados",
-    nenhumNoFiltro: "Nenhum combo com essa busca ou esse estado.",
-    limparFiltros: "Limpar filtros",
+    estado: "Filtrar por estado",
+    todos: "Todos",
+    nenhumNoFiltro: "Nenhum combo encontrado.",
+    colCombo: "Combo",
+    colPreco: "Preço",
+    colDisponivel: "Disponível",
+    colEstado: "Estado",
+    abrir: "Abrir {nome}",
     lote: {
         pausar: "Pausar",
         voltarAVender: "Voltar a vender",
@@ -167,23 +171,16 @@ export function Combos() {
     );
     const termo = paraBusca(busca.trim());
     const filtrados = useMemo(() => linhas.filter((l) => (!termo || l.busca.includes(termo)) && (estado === "todos" || l.estado === estado)), [linhas, termo, estado]);
-    const pagina = useMostrarMais(filtrados);
+    // Busca, filtro ou tamanho mudou: volta à página 1 (BKS-114).
+    const paginacao = usePaginacao(filtrados, [termo, estado]);
+    // Só os estados que aparecem na lista.
     const opcoesDeEstado = [
-        { id: "todos", label: TEXTOS.todosOsEstados },
+        { id: "todos", label: TEXTOS.todos },
         ...(Object.keys(t.estado) as EstadoItem[]).filter((e) => linhas.some((l) => l.estado === e)).map((e) => ({ id: e, label: t.estado[e] })),
     ];
-    const buscar = (v: string) => {
-        setBusca(v);
-        pagina.reiniciar();
-    };
-    const filtrar = (v: string) => {
-        setEstado(v as "todos" | EstadoItem);
-        pagina.reiniciar();
-    };
     const limparFiltros = () => {
         setBusca("");
         setEstado("todos");
-        pagina.reiniciar();
     };
 
     /* ---------- seleção e ações em lote ---------- */
@@ -229,87 +226,97 @@ export function Combos() {
         // Rail, menu, título e abas ficam no LayoutDeItens: trocar de aba troca só este conteúdo.
         <>
             <div className="flex min-w-0 flex-1 flex-col gap-6">
-                <header className="flex flex-wrap items-center justify-between gap-3">
-                    <div className="flex min-w-0 flex-col gap-0.5">
-                        <h2 className="sr-only">{TEXTOS.titulo}</h2>
-                        {carregando ? (
-                            <span aria-hidden="true" className="mt-1 h-4 w-40 animate-pulse rounded bg-secondary motion-reduce:animate-none" />
-                        ) : (
-                            <p className="text-sm text-tertiary">{combos.length ? plural(TEXTOS.subtitulo, combos.length) : TEXTOS.subtituloVazio}</p>
-                        )}
-                    </div>
-                    {/* Sem itens no evento, criar combo levaria a uma tela sem o que escolher (UI-EST-005). */}
-                    {(carregando || temItens) && (
-                        <Button size="md" color="primary" iconLeading={Plus} onClick={criar} isDisabled={carregando}>
-                            {TEXTOS.criar}
-                        </Button>
-                    )}
-                </header>
-
-                <AvisoDeEscala />
-
-                {!carregando && (
-                    <BarraDeFiltros
-                        total={combos.length}
-                        visiveis={filtrados.length}
-                        busca={busca}
-                        onBusca={buscar}
-                        placeholder={TEXTOS.buscar}
-                        filtros={[{ id: "estado", rotulo: TEXTOS.estado, valor: estado, opcoes: opcoesDeEstado, onChange: filtrar }]}
-                        onLimpar={limparFiltros}
-                    />
+                {/* A ação da aba fica abaixo das abas, à esquerda, com a contagem ao lado (BKS-25). Vazio, o estado vazio diz e tem a ação. */}
+                <h2 className="sr-only">{TEXTOS.titulo}</h2>
+                {carregando ? (
+                    <span aria-hidden="true" className="h-4 w-40 animate-pulse rounded bg-secondary motion-reduce:animate-none" />
+                ) : (
+                    combos.length > 0 && (
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                            {/* Sem itens no evento, criar combo levaria a uma tela sem o que escolher (UI-EST-005). */}
+                            {temItens && (
+                                <Button size="md" color="primary" iconLeading={Plus} onClick={criar}>
+                                    {TEXTOS.criar}
+                                </Button>
+                            )}
+                            <p className="text-sm text-tertiary">{plural(TEXTOS.subtitulo, combos.length)}</p>
+                        </div>
+                    )
                 )}
 
                 <section aria-label={TEXTOS.lista} className="flex flex-col gap-4">
-                    {carregando && <EsqueletoDaLista />}
-
-                    <Surgir visivel={!carregando && combos.length === 0}>
-                        <div className="flex items-center justify-center py-16">
-                            <EmptyState size="sm">
-                                <EmptyState.Header>
-                                    <EmptyState.FeaturedIcon icon={Package} color="gray" theme="modern" />
-                                </EmptyState.Header>
-                                <EmptyState.Content>
-                                    <EmptyState.Title>{temItens ? TEXTOS.vazio : TEXTOS.semItens}</EmptyState.Title>
-                                    <EmptyState.Description>{temItens ? TEXTOS.vazioDica : TEXTOS.semItensDica}</EmptyState.Description>
-                                </EmptyState.Content>
-                                <EmptyState.Footer>
-                                    {temItens ? (
-                                        <Button size="md" color="primary" iconLeading={Plus} onClick={criar}>
-                                            {TEXTOS.criar}
+                    {carregando ? (
+                        <CarregandoTabela />
+                    ) : combos.length === 0 ? (
+                        <VazioDaTabela
+                            icone={Package}
+                            titulo={temItens ? TEXTOS.vazio : TEXTOS.semItens}
+                            texto={temItens ? TEXTOS.vazioDica : TEXTOS.semItensDica}
+                            acao={
+                                temItens ? (
+                                    <Button size="md" color="primary" iconLeading={Plus} onClick={criar}>
+                                        {TEXTOS.criar}
+                                    </Button>
+                                ) : (
+                                    <div className="flex flex-col-reverse gap-3 sm:flex-row">
+                                        <Button size="md" color="secondary" onClick={() => navigate("/backstage/catalogo/produtos")}>
+                                            {TEXTOS.irParaProdutos}
                                         </Button>
-                                    ) : (
-                                        <div className="flex flex-col-reverse gap-3 sm:flex-row">
-                                            <Button size="md" color="secondary" onClick={() => navigate("/backstage/catalogo/produtos")}>
-                                                {TEXTOS.irParaProdutos}
-                                            </Button>
-                                            <Button size="md" color="primary" onClick={() => navigate("/backstage/catalogo/ingressos")}>
-                                                {TEXTOS.irParaIngressos}
-                                            </Button>
-                                        </div>
-                                    )}
-                                </EmptyState.Footer>
-                            </EmptyState>
-                        </div>
-                    </Surgir>
-
-                    <Surgir visivel={!carregando && combos.length > 0 && filtrados.length === 0}>
-                        <div className="flex flex-col items-center gap-3 py-12 text-center">
-                            <p className="text-sm text-tertiary">{TEXTOS.nenhumNoFiltro}</p>
-                            <Button color="secondary" size="sm" onClick={limparFiltros}>
-                                {TEXTOS.limparFiltros}
-                            </Button>
-                        </div>
-                    </Surgir>
-
-                    <ListaDeCombos
-                        hidden={carregando}
-                        combos={pagina.visiveis.map((l) => l.combo)}
-                        selecao={comSelecao ? selecao : null}
-                        onAbrir={(id) => navigate(`/backstage/catalogo/combos/${id}`)}
-                    />
-
-                    <BotaoMostrarMais restantes={pagina.restantes} onClick={pagina.mostrarMais} />
+                                        <Button size="md" color="primary" onClick={() => navigate("/backstage/catalogo/ingressos")}>
+                                            {TEXTOS.irParaIngressos}
+                                        </Button>
+                                    </div>
+                                )
+                            }
+                        />
+                    ) : (
+                        <>
+                            <BarraDaLista
+                                busca={{ valor: busca, onChange: setBusca, placeholder: TEXTOS.buscar }}
+                                filtro={
+                                    opcoesDeEstado.length > 2 && (
+                                        <ButtonGroup
+                                            size="sm"
+                                            aria-label={TEXTOS.estado}
+                                            selectedKeys={new Set([estado])}
+                                            onSelectionChange={(k) => setEstado(([...k][0] as "todos" | EstadoItem) ?? "todos")}
+                                            disallowEmptySelection
+                                        >
+                                            {opcoesDeEstado.map((o) => (
+                                                <ButtonGroupItem key={o.id} id={o.id}>
+                                                    {o.label}
+                                                </ButtonGroupItem>
+                                            ))}
+                                        </ButtonGroup>
+                                    )
+                                }
+                            />
+                            <CartaoDaTabela>
+                                <CabecalhoDaTabela>
+                                    {comSelecao && <span className="w-4 shrink-0" />}
+                                    <span className="min-w-0 flex-1">{TEXTOS.colCombo}</span>
+                                    <span className="w-52 text-right">{TEXTOS.colPreco}</span>
+                                    <span className="w-32 text-right">{TEXTOS.colDisponivel}</span>
+                                    <span className="w-28">{TEXTOS.colEstado}</span>
+                                </CabecalhoDaTabela>
+                                {filtrados.length === 0 ? (
+                                    <SemResultados texto={TEXTOS.nenhumNoFiltro} onLimpar={limparFiltros} />
+                                ) : (
+                                    <ul className="flex flex-col divide-y divide-secondary">
+                                        {paginacao.visiveis.map(({ combo }) => (
+                                            <LinhaDoCombo
+                                                key={combo.id}
+                                                combo={combo}
+                                                onAbrir={() => navigate(`/backstage/catalogo/combos/${combo.id}`)}
+                                                selecao={comSelecao ? { marcado: selecao.tem(combo.id), onChange: (on) => selecao.alternar(combo.id, on) } : null}
+                                            />
+                                        ))}
+                                    </ul>
+                                )}
+                                <RodapeDePaginacao {...paginacao} />
+                            </CartaoDaTabela>
+                        </>
+                    )}
                 </section>
 
                 {comSelecao && (
@@ -362,35 +369,10 @@ export function Combos() {
     );
 }
 
-type Selecao = ReturnType<typeof useSelecao>;
-
-function ListaDeCombos({ hidden, combos, selecao, onAbrir }: { hidden: boolean; combos: Combo[]; selecao: Selecao | null; onAbrir: (id: string) => void }) {
-    const reduzir = useReducedMotion();
-    return (
-        <ul hidden={hidden} className="flex flex-col gap-3">
-            <AnimatePresence initial={false}>
-                {combos.map((combo) => (
-                    <motion.li
-                        key={combo.id}
-                        layout={!reduzir}
-                        initial={{ opacity: 0, height: reduzir ? "auto" : 0 }}
-                        animate={{ opacity: 1, height: "auto" }}
-                        exit={{ opacity: 0, height: reduzir ? "auto" : 0 }}
-                        transition={{ duration: reduzir ? 0.12 : DURACAO_TRANSICAO, ease: [0.16, 1, 0.3, 1] }}
-                    >
-                        <LinhaDoCombo
-                            combo={combo}
-                            onAbrir={() => onAbrir(combo.id)}
-                            selecao={selecao ? { marcado: selecao.tem(combo.id), onChange: (on) => selecao.alternar(combo.id, on) } : null}
-                        />
-                    </motion.li>
-                ))}
-            </AnimatePresence>
-        </ul>
-    );
-}
-
-/** Uma linha-cartão por combo. O botão cobre a linha; o foco aparece no cartão inteiro. */
+/**
+ * Uma linha da tabela por combo (BKS-113): nome e composição, preço (e a economia), disponível e
+ * estado. O nome é o botão que abre o combo e cobre a linha; a caixa de seleção fica por cima.
+ */
 function LinhaDoCombo({ combo, onAbrir, selecao }: { combo: Combo; onAbrir: () => void; selecao: { marcado: boolean; onChange: (on: boolean) => void } | null }) {
     const { evento, biblioteca, vendidos } = useCatalogo();
     const { preco } = useTextosItens();
@@ -400,40 +382,39 @@ function LinhaDoCombo({ combo, onAbrir, selecao }: { combo: Combo; onAbrir: () =
     const economia = avulso - combo.preco;
 
     return (
-        <article className="relative flex items-start rounded-2xl bg-primary ring-1 ring-secondary outline-focus-ring transition duration-100 ease-linear hover:ring-brand has-[>button:focus-visible]:outline-2 has-[>button:focus-visible]:outline-offset-2">
+        <LinhaDaTabela interativa selecionada={selecao?.marcado} className="relative outline-focus-ring -outline-offset-2 has-[.abrir-linha:focus-visible]:outline-2">
             {selecao && (
-                <div className="flex pt-5 pl-5">
+                <div className="flex h-5 items-center">
                     <CaixaDeSelecao rotulo={combo.nome} marcado={selecao.marcado} onChange={selecao.onChange} />
                 </div>
             )}
-            <button
-                type="button"
-                onClick={onAbrir}
-                className={`flex w-full min-w-0 flex-col gap-3 py-4 pr-5 text-left outline-hidden after:absolute after:inset-0 after:rounded-2xl sm:flex-row sm:items-center sm:gap-6 ${selecao ? "pl-3" : "pl-5"}`}
-            >
-                <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                    <span className="text-md font-semibold break-words text-primary">{combo.nome}</span>
-                    <span className="text-sm break-words text-tertiary">{combo.itens.length ? composicao(combo, evento, biblioteca) : TEXTOS.semItensNoCombo}</span>
-                </span>
-                <span className="flex flex-col gap-0.5 sm:items-end sm:text-right">
-                    <span className="text-md font-semibold text-primary tabular-nums">{preco(combo.preco)}</span>
-                    {economia > 0 && <span className="text-sm text-success-primary">{formatar(TEXTOS.economia, { valor: preco(economia) })}</span>}
-                </span>
-                <span className="flex flex-wrap items-center gap-3 sm:w-48 sm:justify-end">
-                    <span className="text-sm text-tertiary tabular-nums">{plural(TEXTOS.disponiveis, disponivelDoCombo(combo, evento, vendidos))}</span>
+            <div className="flex min-w-0 flex-1 flex-col gap-2 @min-[44rem]:flex-row @min-[44rem]:items-center @min-[44rem]:gap-4">
+                <TituloDaLinha
+                    titulo={
+                        <button
+                            type="button"
+                            onClick={onAbrir}
+                            aria-label={formatar(TEXTOS.abrir, { nome: combo.nome })}
+                            className="abrir-linha max-w-full cursor-pointer truncate text-left outline-hidden after:absolute after:inset-0"
+                        >
+                            {combo.nome}
+                        </button>
+                    }
+                    // A composição quebra linha em vez de cortar: é o que diferencia combos parecidos.
+                    apoio={<span className="whitespace-normal break-words">{combo.itens.length ? composicao(combo, evento, biblioteca) : TEXTOS.semItensNoCombo}</span>}
+                />
+                {/* A economia cabe numa linha na coluna (não quebra em três). */}
+                <Celula rotulo={TEXTOS.colPreco} numero className="flex-wrap @min-[44rem]:w-52">
+                    <span className="font-semibold @min-[44rem]:block">{preco(combo.preco)}</span>
+                    {economia > 0 && <span className="whitespace-nowrap text-success-primary @min-[44rem]:block">{formatar(TEXTOS.economia, { valor: preco(economia) })}</span>}
+                </Celula>
+                <Celula rotulo={TEXTOS.colDisponivel} numero className="@min-[44rem]:w-32">
+                    {plural(TEXTOS.disponiveis, disponivelDoCombo(combo, evento, vendidos))}
+                </Celula>
+                <Celula rotulo={TEXTOS.colEstado} className="items-center @min-[44rem]:w-28">
                     <EstadoBadge estado={estadoDoCombo(combo, evento, vendidos)} />
-                </span>
-            </button>
-        </article>
-    );
-}
-
-function EsqueletoDaLista() {
-    return (
-        <div aria-hidden="true" className="flex flex-col gap-3">
-            {[0, 1, 2].map((i) => (
-                <div key={i} className="h-20 animate-pulse rounded-2xl bg-secondary motion-reduce:animate-none" />
-            ))}
-        </div>
+                </Celula>
+            </div>
+        </LinhaDaTabela>
     );
 }

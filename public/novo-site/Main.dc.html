@@ -1,0 +1,1399 @@
+<!doctype html>
+<html lang="pt-BR" data-pagina="home" data-superficie="faixas">
+<head>
+<meta charset="utf-8">
+<script src="./ponte-backstage.js" data-ponte-backstage></script>
+<script src="./transicao-evento.js" data-previa-te></script>
+<script data-mvp-cedo>(function () {
+  var r = document.documentElement, v = null;
+  try {
+    var m = new URLSearchParams(location.search).get('modo');
+    if (m === 'mvp' || m === 'completo') localStorage.setItem('previa-modo', m);
+    v = localStorage.getItem('previa-modo') || 'mvp'; // padrão no design-prototypes: modo MVP
+  } catch (e) {}
+  if (v === 'mvp') { r.setAttribute('data-modo', 'mvp'); window.IngresseMvp = true; }
+})();</script>
+<script data-previa-esportes-cedo>(function () {
+  var root = document.documentElement, qs = new URLSearchParams(location.search), v = null;
+  try {
+    if (qs.get('dados') === 'mock' || qs.get('dados') === 'bff') localStorage.setItem('previa-dados', qs.get('dados'));
+    v = localStorage.getItem('previa-dados') || 'bff'; // padrão no design-prototypes: dados do Backstage (ponte-backstage.js)
+  } catch (e) {}
+  root.setAttribute('data-dados', v === 'bff' ? 'bff' : 'mock');
+  if (v !== 'bff' || !window.fetch) return;
+  var f0 = window.fetch;
+  window.fetch = function (u, o) {
+    var url = typeof u === 'string' ? u : (u && u.url) || '', alvo = null, md;
+    if (/\/api\/eventos(\.json)?(\?|$)/.test(url)) alvo = url.replace(/\/api\/eventos(\.json)?/, '/api/bff/eventos');
+    else if ((md = /(?:^|\/)dados\/((?:busca-artistas|busca-locais|catalogo-indice|sorteio-pool|home-reais|categoria-[a-z0-9-]+)\.json)(\?|$)/.exec(url))) alvo = '/api/bff/dados/' + md[1]; // os índices e as categorias também saem do BFF
+    if (!alvo) return f0.apply(this, arguments);
+    var self = this, args = arguments;
+    return f0.call(this, alvo, o).then(function (r) {
+      if (r.ok) { root.setAttribute('data-dados-ok', ''); return r; }
+      return r.clone().json().catch(function () { return {}; }).then(function (d) { root.setAttribute('data-dados-falha', (d && d.error) || ('HTTP ' + r.status)); return f0.apply(self, args); });
+    }, function () { root.setAttribute('data-dados-falha', 'sem conexão com o servidor local'); return f0.apply(self, args); });
+  };
+})();
+(function () {
+  var root = document.documentElement, qs = new URLSearchParams(location.search), v = null;
+  try {
+    if (qs.get('esportes') === 'on' || qs.get('esportes') === 'off') localStorage.setItem('previa-esportes', qs.get('esportes'));
+    v = localStorage.getItem('previa-esportes');
+  } catch (e) {}
+  var ligado = v === 'on';
+  root.setAttribute('data-esportes', ligado ? 'on' : 'off');
+  var DESCOBERTA = ['home', 'busca', 'categoria', 'artista', 'venue', 'colecao'];
+  if (ligado || DESCOBERTA.indexOf(root.getAttribute('data-pagina')) < 0 || qs.get('escopo') === 'esportes') return;
+  root.setAttribute('data-esportes-ocultar', '');
+  var prova = function (e) { var c = (e && e.cats) || []; return c.indexOf('corridas') >= 0 || (c.indexOf('esportes') >= 0 && c.indexOf('futebol') < 0); };
+  var f0 = window.fetch;
+  if (!f0) return;
+  window.fetch = function (u) {
+    var url = typeof u === 'string' ? u : (u && u.url) || '', p = f0.apply(this, arguments);
+    if (!/\/api\/eventos(\.json)?(\?|$)/.test(url)) return p;
+    return p.then(function (r) {
+      if (!r.ok) return r;
+      return r.clone().json().then(function (d) {
+        if (!d || !d.events) return r;
+        d.events = d.events.filter(function (e) { return !prova(e); });
+        if (d.categories) d.categories = d.categories.filter(function (c) { return c.id !== 'corridas'; });
+        return new Response(JSON.stringify(d), { status: r.status, statusText: r.statusText, headers: { 'Content-Type': 'application/json' } });
+      }).catch(function () { return r; });
+    });
+  };
+})();</script>
+<script data-previa-nav-cedo>(function () {
+  try {
+    var h = document.documentElement;
+    var tema = localStorage.getItem('prototipo-theme');
+    if (tema !== 'dark' && tema !== 'light') tema = window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    if (/\/(Ingressos|Checkout|Pagamento)\.dc\.html$/.test(location.pathname) || (/\/Evento\.dc\.html$/.test(location.pathname) && sessionStorage.getItem('mov:de'))) {
+      // chegada do movimento-compra.js (ele tem o seu portão e a sua entrada): aqui só o fundo da última tela vista, que fecha o quadro
+      // branco do tema escuro entre a saída e a entrada. Sai em movimento-navegacao.js quando o portão dele abre.
+      h.setAttribute('data-mov-dona', '');
+      var bgc = localStorage.getItem('mov:bg:' + tema);
+      if (bgc) {
+        h.style.setProperty('background-color', bgc, 'important');
+        h.setAttribute('data-mov-bgcompra', '');
+        setTimeout(function () { h.removeAttribute('data-mov-bgcompra'); h.style.removeProperty('background-color'); }, 3000);
+      }
+      return;
+    }
+    var j = sessionStorage.getItem('mov:nav');
+    var o = j ? JSON.parse(j) : null;
+    // o registro vale para esta URL (ou para qualquer uma, quando a tela anterior saiu sem clique nosso: Voltar, URL digitada, recarregar)
+    if (!o || o.v !== 1 || Date.now() - o.t > 6000 || (o.para && o.para !== location.pathname)) {
+      o = { v: 1, padrao: 'direta', bg: localStorage.getItem('mov:bg:' + tema) || '' };
+    }
+    h.setAttribute('data-mov-nav', o.padrao || '');
+    h.setAttribute('data-mov-nav-gate', '');
+    var g = document.createElement('style');
+    g.id = 'mov-nav-portao';
+    // sem transições (data-mov-nav, que sai 2 quadros depois do portão abrir): os estilos chegam com a tela escondida e, sem isto, cores e bordas
+    // ainda estariam em transição de 160 ms quando ela aparece (e, em movimento reduzido, a própria visibilidade levaria um quadro para virar)
+    g.textContent = 'html[data-mov-nav-gate] #dc-root{visibility:hidden}html[data-mov-nav] #dc-root,html[data-mov-nav] #dc-root *,html[data-mov-nav] #dc-root *::before,html[data-mov-nav] #dc-root *::after{transition:none !important}';
+    (document.head || h).appendChild(g);
+    if (o.bg) h.style.setProperty('background-color', o.bg, 'important');
+    if (o.ponte && o.ponte.html) {
+      // a fonte da ponte tem nome próprio (ElzaPonte): a identidade da tela nova declara "Elza" com font-display swap e, se a ponte usasse
+      // esse nome, o texto trocaria para a fonte de sistema quando o CSS novo chegasse. Os dados (base64, guardados pela tela anterior)
+      // entram por FontFace binária, sem espera; sem eles, cai na URL (block = texto invisível até a fonte chegar).
+      var r4 = sessionStorage.getItem('mov:fonte400'), r6 = sessionStorage.getItem('mov:fonte600');
+      var bin = function (b64) { var t = atob(b64), u = new Uint8Array(t.length), i; for (i = 0; i < t.length; i++) u[i] = t.charCodeAt(i); return u.buffer; };
+      var doDados = false;
+      if (r4 && r6 && window.FontFace) {
+        // FontFace com dados binários fica pronta na hora (status "loaded" no mesmo instante): o texto da ponte já nasce na fonte certa
+        try {
+          document.fonts.add(new FontFace('ElzaPonte', bin(r4), { weight: '400 500' }));
+          document.fonts.add(new FontFace('ElzaPonte', bin(r6), { weight: '600 700' }));
+          doDados = true;
+        } catch (e) {}
+      }
+      if (!doDados) {
+        var f = document.createElement('style');
+        f.id = 'mov-ponte-fonte';
+        f.textContent = '@font-face{font-family:"ElzaPonte";src:url(./fontes/Elza-Regular.woff2) format("woff2");font-weight:400 500;font-display:block}' +
+          '@font-face{font-family:"ElzaPonte";src:url(./fontes/Elza-Semibold.woff2) format("woff2");font-weight:600 700;font-display:block}';
+        (document.head || h).appendChild(f);
+      }
+      // dentro de um shadow root: o CSS da tela nova (div, span, a, svg…) não alcança a ponte enquanto ela espera
+      var d = document.createElement('div');
+      d.id = 'mov-ponte';
+      d.setAttribute('aria-hidden', 'true');
+      d.style.cssText = 'all:initial;position:fixed;left:0;top:' + (o.ponte.top || 0) + 'px;width:' + o.ponte.w + 'px;height:' + o.ponte.h + 'px;z-index:2147483000;pointer-events:none;overflow:hidden;display:block';
+      var sr = d.attachShadow ? d.attachShadow({ mode: 'open' }) : d;
+      sr.innerHTML = o.ponte.html;
+      h.appendChild(d);
+    }
+    if (o.poster && o.poster.src) {
+      var im = document.createElement('img');
+      im.id = 'mov-ponte-poster';
+      im.alt = '';
+      im.setAttribute('aria-hidden', 'true');
+      im.src = o.poster.src;
+      im.style.cssText = 'all:initial;position:fixed;left:' + o.poster.x + 'px;top:' + o.poster.y + 'px;width:' + o.poster.w + 'px;height:' + o.poster.h + 'px;object-fit:cover;border-radius:' + (o.poster.r || '0') + ';z-index:' + (o.poster.z || 1) + ';pointer-events:none;display:block';
+      h.appendChild(im);
+    }
+    setTimeout(function () {
+      var pp = document.getElementById('mov-ponte-poster');
+      if (pp) pp.remove();
+      var p = document.getElementById('mov-ponte');
+      if (p) p.remove();
+      var s = document.getElementById('mov-ponte-fonte');
+      if (s) s.remove();
+      h.removeAttribute('data-mov-nav-gate');
+      h.removeAttribute('data-mov-nav');
+      h.style.removeProperty('background-color');
+    }, 3000);
+  } catch (e) {}
+})();</script>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#F5F4F2">
+<meta name="format-detection" content="telephone=no">
+<link rel="preload" href="./fontes/Elza-Semibold.woff2" as="font" type="font/woff2" crossorigin data-previa>
+<link rel="preload" href="./fontes/Elza-Regular.woff2" as="font" type="font/woff2" crossorigin data-previa>
+<title>Ingresse: shows, festivais, jogos e o que viver ao vivo</title>
+<script src="./vendor/react.js"></script>
+<script src="./vendor/react-dom.js"></script>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<script src="./destinos.js" defer data-previa></script>
+<style>
+/* Estilos específicos desta tela. Componentes: base.css */
+.brand-grad{background:linear-gradient(125deg,#FF271A 0%,#FF3B5C 55%,#FF5C8A 100%)}
+
+@keyframes vitfill{from{width:0}to{width:100%}}
+
+@keyframes vitin{from{opacity:0;transform:translateY(12px) scale(.98)}to{opacity:1;transform:none}}
+.vit{position:relative;border-radius:24px;overflow:hidden;background:#0a0a0b;color:#fff;display:grid;grid-template-columns:minmax(0,1fr) 300px;min-height:340px;isolation:isolate}
+.vit-bg{display:none}
+.vit::before{content:"";position:absolute;inset:0;z-index:0;background:url(assets/palco-hero-club.avif) center 40%/cover no-repeat;filter:contrast(1.12) brightness(.82)}
+.vit::after{content:"";position:absolute;inset:0;z-index:0;background:linear-gradient(rgba(0,0,0,.62) 0%,rgba(0,0,0,.18) 38%,rgba(0,0,0,.86) 100%);pointer-events:none}
+.vit-main{position:relative;z-index:1;display:flex;align-items:center;gap:32px;padding:28px 36px}
+.vit-poster{flex:0 0 auto;display:block;width:280px;aspect-ratio:3/4;border-radius:12px;overflow:hidden;box-shadow:0 12px 32px rgba(10,10,11,.16);animation:vitin .5s ease}
+
+@keyframes vitPosterIn{from{opacity:0;transform:translateX(56px) rotate(2deg) scale(.94)}to{opacity:1;transform:none}}
+
+@keyframes vitPosterInRev{from{opacity:0;transform:translateX(-56px) rotate(-2deg) scale(.94)}to{opacity:1;transform:none}}
+
+@keyframes vitInfoIn{from{opacity:0;transform:translateX(32px)}to{opacity:1;transform:none}}
+
+@keyframes vitInfoInRev{from{opacity:0;transform:translateX(-32px)}to{opacity:1;transform:none}}
+
+@keyframes vitBgIn{from{opacity:0;transform:scale(1.08)}to{opacity:1;transform:scale(1)}}
+.vit.is-moving .vit-poster{animation:vitPosterIn .6s cubic-bezier(.2,.8,.2,1) both}
+.vit.is-moving .vit-info{animation:vitInfoIn .6s cubic-bezier(.2,.8,.2,1) .08s both}
+.vit.is-moving.is-rev .vit-poster{animation-name:vitPosterInRev}
+.vit.is-moving.is-rev .vit-info{animation-name:vitInfoInRev}
+.vit.is-moving .vit-bg{animation:vitBgIn .9s ease both}
+.vit-poster img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .5s}
+.vit-poster:hover img{transform:scale(1.04)}
+.vit-info{display:flex;flex-direction:column;gap:12px;min-width:0;animation:vitin .5s ease}
+.vit-count{font-size:13px;color:rgba(255,255,255,.7);font-variant-numeric:tabular-nums;letter-spacing:.08em}
+.vit-count b{color:#fff;font-size:15px}
+.vit-title{font-size:clamp(24px,2.2vw,34px);line-height:1.12;text-wrap:balance;color:#fff}
+.vit-meta{font-size:16px;color:rgba(255,255,255,.8)}
+.vit-rail{position:relative;z-index:1;display:flex;flex-direction:column;gap:4px;padding:20px 14px;background:rgba(10,10,10,.55);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);border-left:1px solid rgba(255,255,255,.12)}
+.vit .vit-rail-h{color:rgba(255,255,255,.78);padding:0 8px 8px}
+.vit-item{position:relative;display:flex;align-items:center;gap:12px;padding:8px;border:none;border-radius:12px;background:transparent;color:#fff;font:inherit;text-align:left;cursor:pointer;opacity:.7;transition:opacity .2s,background .2s}
+.vit-item:hover,.vit-item:focus-visible{opacity:1;background:rgba(255,255,255,.06)}
+.vit-item[aria-selected=true]{opacity:1;background:rgba(255,255,255,.12);box-shadow:none}
+.vit-item img{flex:0 0 auto;width:40px;height:53px;object-fit:cover;border-radius:6px}
+.vit-item-t{display:flex;flex-direction:column;gap:2px;min-width:0}
+.vit-item-t strong{font-size:14px;line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.vit-item-t small{font-size:12px;color:rgba(255,255,255,.72)}
+.vit-bar{position:absolute;left:60px;right:8px;bottom:4px;height:2px;border-radius:2px;background:rgba(10,10,11,.08);overflow:hidden;opacity:0}
+.vit-item[aria-selected=true] .vit-bar{opacity:1}
+.vit-bar i{display:block;height:100%;background:#FF271A}
+
+@media (max-width:1024px){.vit{grid-template-columns:1fr}.vit-rail{flex-direction:row;overflow-x:auto;border-left:none;border-top:1px solid var(--line);padding:12px;scroll-snap-type:x mandatory}.vit-rail-h{display:none}.vit-item{flex:0 0 230px;scroll-snap-align:start}}
+
+@media (max-width:640px){.vit-main{flex-direction:column;align-items:flex-start;gap:18px;padding:20px}.vit-poster{width:100%;max-width:220px;align-self:center}}
+
+@media (prefers-reduced-motion:reduce){.vit-poster,.vit-info,.vit.is-moving .vit-poster,.vit.is-moving .vit-info,.vit.is-moving .vit-bg{animation:none}.vit-bar i{animation:none !important;width:100%}}
+
+@media (max-width:640px){.scr-wrap[data-overflow] .scr-btn{display:none}.ev-scroll > *{flex-basis:164px}}
+
+@media (max-width:640px){.ev-grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}}
+
+@keyframes dotfill{from{background-size:0% 100%}to{background-size:100% 100%}}
+
+@keyframes sk{0%{background-position:200% 0}100%{background-position:-200% 0}}
+
+@media (max-width:640px){.hero{padding:32px 20px !important}.hide-sm{display:none !important}}
+</style>
+<style data-hd>
+/* Home (home-descoberta.mjs): classes hd-*, oc-*, art-*, ven-*; só tokens da identidade */
+
+.hd-topo { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-3) var(--space-5); margin-bottom: var(--space-5); }
+.hd-topo .more { white-space: nowrap; flex: 0 0 auto; }
+.hd-titulo { font-size: var(--font-size-title-1); line-height: var(--font-lh-title-1); letter-spacing: var(--font-ls-title-1); font-weight: 600; margin: 0; }
+.hd-chips { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); margin-bottom: var(--space-6); }
+.hd-mais { width: var(--size-touch-default); padding: 0 !important; justify-content: center; font-size: var(--font-size-title-3, 1.25rem); font-weight: 400; }
+.oc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: var(--space-3); }
+@media (max-width: 640px) { .oc-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.oc { display: flex; align-items: center; gap: var(--space-4); min-height: 64px; padding: 0 var(--space-5); background: var(--color-bg-page); border: var(--border-width-hairline) solid var(--color-border-control); color: var(--color-text-primary); font-size: var(--font-size-body); font-weight: 600; line-height: 1.25; text-decoration: none; transition: background-color var(--motion-duration-fast) var(--motion-ease-move), border-color var(--motion-duration-fast) var(--motion-ease-move); }
+.oc:hover, .oc:focus-visible { border-color: var(--color-border-strong); border-width: 2px; padding: 0 calc(var(--space-5) - 1px); background: var(--color-bg-hover); }
+.oc-ic { flex: 0 0 auto; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; }
+.oc-ic svg { width: 28px; height: 28px; display: block; }
+.oc-t { min-width: 0; }
+@media (max-width: 640px) { .oc { padding: 0 var(--space-4); gap: var(--space-3); } .oc:hover, .oc:focus-visible { padding: 0 calc(var(--space-4) - 1px); } }
+/* ícone animado (Lottie): o traço segue a cor do texto, no claro e no escuro */
+.oc-ic [stroke]:not([stroke="none"]) { stroke: currentColor; }
+
+/* artistas em alta: nome numa linha só */
+[data-artist-row] > div { flex: 1 0 176px !important; min-width: 176px !important; }
+.art-col { display: flex; flex-direction: column; align-items: center; gap: var(--space-2); text-align: center; }
+.art-nome { white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.art-nome > span { white-space: normal; }
+/* a foto do artista: círculo com o MESMO movimento dos cartões (cartao-evento.css: sobe, zoom da foto dentro do círculo, anel vermelho, brilho em volta; sem pílula) */
+.art-av { position: relative; flex: none; display: block; width: var(--size-avatar-profile); height: var(--size-avatar-profile); box-sizing: border-box; border: var(--border-width-hairline) solid var(--color-border-subtle); border-radius: var(--radius-circle) !important; background: var(--color-bg-island); color: var(--color-text-secondary); }
+.art-av__foto { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; overflow: hidden; border-radius: var(--radius-circle) !important; }
+.art-av img { width: 100%; height: 100%; object-fit: cover; display: block; border-radius: 0 !important; }
+.art-ini { font-size: var(--font-size-title-3, 1.25rem); font-weight: 600; }
+/* palcos e arenas: o cartão de local é o do CSS compartilhado (identidade-componentes.css, "Cartão de local": .ven-card, .ven-foto, .ven-tx, .ven-n, .ven-m, .ven-cred), o mesmo da Busca; aqui só o tamanho no carrossel */
+.ev-scroll > .ven-card { flex: 0 0 min(340px, 82%); }
+</style>
+<script src="./vendor/lottie_svg.min.js" defer data-previa></script>
+<script src="./icones-motion.js" defer data-previa></script>
+<script src="./modal-uui.js" defer data-previa></script>
+<script src="./home-consulta.js" defer data-previa></script>
+<script src="./home-curte.js" defer data-previa></script>
+<script src="./home-sorteio.js" defer data-previa></script>
+<style data-pb>
+/* lupa de busca do menu (pilula-busca.mjs) */
+.hdr-search.hdr-lupa { flex: 0 0 auto !important; display: inline-flex !important; align-items: center; justify-content: center; width: var(--size-touch-default); height: var(--size-touch-default); min-height: var(--size-touch-default) !important; padding: 0 !important; margin: 0 0 0 auto !important; max-width: none; border-radius: var(--radius-base); color: var(--color-text-primary) !important; cursor: pointer; }
+.hdr-search.hdr-lupa svg { stroke: currentColor; }
+.hdr .crumbs { min-width: 0; flex: 0 1 auto; overflow: hidden; }
+.hdr .crumbs .crumb-cur, .hdr .crumbs [aria-current] { overflow: hidden; text-overflow: ellipsis; }
+</style>
+<style data-hb>
+/* busca em destaque da Home (home-busca.mjs): classes hb-*, só tokens da identidade. Os botões (hb-acoes) e a modal ficam em tools/previa/home/home-curte.css */
+.hb { display: flex; flex-direction: column; align-items: center; gap: var(--space-5); text-align: center; padding-block: var(--space-4); }
+.hb-t { font-size: var(--font-size-title-1); line-height: var(--font-lh-title-1); letter-spacing: var(--font-ls-title-1); font-weight: 600; margin: 0; padding-block: var(--space-1); text-wrap: balance; } /* o padding evita que o corpo das letras passe da caixa em 4 px (auditoria «texto fora da caixa») */
+.hb-form { width: min(960px, 100%); display: flex; flex-direction: column; align-items: center; gap: var(--space-4); }
+.hb-bar { width: 100%; box-sizing: border-box; display: flex; align-items: center; gap: var(--space-3); padding: var(--space-2) var(--space-2) var(--space-2) var(--space-5); background: var(--color-field-bg); border: 2px solid var(--color-field-border); border-radius: var(--radius-base); box-shadow: var(--shadow-float); transition: border-color var(--motion-duration-fast) var(--motion-ease-move); }
+.hb-bar:hover { border-color: var(--color-field-border-hover); }
+.hb-bar:focus-within { border-color: var(--color-field-border-focus); outline: var(--focus-width) solid var(--color-focus-ring); outline-offset: var(--focus-offset); }
+.hb-lupa { display: inline-flex; flex: 0 0 auto; color: var(--color-field-placeholder); }
+.hb-in { flex: 1 1 auto; min-width: 0; min-height: var(--size-control-lg); border: 0 !important; background: transparent !important; outline: none !important; box-shadow: none !important; padding: 0; font-size: var(--font-size-body); color: var(--color-field-fg); -webkit-appearance: none; appearance: none; }
+.hb-in::placeholder { color: var(--color-field-placeholder); opacity: 1; }
+.hb-in::-webkit-search-cancel-button { -webkit-appearance: none; display: none; }
+.hb-ir { flex: 0 0 auto; min-height: var(--size-control-md); padding: 0 var(--space-6); }
+</style>
+<style data-sp>
+/* Home (home-esportes.mjs): Ingresse Sports e chamada para produtores; só tokens da identidade */
+.sp-logo { display: block; height: var(--space-6); width: calc(var(--space-6) * 586.5 / 73); max-width: 100%; background-color: currentColor; -webkit-mask: url("./assets/brand/ingresse-sports.svg") left center / contain no-repeat; mask: url("./assets/brand/ingresse-sports.svg") left center / contain no-repeat; }
+.pr-cta { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-5) var(--space-8); padding: var(--space-card-pad); border: var(--border-width-hairline) solid var(--color-border-control); background: var(--color-bg-subtle); }
+.pr-txt { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; flex: 1 1 320px; }
+.pr-txt .h2 { margin: 0; }
+.pr-p { margin: 0; max-width: 56ch; color: var(--color-text-secondary); font-size: var(--font-size-body); line-height: var(--font-lh-body, 1.5); }
+.pr-cta .bp { flex: 0 0 auto; }
+@media (max-width: 640px) { .pr-cta .bp { width: 100%; } .sp-logo { height: var(--space-5); width: calc(var(--space-5) * 586.5 / 73); } }
+</style>
+<style data-hc>
+/* home-curte.css: os dois botões do bloco da busca, a modal «O que você curte ao vivo?» (hc-*) e o sorteio (hs-*). Só tokens da identidade.
+   O MODAL em si (uui-modal) está em identidade-componentes.css §6e; o chip é o .chip de sempre; o botão é .bs/.bp. Aqui só o que é desta tela. */
+
+/* ---- bloco da busca: os dois botões, lado a lado (empilhados no celular) ---- */
+.hb-acoes { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-3); width: 100%; }
+.hb-acao { display: inline-flex; align-items: center; justify-content: center; gap: var(--space-3); }
+.hb-acao svg { flex: 0 0 auto; }
+.hb-acao-n { display: inline-flex; align-items: center; justify-content: center; min-width: var(--space-5); height: var(--space-5); padding: 0 var(--space-2); box-sizing: border-box; background: var(--color-bg-inverse); color: var(--color-text-inverse); font-size: var(--font-size-small); font-weight: 600; line-height: 1; }
+.hb-acao-n[hidden] { display: none; }
+@media (max-width: 640px) {
+  .hb-acoes { flex-direction: column; align-items: stretch; gap: var(--space-2); }
+  .hb-acao { width: 100%; }
+}
+
+/* ---- modal: grupos de tags ---- */
+.hc-grupo { display: flex; flex-direction: column; gap: var(--space-3); padding-top: var(--space-5); }
+.hc-grupo[hidden], .hc-apoio[hidden], .hc-vazio[hidden], .hc-resumo[hidden], .hc-tirar[hidden] { display: none; }
+.hc-grupo__t { margin: 0; font-size: var(--font-size-body); line-height: var(--font-lh-body); font-weight: 600; }
+.hc-chips { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.chip.hc-chip { position: relative; gap: var(--space-2); }
+.hc-chip .oc-ic { width: var(--size-icon-md); height: var(--size-icon-md); }
+.hc-chip .oc-ic svg { width: var(--size-icon-md); height: var(--size-icon-md); }
+.hc-chip .hc-ok { flex: 0 0 auto; }
+/* ponto de «novo» (HC-31): a marca gráfica, nunca só ela diz a novidade (o cabeçalho do grupo e o anúncio dizem) */
+.hc-novo { position: absolute; top: calc(var(--space-2) * -1); right: calc(var(--space-2) * -1); width: var(--space-2); height: var(--space-2); box-sizing: content-box; border: var(--border-width-strong) solid var(--color-bg-surface); border-radius: var(--radius-circle); background: var(--color-fg-brand); }
+.hc-grupo--rel { margin-top: var(--space-5); padding: var(--space-4); border: var(--border-width-strong) solid var(--color-border-strong); } /* o bloco das tags novas: contorno forte, sem fundo (os chips são os de sempre) */
+.hc-entra { animation: hc-entra var(--motion-duration-base) var(--motion-ease-enter) both; }
+@keyframes hc-entra { from { opacity: 0; transform: translateY(var(--motion-distance-sm)); } to { opacity: 1; transform: none; } }
+.hc-grupo > .field.hc-busca { flex: 0 0 auto; display: flex; flex-direction: column; gap: var(--space-2); } /* .field cresce em coluna flex (flex-basis de campo de formulário): aqui fica na altura do conteúdo */
+.hc-busca label { font-size: var(--font-size-small); font-weight: 600; }
+.hc-apoio { margin: 0; font-size: var(--font-size-small); line-height: 1.5; color: var(--color-text-secondary); }
+.hc-kicker { margin: 0; }
+.hc-carregando { padding-top: var(--space-5); }
+
+/* ---- modal: rodapé ---- */
+.hc-resumo { margin: 0; font-size: var(--font-size-small); color: var(--color-text-secondary); }
+.hc-vazio { margin: 0; font-size: var(--font-size-small); line-height: 1.5; color: var(--color-text-primary); }
+.hc-tirar { align-self: flex-start; }
+.hc-acoes { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--space-3); }
+.hc-acoes > .bs, .hc-acoes > .bp { justify-content: center; }
+@media (max-width: 640px) { .hc-acoes { flex-wrap: nowrap; } .hc-acoes > .bs { flex: 0 0 auto; } .hc-acoes > .bp { flex: 1 1 auto; } }
+
+@media (prefers-reduced-motion: reduce) { .hc-entra { animation: none; } }
+html[data-motion="reduce"] .hc-entra { animation: none; }
+
+/* ---- sorteio (Isadora Nogueira, 29/10/2026): clique → faixa viva → pouso com explosão → modal simples; docs/design/SORTEIO-DIRECAO-DE-ARTE.md ---- */
+.hb-sorteio { position: relative; width: 100%; }
+/* o botão tem vida própria: tinta cheia (o irmão «O que você curte ao vivo?» é de contorno), estrela que gira no hover e no foco, toque com escala */
+.hb-acao--sortear .hb-estrela { width: var(--size-icon-md); height: var(--size-icon-md); flex: 0 0 auto; }
+.hb-acao--sortear:is(:hover, :focus-visible) .hb-estrela { animation: hs-gira 1s linear infinite; }
+.hb-acao--sortear:active { transform: scale(0.94); }
+.hb-acao--sortear { transition: background-color var(--motion-duration-fast) var(--motion-ease-move), border-color var(--motion-duration-fast) var(--motion-ease-move), color var(--motion-duration-fast) var(--motion-ease-move), transform var(--motion-duration-fast) var(--motion-ease-enter); }
+@keyframes hs-gira { to { transform: rotate(360deg); } }
+.hb-acao--sortear[aria-disabled="true"] { cursor: progress; }
+
+/* o palco: logo abaixo dos dois botões; a altura anima (grid 0fr -> 1fr) e empurra o resto da Home com suavidade */
+.hs-palco { display: grid; grid-template-rows: 0fr; transition: grid-template-rows var(--motion-duration-slow) var(--motion-ease-enter); }
+.hs-palco.is-aberto { grid-template-rows: 1fr; }
+.hs-palco__dentro { min-height: 0; overflow: hidden; }
+.hs-palco__dentro > * { margin-top: var(--space-5); }
+.hs-palco__dentro > .hs-faixa { margin-bottom: var(--space-3); }
+
+/* a faixa: gradiente que corre, brilho que passa, estrelas que giram, rótulo em caixa alta e o nome em fonte grande.
+   Cor (esquentada em 29/10, validação do Bessa C1): no giro `#C81F14 → #E52619 → #F03A25`; no POUSO a camada `::before` acende (`#E52619 → #FF5A3D` nos extremos) em 160 ms. O véu escuro (`::after`, 46 % no centro, abaixo do texto e das faíscas)
+   mantém o rótulo ≥ 4,5:1 e o nome ≥ 3:1 em todos os quadros (medido: ver docs/design/SORTEIO-DIRECAO-DE-ARTE.md §6). Gradiente: exceção APROVADA (a própria LP usa e o Wander mandou fazer igual). */
+.hs-faixa { --hs-miolo: #F03A25; --hs-acende: #FF5A3D;
+  position: relative; box-sizing: border-box; height: var(--space-9); min-height: calc(var(--space-9) + var(--space-3)); display: grid; place-items: center; padding: 0 calc(var(--space-9) + var(--space-3)); overflow: hidden; border-radius: var(--radius-base); text-align: center;
+  color: var(--color-button-primary-fg);
+  background: linear-gradient(110deg, var(--color-button-primary-bg-hover), var(--color-button-primary-bg) 24%, var(--hs-miolo) 52%, var(--color-button-primary-bg) 78%, var(--color-button-primary-bg-hover)) 0 0 / 220% 100%;
+  animation: hs-fundo 1.1s linear infinite; }
+.hs-faixa::before { content: ''; position: absolute; inset: 0; opacity: 0; transition: opacity var(--motion-duration-fast) var(--motion-ease-enter); pointer-events: none;
+  background: linear-gradient(110deg, var(--color-button-primary-bg), var(--hs-acende) 26%, var(--color-button-primary-bg) 52%, var(--hs-acende) 76%, var(--color-button-primary-bg)) 0 0 / 220% 100%; animation: hs-fundo 0.5s linear infinite; }
+.hs-faixa[data-fase="pousou"]::before, .hs-faixa[data-fase="repouso"]::before { opacity: 1; }
+.hs-faixa::after { content: ''; position: absolute; inset: 0; z-index: 0; background: radial-gradient(ellipse 70% 100% at 50% 50%, color-mix(in srgb, var(--color-primitive-neutral-950) 46%, transparent), transparent); pointer-events: none; }
+.hs-faixa__palco, .hs-faixa__estrela { z-index: 2; }
+.hs-faixa[data-fase="pousou"] { animation-duration: 0.5s; }
+.hs-faixa[data-fase="repouso"], .hs-faixa[data-fase="repouso"] * { animation-play-state: paused; }
+@keyframes hs-fundo { to { background-position: -220% 0; } }
+.hs-faixa__brilho { position: absolute; inset: 0; transform: translateX(-100%); background: linear-gradient(100deg, transparent 35%, color-mix(in srgb, var(--color-primitive-neutral-0) 14%, transparent) 50%, transparent 65%); animation: hs-brilho 0.9s linear infinite; }
+@keyframes hs-brilho { to { transform: translateX(100%); } }
+/* no pouso o movimento contínuo CESSA (o olho entende «parou»): uma passada só de brilho, mais clara; as estrelas das pontas param com um pulso de escala */
+.hs-faixa[data-fase="pousou"] .hs-faixa__brilho, .hs-faixa[data-fase="repouso"] .hs-faixa__brilho { background: linear-gradient(100deg, transparent 30%, color-mix(in srgb, var(--color-primitive-neutral-0) 16%, transparent) 50%, transparent 70%); animation: hs-brilho 0.6s var(--motion-ease-move) 1 both; }
+.hs-faixa[data-fase="pousou"] .hs-faixa__estrela, .hs-faixa[data-fase="repouso"] .hs-faixa__estrela { animation: hs-pulso 300ms var(--motion-ease-enter) 1 both; }
+@keyframes hs-pulso { 0% { transform: scale(1) rotate(0deg); } 45% { transform: scale(1.25) rotate(35deg); } 100% { transform: scale(1) rotate(0deg); } }
+.hs-faixa__estrela { position: absolute; top: 50%; width: var(--space-7); height: var(--space-7); margin-top: calc(var(--space-7) / -2); color: var(--color-button-primary-fg); animation: hs-gira 0.7s linear infinite; }
+.hs-faixa__estrela svg { width: 100%; height: 100%; display: block; }
+.hs-faixa__estrela--e { left: var(--space-4); }
+.hs-faixa__estrela--d { right: var(--space-4); animation-direction: reverse; }
+.hs-faixa[data-fase="pousou"] .hs-faixa__estrela--d, .hs-faixa[data-fase="repouso"] .hs-faixa__estrela--d { animation-direction: normal; }
+.hs-faixa__palco { position: relative; display: grid; gap: var(--space-1); width: 100%; min-width: 0; }
+.hs-faixa__rotulo { margin: 0; font-size: var(--font-size-label); line-height: var(--font-lh-label); font-weight: 700; letter-spacing: var(--font-ls-label); text-transform: uppercase; }
+.hs-faixa__carretel { position: relative; height: 1.3em; overflow: hidden; font-size: clamp(1.25rem, 3.2vw, 2rem); font-weight: 700; line-height: 1.3; letter-spacing: -0.02em;
+  -webkit-mask-image: linear-gradient(transparent, #000 22%, #000 78%, transparent); mask-image: linear-gradient(transparent, #000 22%, #000 78%, transparent); } /* a máscara das bordas no lugar do desfoque da LP */
+.hs-faixa__nome { position: absolute; inset: 0; display: grid; align-content: center; overflow: hidden; }
+.hs-faixa__nome-t { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* celular: faixa de 88 px, nome em até DUAS linhas de 18 px (o vencedor nunca aparece cortado com «…»; validação do Bessa B1) */
+@media (max-width: 640px) {
+  .hs-faixa { height: calc(var(--space-9) + var(--space-5)); min-height: 0; padding: 0 calc(var(--space-7) + var(--space-2)); }
+  .hs-faixa__estrela { width: var(--space-6); height: var(--space-6); margin-top: calc(var(--space-6) / -2); }
+  .hs-faixa__estrela--e { left: var(--space-3); } .hs-faixa__estrela--d { right: var(--space-3); }
+  .hs-faixa__carretel { height: 2.6em; font-size: 1.125rem; }
+  @media (max-width: 340px) { .hs-faixa__carretel { font-size: 1rem; } } /* 320 px: 16 px, para os nomes mais longos caberem em duas linhas */
+  .hs-faixa__nome-t { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; text-align: center; text-overflow: clip; overflow-wrap: anywhere; }
+}
+
+/* a explosão do pouso: clarão e 10 faíscas em elipse (a da LP); na faixa as faíscas são BRANCAS e saem das duas estrelas das pontas, parando antes do nome (branco sobre o nome branco o apagava: 1,0:1 medido; a versão de faíscas pretas parecia respingo de tinta), no pôster são vermelhas */
+.hs-explosao { position: absolute; inset: 0; pointer-events: none; }
+.hs-explosao__clarao { position: absolute; top: 50%; left: 50%; width: 220px; height: 220px; margin: -110px 0 0 -110px; border-radius: 50%; background: radial-gradient(circle, var(--color-primitive-neutral-0), transparent 65%); z-index: 1; } /* o clarão e as faíscas ficam ACIMA do véu escuro (0) e ABAIXO do texto (2): o nome nunca some */
+.hs-explosao__faisca { z-index: 1; position: absolute; top: 50%; left: 50%; width: var(--space-5); height: var(--space-5); margin: calc(var(--space-5) / -2) 0 0 calc(var(--space-5) / -2); color: var(--color-button-primary-fg); }
+.hs-explosao--poster .hs-explosao__faisca { color: var(--color-fg-brand); width: var(--space-7); height: var(--space-7); margin: calc(var(--space-7) / -2) 0 0 calc(var(--space-7) / -2); z-index: 3; }
+.hs-explosao--curta .hs-explosao__faisca { width: var(--space-4); height: var(--space-4); margin: calc(var(--space-4) / -2) 0 0 calc(var(--space-4) / -2); } /* faixa de celular: faíscas de 16 px que sobem e descem junto da estrela, sem chegar ao nome */
+.hs-explosao__clarao--anel { width: 120px; height: 120px; margin: -60px 0 0 -60px; background: radial-gradient(circle, transparent 0 40%, var(--color-primitive-neutral-0) 55%, transparent 70%); } /* o clarão do pouso é um anel em cada estrela */
+.hs-explosao__faisca svg { width: 100%; height: 100%; display: block; }
+
+/* a modal do resultado: simples, centralizada e inteira sem rolagem em 390 e em 1440 (o pôster cede altura ao que sobra da tela) */
+.hs-modal .uui-modal__dialog { width: min(36rem, 100%); }
+.hs-modal .uui-modal__corpo { display: flex; flex-direction: column; align-items: center; justify-content: safe center; gap: var(--space-2); text-align: center; overflow-x: hidden; }
+.hs-res__poster { position: relative; flex: 0 0 auto; width: min(100%, 26rem, 44dvh); aspect-ratio: 1 / 1; margin-bottom: var(--space-3); background: var(--color-bg-island); border-radius: var(--radius-base); }
+@media (min-width: 641px) { .hs-res__poster { width: min(100%, 24rem, calc(100dvh - 2 * var(--layout-margin) - 23.5rem)); } } /* a altura útil desconta a margem do véu, o cabeçalho só com o fechar, o nome (até duas linhas), os metadados e o rodapé: nenhum dos 174 eventos rola (validação do Bessa, 03/11/2026) */
+@media (min-width: 641px) and (max-height: 760px) { .hs-res__poster { width: min(100%, 24rem, calc(100dvh - 31rem)); margin-bottom: var(--space-1); } .hs-modal .uui-modal__cab { padding-block: var(--space-3) var(--space-2); } .hs-modal .uui-modal__corpo { padding-bottom: var(--space-3); } } /* desktop baixo (1440 × 720): o pôster cede o que o cabeçalho, o texto e o rodapé pedem; sem rolagem */
+.hs-res__poster img { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: cover; border-radius: var(--radius-base); }
+.hs-modal .uui-modal__cab { justify-content: flex-end; align-items: center; padding: var(--space-5) var(--space-5) var(--space-3); margin-bottom: 0; } /* sem barra e sem título visível (pedido do Wander, 03/11/2026): só o fechar, no padding da modal; o título continua no leitor de tela */
+.hs-modal .uui-modal__txt { position: absolute; width: var(--border-width-hairline); height: var(--border-width-hairline); margin: calc(var(--border-width-hairline) * -1); padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; } /* título só para o leitor de tela (aria-labelledby) */
+/* o fechar é o `.bs .bs-icone` de sempre (sem segunda implementação de botão secundário; a auditoria de componentes reprovou a versão recolorida) */
+.hs-res__nome { margin: var(--space-1) 0 0; font-size: var(--font-size-title-3) !important; line-height: var(--font-lh-title-3) !important; font-weight: 600; letter-spacing: var(--font-ls-title-3, normal); text-wrap: balance; overflow-wrap: anywhere; }
+.hs-res__meta { display: flex; flex-direction: column; gap: var(--space-1); width: 100%; margin-top: var(--space-2); padding-top: var(--space-3); border-top: var(--border-width-hairline) solid var(--color-border-subtle); border-radius: 0 !important; text-align: center; }
+.hs-res__local, .hs-res__data { margin: 0; font-size: var(--font-size-small); line-height: var(--font-lh-small); color: var(--color-text-secondary); text-transform: uppercase; font-variant-numeric: tabular-nums lining-nums; } /* o texto do cartão de evento (cartao-evento.css): local e data em caixa alta */
+.hs-modal .hc-acoes { justify-content: center; }
+.hs-erro { display: flex; flex-direction: column; align-items: center; gap: var(--space-3); box-sizing: border-box; padding: var(--space-5); text-align: center; border: var(--border-width-strong) solid var(--color-border-strong); border-radius: var(--radius-base); }
+.hs-erro__t { margin: 0; font-weight: 600; }
+/* movimento reduzido: sem faixa, sem carretel, sem faíscas (o script não os cria); a modal abre direto */
+@media (prefers-reduced-motion: reduce) { .hs-palco { transition: none; } .hb-acao--sortear .hb-estrela { animation: none !important; } .hb-acao--sortear:active { transform: none; } }
+html[data-motion="reduce"] .hs-palco { transition: none; }
+html[data-motion="reduce"] .hb-acao--sortear .hb-estrela { animation: none !important; }
+
+/* ---- vitrine (hero), dois acertos que a auditoria estrita pediu (29/10/2026) ---- */
+/* o link do título é uma linha só em títulos curtos («Solomun :: CWB»: 39 px): alvo de toque mínimo de 44 px */
+.vit-info a:has(> .vit-title) { display: flex; align-items: center; min-height: var(--size-touch-min); }
+/* o texto e o botão do hero entravam com opacidade (v5.3); nos primeiros quadros o botão ficava abaixo de 4,5:1 (axe). Agora entram só por deslocamento, com o mesmo tempo e curva */
+@keyframes vitinX { from { transform: translateY(12px) scale(.98); } to { transform: none; } }
+@keyframes vitInfoInX { from { transform: translateX(var(--motion-distance-lg)); } to { transform: none; } }
+@keyframes vitInfoInRevX { from { transform: translateX(calc(var(--motion-distance-lg) * -1)); } to { transform: none; } }
+.vit .vit-info { animation-name: vitinX !important; }
+.vit.is-moving .vit-info { animation-name: vitInfoInX !important; }
+.vit.is-moving.is-rev .vit-info { animation-name: vitInfoInRevX !important; }
+@media (prefers-reduced-motion: reduce) { .vit .vit-info, .vit.is-moving .vit-info { animation: none !important; } }
+@media (max-width: 640px) { .hs-modal .uui-modal__cab { padding: var(--space-4) var(--space-4) var(--space-2); } }
+.hs-modal .uui-modal__rodape { border-top: var(--border-width-strong) solid var(--color-border-strong); border-radius: 0 !important; } /* o separador do rodapé: linha preta reta, sem raio (pedido do Wander, 03/11/2026) */
+</style>
+<link rel="stylesheet" href="./theme.css">
+<link rel="stylesheet" href="./base.css">
+<script src="./theme.js"></script>
+<script src="./scroller.js" defer></script>
+<script src="./vit-motion.js" defer></script>
+<link rel="stylesheet" href="./ux.css">
+<link rel="stylesheet" href="./ds.css">
+<script src="./ux.js" defer></script>
+<link rel="stylesheet" href="./identidade-v1.css" data-previa>
+<style data-ib>
+/* ícone animado de botão (Lottie): 24 px, o traço segue a cor do texto do botão, no claro e no escuro */
+.btn-ic { flex: 0 0 auto; width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; }
+.btn-ic svg { width: 24px; height: 24px; display: block; }
+.btn-ic [stroke]:not([stroke="none"]) { stroke: currentColor; }
+/* "Quero ir" ligado: coração cheio na cor da marca (o Lottie traz fill-opacity 0, então os dois valores) */
+/* chip e botão: o ícone respira em relação ao texto */
+.chip > .btn-ic { margin-right: var(--space-2); } /* .bs e .bp já têm gap */
+/* barra de compra móvel do Evento: com o ícone do estado o rótulo é mais largo; se não couber ao lado do preço, a barra quebra e o botão ocupa a linha de baixo (antes o botão pisava no texto do preço) */
+.mbar { flex-wrap: wrap !important; }
+html .mbar > div { flex: 1 1 9rem !important; min-width: 9rem !important; } /* inline: flex: 1; min-width: 0 */ /* o preço não encolhe abaixo de 9rem: se o botão não couber ao lado, ele desce e ocupa a linha */
+.mbar .bp:has(.btn-ic) { flex: 1 1 auto; min-width: 0; justify-content: center; }
+button[aria-pressed="true"] .btn-ic-heart { color: var(--color-fg-wish); } /* alias de fg.brand: vermelho na Ingresse, azul na Ingresse Sports (decisão de 27/10/2026) */
+button[aria-pressed="true"] .btn-ic-heart svg [stroke]:not([stroke="none"]) { fill: currentColor; fill-opacity: 1; }
+</style>
+<script src="./previa.js" defer data-previa></script>
+<script src="./movimento-compra.js" defer data-previa></script>
+<script src="./movimento-navegacao.js" defer data-previa></script>
+<link rel="stylesheet" href="./cidade-cabecalho.css" data-previa>
+<script src="./local.js" defer data-previa></script>
+<script src="./local-ui.js" defer data-previa></script>
+<script src="./lugares-consulta.js" defer data-previa></script>
+<script src="./cidade-cabecalho.js" defer data-previa></script>
+<link rel="stylesheet" href="./lembretes.css" data-previa>
+<script src="./lembretes.js" defer data-previa></script>
+<link rel="stylesheet" href="./menu-conta.css" data-previa>
+<script src="./menu-conta.js" defer data-previa></script>
+<!-- fc:helmet:ini -->
+<script src="./futebol-cartao.js" defer data-previa></script>
+<!-- fc:helmet:fim -->
+<script src="./catalogo-busca.js" defer data-previa data-cb></script>
+<script src="./cartao-evento.js" defer data-previa></script>
+<link rel="stylesheet" href="./chips-caixinha.css" data-previa>
+<script src="./chips-caixinha.js" defer data-previa></script>
+<script src="./lacunas.js" defer data-previa></script>
+<link rel="stylesheet" href="./mvp.css" data-previa data-mvp>
+<script src="./mvp.js" defer data-previa data-mvp></script>
+<link rel="stylesheet" href="./transicao-evento.css" data-previa data-previa-te>
+</helmet>
+
+<div style="min-height: 100vh; background: var(--pagina-bg)">
+
+<header class="hdr">
+  <div class="hdr-row" style="max-width: 1280px; margin: 0 auto; padding: 14px 24px; display: flex; align-items: center; gap: 20px; flex-wrap: wrap">
+    <a href="Main.dc.html" aria-label="Ingresse — início" class="hdr-logo"><img src="./assets/8703fb5f412b57860d569f5abeea2cae.svg" alt="Ingresse"></a>
+    <!-- mvp:busca-nav:ini --><form class="mvp-so mvp-nb" role="search" action="Busca.dc.html" method="get" data-mvp-nb><button type="button" class="hdr-search hdr-lupa mvp-nb__abrir" aria-expanded="false" aria-controls="mvp-nb-campo" aria-label="Buscar evento, prova, time, artista ou local"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg></button><span class="mvp-nb__veu" aria-hidden="true"></span><span class="mvp-nb__fundo ilha" aria-hidden="true"></span><div class="mvp-nb__campo ilha" id="mvp-nb-campo"><span class="mvp-nb__lupa" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg></span><input class="mvp-nb__in" type="search" name="q" enterkeyhint="search" autocomplete="off" aria-label="Buscar evento, prova, time, artista ou local" placeholder="Evento, prova, time, artista, local..."><button type="submit" class="bp bp-sm">Buscar</button><button type="button" class="mvp-nb__fechar" aria-label="Fechar a busca"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div><p class="mvp-nb__dica ilha" aria-hidden="true"><span class="mvp-nb__dica-r">Experimente buscar</span> <span class="mvp-nb__tw"></span><span class="mvp-nb__cursor"></span></p></form><!-- mvp:busca-nav:fim --><a href="Busca.dc.html" class="hdr-search hdr-lupa" aria-label="Buscar evento, prova, time, artista ou local" title="Buscar">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+    </a>
+    <div style="display: flex; align-items: center; gap: 8px; flex: 0 0 auto">
+            <span class="cid" data-cidade>
+      <button type="button" class="bs cid-btn" data-cidade-btn data-marcado="true" aria-haspopup="dialog" aria-expanded="false" aria-label="Cidade: São Paulo. Trocar">
+        <span class="btn-ic cid-pin" aria-hidden="true" data-lottie="./assets/icones/esp-perto-de-voce.json" data-repouso="0" data-loop="0"></span>
+        <span class="cid-nome" data-cidade-nome>São Paulo</span>
+        <svg class="cid-chev ico ico-14" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+      </button>
+    </span>
+          <!-- mvp:revenda:ini --><a class="bs mvp-so mvp-revenda" href="https://revenda.ingresse.com" target="_blank" rel="noopener noreferrer" aria-label="Revenda Oficial, abre em nova aba"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 8V7m0 5.5v-1m0 5.5v-1M5.2 4h13.6c1.12 0 1.68 0 2.108.218a2 2 0 0 1 .874.874C22 5.52 22 6.08 22 7.2v1.3a3.5 3.5 0 1 0 0 7v1.3c0 1.12 0 1.68-.218 2.108a2 2 0 0 1-.874.874C20.48 20 19.92 20 18.8 20H5.2c-1.12 0-1.68 0-2.108-.218a2 2 0 0 1-.874-.874C2 18.48 2 17.92 2 16.8v-1.3a3.5 3.5 0 1 0 0-7V7.2c0-1.12 0-1.68.218-2.108a2 2 0 0 1 .874-.874C3.52 4 4.08 4 5.2 4Z"/></svg><span class="mvp-revenda__t">Revenda</span></a><!-- mvp:revenda:fim --><!-- mc:ini --><button type="button" class="avatar-hdr mc-av" data-menu-conta data-conta="true" aria-haspopup="menu" aria-expanded="false" aria-label="Minha conta"><span class="uui-avatar uui-avatar--lg" aria-hidden="true"><span class="uui-avatar__content"><span class="mc-ini" aria-hidden="true">PE</span><svg class="mc-gen" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 21a8 8 0 0 0-16 0"/><path d="M12 13a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"/></svg><img src="./assets/pessoas/pessoa-exemplo.jpg" srcset="./assets/pessoas/pessoa-exemplo.jpg 96w, ./assets/pessoas/pessoa-exemplo@2x.jpg 192w" sizes="48px" width="48" height="48" alt=""></span></span><span class="mc-n" data-mc-n data-vazio="true" aria-hidden="true">0</span></button><!-- mc:fim -->
+    </div>
+  </div>
+</header>
+
+<!-- mvp:topo:ini -->
+<section class="mvp-so mvp-topo" data-mvp="topo" aria-label="Destaques e busca">
+  <canvas class="mvp-areia" aria-hidden="true"></canvas>
+  <div class="mvp-topo__in">
+    <h1 class="sr-only">Ingresse: eventos para viver ao vivo</h1>
+    <div class="mvp-hero" data-mvp-hero aria-roledescription="carrossel" aria-label="Destaques"></div>
+    <div class="mvp-topo__busca">
+      <form class="hb-form" role="search" action="Busca.dc.html" method="get">
+        <div class="hb-bar campo-busca">
+          <span class="hb-lupa" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg></span>
+          <input class="hb-in" type="search" name="q" enterkeyhint="search" autocomplete="off" aria-label="Buscar evento, prova, time, artista ou local" placeholder="Evento, prova, time, artista, local...">
+          <button type="submit" class="bp hb-ir">Buscar</button>
+        </div>
+        <p class="mvp-hb__dica" aria-hidden="true"><span class="mvp-hb__dica-r">Experimente buscar</span> <span class="mvp-nb__tw"></span><span class="mvp-nb__cursor"></span></p>
+      </form>
+    <nav class="mvp-cats" aria-labelledby="mvp-cats-h">
+      <h2 class="sr-only" id="mvp-cats-h">Explorar por categoria</h2>
+      <div class="oc-grid" style="--mvp-n: 5">
+        <a href="Categoria.dc.html?c=shows" class="oc"><span class="oc-ic" aria-hidden="true" data-lottie="./assets/icones/cat-mvp-shows.json" data-repouso="0" data-loop="0"></span><span class="oc-t">Shows</span></a>
+        <a href="Categoria.dc.html?c=festivais" class="oc"><span class="oc-ic" aria-hidden="true" data-lottie="./assets/icones/cat-mvp-festivais.json" data-repouso="0" data-loop="0"></span><span class="oc-t">Festivais</span></a>
+        <a href="Categoria.dc.html?c=baladas" class="oc"><span class="oc-ic" aria-hidden="true" data-lottie="./assets/icones/cat-mvp-festas.json" data-repouso="0" data-loop="1"></span><span class="oc-t">Festas e Baladas</span></a>
+        <a href="Categoria.dc.html?c=universitario" class="oc"><span class="oc-ic" aria-hidden="true" data-lottie="./assets/icones/cat-mvp-universitario.json" data-repouso="0" data-loop="0"></span><span class="oc-t">Universitário</span></a>
+        <a href="Categoria.dc.html?c=futebol" class="oc"><span class="oc-ic" aria-hidden="true" data-lottie="./assets/icones/mvp-cat-futebol.json" data-repouso="0" data-loop="0"></span><span class="oc-t">Futebol</span></a>
+        <a href="Categoria.dc.html?c=esportes" class="oc"><span class="oc-ic" aria-hidden="true" data-lottie="./assets/icones/cat-mvp-esportes.json" data-repouso="0" data-loop="0"></span><span class="oc-t">Esportes</span></a>
+        <a href="Categoria.dc.html?c=teatro" class="oc"><span class="oc-ic" aria-hidden="true" data-lottie="./assets/icones/mvp-cat-teatro.json" data-repouso="0" data-loop="0"></span><span class="oc-t">Teatro</span></a>
+        <a href="Categoria.dc.html?c=stand-up" class="oc"><span class="oc-ic" aria-hidden="true" data-lottie="./assets/icones/cat-mvp-stand-up.json" data-repouso="0" data-loop="0"></span><span class="oc-t">Stand-up</span></a>
+        <a href="Categoria.dc.html?c=infantil" class="oc"><span class="oc-ic" aria-hidden="true" data-lottie="./assets/icones/cat-mvp-infantil.json" data-repouso="0" data-loop="0"></span><span class="oc-t">Kids e Família</span></a>
+        <a href="Categoria.dc.html?c=feiras" class="oc"><span class="oc-ic" aria-hidden="true" data-lottie="./assets/icones/mvp-cat-feiras.json" data-repouso="0" data-loop="0"></span><span class="oc-t">Feiras e Exposições</span></a>
+      </div>
+    </nav>
+    </div>
+  </div>
+</section>
+<!-- mvp:topo:fim -->
+<main style="max-width: 1280px; margin: 0 auto; padding: 32px 24px 64px; display: flex; flex-direction: column; gap: 56px">
+
+  <!-- HERO / VITRINE (opção B) -->
+  <sc-if value="{{vitrine}}" hint-placeholder-val="{{false}}">
+  <section class="vit" aria-roledescription="carrossel" aria-label="Destaques" onMouseEnter="{{pause}}" onMouseLeave="{{resume}}" onFocus="{{pause}}" onBlur="{{resume}}">
+    <img class="vit-bg" src="{{slide.img}}" alt="" aria-hidden="true">
+    <div class="vit-main">
+      <a href="{{slide.href}}" class="vit-poster" aria-label="{{slide.name}}"><img src="{{slide.img}}" alt=""></a>
+      <div class="vit-info">
+        <div class="vit-count" aria-hidden="true"><b>{{slideNum}}</b> / {{slideTotal}}</div>
+        <div class="over" style="color: #FF8A80">{{slide.kicker}}</div>
+        <a href="{{slide.href}}" style="color: var(--ink)"><h1 class="disp soft vit-title">{{slide.name}}</h1></a>
+        <div class="vit-meta">{{slide.date}} · {{slide.venue}}</div>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px">
+          <a href="{{slide.ctaHref}}" class="bp">{{slide.cta}}</a>
+          <a href="{{slide.verHref}}" class="bs" style="min-height: 48px">{{slide.ver}}</a>
+        </div>
+      </div>
+    </div>
+    <button type="button" class="car-pause" onClick="{{toggleStop}}" aria-label="{{stopLabel}}" title="{{stopLabel}}"><sc-if value="{{isStopped}}" hint-placeholder-val="{{false}}"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"></path></svg></sc-if><sc-if value="{{isRunning}}" hint-placeholder-val="{{true}}"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 5h4v14H7zM13 5h4v14h-4z"></path></svg></sc-if></button>
+    <div class="vit-rail" role="tablist" aria-label="Próximos destaques">
+      <div class="over vit-rail-h">A seguir</div>
+      <sc-for list="{{queue}}" as="q" hint-placeholder-count="5">
+        <button type="button" role="tab" class="vit-item" aria-selected="{{q.sel}}" aria-label="{{q.name}}" onClick="{{q.pick}}">
+          <img src="{{q.img}}" alt="">
+          <span class="vit-item-t"><strong>{{q.name}}</strong><small>{{q.date}}</small></span>
+          <span class="vit-bar" aria-hidden="true"><i style="{{q.bar}}"></i></span>
+        </button>
+      </sc-for>
+    </div>
+  </section>
+  </sc-if>
+
+  <!-- HERO / CARROSSEL -->
+  <sc-if value="{{classico}}" hint-placeholder-val="{{true}}">
+  <section class="hero" aria-roledescription="carrossel" aria-label="Destaques" onMouseEnter="{{pause}}" onMouseLeave="{{resume}}" onFocus="{{pause}}" onBlur="{{resume}}" style="position: relative; border-radius: 24px; overflow: hidden; background: var(--inverse); color: #fff; min-height: 440px; display: flex">
+    <div aria-hidden="true" class="brand-grad" style="position: absolute; top: 0; left: 0; right: 0; height: 4px; z-index: 2"></div>
+    <img src="{{slide.img}}" alt="" aria-hidden="true" style="position: absolute; inset: -40px; width: calc(100% + 80px); height: calc(100% + 80px); object-fit: cover; filter: blur(32px) brightness(.45)">
+    <div style="position: absolute; inset: 0; background: linear-gradient(90deg, rgba(10,10,11,.85) 0%, rgba(10,10,11,.45) 60%, rgba(10,10,11,.15) 100%)"></div>
+    <div style="position: relative; flex: 1; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 24px; padding: 40px 48px">
+      <div style="flex: 1 1 380px; min-width: 0">
+        <div class="over" style="color: #FFB3A8; margin-bottom: 12px">{{slide.kicker}}</div>
+        <a href="Evento.dc.html" style="color: #fff"><h2 class="disp soft" style="font-size: clamp(28px, 3.2vw, 46px); line-height: 1.12; margin-bottom: 12px">{{slide.name}}</h2></a>
+        <div style="font-size: 17px; color: #E6E6E9">{{slide.date}} · {{slide.venue}}</div>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 24px">
+          <a href="Evento.dc.html" class="bp" style="min-height: 48px; padding: 0 24px; font-size: 16px">{{slide.cta}}</a>
+          <a href="Evento.dc.html" class="bs" style="min-height: 48px">Ver evento</a>
+        </div>
+      </div>
+      <a href="Evento.dc.html" aria-label="{{slide.name}}" style="flex: 0 0 auto"><img src="{{slide.img}}" alt="" style="width: 240px; height: 320px; object-fit: cover; border-radius: 16px; box-shadow: 0 28px 64px rgba(10,10,11,.5); display: block"></a>
+    </div>
+    <div style="position: absolute; left: 48px; right: 48px; bottom: 20px; display: flex; align-items: center; justify-content: space-between; gap: 12px">
+      <div style="display: flex; gap: 6px" role="tablist" aria-label="Destaques">
+        <sc-for list="{{dots}}" as="d" hint-placeholder-count="5"><button type="button" role="tab" aria-selected="{{d.sel}}" aria-label="{{d.aria}}" onClick="{{d.pick}}" style="{{d.style}}"></button></sc-for>
+      </div>
+      <div style="display: flex; gap: 8px">
+        <button type="button" onClick="{{prev}}" aria-label="Destaque anterior" style="width: 44px; height: 44px; border-radius: 50%; border: 1px solid #55555A; background: rgba(10,10,11,.5); color: #fff; cursor: pointer; display: inline-flex; align-items: center; justify-content: center"><svg class="ico ico-16" viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></button>
+        <button type="button" onClick="{{next}}" aria-label="Próximo destaque" style="width: 44px; height: 44px; border-radius: 50%; border: 1px solid #55555A; background: rgba(10,10,11,.5); color: #fff; cursor: pointer; display: inline-flex; align-items: center; justify-content: center"><svg class="ico ico-16" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button>
+      </div>
+    </div>
+  </section>
+  </sc-if>
+
+<!-- hb:ini -->
+  <section class="hb" aria-labelledby="hb-t">
+    <h2 class="hb-t" id="hb-t">Encontre seu próximo evento</h2>
+    <form class="hb-form" role="search" onSubmit="{{hbSubmit}}">
+      <div class="hb-bar campo-busca">
+        <span class="hb-lupa" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg></span>
+        <input class="hb-in" type="search" value="{{hbQ}}" onInput="{{hbOnQ}}" enterkeyhint="search" autocomplete="off" aria-label="Buscar evento, prova, time, artista ou local" placeholder="Evento, prova, time, artista, local...">
+        <a class="bp hb-ir" href="{{hbHref}}">Buscar</a>
+      </div>
+      <div class="hb-sorteio" data-hs-raiz>
+        <div class="hb-acoes" role="group" aria-label="Outras formas de encontrar">
+          <button type="button" class="bs hb-acao" data-hc-abrir aria-haspopup="dialog" aria-label="O que você curte ao vivo? Escolher interesses"><span class="btn-ic" aria-hidden="true" data-lottie="./assets/icones/quero-ir.json" data-repouso="0" data-loop="0"></span><span>O que você curte ao vivo?</span><span class="hb-acao-n" data-hc-n hidden aria-hidden="true"></span></button>
+          <button type="button" class="bs bs-ink hb-acao hb-acao--sortear" data-hc-sortear><svg class="hb-estrela" viewBox="-14 0 280 280" aria-hidden="true" focusable="false"><path d="M165.283 279.912C165.693 280.042 164.843 277.882 163.063 274.052C155.603 258.472 145.953 239.302 138.823 224.312C131.483 207.032 123.013 189.542 119.053 171.052C112.913 144.132 128.193 136.232 152.073 132.782C182.603 128.352 213.333 131.062 243.763 133.932C246.703 134.052 250.333 134.552 251.873 134.032C251.893 133.792 250.123 133.322 247.063 132.672C226.743 128.562 201.013 124.682 179.943 118.792C160.723 113.172 134.583 107.222 127.733 85.722C121.313 62.482 132.693 39.252 144.083 19.432C145.603 16.692 152.603 5.70196 149.753 7.75196C148.443 8.66196 145.583 11.552 144.023 13.222C130.003 28.112 116.103 43.842 96.7931 51.782C87.3231 55.922 76.8531 59.192 66.6631 55.822C53.2031 51.202 42.3131 41.162 33.4331 30.252C28.4431 24.222 22.9531 16.162 17.7331 8.43196C16.2031 6.26196 11.5431 -0.59804 11.1031 0.0419598C10.8931 0.81196 11.4831 2.00196 12.2131 4.06196C21.7431 27.162 36.6331 56.572 27.3931 82.042C23.7631 91.252 14.0931 95.822 5.28308 98.452C2.31308 99.462 0.363083 100.242 0.0230828 101.302C-0.446917 103.702 6.39308 107.192 8.45308 108.852C21.9831 117.992 32.6031 133.312 31.3231 150.092C31.1331 153.512 30.2531 157.312 29.7431 160.452C29.3731 162.922 29.2931 164.622 30.0531 165.382C30.8831 166.272 32.6731 165.862 35.4531 164.872C38.9531 163.572 42.6131 161.832 46.6431 160.772C59.5331 157.092 73.9731 159.712 84.5931 167.862C91.6231 173.012 97.4131 179.092 102.963 185.772C119.813 206.352 132.863 227.612 146.873 250.282C152.063 258.532 159.553 272.782 165.253 279.902H165.273L165.283 279.912Z" fill="currentColor"/></svg><span>Sortear um evento</span></button>
+        </div>
+        <div class="hs-palco" data-hs-palco><div class="hs-palco__dentro" data-hs-dentro></div></div>
+        <div class="sr-only" role="status" aria-live="polite" data-hs-vivo></div>
+      </div>
+    </form>
+  </section>
+<!-- hb:fim -->
+
+  <!-- EM DESTAQUE (nível primário) -->
+  <section class="sec-1 faixa">
+    <!-- hd:ini -->
+    <div class="hd-topo">
+      <h2 class="h2 hd-titulo" id="descubra-h">Descubra o que viver agora</h2>
+      <a href="{{hdVerTodos}}" class="more">Ver todos <svg class="ico ico-16" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></a>
+    </div>
+    <div class="hd-chips" role="group" aria-label="O que o carrossel lista">
+      <sc-for list="{{hdBotoes}}" as="t" hint-placeholder-count="4">
+        <button type="button" class="chip" onClick="{{t.pick}}" aria-pressed="{{t.pressed}}">{{t.label}}</button>
+      </sc-for>
+      <button type="button" class="chip hd-mais" onClick="{{hdToggleMais}}" aria-expanded="{{hdMaisOpen}}" aria-label="{{hdMaisLabel}}"><span aria-hidden="true">{{hdMaisSinal}}</span></button>
+      <sc-for list="{{hdExtras}}" as="t" hint-placeholder-count="3">
+        <button type="button" class="chip" onClick="{{t.pick}}" aria-pressed="{{t.pressed}}">{{t.label}}</button>
+      </sc-for>
+    </div>
+    <p class="sr-only" role="status" aria-live="polite">{{hdAnuncio}}</p>
+<!-- hd:fim -->
+    <sc-if value="{{loading}}" hint-placeholder-val="{{false}}">
+      <div class="ev-grid" aria-busy="true" aria-label="Carregando eventos">
+        <sc-for list="{{skeletons}}" as="k" hint-placeholder-count="4">
+          <div class="ev-card ev-card--esqueleto" data-tipo="show" aria-hidden="true"><div class="ev-card__caixa"><span class="ev-card__midia sk"></span><span class="ev-card__corpo"><span class="sk" data-l="titulo"></span><span class="sk" data-l="meta"></span><span class="sk" data-l="meta"></span></span></div></div>
+        </sc-for>
+      </div>
+    </sc-if>
+    <sc-if value="{{hasFeatured}}" hint-placeholder-val="{{true}}">
+      <div class="scr-wrap"><button type="button" class="scr-btn" data-dir="-1" aria-label="Ver eventos anteriores"><svg class="ico ico-16" viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></button><button type="button" class="scr-btn" data-dir="1" aria-label="Ver mais eventos"><svg class="ico ico-16" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button><div class="ev-scroll" data-scroller aria-label="Eventos">
+        <sc-for list="{{featured}}" as="e" hint-placeholder-count="4">
+<!-- fc:ini -->
+          <sc-if value="{{e.cEhShow}}" hint-placeholder-val="{{true}}">
+          <article class="ev-card" data-tipo="show" data-situacao="{{e.cSit}}" data-quieto="{{e.cQuieto}}" data-ini="{{e.cIni}}" data-sem-sincronia="1">
+          <div class="ev-card__caixa">
+            <a class="ev-card__link" href="{{e.cHref}}" target="{{e.cTarget}}" rel="{{e.cRel}}" aria-label="{{e.cAria}}">
+            <span class="ev-card__midia">
+              <img class="ev-card__img" src="{{e.cImg}}" alt="" loading="lazy" decoding="async" width="810" height="1080">
+              <span class="ev-card__ver ilha" aria-hidden="true">Ver detalhes</span>
+            </span>
+            <span class="ev-card__corpo">
+              <sc-if value="{{e.cTemEstado}}" hint-placeholder-val="{{false}}"><span class="tag ev-card__estado" data-sit="{{e.cSit}}"><span class="ev-ic" data-i="{{e.cEstadoIcone}}" aria-hidden="true"></span>{{e.cEstado}}</span></sc-if>
+              <h3 class="ev-card__titulo">{{e.cNome}}</h3>
+              <span class="ev-card__meta"><span class="ev-card__data">{{e.cData}}</span><span class="ev-card__local">{{e.cLocal}}</span></span>
+            </span>
+            </a>
+            <sc-if value="{{e.cCtaTem}}" hint-placeholder-val="{{true}}"><a class="bs bs-ink ev-card__cta" href="{{e.cCtaHref}}" target="{{e.cCtaTarget}}" rel="{{e.cCtaRel}}" aria-label="{{e.cCtaAria}}"><span class="ev-card__cta-t">{{e.cCtaRotulo}}</span><svg class="ico ev-card__seta" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M8 7h9v9"/></svg></a></sc-if>
+          </div>
+        </article>
+          </sc-if>
+          <sc-if value="{{e.cEhJogo}}" hint-placeholder-val="{{false}}">
+          <article class="ev-card" data-tipo="jogo" data-situacao="{{e.cSit}}" data-quieto="{{e.cQuieto}}" data-ini="{{e.cIni}}" data-jogo="{{e.cJogoId}}" data-sem-sincronia="1">
+          <div class="ev-card__caixa">
+            <a class="ev-card__link" href="{{e.cHref}}" target="{{e.cTarget}}" rel="{{e.cRel}}" aria-label="{{e.cAria}}">
+            <span class="ev-card__midia ev-card__placa ilha">
+              <sc-if value="{{e.cTemArte}}" hint-placeholder-val="{{true}}"><span class="ev-card__fundo" aria-hidden="true"><img src="{{e.cArte}}" alt="" loading="lazy" decoding="async" width="576" height="768"></span></sc-if>
+              <span class="ev-card__faixa" aria-hidden="true">
+                <sc-if value="{{e.cE1Tem}}" hint-placeholder-val="{{true}}"><img class="ev-card__escudo" src="{{e.cE1Src}}" alt="{{e.cE1Alt}}" width="64" height="64"></sc-if><sc-if value="{{e.cE1Mon}}" hint-placeholder-val="{{false}}"><span class="ev-card__escudo ev-card__mono">{{e.cE1Mono}}</span></sc-if>
+                <span class="ev-card__x">x</span>
+                <sc-if value="{{e.cE2Tem}}" hint-placeholder-val="{{true}}"><img class="ev-card__escudo" src="{{e.cE2Src}}" alt="{{e.cE2Alt}}" width="64" height="64"></sc-if><sc-if value="{{e.cE2Mon}}" hint-placeholder-val="{{false}}"><span class="ev-card__escudo ev-card__mono">{{e.cE2Mono}}</span></sc-if>
+              </span>
+              <sc-if value="{{e.cTemCamp}}" hint-placeholder-val="{{true}}"><span class="ev-card__camp">{{e.cCamp}}</span></sc-if>
+              <span class="ev-card__apaga" aria-hidden="true"></span>
+              <span class="ev-card__ver ilha" aria-hidden="true">Ver detalhes</span>
+            </span>
+            <span class="ev-card__corpo">
+              <sc-if value="{{e.cTemEstado}}" hint-placeholder-val="{{false}}"><span class="tag ev-card__estado" data-sit="{{e.cSit}}"><span class="ev-ic" data-i="{{e.cEstadoIcone}}" aria-hidden="true"></span>{{e.cEstado}}</span></sc-if>
+              <h3 class="ev-card__titulo">{{e.cNome}}</h3>
+              <span class="ev-card__meta"><span class="ev-card__data">{{e.cData}}</span><span class="ev-card__local">{{e.cLocal}}</span></span>
+            </span>
+            </a>
+            <sc-if value="{{e.cCtaTem}}" hint-placeholder-val="{{true}}"><a class="bs bs-ink ev-card__cta" href="{{e.cCtaHref}}" target="{{e.cCtaTarget}}" rel="{{e.cCtaRel}}" aria-label="{{e.cCtaAria}}"><span class="ev-card__cta-t">{{e.cCtaRotulo}}</span><svg class="ico ev-card__seta" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M8 7h9v9"/></svg></a></sc-if>
+          </div>
+        </article>
+          </sc-if>
+          <!-- fc:fim -->
+        </sc-for>
+      </div></div>
+    </sc-if>
+    <sc-if value="{{noFeatured}}" hint-placeholder-val="{{false}}">
+      <div class="uui-empty-state" role="status">
+          <span class="uui-empty-state__icon"><svg class="uui-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="m21 21-3.5-3.5m2.5-6a8.5 8.5 0 1 1-17 0 8.5 8.5 0 0 1 17 0Z"/></svg></span>
+          <div class="uui-empty-state__header"><h3 class="uui-empty-state__title">Não encontramos eventos em {{cityName}} para “{{intentTitle}}” agora.</h3><p class="uui-empty-state__text">Quer ser avisado quando aparecer? Enquanto isso, veja o que está acontecendo em outras cidades:</p></div>
+          <div class="uui-empty-state__actions"><sc-for list="{{elsewhere}}" as="x" hint-placeholder-count="2"><a href="{{x.href}}" class="bs bs-sm">{{x.label}}</a></sc-for>
+            <button type="button" class="bp" data-toast="{{notifyMsg}}" data-toast-kind="ok">Me avisar quando aparecer</button></div>
+        </div>
+    </sc-if>
+  </section>
+
+
+<!-- fk:ocasiao -->
+<!-- oc:ini -->
+  <section class="sec-2" aria-labelledby="ocasiao-h">
+    <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 16px">
+      <h2 class="h2" id="ocasiao-h">Para que ocasião?</h2>
+    </div>
+    <div class="oc-grid">
+      <a href="Busca.dc.html?tags=ao-ar-livre" class="oc oc-ao-ar-livre"><span class="oc-ic" aria-hidden="true" data-lottie="./assets/icones/ao-ar-livre.json" data-repouso="0" data-loop="1"></span><span class="oc-t">Ao ar livre</span></a>
+      <a href="Busca.dc.html?tags=pra-familia" class="oc oc-pra-familia"><span class="oc-ic" aria-hidden="true" data-lottie="./assets/icones/pra-familia.json" data-repouso="0" data-loop="1"></span><span class="oc-t">Pra curtir com a família</span></a>
+      <a href="Busca.dc.html?tags=bom-pra-date" class="oc oc-bom-pra-date"><span class="oc-ic" aria-hidden="true" data-lottie="./assets/icones/bom-pra-date.json" data-repouso="0" data-loop="0"></span><span class="oc-t">Bom pra um date</span></a>
+      <a href="Busca.dc.html?tags=role-em-grupo" class="oc oc-role-em-grupo"><span class="oc-ic" aria-hidden="true" data-lottie="./assets/icones/role-em-grupo.json" data-repouso="0" data-loop="1"></span><span class="oc-t">Rolê em grupo</span></a>
+      <a href="Busca.dc.html?tags=open-bar" class="oc oc-open-bar"><span class="oc-ic" aria-hidden="true" data-lottie="./assets/icones/open-bar.json" data-repouso="0" data-loop="1"></span><span class="oc-t">Open bar</span></a>
+      <a href="Busca.dc.html?tags=esquenta" class="oc oc-esquenta"><span class="oc-ic" aria-hidden="true" data-lottie="./assets/icones/esquenta.json" data-repouso="0" data-loop="1"></span><span class="oc-t">Esquenta</span></a>
+      <a href="Busca.dc.html?tags=na-pista" class="oc oc-na-pista"><span class="oc-ic" aria-hidden="true" data-lottie="./assets/icones/na-pista.json" data-repouso="0" data-loop="1"></span><span class="oc-t">Na pista</span></a>
+      <a href="Busca.dc.html?tags=por-do-sol" class="oc oc-por-do-sol"><span class="oc-ic" aria-hidden="true" data-lottie="./assets/icones/por-do-sol.json" data-repouso="0" data-loop="1"></span><span class="oc-t">Pôr do sol</span></a>
+      <a href="Busca.dc.html?tags=pra-fazer-amigos" class="oc oc-pra-fazer-amigos"><span class="oc-ic" aria-hidden="true" data-lottie="./assets/icones/pra-fazer-amigos.json" data-repouso="0" data-loop="0"></span><span class="oc-t">Pra fazer amigos</span></a>
+      <a href="Busca.dc.html?tags=cultura" class="oc oc-cultura"><span class="oc-ic" aria-hidden="true" data-lottie="./assets/icones/cultura.json" data-repouso="0" data-loop="0"></span><span class="oc-t">Cultura</span></a>
+      <a href="Busca.dc.html?tags=alternativo" class="oc oc-alternativo"><span class="oc-ic" aria-hidden="true" data-lottie="./assets/icones/alternativo.json" data-repouso="0" data-loop="1"></span><span class="oc-t">Alternativo</span></a>
+      <a href="Busca.dc.html?tags=comida-a-vontade" class="oc oc-comida-a-vontade"><span class="oc-ic" aria-hidden="true" data-lottie="./assets/icones/comida-a-vontade.json" data-repouso="0" data-loop="0"></span><span class="oc-t">Comida à vontade</span></a>
+    </div>
+  </section>
+<!-- oc:fim -->
+<!-- /fk:ocasiao -->
+<!-- sp:ini -->
+  <section class="sec-2 sp-sec faixa" aria-labelledby="sp-h">
+    <div class="hd-topo">
+      <h2 class="h2 hd-titulo sp-titulo" id="sp-h"><span class="sp-logo" role="img" aria-label="Ingresse Sports"></span></h2>
+      <a href="{{spVerTodos}}" class="more">Ver todas <svg class="ico ico-16" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></a>
+    </div>
+    <div class="hd-chips" role="group" aria-label="O que o carrossel de Ingresse Sports lista">
+      <sc-for list="{{spBotoes}}" as="t" hint-placeholder-count="4">
+        <button type="button" class="chip" onClick="{{t.pick}}" aria-pressed="{{t.pressed}}">{{t.label}}</button>
+      </sc-for>
+      <button type="button" class="chip hd-mais" onClick="{{spToggleMais}}" aria-expanded="{{spMaisOpen}}" aria-label="{{spMaisLabel}}"><span aria-hidden="true">{{spMaisSinal}}</span></button>
+      <sc-for list="{{spExtras}}" as="t" hint-placeholder-count="3">
+        <button type="button" class="chip" onClick="{{t.pick}}" aria-pressed="{{t.pressed}}">{{t.label}}</button>
+      </sc-for>
+    </div>
+    <p class="sr-only" role="status" aria-live="polite">{{spAnuncio}}</p>
+    <div class="scr-wrap"><button type="button" class="scr-btn" data-dir="-1" aria-label="Ver provas anteriores"><svg class="ico ico-16" viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></button><button type="button" class="scr-btn" data-dir="1" aria-label="Ver mais provas"><svg class="ico ico-16" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button><div class="ev-scroll" data-scroller aria-label="Provas da Ingresse Sports">
+      <sc-for list="{{spEventos}}" as="e" hint-placeholder-count="4">
+        <article class="ev-card" data-tipo="prova" data-situacao="{{e.cSit}}" data-quieto="{{e.cQuieto}}" data-ini="{{e.cIni}}" data-sem-sincronia="1">
+          <div class="ev-card__caixa">
+            <a class="ev-card__link" href="{{e.cHref}}" target="{{e.cTarget}}" rel="{{e.cRel}}" aria-label="{{e.cAria}}">
+            <span class="ev-card__midia">
+              <img class="ev-card__img esp-capa" src="{{e.cImg}}" srcset="{{e.cSrcset}}" sizes="(max-width: 640px) 78vw, 18rem" alt="" loading="lazy" decoding="async" width="480" height="480">
+              <span class="ev-card__ver ilha" aria-hidden="true">Ver detalhes</span>
+            </span>
+            <span class="ev-card__corpo">
+              <sc-if value="{{e.cTemEstado}}" hint-placeholder-val="{{false}}"><span class="tag ev-card__estado" data-sit="{{e.cSit}}"><span class="ev-ic" data-i="{{e.cEstadoIcone}}" aria-hidden="true"></span>{{e.cEstado}}</span></sc-if>
+              <h3 class="ev-card__titulo">{{e.cNome}}</h3>
+              <span class="ev-card__meta"><span class="ev-card__data">{{e.cData}}</span><span class="ev-card__local">{{e.cLocal}}</span></span>
+            </span>
+            </a>
+            <sc-if value="{{e.cCtaTem}}" hint-placeholder-val="{{true}}"><a class="bs bs-ink ev-card__cta" href="{{e.cCtaHref}}" target="{{e.cCtaTarget}}" rel="{{e.cCtaRel}}" aria-label="{{e.cCtaAria}}"><span class="ev-card__cta-t">{{e.cCtaRotulo}}</span><svg class="ico ev-card__seta" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M8 7h9v9"/></svg></a></sc-if>
+          </div>
+        </article>
+      </sc-for>
+    </div></div>
+  </section>
+<!-- sp:fim -->
+<!-- gn:ini -->
+  <section class="sec-2 gn-sec faixa" aria-labelledby="gn-h">
+    <div class="hd-topo">
+<!-- mvp:titulo-proximos:ini -->
+      <h2 class="h2 hd-titulo mvp-so" id="mvp-gn-h">Nos próximos 15 dias</h2>
+<!-- mvp:titulo-proximos:fim -->
+      <h2 class="h2 hd-titulo" id="gn-h">Que música você quer ouvir ao vivo?</h2>
+      <a href="{{gnVerTodos}}" class="more" aria-label="{{gnVerAria}}">Ver todos <svg class="ico ico-16" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></a>
+    </div>
+    <div class="hd-chips" role="group" aria-label="O que o carrossel de gêneros musicais lista">
+      <sc-for list="{{gnBotoes}}" as="t" hint-placeholder-count="5">
+        <button type="button" class="chip" onClick="{{t.pick}}" aria-pressed="{{t.pressed}}">{{t.label}}</button>
+      </sc-for>
+      <button type="button" class="chip hd-mais" onClick="{{gnToggleMais}}" aria-expanded="{{gnMaisOpen}}" aria-label="{{gnMaisLabel}}"><span aria-hidden="true">{{gnMaisSinal}}</span></button>
+      <sc-for list="{{gnExtras}}" as="t" hint-placeholder-count="3">
+        <button type="button" class="chip" onClick="{{t.pick}}" aria-pressed="{{t.pressed}}">{{t.label}}</button>
+      </sc-for>
+    </div>
+    <p class="sr-only" role="status" aria-live="polite">{{gnAnuncio}}</p>
+    <sc-if value="{{gnTem}}" hint-placeholder-val="{{true}}">
+    <div class="scr-wrap"><button type="button" class="scr-btn" data-dir="-1" aria-label="Ver eventos anteriores"><svg class="ico ico-16" viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></button><button type="button" class="scr-btn" data-dir="1" aria-label="Ver mais eventos"><svg class="ico ico-16" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button><div class="ev-scroll" data-scroller aria-label="Eventos por gênero musical">
+      <sc-for list="{{gnEventos}}" as="e" hint-placeholder-count="4">
+        <sc-if value="{{e.cEhShow}}" hint-placeholder-val="{{true}}">
+          <article class="ev-card" data-tipo="show" data-situacao="{{e.cSit}}" data-quieto="{{e.cQuieto}}" data-ini="{{e.cIni}}" data-sem-sincronia="1">
+          <div class="ev-card__caixa">
+            <a class="ev-card__link" href="{{e.cHref}}" target="{{e.cTarget}}" rel="{{e.cRel}}" aria-label="{{e.cAria}}">
+            <span class="ev-card__midia">
+              <img class="ev-card__img" src="{{e.cImg}}" alt="" loading="lazy" decoding="async" width="810" height="1080">
+              <span class="ev-card__ver ilha" aria-hidden="true">Ver detalhes</span>
+            </span>
+            <span class="ev-card__corpo">
+              <sc-if value="{{e.cTemEstado}}" hint-placeholder-val="{{false}}"><span class="tag ev-card__estado" data-sit="{{e.cSit}}"><span class="ev-ic" data-i="{{e.cEstadoIcone}}" aria-hidden="true"></span>{{e.cEstado}}</span></sc-if>
+              <h3 class="ev-card__titulo">{{e.cNome}}</h3>
+              <span class="ev-card__meta"><span class="ev-card__data">{{e.cData}}</span><span class="ev-card__local">{{e.cLocal}}</span></span>
+            </span>
+            </a>
+            <sc-if value="{{e.cCtaTem}}" hint-placeholder-val="{{true}}"><a class="bs bs-ink ev-card__cta" href="{{e.cCtaHref}}" target="{{e.cCtaTarget}}" rel="{{e.cCtaRel}}" aria-label="{{e.cCtaAria}}"><span class="ev-card__cta-t">{{e.cCtaRotulo}}</span><svg class="ico ev-card__seta" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M8 7h9v9"/></svg></a></sc-if>
+          </div>
+        </article>
+          </sc-if>
+          <sc-if value="{{e.cEhJogo}}" hint-placeholder-val="{{false}}">
+          <article class="ev-card" data-tipo="jogo" data-situacao="{{e.cSit}}" data-quieto="{{e.cQuieto}}" data-ini="{{e.cIni}}" data-jogo="{{e.cJogoId}}" data-sem-sincronia="1">
+          <div class="ev-card__caixa">
+            <a class="ev-card__link" href="{{e.cHref}}" target="{{e.cTarget}}" rel="{{e.cRel}}" aria-label="{{e.cAria}}">
+            <span class="ev-card__midia ev-card__placa ilha">
+              <sc-if value="{{e.cTemArte}}" hint-placeholder-val="{{true}}"><span class="ev-card__fundo" aria-hidden="true"><img src="{{e.cArte}}" alt="" loading="lazy" decoding="async" width="576" height="768"></span></sc-if>
+              <span class="ev-card__faixa" aria-hidden="true">
+                <sc-if value="{{e.cE1Tem}}" hint-placeholder-val="{{true}}"><img class="ev-card__escudo" src="{{e.cE1Src}}" alt="{{e.cE1Alt}}" width="64" height="64"></sc-if><sc-if value="{{e.cE1Mon}}" hint-placeholder-val="{{false}}"><span class="ev-card__escudo ev-card__mono">{{e.cE1Mono}}</span></sc-if>
+                <span class="ev-card__x">x</span>
+                <sc-if value="{{e.cE2Tem}}" hint-placeholder-val="{{true}}"><img class="ev-card__escudo" src="{{e.cE2Src}}" alt="{{e.cE2Alt}}" width="64" height="64"></sc-if><sc-if value="{{e.cE2Mon}}" hint-placeholder-val="{{false}}"><span class="ev-card__escudo ev-card__mono">{{e.cE2Mono}}</span></sc-if>
+              </span>
+              <sc-if value="{{e.cTemCamp}}" hint-placeholder-val="{{true}}"><span class="ev-card__camp">{{e.cCamp}}</span></sc-if>
+              <span class="ev-card__apaga" aria-hidden="true"></span>
+              <span class="ev-card__ver ilha" aria-hidden="true">Ver detalhes</span>
+            </span>
+            <span class="ev-card__corpo">
+              <sc-if value="{{e.cTemEstado}}" hint-placeholder-val="{{false}}"><span class="tag ev-card__estado" data-sit="{{e.cSit}}"><span class="ev-ic" data-i="{{e.cEstadoIcone}}" aria-hidden="true"></span>{{e.cEstado}}</span></sc-if>
+              <h3 class="ev-card__titulo">{{e.cNome}}</h3>
+              <span class="ev-card__meta"><span class="ev-card__data">{{e.cData}}</span><span class="ev-card__local">{{e.cLocal}}</span></span>
+            </span>
+            </a>
+            <sc-if value="{{e.cCtaTem}}" hint-placeholder-val="{{true}}"><a class="bs bs-ink ev-card__cta" href="{{e.cCtaHref}}" target="{{e.cCtaTarget}}" rel="{{e.cCtaRel}}" aria-label="{{e.cCtaAria}}"><span class="ev-card__cta-t">{{e.cCtaRotulo}}</span><svg class="ico ev-card__seta" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M8 7h9v9"/></svg></a></sc-if>
+          </div>
+        </article>
+          </sc-if>
+      </sc-for>
+    </div></div>
+    </sc-if>
+    <sc-if value="{{gnSem}}" hint-placeholder-val="{{false}}">
+      <div class="uui-empty-state" role="status">
+        <span class="uui-empty-state__icon"><svg class="uui-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="m21 21-3.5-3.5m2.5-6a8.5 8.5 0 1 1-17 0 8.5 8.5 0 0 1 17 0Z"/></svg></span>
+        <div class="uui-empty-state__header"><h3 class="uui-empty-state__title">{{gnVazioTitulo}}</h3><p class="uui-empty-state__text">Veja o que mais está acontecendo.</p></div>
+        <div class="uui-empty-state__actions"><a href="Busca.dc.html" class="bs bs-sm">Ver todos os eventos</a>
+          <button type="button" class="bp" data-toast="{{notifyMsg}}" data-toast-kind="ok">Me avisar quando aparecer</button></div>
+      </div>
+    </sc-if>
+  </section>
+<!-- gn:fim -->
+<!-- mvp:revenda-carrossel:ini -->
+  <sc-if value="{{mvpRvTem}}" hint-placeholder-val="{{false}}">
+  <section class="sec-2 faixa mvp-so mvp-rv" aria-labelledby="mvp-rv-h">
+    <div class="hd-topo">
+      <h2 class="h2 hd-titulo" id="mvp-rv-h">Compre de quem não vai mais</h2>
+      <a href="https://revenda.ingresse.com" class="more" aria-label="Ver todos os ingressos na revenda, abre em nova aba" target="_blank" rel="noopener noreferrer">Ver todos <svg class="ico ico-16" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></a>
+    </div>
+    <div class="scr-wrap"><button type="button" class="scr-btn" data-dir="-1" aria-label="Ver eventos anteriores"><svg class="ico ico-16" viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></button><button type="button" class="scr-btn" data-dir="1" aria-label="Ver mais eventos"><svg class="ico ico-16" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button><div class="ev-scroll" data-scroller aria-label="Ingressos de quem não vai mais">
+      <sc-for list="{{mvpRvEventos}}" as="e" hint-placeholder-count="4">
+        <sc-if value="{{e.cEhShow}}" hint-placeholder-val="{{true}}">
+          <article class="ev-card" data-tipo="show" data-situacao="{{e.cSit}}" data-quieto="{{e.cQuieto}}" data-ini="{{e.cIni}}" data-sem-sincronia="1">
+          <div class="ev-card__caixa">
+            <a class="ev-card__link" href="{{e.cHref}}" target="{{e.cTarget}}" rel="{{e.cRel}}" aria-label="{{e.cAria}}">
+            <span class="ev-card__midia">
+              <img class="ev-card__img" src="{{e.cImg}}" alt="" loading="lazy" decoding="async" width="810" height="1080">
+              <span class="ev-card__ver ilha" aria-hidden="true">Ver detalhes</span>
+            </span>
+            <span class="ev-card__corpo">
+              <sc-if value="{{e.cTemEstado}}" hint-placeholder-val="{{false}}"><span class="tag ev-card__estado" data-sit="{{e.cSit}}"><span class="ev-ic" data-i="{{e.cEstadoIcone}}" aria-hidden="true"></span>{{e.cEstado}}</span></sc-if>
+              <h3 class="ev-card__titulo">{{e.cNome}}</h3>
+              <span class="ev-card__meta"><span class="ev-card__data">{{e.cData}}</span><span class="ev-card__local">{{e.cLocal}}</span></span>
+            </span>
+            </a>
+            <sc-if value="{{e.cCtaTem}}" hint-placeholder-val="{{true}}"><a class="bs bs-ink ev-card__cta" href="{{e.cCtaHref}}" target="{{e.cCtaTarget}}" rel="{{e.cCtaRel}}" aria-label="{{e.cCtaAria}}"><span class="ev-card__cta-t">{{e.cCtaRotulo}}</span><svg class="ico ev-card__seta" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M8 7h9v9"/></svg></a></sc-if>
+          </div>
+        </article>
+          </sc-if>
+      </sc-for>
+    </div></div>
+  </section>
+  </sc-if>
+<!-- mvp:revenda-carrossel:fim -->
+  <!-- ARTISTAS EM ALTA -->
+  <section class="sec-2">
+    <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 16px">
+      <h2 class="h2">Artistas em alta</h2>
+      <a href="Busca.dc.html?escopo=artistas" class="more">Ver todos <svg class="ico ico-16" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></a>
+    </div>
+    <div class="row" data-artist-row style="gap: 24px">
+      <sc-for list="{{artists}}" as="a" hint-placeholder-count="6">
+        <div class="art-col">
+          <a href="{{a.href}}" class="art-av"><span class="art-av__foto"><sc-if value="{{a.hasImg}}" hint-placeholder-val="{{true}}"><img src="{{a.img}}" alt="{{a.name}}" style="object-position: {{a.pos}}"></sc-if><sc-if value="{{a.noImg}}" hint-placeholder-val="{{false}}"><span class="art-ini">{{a.initials}}</span></sc-if></span></a>
+          <a href="{{a.href}}" class="art-nome" data-fs="16" style="font-size: 16px; font-weight: 700; line-height: 1.2">{{a.name}}<span style="display: block; font-size: 12px; font-weight: 500; color: var(--muted); margin-top: 2px">{{a.genre}}</span></a>
+          <button type="button" class="chip chip-sm" onClick="{{a.toggle}}" aria-pressed="{{a.pressed}}"><span class="btn-ic btn-ic-heart" aria-hidden="true" data-lottie="./assets/icones/quero-ir.json" data-repouso="0" data-loop="0"></span>{{a.btnLabel}}</button>
+          <sc-if value="{{a.temDatas}}" hint-placeholder-val="{{false}}"><span class="tag tag-sm tag-contagem">{{a.datas}}</span></sc-if>
+        </div>
+      </sc-for>
+    </div>
+  </section>
+
+  <!-- PALCOS E ARENAS -->
+  <section class="sec-2 faixa">
+    <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 16px">
+      <h2 class="h2">Palcos e arenas</h2>
+      <a href="Busca.dc.html?escopo=locais" class="more">Ver todos <svg class="ico ico-16" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></a>
+    </div>
+    <div class="scr-wrap"><button type="button" class="scr-btn" data-dir="-1" aria-label="Ver locais anteriores"><svg class="ico ico-16" viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></button><button type="button" class="scr-btn" data-dir="1" aria-label="Ver mais locais"><svg class="ico ico-16" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button><div class="ev-scroll" data-scroller aria-label="Palcos e arenas">
+      <sc-for list="{{venues}}" as="v" hint-placeholder-count="5">
+        <a href="{{v.href}}" class="card ven-card">
+          <div class="ven-foto"><img src="{{v.img}}" srcset="{{v.srcset}}" sizes="(max-width: 640px) 82vw, 340px" loading="lazy" decoding="async" alt="{{v.alt}}"><span class="ev-card__ver ilha" aria-hidden="true">Ver detalhes</span></div>
+          <div class="ven-tx">
+            <div class="ven-n">{{v.name}}</div>
+            <div class="ven-m">{{v.meta}}</div><sc-if value="{{v.hasCredito}}" hint-placeholder-val="{{false}}"><span class="ven-cred">Foto: {{v.credito}}</span></sc-if>
+          </div>
+        </a>
+      </sc-for>
+    </div></div>
+  </section>
+
+<!-- cx:ini -->
+  <section class="sec-2" aria-labelledby="cat-h">
+    <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 16px">
+      <h2 class="h2" id="cat-h">Explorar por categoria</h2>
+    </div>
+    <div class="oc-grid">
+      <a href="Categoria.dc.html?c=shows" class="oc"><span class="oc-ic" aria-hidden="true" data-lottie="./assets/icones/cat-shows.json" data-repouso="0" data-loop="0"></span><span class="oc-t">Shows</span></a>
+      <a href="Categoria.dc.html?c=festivais" class="oc"><span class="oc-ic" aria-hidden="true" data-lottie="./assets/icones/cat-festivais.json" data-repouso="0" data-loop="0"></span><span class="oc-t">Festivais</span></a>
+      <a href="Categoria.dc.html?c=baladas" class="oc"><span class="oc-ic" aria-hidden="true" data-lottie="./assets/icones/cat-festa-e-balada.json" data-repouso="0" data-loop="1"></span><span class="oc-t">Festa e balada</span></a>
+      <a href="Categoria.dc.html?c=musica-eletronica" class="oc"><span class="oc-ic" aria-hidden="true" data-lottie="./assets/icones/cat-musica-eletronica.json" data-repouso="0" data-loop="0"></span><span class="oc-t">Música eletrônica</span></a>
+      <a href="Categoria.dc.html?c=futebol" class="oc"><span class="oc-ic" aria-hidden="true" data-lottie="./assets/icones/cat-futebol.json" data-repouso="0" data-loop="0"></span><span class="oc-t">Futebol</span></a>
+      <a href="Esportes.dc.html" class="oc"><span class="oc-ic" aria-hidden="true" data-lottie="./assets/icones/cat-esportes.json" data-repouso="0" data-loop="0"></span><span class="oc-t">Esportes</span></a>
+      <a href="Esportes.dc.html" class="oc"><span class="oc-ic" aria-hidden="true" data-lottie="./assets/icones/cat-corridas.json" data-repouso="0" data-loop="0"></span><span class="oc-t">Corridas</span></a>
+      <a href="Categoria.dc.html?c=teatro" class="oc"><span class="oc-ic" aria-hidden="true" data-lottie="./assets/icones/cat-teatro.json" data-repouso="0" data-loop="0"></span><span class="oc-t">Teatro</span></a>
+      <a href="Categoria.dc.html?c=gastronomia" class="oc"><span class="oc-ic" aria-hidden="true" data-lottie="./assets/icones/cat-gastronomia.json" data-repouso="0" data-loop="0"></span><span class="oc-t">Gastronomia</span></a>
+      <a href="Categoria.dc.html?c=infantil" class="oc"><span class="oc-ic" aria-hidden="true" data-lottie="./assets/icones/cat-kids.json" data-repouso="0" data-loop="0"></span><span class="oc-t">Kids</span></a>
+    </div>
+  </section>
+<!-- cx:fim -->
+<!-- pr:ini -->
+  <section class="sec-2 pr-sec" aria-labelledby="pr-h">
+    <div class="pr-cta">
+      <div class="pr-txt">
+        <span class="over">Para produtores</span>
+        <h2 class="h2" id="pr-h">Vai produzir um evento?</h2>
+        <p class="pr-p">Conte sobre o seu evento e o time da Ingresse entra em contato para vender com você.</p>
+      </div>
+      <a href="#" class="bp bp-lg" data-toast="Esta página ainda não está disponível." data-toast-kind="ok">Quero vender com a Ingresse</a>
+    </div>
+  </section>
+<!-- pr:fim -->
+
+  <!-- Estados da Home (controle de protótipo) -->
+  <details class="proto">
+    <summary>Protótipo · estado da Home</summary>
+    <div class="proto-in" role="group" aria-label="Estado da Home">
+      <sc-for list="{{modes}}" as="m" hint-placeholder-count="4"><button type="button" class="chip chip-sm" onClick="{{m.pick}}" aria-pressed="{{m.pressed}}">{{m.label}}</button></sc-for>
+    </div>
+<!-- mvp:chave:ini -->
+    <div class="mvp-chave" role="group" aria-label="Modo do protótipo">
+      <a class="chip chip-sm" data-modo-alvo="completo" href="?modo=completo">Completo</a>
+      <a class="chip chip-sm" data-modo-alvo="mvp" href="?modo=mvp">MVP</a>
+    </div>
+<!-- mvp:chave:fim -->
+  </details>
+</main>
+
+<sc-if value="{{firstAccess}}" hint-placeholder-val="{{false}}">
+  <div style="position: fixed; inset: 0; z-index: 100; background: rgba(10,10,11,.56); display: flex; align-items: flex-end; justify-content: center">
+    <div role="dialog" aria-modal="true" aria-labelledby="fa-title" style="width: 100%; max-width: 640px; background: var(--surface); border-radius: 32px 32px 0 0; padding: 32px 28px 28px; box-shadow: 0 28px 64px rgba(10,10,11,.18)">
+      <div class="over" style="margin-bottom: 8px">Primeiro acesso</div>
+      <h2 id="fa-title" tabindex="-1" style="outline: none; margin: 0 0 6px; font-size: 26px; font-weight: 700; letter-spacing: -.01em">O que você curte ao vivo?</h2>
+      <p style="margin: 0 0 20px; font-size: 15px; color: var(--muted)">Escolha quantos quiser. Dá para mudar depois, e a gente nunca usa isso para pressionar você.</p>
+      <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 24px" role="group" aria-label="Interesses">
+        <sc-for list="{{prefs}}" as="p" hint-placeholder-count="8"><button type="button" class="chip chip-lg" onClick="{{p.toggle}}" aria-pressed="{{p.pressed}}"><sc-if value="{{p.on}}" hint-placeholder-val="{{false}}"><svg class="ico ico-14" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg></sc-if>{{p.label}}</button></sc-for>
+      </div>
+      <div style="display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap">
+        <button type="button" class="bs" onClick="{{skipPrefs}}">Pular</button>
+        <button type="button" class="bp" onClick="{{savePrefs}}">{{saveLabel}}</button>
+      </div>
+    </div>
+  </div>
+</sc-if>
+
+
+<!-- mvp:produtores:ini -->
+<section class="mvp-so mvp-prod" data-mvp="produtores" aria-labelledby="mvp-prod-h">
+  <div class="mvp-prod__fotos" aria-hidden="true">
+    <img class="mvp-prod__f" src="./assets/palcos/d-edge-sao-paulo-680.jpg" alt="" loading="lazy" decoding="async">
+    <img class="mvp-prod__f" src="./assets/palcos/laroc-club-680.jpg" alt="" loading="lazy" decoding="async">
+    <img class="mvp-prod__f" src="./assets/palcos/arena-fonte-nova-680.jpg" alt="" loading="lazy" decoding="async">
+    <img class="mvp-prod__f" src="./assets/palcos/arena-anhembi-680.jpg" alt="" loading="lazy" decoding="async">
+    <img class="mvp-prod__f" src="./assets/palcos/autodromo-de-interlagos-680.jpg" alt="" loading="lazy" decoding="async">
+    <img class="mvp-prod__f" src="./assets/palcos/arena-anhembi-680.jpg" alt="" loading="lazy" decoding="async">
+  </div>
+  <div class="mvp-prod__in">
+    <span class="over">Para produtores</span>
+    <h2 class="mvp-poster" id="mvp-prod-h"><span class="mvp-w" style="--i:0">Cria.</span> <span class="mvp-w" style="--i:1">Divulga.</span> <span class="mvp-w" style="--i:2">Coloca</span> <span class="mvp-w" style="--i:3">seu</span> <span class="mvp-w" style="--i:4">evento</span> <span class="mvp-w" style="--i:5">no</span> <span class="mvp-w" style="--i:6">mundo.</span></h2>
+    <a href="#" class="bp bp-lg" data-toast="Esta página ainda não está disponível." data-toast-kind="ok">Traga seu evento pra Ingresse</a>
+  </div>
+</section>
+<!-- mvp:produtores:fim -->
+<footer class="rp" aria-label="Rodapé">
+  <div class="rp-in">
+    <div class="rp-topo">
+      <a href="Main.dc.html" class="rp-marca" aria-label="Ingresse — início"><img src="./assets/8703fb5f412b57860d569f5abeea2cae.svg" alt="Ingresse"></a>
+      <div class="rp-cols">
+      <nav class="rp-col" aria-labelledby="rp-c0">
+        <h2 class="rp-col__t" id="rp-c0">A Ingresse</h2>
+        <ul class="rp-lista">
+          <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Sobre a Ingresse</a></li>
+          <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Trabalhe conosco</a></li>
+          <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Diversidade e inclusão</a></li>
+          <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Imprensa</a></li>
+        </ul>
+      </nav>
+      <nav class="rp-col" aria-labelledby="rp-c1">
+        <h2 class="rp-col__t" id="rp-c1">Ajuda</h2>
+        <ul class="rp-lista">
+          <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Central de ajuda</a></li>
+          <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Perguntas frequentes</a></li>
+          <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Pedir reembolso</a></li>
+          <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Regras de meia‑entrada</a></li>
+        </ul>
+      </nav>
+      <nav class="rp-col" aria-labelledby="rp-c2">
+        <h2 class="rp-col__t" id="rp-c2">Descubra</h2>
+        <ul class="rp-lista">
+          <li><a class="rp-link" href="Busca.dc.html?escopo=artistas">Artistas</a></li>
+          <li><a class="rp-link" href="Busca.dc.html?escopo=locais">Locais</a></li>
+          <li><a class="rp-link" href="https://revenda.ingresse.com" target="_blank" rel="noopener noreferrer" aria-label="Revenda Oficial, abre em nova aba">Revenda Oficial</a></li>
+          <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Para <span class="rp-nw">produtores<svg class="rp-ico rp-ico--sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M8 7h9v9"/></svg></span></a></li>
+        </ul>
+      </nav>
+      </div>
+    </div>
+    <div class="rp-linha">
+      <div class="rp-apps" role="group" aria-label="Baixe o app">
+        <a class="bs rp-app" href="#" data-toast="O link da App Store entra quando o app novo for publicado" aria-label="Baixar o app da Ingresse para iOS"><svg class="rp-ico" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16.37 12.83c-.02-2.3 1.88-3.4 1.97-3.46-1.07-1.57-2.74-1.78-3.33-1.8-1.42-.14-2.77.83-3.49.83-.72 0-1.83-.81-3.01-.79-1.55.02-2.98.9-3.78 2.29-1.61 2.8-.41 6.94 1.16 9.21.77 1.11 1.68 2.36 2.88 2.31 1.16-.05 1.59-.75 2.99-.75 1.4 0 1.79.75 3.01.72 1.24-.02 2.03-1.13 2.79-2.25.88-1.29 1.24-2.54 1.26-2.6-.03-.01-2.42-.93-2.45-3.71zM14.08 6.07c.64-.77 1.07-1.85.95-2.92-.92.04-2.03.61-2.69 1.38-.59.68-1.11 1.78-.97 2.83 1.02.08 2.07-.52 2.71-1.29z"/></svg><span>iOS</span></a>
+        <a class="bs rp-app" href="#" data-toast="O link do Google Play entra quando o app novo for publicado" aria-label="Baixar o app da Ingresse para Android"><svg class="rp-ico" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 18c0 .55.45 1 1 1h1v3.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5V19h2v3.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5V19h1c.55 0 1-.45 1-1V8H6v10zM3.5 8C2.67 8 2 8.67 2 9.5v7c0 .83.67 1.5 1.5 1.5S5 17.33 5 16.5v-7C5 8.67 4.33 8 3.5 8zm17 0c-.83 0-1.5.67-1.5 1.5v7c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5v-7c0-.83-.67-1.5-1.5-1.5zm-4.97-5.84l1.3-1.3c.2-.2.2-.51 0-.71-.2-.2-.51-.2-.71 0l-1.48 1.48A5.84 5.84 0 0 0 12 1c-.96 0-1.86.23-2.66.63L7.85.15c-.2-.2-.51-.2-.71 0-.2.2-.2.51 0 .71l1.31 1.31A5.98 5.98 0 0 0 6 7h12c0-1.99-.97-3.75-2.47-4.84zM10 5H9V4h1v1zm5 0h-1V4h1v1z"/></svg><span>Android</span></a>
+      </div>
+      <ul class="rp-redes" aria-label="Ingresse nas redes">
+        <li><a class="bs bs-icone rp-rede" href="https://www.instagram.com/ingresse/" target="_blank" rel="noopener noreferrer" aria-label="Ingresse no Instagram (abre em nova aba)"><svg class="rp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><path d="M17.5 6.5h.01"/></svg></a></li>
+        <li><a class="bs bs-icone rp-rede" href="https://www.tiktok.com/@ingresse" target="_blank" rel="noopener noreferrer" aria-label="Ingresse no TikTok (abre em nova aba)"><svg class="rp-ico" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16.6 5.82A4.28 4.28 0 0 1 15.54 3h-3.09v12.4a2.59 2.59 0 0 1-2.59 2.5c-1.42 0-2.6-1.16-2.6-2.6 0-1.72 1.66-3.01 3.37-2.48V9.66c-3.45-.46-6.47 2.22-6.47 5.64 0 3.33 2.76 5.7 5.69 5.7 3.14 0 5.69-2.55 5.69-5.7V9.01a7.35 7.35 0 0 0 4.3 1.38V7.3s-1.88.09-3.24-1.48z"/></svg></a></li>
+        <li><a class="bs bs-icone rp-rede" href="https://www.linkedin.com/company/ingresse/" target="_blank" rel="noopener noreferrer" aria-label="Ingresse no LinkedIn (abre em nova aba)"><svg class="rp-ico" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.45 20.45h-3.56v-5.57c0-1.33-.02-3.04-1.85-3.04-1.85 0-2.14 1.45-2.14 2.94v5.67H9.35V9h3.41v1.56h.05c.48-.9 1.64-1.85 3.37-1.85 3.6 0 4.27 2.37 4.27 5.46v6.28zM5.34 7.43a2.06 2.06 0 1 1 0-4.13 2.06 2.06 0 0 1 0 4.13zM7.12 20.45H3.56V9h3.56v11.45z"/></svg></a></li>
+      </ul>
+    </div>
+    <div class="rp-base">
+      <p class="rp-direitos">© 2026 Ingresse</p>
+      <details class="rp-idioma">
+        <summary class="rp-idioma__b" aria-haspopup="menu"><span class="sr-only">Idioma do site: </span><img class="rp-band" src="./assets/flags/br.svg" alt="" width="24" height="18" data-pv-lang-band><span data-pv-lang-nome>Português (Brasil)</span><svg class="rp-ico rp-ico--sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary>
+        <ul class="rp-idioma__lista" role="menu" aria-label="Idioma do site">
+          <li role="none"><button type="button" class="rp-idioma__op" role="menuitemradio" data-pv-lang="PT" aria-checked="true" tabindex="-1" lang="pt-BR"><img class="rp-band" src="./assets/flags/br.svg" alt="" width="24" height="18">Português (Brasil)</button></li>
+          <li role="none"><button type="button" class="rp-idioma__op" role="menuitemradio" data-pv-lang="PT-PT" aria-checked="false" tabindex="-1" lang="pt-PT"><img class="rp-band" src="./assets/flags/pt.svg" alt="" width="24" height="18">Português (Portugal)</button></li>
+          <li role="none"><button type="button" class="rp-idioma__op" role="menuitemradio" data-pv-lang="ES" aria-checked="false" tabindex="-1" lang="es"><img class="rp-band" src="./assets/flags/es.svg" alt="" width="24" height="18">Español</button></li>
+          <li role="none"><button type="button" class="rp-idioma__op" role="menuitemradio" data-pv-lang="EN" aria-checked="false" tabindex="-1" lang="en"><img class="rp-band" src="./assets/flags/us.svg" alt="" width="24" height="18">English</button></li>
+        </ul>
+      </details>
+      <ul class="rp-legais" aria-label="Termos e políticas">
+        <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Política de privacidade</a></li>
+        <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Termos de uso</a></li>
+        <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Termos de compra</a></li>
+        <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Configurações de cookies</a></li>
+      </ul>
+    </div>
+    <div class="rp-grupo">
+      <h2 class="rp-grupo__t" id="rp-grupo">Empresas do Grupo Ingresse</h2>
+      <ul class="rp-grupo__lista" aria-labelledby="rp-grupo">
+        <li><a class="rp-link" href="https://ingresse.com/" target="_blank" rel="noopener noreferrer" aria-label="Ingresse (ingresse.com, abre em nova aba)">Ingresse</a></li>
+        <li><a class="rp-link" href="https://ticketsports.com.br/" target="_blank" rel="noopener noreferrer" aria-label="TicketSports (ticketsports.com.br, abre em nova aba)">TicketSports</a></li>
+        <li><a class="rp-link" href="https://outgo.com.br/" target="_blank" rel="noopener noreferrer" aria-label="OutGo (outgo.com.br, abre em nova aba)">OutGo</a></li>
+        <li><a class="rp-link" href="https://ingressonacional.com.br/" target="_blank" rel="noopener noreferrer" aria-label="Ingresso Nacional (ingressonacional.com.br, abre em nova aba)">Ingresso Nacional</a></li>
+        <li><a class="rp-link" href="https://ingressolive.com/" target="_blank" rel="noopener noreferrer" aria-label="Ingresso Live (ingressolive.com, abre em nova aba)">Ingresso Live</a></li>
+        <li><a class="rp-link" href="https://blacktag.com.br/" target="_blank" rel="noopener noreferrer" aria-label="Blacktag (blacktag.com.br, abre em nova aba)">Blacktag</a></li>
+        <li><a class="rp-link" href="https://pixelticket.com.br/" target="_blank" rel="noopener noreferrer" aria-label="PixelTicket (pixelticket.com.br, abre em nova aba)">PixelTicket</a></li>
+        <li><a class="rp-link" href="https://meep.com.br/" target="_blank" rel="noopener noreferrer" aria-label="Meep (meep.com.br, abre em nova aba)">Meep</a></li>
+      </ul>
+    </div>
+  </div>
+</footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":3000}}'>
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = { intent: 'semana', follow: {}, city: 'SP', mode: 'padrao', slide: 0, paused: false, stopped: false }; }
+  componentDidMount() {
+    /* o teclado dos diálogos é do IngresseModal (home/modal-uui.js) */
+    this.fitArtists = () => {
+      const row = document.querySelector('[data-artist-row]');
+      const w = row ? row.clientWidth : window.innerWidth - 48;
+      const cols = Math.max(3, Math.floor((w + 24) / 200));
+      if (cols !== this.state.artistCols) this.setState({ artistCols: cols });
+    };
+    requestAnimationFrame(this.fitArtists);
+    window.addEventListener('resize', this.fitArtists);
+    this.cidMuda = () => this.setState({ cidV: Date.now() });
+    document.addEventListener('previa:cidade', this.cidMuda);
+    fetch('/api/eventos').then(r => r.ok ? r.json() : null).then(d => { if (d && Array.isArray(d.events) && d.events.length) this.setState({ live: d }); }).catch(() => {});
+    const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    // Autoplay respeita: movimento reduzido, hover/foco (pausa) e o botão de pausa explícito (WCAG 2.2.2).
+    this.restart = () => {
+      clearInterval(this.timer);
+      if (this.state.stopped) return;
+      this.timer = setInterval(() => { if (!this.state.paused && !this.state.stopped && this.state.mode === 'padrao') this.setState({ slide: this.state.slide + 1 }); }, 8000);
+    };
+    if (reduce) { this.setState({ stopped: true }); return; }
+    this.restart();
+  }
+  componentWillUnmount() { if (this.timer) clearInterval(this.timer); window.removeEventListener('resize', this.fitArtists); document.removeEventListener('previa:cidade', this.cidMuda); document.removeEventListener('keydown', this.onKey); }
+  componentDidUpdate() { const m = this.state.mode; if (m === 'primeiro' && this.__modoAnterior !== 'primeiro' && window.IngresseCurte) window.IngresseCurte.abrir({ primeiro: true, gatilho: document.querySelector('[data-hc-abrir]'), aoFechar: () => { if (this.state.mode === 'primeiro') this.setState({ mode: 'padrao' }); } }); this.__modoAnterior = m; }
+  renderVals() {
+    const REAL={"aadb5221216d146af0adb7ea36952357":"./assets/real/99149.avif","934ed24f841e070877891e43c16b015d":"./assets/real/103645.avif","12f01a407f3e59141bcaea65ff714e26":"./assets/real/108821.avif","0a663dcd296f711f90aac49fb2442c1f":"./assets/real/107033.avif","577ee6362194dca322767e6cf9e27735":"./assets/real/105388.avif","45dee8f0c58ec197decdac7a16380a95":"./assets/real/109870.avif","954d030c60d52efe5dcf0fa8a6c6162e":"./assets/real/107659.avif","d97fce039f22811278a86f9ad25edb3b":"./assets/real/109547.avif","b32ba7b1957e931aba4f52f3814b30be":"./assets/real/108888.avif","b552a01adae792f30966fc41bad8be39":"./assets/real/92947.avif","e3247ee792aa6888ce3ded49878f5e66":"./assets/real/108325.avif","694a7db84a8556f62223a3efe451fdf8":"./assets/real/91221.avif","446c703cd44d165acb669098b67f9882":"./assets/real/94183.avif","0a731fef13a428960ff76173e6802b19":"./assets/real/108825.avif","706bfd3886c596df3c133118d52248b0":"./assets/real/108889.avif","084151755aabb4b020356d6b487553ec":"./assets/real/109546.avif","2e2d11eded0846e77c8204fa0f0e66e7":"./assets/real/108421.avif","5f8eed45a36e139514dbd92e36860660":"./assets/real/99261.avif","639175e2297d42530c16a83b62e78b3d":"./assets/real/106671.avif","339d89d9c33e8323f39b7da5717d55a8":"./assets/real/103653.avif","a12e7d2dd63af8da165f395128c9e672":"./assets/real/108536.avif","2959447541b48ebb1ca4a5422fd36f6c":"./assets/real/104717.avif","a109e7103f83bec95e545e9bc2fddef3":"./assets/real/108826.avif","3fb4fe2f24cb53922c88d5d200521650":"./assets/real/108881.avif","6083b051a648edee2775457b3c8a9710":"./assets/real/105383.avif","7936f484f211e3d92d2756518ec45abf":"./assets/real/93986.avif","b9134955a5526d57ac5fd14e3496463b":"./assets/real/108887.avif","0cc7b430ea7a9dd14644084531874c83":"./assets/real/104600.avif","783be348a514cdedc84e195a749ad926":"./assets/real/104585.avif","139248faaae9af501a30d143077ba9d1":"./assets/real/108882.avif","97209d7e927408a0c567805bd8e4d09f":"./assets/real/108468.avif"}; const B = id => REAL[id] || (['2959447541b48ebb1ca4a5422fd36f6c','446c703cd44d165acb669098b67f9882','6083b051a648edee2775457b3c8a9710','694a7db84a8556f62223a3efe451fdf8','7936f484f211e3d92d2756518ec45abf','97209d7e927408a0c567805bd8e4d09f'].includes(id) ? './assets/' + id + '.avif' : './assets/gen/' + id + '.avif');
+    // Catálogo real (JSON de categorias). Cidade escolhida no header filtra Em destaque.
+    const ev = {
+      moving: { name: 'MOVING D-EDGE SP · Anas.tacia b2b Dan C', date: 'Qui 15 out · 22h', venue: 'D-EDGE · São Paulo', img: B('12f01a407f3e59141bcaea65ff714e26'), flag: 'Esta semana' },
+      freak: { name: 'FREAK CHIC D-EDGE SP · Ale F b2b Kari Bazzo', date: 'Sex 16 out · 23h59', venue: 'D-EDGE · São Paulo', img: B('139248faaae9af501a30d143077ba9d1'), flag: 'Esta semana' },
+      alok: { name: 'Laroc apresenta: Rave the World by Alok', date: 'Sáb 17 out · 16h', venue: 'Laroc Club · Valinhos, SP', img: B('0cc7b430ea7a9dd14644084531874c83'), flag: 'Esta semana' },
+      sorrisoCps: { name: 'Sorriso Eu Gosto no Pagode — Campinas', date: 'Sáb 17 out · 15h', venue: 'Sambódromo de Paulínia, SP', img: B('6083b051a648edee2775457b3c8a9710'), flag: 'Esta semana', href: 'Colecao.dc.html' },
+      prima: { name: 'Primavera Sound São Paulo 2026', date: 'Sáb 5 e dom 6 dez', venue: 'Autódromo de Interlagos · São Paulo', img: B('7936f484f211e3d92d2756518ec45abf'), cta: 'Pré-venda' },
+      sorriso: { name: 'Sorriso Eu Gosto no Pagode — São Paulo', date: 'Dom 8 nov · 13h', venue: 'Arena Anhembi · São Paulo', img: B('2959447541b48ebb1ca4a5422fd36f6c') },
+      junto: { name: 'Juntô · Roda de samba', date: 'Dom 25 out · 15h', venue: 'Casa Tupi · São Paulo', img: B('0a663dcd296f711f90aac49fb2442c1f') },
+      boris: { name: 'Laroc Club apresenta: Boris Brejcha', date: 'Sex 13 nov · 21h', venue: 'Laroc Club · Valinhos, SP', img: B('934ed24f841e070877891e43c16b015d') },
+      nave: { name: 'NAVE D-EDGE SP · Daniel Ranieri, Rocio Portillo', date: 'Sáb 17 out · 23h59', venue: 'D-EDGE · São Paulo', img: B('b32ba7b1957e931aba4f52f3814b30be'), flag: 'Esta semana' },
+      ex: { name: 'Pagode do Ex', date: 'Hoje · 17h', venue: 'Villa Gávea · Rio de Janeiro', img: B('a12e7d2dd63af8da165f395128c9e672'), flag: 'Hoje' },
+      gavea: { name: 'Gávea Samba Clube', date: 'Sex 16 out · 22h', venue: 'Villa, Planetário Gávea · Rio de Janeiro', img: B('e3247ee792aa6888ce3ded49878f5e66'), flag: 'Esta semana' },
+      victor: { name: 'D-EDGE Rio apresenta Victor Lou', date: 'Sex 16 out · 23h', venue: 'D-EDGE Rio · Rio de Janeiro', img: B('97209d7e927408a0c567805bd8e4d09f'), flag: 'Esta semana' },
+      kids: { name: 'Botafogo × Chapecoense — Star Arena Kids', date: 'Sáb 17 out · 18h', venue: 'Estádio Nilton Santos · Rio de Janeiro', img: B('45dee8f0c58ec197decdac7a16380a95'), flag: 'Esta semana', href: 'Categoria.dc.html?c=infantil' },
+      paraiso: { name: 'Arena Paraíso Edição Paris', date: 'Sáb 24 out · 22h', venue: 'Arena Paraíso · Rio de Janeiro', img: B('577ee6362194dca322767e6cf9e27735') },
+      domRio: { name: 'Turnê Dominguinho — Rio de Janeiro [data extra]', date: 'Dom 15 nov · 15h', venue: 'Cidade das Artes · Rio de Janeiro', img: B('2e2d11eded0846e77c8204fa0f0e66e7'), href: 'Colecao.dc.html' }
+    };
+    /* cg:ini */
+    const chipsGrupo = c => {
+      const aberto = !!this.state[c.mais];
+      const botao = x => ({ label: x.label, pressed: x.id === c.atual ? 'true' : 'false', pick: () => this.setState({ [c.sel]: x.id, ...(c.ao || {}), [c.sel + 'Ativo']: true, [c.mais]: c.extras.some(e => e.id === x.id) ? true : this.state[c.mais] }) });
+      return {
+        botoes: c.principais.map(botao),
+        extras: c.extras.filter(x => aberto || x.id === c.atual).map(botao),
+        maisOpen: aberto ? 'true' : 'false', maisSinal: aberto ? '−' : '+', maisLabel: aberto ? "Mostrar menos opções" : "Mostrar mais opções",
+        toggleMais: () => this.setState({ [c.mais]: !aberto }),
+        anunciar: !!this.state[c.sel + 'Ativo'] // a pessoa já trocou de chip: a lista anuncia a troca ao leitor de tela (o mesmo da página Esportes)
+      };
+    };
+    /* cg:fim */
+    /* hd:ini */
+    // Eventos reais do catálogo do v5.3 que alimentam os botões novos
+    Object.assign(ev, {
+      reveillon: { name: 'Réveillon dos Milagres 2027', date: 'Dom 27 dez · 21h', venue: 'Praia de Marceneiro · AL', img: B('446c703cd44d165acb669098b67f9882') }
+    });
+    const sets = {
+      SP: { semana: ['moving', 'freak', 'nave', 'alok', 'sorrisoCps', 'prima', 'junto', 'boris'], reveillon: ['reveillon'], shows: ['prima', 'sorriso', 'junto', 'boris'], futebol: [],
+            perto: ['junto', 'nave', 'sorriso', 'prima'], eletronica: ['moving', 'freak', 'nave', 'alok', 'boris'], samba: ['sorriso', 'sorrisoCps', 'junto'] },
+      RJ: { semana: ['ex', 'gavea', 'victor', 'kids', 'paraiso', 'domRio'], reveillon: ['reveillon'], shows: ['domRio', 'paraiso', 'gavea', 'victor'], futebol: ['kids'],
+            perto: ['ex', 'gavea', 'paraiso', 'victor'], eletronica: ['victor'], samba: ['ex', 'gavea'] }
+    };
+    const cityNames = { SP: 'São Paulo', RJ: 'Rio de Janeiro' };
+    const labels = { semana: 'Esta semana', reveillon: 'Réveillon 2027', shows: 'Shows', futebol: 'Futebol', perto: 'Perto de mim', eletronica: 'Eletrônica hoje', samba: 'Roda de samba' };
+    const PRINCIPAIS = ['semana', 'reveillon', 'shows', 'futebol'];
+    const EXTRAS = ['perto', 'eletronica', 'samba'];
+    const cidAtual = window.IngresseLocal ? window.IngresseLocal.get() : { id: 'br-sp-sao-paulo', nivel: 'cidade', nome: 'São Paulo', uf: 'SP', cidade: 'São Paulo', pais: 'Brasil', origem: 'padrao' };
+    const locContem = e => window.IngresseLocal ? window.IngresseLocal.contem(e) : e.state === 'SP';
+    const city = cidAtual.uf === 'RJ' ? 'RJ' : 'SP'; // a vitrine curada existe para SP e RJ; em outros lugares só vêm os eventos do catálogo que o lugar contém
+    const fixosOk = locContem({ uf: city, cidade: cityNames[city] });
+    const cidNome = cidAtual.nome;
+    const cur = this.state.intent;
+    // chips, «+» e extra escolhido: a função compartilhada com Ingresse Sports e Gênero (home-carrossel.mjs)
+    const HDC = chipsGrupo({ sel: 'intent', mais: 'mais', principais: PRINCIPAIS.map(id => ({ id, label: labels[id] })), extras: EXTRAS.map(id => ({ id, label: labels[id] })), atual: cur, ao: { slide: 0 } });
+    const intents = HDC.botoes;
+    const HD = {
+      hdBotoes: HDC.botoes, hdExtras: HDC.extras, hdMaisOpen: HDC.maisOpen, hdMaisSinal: HDC.maisSinal, hdMaisLabel: HDC.maisLabel, hdToggleMais: HDC.toggleMais,
+      // "Ver todos" leva à página da categoria quando o botão escolhido é uma categoria (Shows, Futebol, Eletrônica); os outros seguem para a Busca
+      hdVerTodos: ({ shows: 'Categoria.dc.html?c=shows', futebol: 'Categoria.dc.html?c=futebol', eletronica: 'Categoria.dc.html?c=musica-eletronica', samba: 'Busca.dc.html?tags=samba-pagode', reveillon: 'Busca.dc.html?tags=reveillon' })[cur] || 'Busca.dc.html'
+    };
+    /* hd:fim */
+    /* hb:ini */
+    const hbQ = this.state.hbQ || '';
+    const HB = {
+      hbQ, hbOnQ: e => this.setState({ hbQ: e.target.value }),
+      // «Buscar»: texto digitado (as escolhas da modal «O que você curte ao vivo?» entram por home-curte.js, que ajusta o link no clique)
+      hbHref: 'Busca.dc.html' + (hbQ.trim() ? '?q=' + encodeURIComponent(hbQ.trim()) : ''),
+      hbSubmit: e => { e.preventDefault(); const a = document.querySelector('.hb-ir'); if (a) a.click(); }
+    };
+    /* hb:fim */
+    /* sp:ini */
+    const SP = {"botoes":[{"id":"proximas","label":"Próximas provas","ver":"Esportes.dc.html"},{"id":"corrida","label":"Corrida","ver":"Esportes.dc.html?modalidade=corrida"},{"id":"trail","label":"Trail run","ver":"Esportes.dc.html?modalidade=trail-run"},{"id":"meia","label":"Meia maratona","ver":"Esportes.dc.html?distancia=21k&modalidade=corrida"}],"extras":[{"id":"ciclismo","label":"Ciclismo","ver":"Esportes.dc.html?modalidade=ciclismo"},{"id":"triathlon","label":"Triathlon","ver":"Esportes.dc.html?modalidade=triathlon"},{"id":"natacao","label":"Natação","ver":"Esportes.dc.html?modalidade=natacao"},{"id":"estreantes","label":"Para estreantes","ver":"Esportes.dc.html?publico=estreantes"},{"id":"femininas","label":"Provas femininas","ver":"Esportes.dc.html?publico=feminino"},{"id":"kids","label":"Kids","ver":"Esportes.dc.html?publico=kids"}],"itens":{"2001":{"i":2001,"n":"Corrida Trovão Cinzento · Rio de Janeiro","c":"Rio de Janeiro","uf":"RJ","t":1812273000000,"iso":"2027-06-06","kd":"10 e 16","ku":"km","ks":"","cv":"quadradas/tsq-22","l":"Orla de Copacabana","vir":0,"s":"venda"},"2003":{"i":2003,"n":"Corrida Sal Carmim em Gramado","c":"Gramado","uf":"RS","t":1801387800000,"iso":"2027-01-31","kd":"3, 5 e 10","ku":"km","ks":"","cv":"quadradas/tsq-02","l":"Lago Negro","vir":0,"s":"venda"},"2005":{"i":2005,"n":"Corrida Brisa Dourado em Recife","c":"Recife","uf":"PE","t":1822473000000,"iso":"2027-10-02","kd":"5 e 10","ku":"km","ks":"","cv":"quadradas/tsq-16","l":"Praia de Boa Viagem","vir":0,"s":"venda"},"2006":{"i":2006,"n":"Corrida Eco Cinzento em Porto Alegre","c":"Porto Alegre","uf":"RS","t":1814606100000,"iso":"2027-07-03","kd":"5, 10 e 15","ku":"km","ks":"","cv":"quadradas/tsq-36","l":"Parque Farroupilha","vir":0,"s":"venda"},"2007":{"i":2007,"n":"Corrida Sol Âmbar · Brasília","c":"Brasília","uf":"DF","t":1821261600000,"iso":"2027-09-18","kd":"5 a 21,1","ku":"km","ks":"4 provas","cv":"quadradas/tsq-08","l":"Parque da Cidade Sarah Kubitschek","vir":0,"s":"venda"},"2008":{"i":2008,"n":"Corrida Névoa Sereno em Rio de Janeiro","c":"Rio de Janeiro","uf":"RJ","t":1794652200000,"iso":"2026-11-14","kd":"10","ku":"km","ks":"","cv":"quadradas/tsq-20","l":"Orla de Copacabana","vir":0,"s":"venda"},"2009":{"i":2009,"n":"Corrida Sal Âmbar · São Paulo","c":"São Paulo","uf":"SP","t":1820739600000,"iso":"2027-09-12","kd":"5 a 21,1","ku":"km","ks":"4 provas","cv":"quadradas/tsq-28","l":"Parque Ibirapuera","vir":0,"s":"venda"},"2010":{"i":2010,"n":"Corrida Sal Sereno · Fortaleza","c":"Fortaleza","uf":"CE","t":1795253400000,"iso":"2026-11-21","kd":"3, 5 e 10","ku":"km","ks":"","cv":"quadradas/tsq-04","l":"Parque do Cocó","vir":0,"s":"venda"},"2011":{"i":2011,"n":"Corrida Névoa Sereno · São Paulo","c":"São Paulo","uf":"SP","t":1819445400000,"iso":"2027-08-28","kd":"5 e 10","ku":"km","ks":"","cv":"quadradas/tsq-18","l":"Parque Villa-Lobos","vir":0,"s":"venda"},"2012":{"i":2012,"n":"Corrida Rio Celeste · Campinas","c":"Campinas","uf":"SP","t":1817631000000,"iso":"2027-08-07","kd":"5 e 10","ku":"km","ks":"","cv":"quadradas/tsq-23","l":"Lagoa do Taquaral","vir":0,"s":"venda"},"2014":{"i":2014,"n":"Corrida Sombra Violeta · Maceió","c":"Maceió","uf":"AL","t":1794045600000,"iso":"2026-11-07","kd":"3, 5 e 10","ku":"km","ks":"","cv":"quadradas/tsq-05","l":"Praia de Pajuçara","vir":0,"s":"venda"},"2016":{"i":2016,"n":"Corrida Cinza Celeste em Salvador","c":"Salvador","uf":"BA","t":1823079600000,"iso":"2027-10-09","kd":"5","ku":"km","ks":"","cv":"quadradas/tsq-22","l":"Parque de Pituaçu","vir":0,"s":"venda"},"2018":{"i":2018,"n":"Corrida Sal Anil · Florianópolis","c":"Florianópolis","uf":"SC","t":1816425000000,"iso":"2027-07-24","kd":"3, 5 e 10","ku":"km","ks":"","cv":"quadradas/tsq-29","l":"Beira-Mar Norte","vir":0,"s":"venda"},"2020":{"i":2020,"n":"Corrida Névoa Jade em Recife","c":"Recife","uf":"PE","t":1794042000000,"iso":"2026-11-07","kd":"3 a 21,1","ku":"km","ks":"5 provas","cv":"quadradas/tsq-29","l":"Marco Zero","vir":0,"s":"venda"},"2021":{"i":2021,"n":"Corrida Mata Âmbar · Belo Horizonte","c":"Belo Horizonte","uf":"MG","t":1794648600000,"iso":"2026-11-14","kd":"5 e 10","ku":"km","ks":"","cv":"quadradas/tsq-09","l":"Lagoa da Pampulha","vir":0,"s":"venda"},"2022":{"i":2022,"n":"Corrida Lua Âmbar · São Paulo","c":"São Paulo","uf":"SP","t":1794047400000,"iso":"2026-11-07","kd":"5 e 10","ku":"km","ks":"","cv":"quadradas/tsq-11","l":"Parque Villa-Lobos","vir":0,"s":"venda"},"2023":{"i":2023,"n":"Corrida Sal Elétrico · Rio de Janeiro","c":"Rio de Janeiro","uf":"RJ","t":1795252500000,"iso":"2026-11-21","kd":"5, 10 e 15","ku":"km","ks":"","cv":"quadradas/tsq-08","l":"Lagoa Rodrigo de Freitas","vir":0,"s":"venda"},"2027":{"i":2027,"n":"Corrida Aurora Aberto · Porto Alegre","c":"Porto Alegre","uf":"RS","t":1797670800000,"iso":"2026-12-19","kd":"5 a 21,1","ku":"km","ks":"4 provas","cv":"quadradas/tsq-30","l":"Parque Farroupilha","vir":0,"s":"venda"},"2029":{"i":2029,"n":"Corrida Brisa Cinzento · Vitória","c":"Vitória","uf":"ES","t":1799488800000,"iso":"2027-01-09","kd":"5 a 21,1","ku":"km","ks":"4 provas","cv":"quadradas/tsq-36","l":"Praia de Camburi","vir":0,"s":"venda"},"2030":{"i":2030,"n":"Corrida Farol Prata · São Paulo","c":"São Paulo","uf":"SP","t":1808560800000,"iso":"2027-04-24","kd":"5 e 10","ku":"km","ks":"","cv":"quadradas/tsq-04","l":"Autódromo de Interlagos","vir":0,"s":"venda"},"2031":{"i":2031,"n":"Corrida Noturna Eco Ventania · São Paulo","c":"São Paulo","uf":"SP","t":1817593200000,"iso":"2027-08-06","kd":"5","ku":"km","ks":"","cv":"quadradas/tsq-13","l":"Parque Ibirapuera","vir":0,"s":"venda"},"2032":{"i":2032,"n":"Corrida Noturna Névoa Prata · Fortaleza","c":"Fortaleza","uf":"CE","t":1796428800000,"iso":"2026-12-04","kd":"5 e 8","ku":"km","ks":"","cv":"quadradas/tsq-17","l":"Beira-Mar","vir":0,"s":"venda"},"2033":{"i":2033,"n":"Corrida Noturna Rio Cinzento · São Paulo","c":"São Paulo","uf":"SP","t":1801269000000,"iso":"2027-01-29","kd":"5","ku":"km","ks":"","cv":"quadradas/tsq-35","l":"Parque Villa-Lobos","vir":0,"s":"venda"},"2034":{"i":2034,"n":"Corrida Noturna Poeira Sereno · Maceió","c":"Maceió","uf":"AL","t":1799451000000,"iso":"2027-01-08","kd":"5","ku":"km","ks":"","cv":"quadradas/tsq-03","l":"Praia de Pajuçara","vir":0,"s":"venda"},"2035":{"i":2035,"n":"Corrida Noturna Brisa Celeste · Curitiba","c":"Curitiba","uf":"PR","t":1812150000000,"iso":"2027-06-04","kd":"5 e 8","ku":"km","ks":"","cv":"quadradas/tsq-27","l":"Parque Barigui","vir":0,"s":"venda"},"2036":{"i":2036,"n":"Corrida Noturna Brisa Cobalto · Balneário Camboriú","c":"Balneário Camboriú","uf":"SC","t":1804981200000,"iso":"2027-03-13","kd":"7","ku":"km","ks":"","cv":"quadradas/tsq-14","l":"Praia Central","vir":0,"s":"venda"},"2037":{"i":2037,"n":"Corrida Noturna Lua Sereno · Florianópolis","c":"Florianópolis","uf":"SC","t":1813446600000,"iso":"2027-06-19","kd":"7","ku":"km","ks":"","cv":"quadradas/tsq-10","l":"Beira-Mar Norte","vir":0,"s":"venda"},"2038":{"i":2038,"n":"Corrida Noturna Vento Celeste · Belo Horizonte","c":"Belo Horizonte","uf":"MG","t":1808519400000,"iso":"2027-04-23","kd":"5 e 8","ku":"km","ks":"","cv":"quadradas/tsq-08","l":"Lagoa da Pampulha","vir":0,"s":"venda"},"2039":{"i":2039,"n":"Corrida Noturna Farol Cobalto · Florianópolis","c":"Florianópolis","uf":"SC","t":1823641200000,"iso":"2027-10-15","kd":"5 e 8","ku":"km","ks":"","cv":"quadradas/tsq-30","l":"Beira-Mar Norte","vir":0,"s":"venda"},"2040":{"i":2040,"n":"Corrida Noturna Névoa Cinzento · Porto Alegre","c":"Porto Alegre","uf":"RS","t":1794612600000,"iso":"2026-11-13","kd":"5 e 8","ku":"km","ks":"","cv":"quadradas/tsq-14","l":"Parque Marinha do Brasil","vir":0,"s":"venda"},"2041":{"i":2041,"n":"Corrida Delas Lua Marfim · Rio de Janeiro","c":"Rio de Janeiro","uf":"RJ","t":1806231600000,"iso":"2027-03-28","kd":"5 e 10","ku":"km","ks":"","cv":"quadradas/tsq-23","l":"Lagoa Rodrigo de Freitas","vir":0,"s":"venda"},"2042":{"i":2042,"n":"Corrida Delas Vento Âmbar · São Paulo","c":"São Paulo","uf":"SP","t":1813486200000,"iso":"2027-06-20","kd":"5 e 7","ku":"km","ks":"","cv":"quadradas/tsq-21","l":"Parque Ibirapuera","vir":0,"s":"venda"},"2043":{"i":2043,"n":"Corrida Delas Maré Cinzento · Salvador","c":"Salvador","uf":"BA","t":1821348000000,"iso":"2027-09-19","kd":"5 e 10","ku":"km","ks":"","cv":"quadradas/tsq-29","l":"Parque de Pituaçu","vir":0,"s":"venda"},"2044":{"i":2044,"n":"Corrida Delas Aurora Veloz Noturna · Florianópolis","c":"Florianópolis","uf":"SC","t":1804894200000,"iso":"2027-03-12","kd":"5","ku":"km","ks":"","cv":"quadradas/tsq-10","l":"Beira-Mar Norte","vir":0,"s":"venda"},"2045":{"i":2045,"n":"Corrida Delas Trovão Cinzento · Goiânia","c":"Goiânia","uf":"GO","t":1795345200000,"iso":"2026-11-22","kd":"5 e 10","ku":"km","ks":"","cv":"quadradas/tsq-35","l":"Parque Flamboyant","vir":0,"s":"venda"},"2046":{"i":2046,"n":"Corrida Delas Sol Violeta · Rio de Janeiro","c":"Rio de Janeiro","uf":"RJ","t":1794738600000,"iso":"2026-11-15","kd":"5","ku":"km","ks":"","cv":"quadradas/tsq-28","l":"Orla de Copacabana","vir":0,"s":"venda"},"2047":{"i":2047,"n":"Corrida Delas Sombra Violeta · São Paulo","c":"São Paulo","uf":"SP","t":1794742200000,"iso":"2026-11-15","kd":"5","ku":"km","ks":"","cv":"quadradas/tsq-21","l":"Parque Ibirapuera","vir":0,"s":"venda"},"2048":{"i":2048,"n":"Corrida Delas Rio Anil Noturna · Recife","c":"Recife","uf":"PE","t":1796425200000,"iso":"2026-12-04","kd":"5 e 10","ku":"km","ks":"","cv":"quadradas/tsq-02","l":"Praia de Boa Viagem","vir":0,"s":"venda"},"2049":{"i":2049,"n":"Corrida Kids Cinza Celeste · Rio de Janeiro","c":"Rio de Janeiro","uf":"RJ","t":1810468800000,"iso":"2027-05-16","kd":"1 e 2","ku":"km","ks":"","cv":"quadradas/tsq-09","l":"Orla de Copacabana","vir":0,"s":"venda"},"2051":{"i":2051,"n":"Corrida Kids Sal Salgado · Florianópolis","c":"Florianópolis","uf":"SC","t":1806838200000,"iso":"2027-04-04","kd":"1, 2 e 3","ku":"km","ks":"","cv":"quadradas/tsq-18","l":"Beira-Mar Norte","vir":0,"s":"venda"},"2052":{"i":2052,"n":"Corrida Kids Sol Dourado · Curitiba","c":"Curitiba","uf":"PR","t":1819539000000,"iso":"2027-08-29","kd":"1","ku":"km","ks":"","cv":"quadradas/tsq-33","l":"Parque Barigui","vir":0,"s":"venda"},"2053":{"i":2053,"n":"Corrida Kids Poeira Jade · Curitiba","c":"Curitiba","uf":"PR","t":1814700600000,"iso":"2027-07-04","kd":"2 e 3","ku":"km","ks":"","cv":"quadradas/tsq-26","l":"Jardim Botânico","vir":0,"s":"venda"},"2054":{"i":2054,"n":"Corrida Kids Aurora Sereno · Curitiba","c":"Curitiba","uf":"PR","t":1804422600000,"iso":"2027-03-07","kd":"1, 2 e 3","ku":"km","ks":"","cv":"quadradas/tsq-13","l":"Parque Barigui","vir":0,"s":"pre"},"2055":{"i":2055,"n":"Meia Maratona Sal Ferrugem de Florianópolis","c":"Florianópolis","uf":"SC","t":1811062800000,"iso":"2027-05-23","kd":"5, 10 e 21,1","ku":"km","ks":"","cv":"quadradas/tsq-14","l":"Beira-Mar Norte","vir":0,"s":"venda"},"2056":{"i":2056,"n":"Meia Maratona Névoa Veloz de Rio de Janeiro","c":"Rio de Janeiro","uf":"RJ","t":1823762700000,"iso":"2027-10-17","kd":"5 e 21,1","ku":"km","ks":"","cv":"quadradas/tsq-27","l":"Lagoa Rodrigo de Freitas","vir":0,"s":"venda"},"2057":{"i":2057,"n":"Meia Maratona Brisa Ferrugem de Recife","c":"Recife","uf":"PE","t":1795337100000,"iso":"2026-11-22","kd":"5 a 21,1","ku":"km","ks":"4 provas","cv":"quadradas/tsq-07","l":"Marco Zero","vir":0,"s":"venda"},"2058":{"i":2058,"n":"Meia Maratona Vento Violeta de Brasília","c":"Brasília","uf":"DF","t":1816505100000,"iso":"2027-07-25","kd":"5 e 21,1","ku":"km","ks":"","cv":"quadradas/tsq-31","l":"Eixão do Lazer","vir":0,"s":"venda"},"2060":{"i":2060,"n":"Meia Maratona Aurora Cinzento de São Paulo","c":"São Paulo","uf":"SP","t":1805620500000,"iso":"2027-03-21","kd":"10 e 21,1","ku":"km","ks":"","cv":"quadradas/tsq-31","l":"Parque Villa-Lobos","vir":0,"s":"venda"},"2063":{"i":2063,"n":"Maratona Farol Marfim de Recife","c":"Recife","uf":"PE","t":1812270600000,"iso":"2027-06-06","kd":"5 a 42,2","ku":"km","ks":"5 provas","cv":"quadradas/tsq-11","l":"Marco Zero","vir":0,"s":"venda"},"2064":{"i":2064,"n":"Maratona Sol Violeta de São Paulo","c":"São Paulo","uf":"SP","t":1795941000000,"iso":"2026-11-29","kd":"5 a 42,2","ku":"km","ks":"4 provas","cv":"quadradas/tsq-31","l":"Parque Villa-Lobos","vir":0,"s":"venda"},"2066":{"i":2066,"n":"Maratona Sal Dourado de Brasília","c":"Brasília","uf":"DF","t":1821340800000,"iso":"2027-09-19","kd":"5 a 42,2","ku":"km","ks":"4 provas","cv":"quadradas/tsq-10","l":"Parque da Cidade Sarah Kubitschek","vir":0,"s":"venda"},"2067":{"i":2067,"n":"Maratona Sol Aberto de Maceió","c":"Maceió","uf":"AL","t":1803801600000,"iso":"2027-02-28","kd":"5 a 42,2","ku":"km","ks":"4 provas","cv":"quadradas/tsq-16","l":"Praia de Ponta Verde","vir":0,"s":"venda"},"2068":{"i":2068,"n":"Maratona Poeira Anil de Florianópolis","c":"Florianópolis","uf":"SC","t":1805616000000,"iso":"2027-03-21","kd":"10, 21,1 e 42,2","ku":"km","ks":"","cv":"quadradas/tsq-03","l":"Beira-Mar Norte","vir":0,"s":"venda"},"2069":{"i":2069,"n":"Circuito Pulso · Etapa 1 · Paraty","c":"Paraty","uf":"RJ","t":1794130200000,"iso":"2026-11-08","kd":"5 e 10","ku":"km","ks":"","cv":"quadradas/tsq-23","l":"Centro Histórico de Paraty","vir":0,"s":"venda"},"2070":{"i":2070,"n":"Circuito Pulso · Etapa 2 · Recife","c":"Recife","uf":"PE","t":1798363800000,"iso":"2026-12-27","kd":"5 e 10","ku":"km","ks":"","cv":"quadradas/tsq-25","l":"Parque Dona Lindu","vir":0,"s":"venda"},"2072":{"i":2072,"n":"Circuito Orla Aberta · Etapa 1 · Paraty","c":"Paraty","uf":"RJ","t":1795339800000,"iso":"2026-11-22","kd":"5, 10 e 21,1","ku":"km","ks":"","cv":"quadradas/tsq-26","l":"Centro Histórico de Paraty","vir":0,"s":"venda"},"2073":{"i":2073,"n":"Circuito Orla Aberta · Etapa 2 · Balneário Camboriú","c":"Balneário Camboriú","uf":"SC","t":1799573400000,"iso":"2027-01-10","kd":"5, 10 e 21,1","ku":"km","ks":"","cv":"quadradas/tsq-22","l":"Praia Central","vir":0,"s":"venda"},"2075":{"i":2075,"n":"Circuito Vale Veloz · Etapa 1 · Paraty","c":"Paraty","uf":"RJ","t":1796551200000,"iso":"2026-12-06","kd":"10","ku":"km","ks":"","cv":"quadradas/tsq-13","l":"Centro Histórico de Paraty","vir":0,"s":"venda"},"2076":{"i":2076,"n":"Circuito Vale Veloz · Etapa 2 · Balneário Camboriú","c":"Balneário Camboriú","uf":"SC","t":1800784800000,"iso":"2027-01-24","kd":"10","ku":"km","ks":"","cv":"quadradas/tsq-36","l":"Praia Central","vir":0,"s":"venda"},"2079":{"i":2079,"n":"Corrida das Assessorias Névoa Cinzento · Florianópolis","c":"Florianópolis","uf":"SC","t":1809252000000,"iso":"2027-05-02","kd":"5 e 10","ku":"km","ks":"","cv":"quadradas/tsq-30","l":"Beira-Mar Norte","vir":0,"s":"venda"},"2080":{"i":2080,"n":"Corrida das Assessorias Maré Ventania · Fortaleza","c":"Fortaleza","uf":"CE","t":1794736800000,"iso":"2026-11-15","kd":"5 e 10","ku":"km","ks":"","cv":"quadradas/tsq-22","l":"Beira-Mar","vir":0,"s":"venda"},"2082":{"i":2082,"n":"Trail Sol Cobalto · Belo Horizonte","c":"Belo Horizonte","uf":"MG","t":1822473000000,"iso":"2027-10-02","kd":"10 e 21","ku":"km","ks":"","cv":"quadradas/tsq-32","l":"Parque das Mangabeiras","vir":0,"s":"venda"},"2083":{"i":2083,"n":"Trail Farol Veloz · São Paulo","c":"São Paulo","uf":"SP","t":1794648600000,"iso":"2026-11-14","kd":"5, 12 e 21","ku":"km","ks":"","cv":"quadradas/tsq-32","l":"Serra da Cantareira","vir":0,"s":"venda"},"2084":{"i":2084,"n":"Trail Pedra Cobalto · Belo Horizonte","c":"Belo Horizonte","uf":"MG","t":1818235800000,"iso":"2027-08-14","kd":"10 e 21","ku":"km","ks":"","cv":"quadradas/tsq-39","l":"Parque das Mangabeiras","vir":0,"s":"venda"},"2085":{"i":2085,"n":"Trail Pedra Âmbar · Salvador","c":"Salvador","uf":"BA","t":1816423200000,"iso":"2027-07-24","kd":"12 e 24","ku":"km","ks":"","cv":"quadradas/tsq-06","l":"Parque de Pituaçu","vir":0,"s":"pre"},"2088":{"i":2088,"n":"Trail Rio Dourado · Gramado","c":"Gramado","uf":"RS","t":1804930200000,"iso":"2027-03-13","kd":"10 e 21","ku":"km","ks":"","cv":"quadradas/tsq-39","l":"Serra Gaúcha","vir":0,"s":"venda"},"2089":{"i":2089,"n":"Trail Trovão Elétrico · São Paulo","c":"São Paulo","uf":"SP","t":1795255200000,"iso":"2026-11-21","kd":"5, 12 e 21","ku":"km","ks":"","cv":"quadradas/tsq-32","l":"Pico do Jaraguá","vir":0,"s":"venda"},"2090":{"i":2090,"n":"Trail Aurora Violeta · São Paulo","c":"São Paulo","uf":"SP","t":1800091800000,"iso":"2027-01-16","kd":"8, 16 e 30","ku":"km","ks":"","cv":"quadradas/tsq-32","l":"Serra da Cantareira","vir":0,"s":"venda"},"2091":{"i":2091,"n":"Trail Sol Sereno · São Paulo","c":"São Paulo","uf":"SP","t":1810978200000,"iso":"2027-05-22","kd":"8, 16 e 30","ku":"km","ks":"","cv":"quadradas/tsq-32","l":"Pico do Jaraguá","vir":0,"s":"venda"},"2092":{"i":2092,"n":"Ultra Mata Anil 80K","c":"Curitiba","uf":"PR","t":1803715200000,"iso":"2027-02-27","kd":"50 e 80","ku":"km","ks":"","cv":"quadradas/tsq-39","l":"Estrada da Graciosa","vir":0,"s":"venda"},"2093":{"i":2093,"n":"Ultra Lua Carmim 100K","c":"Bonito","uf":"MS","t":1795249800000,"iso":"2026-11-21","kd":"50 e 100","ku":"km","ks":"","cv":"quadradas/tsq-06","l":"Serra da Bodoquena","vir":0,"s":"venda"},"2096":{"i":2096,"n":"Uphill Farol Ferrugem · São Paulo","c":"São Paulo","uf":"SP","t":1818932400000,"iso":"2027-08-22","kd":"8","ku":"km","ks":"","cv":"quadradas/tsq-20","l":"Pico do Jaraguá","vir":0,"s":"venda"},"2097":{"i":2097,"n":"Uphill Lua Âmbar · Gramado","c":"Gramado","uf":"RS","t":1797760800000,"iso":"2026-12-20","kd":"8","ku":"km","ks":"","cv":"quadradas/tsq-33","l":"Serra Gaúcha","vir":0,"s":"venda"},"2099":{"i":2099,"n":"Uphill Cinza Ventania · Belo Horizonte","c":"Belo Horizonte","uf":"MG","t":1808044200000,"iso":"2027-04-18","kd":"4 e 8","ku":"km","ks":"","cv":"quadradas/tsq-05","l":"Serra do Curral","vir":0,"s":"venda"},"2101":{"i":2101,"n":"Caminhada Eco Aberto · João Pessoa","c":"João Pessoa","uf":"PB","t":1818330300000,"iso":"2027-08-15","kd":"3","ku":"km","ks":"","cv":"quadradas/tsq-07","l":"Praia de Cabo Branco","vir":0,"s":"venda"},"2102":{"i":2102,"n":"Caminhada Névoa Anil · Florianópolis","c":"Florianópolis","uf":"SC","t":1800791100000,"iso":"2027-01-24","kd":"3 e 6","ku":"km","ks":"","cv":"quadradas/tsq-25","l":"Beira-Mar Norte","vir":0,"s":"venda"},"2103":{"i":2103,"n":"Caminhada Sal Ferrugem Solidária · Rio de Janeiro","c":"Rio de Janeiro","uf":"RJ","t":1795346100000,"iso":"2026-11-22","kd":"3 e 5","ku":"km","ks":"","cv":"quadradas/tsq-27","l":"Aterro do Flamengo","vir":0,"s":"venda"},"2104":{"i":2104,"n":"Caminhada Maré Cobalto · Florianópolis","c":"Florianópolis","uf":"SC","t":1814701500000,"iso":"2027-07-04","kd":"3 e 6","ku":"km","ks":"","cv":"quadradas/tsq-17","l":"Beira-Mar Norte","vir":0,"s":"venda"},"2105":{"i":2105,"n":"Caminhada Vento Dourado · Curitiba","c":"Curitiba","uf":"PR","t":1807443900000,"iso":"2027-04-11","kd":"3 e 5","ku":"km","ks":"","cv":"quadradas/tsq-28","l":"Jardim Botânico","vir":0,"s":"venda"},"2107":{"i":2107,"n":"Caminhada Mata Jade · Belo Horizonte","c":"Belo Horizonte","uf":"MG","t":1808046900000,"iso":"2027-04-18","kd":"3 e 5","ku":"km","ks":"","cv":"quadradas/tsq-33","l":"Praça da Liberdade","vir":0,"s":"pre"},"2108":{"i":2108,"n":"Caminhada Aurora Anil · Balneário Camboriú","c":"Balneário Camboriú","uf":"SC","t":1820747700000,"iso":"2027-09-12","kd":"4","ku":"km","ks":"","cv":"quadradas/tsq-34","l":"Praia Central","vir":0,"s":"venda"},"2111":{"i":2111,"n":"Desafio Sol Elétrico 100K Virtual","c":null,"uf":"","t":1800414000000,"iso":"2027-01-20","kd":"100","ku":"km","ks":"Virtual · 20 jan a 18 fev","cv":"quadradas/tsq-30","l":"Desafio virtual","vir":1,"s":"venda"},"2112":{"i":2112,"n":"Desafio Trovão Ventania 21K Virtual","c":null,"uf":"","t":1820977200000,"iso":"2027-09-15","kd":"10 e 21","ku":"km","ks":"Virtual · 15 set a 14 out","cv":"quadradas/tsq-05","l":"Desafio virtual","vir":1,"s":"venda"},"2113":{"i":2113,"n":"Desafio Maré Celeste 100K Virtual","c":null,"uf":"","t":1815793200000,"iso":"2027-07-17","kd":"100","ku":"km","ks":"Virtual · 17 jul a 15 ago","cv":"quadradas/tsq-35","l":"Desafio virtual","vir":1,"s":"venda"},"2114":{"i":2114,"n":"Desafio Maré Marfim 21K Virtual","c":null,"uf":"","t":1798167600000,"iso":"2026-12-25","kd":"10 e 21","ku":"km","ks":"Virtual · 25 dez a 23 jan","cv":"quadradas/tsq-16","l":"Desafio virtual","vir":1,"s":"venda"},"2116":{"i":2116,"n":"Pedal Rio Sereno · Natal","c":"Natal","uf":"RN","t":1798966800000,"iso":"2027-01-03","kd":"100 e 160","ku":"km","ks":"","cv":"quadradas/tsq-15","l":"Via Costeira","vir":0,"s":"venda"},"2117":{"i":2117,"n":"Pedal Sal Ventania · Recife","c":"Recife","uf":"PE","t":1815899400000,"iso":"2027-07-18","kd":"40 e 80","ku":"km","ks":"","cv":"quadradas/tsq-15","l":"Marco Zero","vir":0,"s":"venda"},"2120":{"i":2120,"n":"Passeio Ciclístico Pedra Ferrugem · Belo Horizonte","c":"Belo Horizonte","uf":"MG","t":1806224400000,"iso":"2027-03-28","kd":"25 a 120","ku":"km","ks":"4 provas","cv":"quadradas/tsq-12","l":"Lagoa da Pampulha","vir":0,"s":"venda"},"2122":{"i":2122,"n":"Gran Fondo Vento Violeta · Belo Horizonte","c":"Belo Horizonte","uf":"MG","t":1823157000000,"iso":"2027-10-10","kd":"50, 100 e 210","ku":"km","ks":"","cv":"quadradas/tsq-15","l":"Praça da Liberdade","vir":0,"s":"venda"},"2123":{"i":2123,"n":"Passeio Ciclístico Névoa Dourado · Goiânia","c":"Goiânia","uf":"GO","t":1796549400000,"iso":"2026-12-06","kd":"50, 100 e 210","ku":"km","ks":"","cv":"quadradas/tsq-15","l":"Parque Flamboyant","vir":0,"s":"venda"},"2124":{"i":2124,"n":"Pedal Noturno Aurora Jade · Maceió","c":"Maceió","uf":"AL","t":1794609000000,"iso":"2026-11-13","kd":"30","ku":"km","ks":"","cv":"quadradas/tsq-12","l":"Praia de Ponta Verde","vir":0,"s":"venda"},"2125":{"i":2125,"n":"MTB Sombra Celeste · Salvador","c":"Salvador","uf":"BA","t":1812193800000,"iso":"2027-06-05","kd":"20 e 40","ku":"km","ks":"","cv":"quadradas/tsq-12","l":"Parque de Pituaçu","vir":0,"s":"venda"},"2126":{"i":2126,"n":"MTB Névoa Cobalto · Salvador","c":"Salvador","uf":"BA","t":1809166200000,"iso":"2027-05-01","kd":"30 e 60","ku":"km","ks":"","cv":"quadradas/tsq-12","l":"Parque de Pituaçu","vir":0,"s":"venda"},"2127":{"i":2127,"n":"MTB Mata Ventania · São Paulo","c":"São Paulo","uf":"SP","t":1818240000000,"iso":"2027-08-14","kd":"25, 50 e 75","ku":"km","ks":"","cv":"quadradas/tsq-12","l":"Pico do Jaraguá","vir":0,"s":"venda"},"2128":{"i":2128,"n":"MTB Sol Marfim · Rio de Janeiro","c":"Rio de Janeiro","uf":"RJ","t":1823685000000,"iso":"2027-10-16","kd":"20 e 40","ku":"km","ks":"","cv":"quadradas/tsq-15","l":"Parque Nacional da Tijuca","vir":0,"s":"venda"},"2132":{"i":2132,"n":"MTB Brisa Aberto · Belo Horizonte","c":"Belo Horizonte","uf":"MG","t":1803121800000,"iso":"2027-02-20","kd":"20 e 40","ku":"km","ks":"","cv":"quadradas/tsq-15","l":"Serra do Curral","vir":0,"s":"venda"},"2133":{"i":2133,"n":"Triathlon Poeira Cobalto · Recife","c":"Recife","uf":"PE","t":1795946400000,"iso":"2026-11-29","kd":"Sprint","ku":"","ks":"","cv":"quadradas/tsq-01","l":"Praia de Boa Viagem","vir":0,"s":"venda"},"2134":{"i":2134,"n":"Triathlon Cinza Violeta · João Pessoa","c":"João Pessoa","uf":"PB","t":1798966800000,"iso":"2027-01-03","kd":"Sprint e olímpico","ku":"","ks":"","cv":"quadradas/tsq-19","l":"Praia de Tambaú","vir":0,"s":"venda"},"2135":{"i":2135,"n":"Triathlon Sol Carmim · Rio de Janeiro","c":"Rio de Janeiro","uf":"RJ","t":1815900300000,"iso":"2027-07-18","kd":"Olímpico e meio-distância","ku":"","ks":"","cv":"quadradas/tsq-19","l":"Lagoa Rodrigo de Freitas","vir":0,"s":"venda"},"2136":{"i":2136,"n":"Triathlon Névoa Jade · Natal","c":"Natal","uf":"RN","t":1809252000000,"iso":"2027-05-02","kd":"Super sprint e sprint","ku":"","ks":"","cv":"quadradas/tsq-38","l":"Praia de Ponta Negra","vir":0,"s":"pre"},"2137":{"i":2137,"n":"Triathlon Maré Elétrico · Rio de Janeiro","c":"Rio de Janeiro","uf":"RJ","t":1808036100000,"iso":"2027-04-18","kd":"Meio-distância","ku":"","ks":"","cv":"quadradas/tsq-38","l":"Lagoa Rodrigo de Freitas","vir":0,"s":"venda"},"2139":{"i":2139,"n":"Triathlon Névoa Jade · Belo Horizonte","c":"Belo Horizonte","uf":"MG","t":1821951000000,"iso":"2027-09-26","kd":"Sprint e olímpico","ku":"","ks":"","cv":"quadradas/tsq-01","l":"Lagoa da Pampulha","vir":0,"s":"venda"},"2140":{"i":2140,"n":"Triathlon Rio Aberto · Maceió","c":"Maceió","uf":"AL","t":1805013900000,"iso":"2027-03-14","kd":"Super sprint a meio-distância","ku":"","ks":"4 provas","cv":"quadradas/tsq-01","l":"Praia de Pajuçara","vir":0,"s":"venda"},"2142":{"i":2142,"n":"Circuito Tri Horizonte · Etapa 1 · Gramado","c":"Gramado","uf":"RS","t":1795944600000,"iso":"2026-11-29","kd":"Sprint e olímpico","ku":"","ks":"","cv":"quadradas/tsq-38","l":"Lago Negro","vir":0,"s":"venda"},"2143":{"i":2143,"n":"Circuito Tri Horizonte · Etapa 2 · Belo Horizonte","c":"Belo Horizonte","uf":"MG","t":1801992600000,"iso":"2027-02-07","kd":"Sprint e olímpico","ku":"","ks":"","cv":"quadradas/tsq-38","l":"Lagoa da Pampulha","vir":0,"s":"venda"},"2145":{"i":2145,"n":"Travessia Névoa Anil · Ilhabela","c":"Ilhabela","uf":"SP","t":1814695200000,"iso":"2027-07-04","kd":"500 m a 5 km","ku":"","ks":"4 provas","cv":"quadradas/tsq-37","l":"Praia do Perequê","vir":0,"s":"venda"},"2146":{"i":2146,"n":"Travessia Aurora Jade · Porto Alegre","c":"Porto Alegre","uf":"RS","t":1811674800000,"iso":"2027-05-30","kd":"2","ku":"km","ks":"","cv":"quadradas/tsq-24","l":"Orla do Guaíba","vir":0,"s":"pre"},"2148":{"i":2148,"n":"Maratona Aquática Cinza Ventania · Paraty","c":"Paraty","uf":"RJ","t":1799494200000,"iso":"2027-01-09","kd":"800 m e 1,5 km","ku":"","ks":"","cv":"quadradas/tsq-24","l":"Centro Aquático Jacarandá","vir":0,"s":"venda"},"2149":{"i":2149,"n":"Travessia Pedra Veloz · Salvador","c":"Salvador","uf":"BA","t":1820138400000,"iso":"2027-09-05","kd":"750 m, 1,5 km e 3 km","ku":"","ks":"","cv":"quadradas/tsq-24","l":"Farol da Barra","vir":0,"s":"venda"},"2150":{"i":2150,"n":"Travessia Trovão Violeta · São Paulo","c":"São Paulo","uf":"SP","t":1794135600000,"iso":"2026-11-08","kd":"1,5","ku":"km","ks":"","cv":"quadradas/tsq-37","l":"Represa de Guarapiranga","vir":0,"s":"venda"},"2152":{"i":2152,"n":"Maratona Aquática Pedra Prata · Campos do Jordão","c":"Campos do Jordão","uf":"SP","t":1805542200000,"iso":"2027-03-20","kd":"400 m e 800 m","ku":"","ks":"","cv":"quadradas/tsq-37","l":"Centro Aquático Ponta Azul","vir":0,"s":"pre"},"2153":{"i":2153,"n":"Aventura Farol Carmim · São Paulo","c":"São Paulo","uf":"SP","t":1805540400000,"iso":"2027-03-20","kd":"4, 12 e 24","ku":"h","ks":"","cv":"quadradas/tsq-32","l":"Serra da Cantareira","vir":0,"s":"pre"},"2154":{"i":2154,"n":"Aventura Farol Carmim · Fortaleza","c":"Fortaleza","uf":"CE","t":1798282800000,"iso":"2026-12-26","kd":"4, 12 e 24","ku":"h","ks":"","cv":"quadradas/tsq-06","l":"Parque do Cocó","vir":0,"s":"venda"},"2156":{"i":2156,"n":"Aventura Sol Cobalto · Bonito","c":"Bonito","uf":"MS","t":1823079600000,"iso":"2027-10-09","kd":"4 e 12","ku":"h","ks":"","cv":"quadradas/tsq-39","l":"Serra da Bodoquena","vir":0,"s":"venda"},"2157":{"i":2157,"n":"Aventura Mata Elétrico · Belo Horizonte","c":"Belo Horizonte","uf":"MG","t":1810976400000,"iso":"2027-05-22","kd":"4","ku":"h","ks":"","cv":"quadradas/tsq-39","l":"Parque das Mangabeiras","vir":0,"s":"venda"},"2158":{"i":2158,"n":"Aventura Rio Ferrugem · Bonito","c":"Bonito","uf":"MS","t":1800100800000,"iso":"2027-01-16","kd":"4 e 12","ku":"h","ks":"","cv":"quadradas/tsq-06","l":"Serra da Bodoquena","vir":0,"s":"venda"},"2159":{"i":2159,"n":"Torneio Pedra Prata de Beach Tennis · João Pessoa","c":"João Pessoa","uf":"PB","t":1820662200000,"iso":"2027-09-11","kd":"Beach tennis","ku":"","ks":"","cv":"quadradas/tsq-02","l":"Arena Vale do Sol","vir":0,"s":"venda"},"2160":{"i":2160,"n":"Open Vento Sereno de Beach Tennis · Ubatuba","c":"Ubatuba","uf":"SP","t":1801308600000,"iso":"2027-01-30","kd":"Beach tennis","ku":"","ks":"","cv":"quadradas/tsq-16","l":"Arena Aurora","vir":0,"s":"venda"},"2161":{"i":2161,"n":"Open Pedra Anil de Beach Tennis · Florianópolis","c":"Florianópolis","uf":"SC","t":1810382400000,"iso":"2027-05-15","kd":"Beach tennis","ku":"","ks":"","cv":"quadradas/tsq-31","l":"Arena Ponta Azul","vir":0,"s":"venda"},"2162":{"i":2162,"n":"Open Mata Marfim de Beach Tennis · Florianópolis","c":"Florianópolis","uf":"SC","t":1814009400000,"iso":"2027-06-26","kd":"Beach tennis","ku":"","ks":"","cv":"quadradas/tsq-35","l":"Arena Ponta Azul","vir":0,"s":"venda"},"2165":{"i":2165,"n":"Torneio Farol Aberto de Beach Tennis · Vitória","c":"Vitória","uf":"ES","t":1806145200000,"iso":"2027-03-27","kd":"Beach tennis","ku":"","ks":"","cv":"quadradas/tsq-05","l":"Arena Jacarandá","vir":0,"s":"venda"},"2167":{"i":2167,"n":"Open Poeira Ferrugem de Futevôlei · Rio de Janeiro","c":"Rio de Janeiro","uf":"RJ","t":1820746800000,"iso":"2027-09-12","kd":"Futevôlei","ku":"","ks":"","cv":"quadradas/tsq-36","l":"Arena Baía Larga","vir":0,"s":"venda"},"2168":{"i":2168,"n":"Copa Pedra Prata de Futevôlei · Maceió","c":"Maceió","uf":"AL","t":1806753600000,"iso":"2027-04-03","kd":"Futevôlei","ku":"","ks":"","cv":"quadradas/tsq-10","l":"Arena Aurora","vir":0,"s":"venda"},"2169":{"i":2169,"n":"Torneio Pedra Carmim de Futevôlei · Paraty","c":"Paraty","uf":"RJ","t":1817031600000,"iso":"2027-07-31","kd":"Futevôlei","ku":"","ks":"","cv":"quadradas/tsq-25","l":"Arena Jacarandá","vir":0,"s":"venda"},"2170":{"i":2170,"n":"Copa Eco Anil de Futevôlei · Florianópolis","c":"Florianópolis","uf":"SC","t":1803121200000,"iso":"2027-02-20","kd":"Futevôlei","ku":"","ks":"","cv":"quadradas/tsq-29","l":"Arena Cobalto","vir":0,"s":"venda"},"2171":{"i":2171,"n":"Torneio Sol Cobalto de Futevôlei · Rio de Janeiro","c":"Rio de Janeiro","uf":"RJ","t":1794657600000,"iso":"2026-11-14","kd":"Futevôlei","ku":"","ks":"","cv":"quadradas/tsq-34","l":"Arena Ciranda","vir":0,"s":"venda"},"2172":{"i":2172,"n":"Copa Trovão Veloz de Futevôlei · Florianópolis","c":"Florianópolis","uf":"SC","t":1813492800000,"iso":"2027-06-20","kd":"Futevôlei","ku":"","ks":"","cv":"quadradas/tsq-03","l":"Arena Ponta Azul","vir":0,"s":"venda"},"2173":{"i":2173,"n":"Regata Va'a Poeira Anil · Balneário Camboriú","c":"Balneário Camboriú","uf":"SC","t":1798885200000,"iso":"2027-01-02","kd":"10","ku":"km","ks":"","cv":"quadradas/tsq-08","l":"Praia Central","vir":0,"s":"venda"},"2174":{"i":2174,"n":"Regata Va'a Névoa Marfim · Belo Horizonte","c":"Belo Horizonte","uf":"MG","t":1803122400000,"iso":"2027-02-20","kd":"10","ku":"km","ks":"","cv":"quadradas/tsq-17","l":"Lagoa da Pampulha","vir":0,"s":"venda"},"2177":{"i":2177,"n":"Regata Va'a Aurora Ferrugem · São Paulo","c":"São Paulo","uf":"SP","t":1820055600000,"iso":"2027-09-04","kd":"10 e 20","ku":"km","ks":"","cv":"quadradas/tsq-03","l":"Represa de Guarapiranga","vir":0,"s":"venda"},"2178":{"i":2178,"n":"Aprenda a correr 5 km · São Paulo","c":"São Paulo","uf":"SP","t":1804329000000,"iso":"2027-03-06","kd":"5","ku":"km","ks":"","cv":"quadradas/tsq-17","l":"Parque Villa-Lobos","vir":0,"s":"venda"},"2179":{"i":2179,"n":"Clínica de trail para quem está começando · Fortaleza","c":"Fortaleza","uf":"CE","t":1803729600000,"iso":"2027-02-27","kd":"8","ku":"km","ks":"","cv":"quadradas/tsq-06","l":"Parque do Cocó","vir":0,"s":"venda"},"2180":{"i":2180,"n":"Aula aberta de natação em águas abertas · Salvador","c":"Salvador","uf":"BA","t":1815220800000,"iso":"2027-07-10","kd":"1","ku":"km","ks":"","cv":"quadradas/tsq-24","l":"Farol da Barra","vir":0,"s":"venda"},"2181":{"i":2181,"n":"Pedal seguro: clínica de ciclismo · São Paulo","c":"São Paulo","uf":"SP","t":1794657600000,"iso":"2026-11-14","kd":"20","ku":"km","ks":"","cv":"quadradas/tsq-15","l":"Parque Villa-Lobos","vir":0,"s":"venda"},"2182":{"i":2182,"n":"Treino coletivo de triathlon para iniciantes · Florianópolis","c":"Florianópolis","uf":"SC","t":1813438800000,"iso":"2027-06-19","kd":"Aula e treino orientado","ku":"","ks":"","cv":"quadradas/tsq-01","l":"Praia de Jurerê Internacional","vir":0,"s":"venda"}},"dados":{"proximas":[2020,2014,2022,2069,2150,2124,2040,2021,2083,2008,2171,2181,2080,2046,2047,2093,2023,2010,2089,2057,2072,2045,2103,2064,2142,2133,2048,2032,2123,2075,2027,2097,2114,2154,2070,2173,2116,2134,2034,2029,2148,2073,2090,2158,2111,2076,2102,2033,2160,2003,2143,2170,2132,2174,2092,2179,2067,2178,2054,2044,2088,2036,2140,2153,2152,2068,2060,2165,2120,2041,2168,2051,2105,2137,2099,2107,2038,2030,2126,2079,2136,2161,2049,2157,2091,2055,2146,2035,2125,2063,2001,2182,2037,2042,2172,2162,2006,2145,2053,2104,2180,2113,2117,2135,2085,2018,2058,2169,2031,2012,2084,2127,2101,2096,2011,2052,2177,2149,2159,2009,2167,2108,2112,2007,2066,2043,2139,2005,2082,2156,2016,2122,2039,2128,2056],"corrida":[2020,2014,2022,2069,2040,2021,2008,2080,2046,2047,2023,2010,2057,2072,2045,2064,2048,2032,2075,2027,2097,2114,2070,2034,2029,2073,2111,2076,2033,2003,2067,2178,2054,2044,2036,2068,2060,2041,2051,2099,2038,2030,2079,2049,2055,2035,2063,2001,2037,2042,2006,2053,2113,2018,2058,2031,2012,2096,2011,2052,2009,2112,2007,2066,2043,2005,2016,2039,2056],"trail":[2083,2093,2089,2090,2092,2179,2088,2091,2085,2084,2082],"meia":[2020,2083,2089,2057,2072,2064,2027,2114,2029,2073,2067,2088,2068,2060,2055,2063,2058,2084,2009,2112,2007,2066,2082,2056],"ciclismo":[2124,2181,2123,2116,2120,2117,2122],"triathlon":[2142,2133,2134,2143,2140,2137,2136,2182,2135,2139],"natacao":[2150,2148,2152,2146,2145,2180,2149],"estreantes":[2014,2069,2021,2181,2023,2103,2114,2070,2029,2111,2076,2102,2033,2179,2178,2140,2041,2105,2107,2038,2126,2161,2182,2042,2172,2104,2180,2012,2084,2101,2159,2108,2112,2043,2039],"femininas":[2046,2047,2045,2048,2044,2041,2042,2043],"kids":[2054,2051,2049,2053,2052]}};
+    const spTodos = SP.botoes.concat(SP.extras);
+    const spCur = SP.dados[this.state.spFiltro] ? this.state.spFiltro : 'proximas';
+    const spLista = SP.dados[spCur].map(i => SP.itens[i]);
+    // chips, «+» e extra escolhido: a função compartilhada com Descubra e Gênero (home-carrossel.mjs)
+    const SPC = chipsGrupo({ sel: 'spFiltro', mais: 'spMais', principais: SP.botoes, extras: SP.extras, atual: spCur });
+    const spLoc = x => locContem({ id: x.i, uf: x.uf || x.u, cidade: x.c || x.cidade }); // o lugar do cabeçalho (IngresseLocal), como o Descubra
+    const SPV = {
+      spBotoes: SPC.botoes, spExtras: SPC.extras, spMaisOpen: SPC.maisOpen, spMaisSinal: SPC.maisSinal, spMaisLabel: SPC.maisLabel, spToggleMais: SPC.toggleMais,
+      spVerTodos: (spTodos.find(c => c.id === spCur) || SP.botoes[0]).ver,
+      // o cartão único: a prova do Ingresse Sports (window.IngresseCartao.prova); a capa quadrada da TicketSports, ou o pôster esportivo gerado por código
+      spEventos: (spLista.some(spLoc) ? spLista.filter(spLoc) : spLista).slice().sort((a, b) => a.t - b.t).slice(0, 12).map(e => {
+        const capa = e.cv ? './assets/ticketsports/' + e.cv : '';
+        return window.IngresseCartao.prova({ id: e.i, nome: e.n, iso: e.iso, vir: !!e.vir, ks: e.ks, kd: e.kd, ku: e.ku, local: e.l, c: e.c, sit: e.s, img: capa ? capa + '.webp' : './cymatics-cat/' + e.i + '.png', srcset: capa ? capa + '.webp 480w' : '' });
+      })
+    };
+    SPV.spAnuncio = SPC.anunciar ? (SPV.spEventos.length === 1 ? '1 prova' : SPV.spEventos.length + ' provas') + ': ' + (spTodos.find(c => c.id === spCur) || SP.botoes[0]).label : '';
+    /* sp:fim */
+        let featured = (fixosOk && document.documentElement.getAttribute('data-dados') !== 'bff' ? sets[city][cur] : []).slice(0, 12).map(k => (window.IngresseCartao ? window.IngresseCartao.fixo(ev[k], this.state.live) : ev[k])); // evento fixo do v5.3: o cartão único (cartao-evento.js)
+    const live = this.state.live;
+    if (live) {
+      const t = e => new Date(e.iso).getTime() || Infinity;
+      const byDate = (a, b) => t(a) - t(b);
+      const inCity = live.events.filter(locContem).sort(byDate);
+      const soon = Date.now() + 7 * 864e5;
+      const weekIds = new Set();
+      const week = [];
+      const addWeek = list => list.forEach(e => { if (week.length < 12 && !weekIds.has(e.id ?? e.name)) { weekIds.add(e.id ?? e.name); week.push(e); } });
+      addWeek(inCity.filter(e => t(e) < soon));
+      addWeek(inCity);
+      addWeek([...live.events].sort(byDate).filter(e => t(e) < soon));
+      const pickers = {
+        semana: week,
+        shows: inCity.filter(e => e.cats.includes('shows') || e.cats.includes('festivais')),
+        futebol: live.events.filter(e => e.cats.includes('futebol')),
+        perto: inCity,
+        reveillon: live.events.filter(e => (e.tags || []).includes('reveillon')),
+        eletronica: live.events.filter(e => (e.tags || []).includes('eletronica')),
+        samba: live.events.filter(e => (e.tags || []).includes('samba-pagode'))
+      };
+      /* fc:ini */
+      // o futebol vira cartão de partida: no botão «Futebol» entram os jogos do catálogo em qualquer situação aberta ou por abrir; nos outros, os eventos de futebol que o carrossel já trazia
+      featured = featured.concat((cur === 'futebol' ? live.events.filter(e => e.m && (e.cats || []).includes('futebol') && e.situacao !== 'cancelado' && e.situacao !== 'encerrado').sort(byDate).slice(0, 8) : (pickers[cur] || []).filter(e => e.situacao === 'venda' || e.situacao === 'pre').slice(0, 2)).map(e => window.IngresseCartao.evento(e, live)));
+      /* fc:fim */
+    }
+    /* gn:ini */
+    const GN = {"botoes":[{"id":"proximos","label":"Próximos eventos","ver":"Busca.dc.html"},{"id":"samba-pagode","label":"Samba e pagode","ver":"Busca.dc.html?tags=samba-pagode"},{"id":"sertanejo","label":"Sertanejo","ver":"Busca.dc.html?tags=sertanejo"},{"id":"funk","label":"Funk","ver":"Busca.dc.html?tags=funk"},{"id":"pop","label":"Pop","ver":"Busca.dc.html?tags=pop"}],"extras":[{"id":"rock","label":"Rock","ver":"Busca.dc.html?tags=rock"},{"id":"eletronica","label":"Eletrônica","ver":"Busca.dc.html?tags=eletronica"},{"id":"forro","label":"Forró","ver":"Busca.dc.html?tags=forro"},{"id":"mpb","label":"MPB","ver":"Busca.dc.html?tags=mpb"},{"id":"rap","label":"Rap e trap","ver":"Busca.dc.html?tags=rap"},{"id":"axe","label":"Axé","ver":"Busca.dc.html?tags=axe"},{"id":"arrocha","label":"Arrocha","ver":"Busca.dc.html?tags=arrocha"},{"id":"jazz-blues","label":"Jazz e blues","ver":"Busca.dc.html?tags=jazz-blues"},{"id":"tribal","label":"Tribal","ver":"Busca.dc.html?tags=tribal"}],"generos":["samba-pagode","sertanejo","funk","pop","rock","eletronica","forro","mpb","rap","axe","arrocha","jazz-blues","tribal"]};
+    const gnTodos = GN.botoes.concat(GN.extras);
+    const gnCur = gnTodos.some(x => x.id === this.state.gnFiltro) ? this.state.gnFiltro : 'proximos';
+    // chips, «+» e extra escolhido: a função compartilhada com Descubra e Ingresse Sports (home-carrossel.mjs)
+    const GNC = chipsGrupo({ sel: 'gnFiltro', mais: 'gnMais', principais: GN.botoes, extras: GN.extras, atual: gnCur });
+    const gnAtual = gnTodos.find(x => x.id === gnCur);
+    // o pool: o catálogo único (/api/eventos, o mesmo de IngresseCatalogo.eventosDoGenero e da Busca): à venda ou em pré-venda, as corridas ficam com o Ingresse Sports
+    const gnDe = e => ({ ...window.IngresseCartao.evento(e, this.state.live), tags: e.tags || [], iso: e.iso || '', daCidade: locContem(e) });
+    const gnPool = this.state.live ? this.state.live.events.filter(e => (e.situacao === 'venda' || e.situacao === 'pre') && !(e.cats || []).includes('corridas')).map(gnDe) : [];
+    const gnDoGenero = gnPool.filter(e => gnCur === 'proximos' ? e.tags.some(t => GN.generos.includes(t)) : e.tags.includes(gnCur));
+    const gnDoLugar = gnDoGenero.filter(e => e.daCidade); // o lugar do cabeçalho (IngresseLocal), como o Descubra; sem nenhum evento ali, a lista inteira (a seção não fica vazia)
+    const gnLista = (gnDoLugar.length ? gnDoLugar : gnDoGenero).sort((a, b) => (a.iso || '9').localeCompare(b.iso || '9')).slice(0, 12);
+    const GNV = {
+      gnBotoes: GNC.botoes, gnExtras: GNC.extras, gnMaisOpen: GNC.maisOpen, gnMaisSinal: GNC.maisSinal, gnMaisLabel: GNC.maisLabel, gnToggleMais: GNC.toggleMais,
+      gnVerTodos: gnAtual.ver, gnVerAria: gnCur === 'proximos' ? 'Ver todos os eventos' : 'Ver todos os eventos de ' + gnAtual.label,
+      gnAnuncio: GNC.anunciar ? (gnLista.length === 1 ? '1 evento' : gnLista.length + ' eventos') + ': ' + gnAtual.label : '',
+      gnEventos: gnLista, gnTem: gnLista.length > 0, gnSem: gnLista.length === 0 && !!this.state.live,
+      gnVazioTitulo: `Não há eventos de ${gnAtual.label}${cidNome ? ' em ' + cidNome : ''} agora.`
+    };
+    /* gn:fim */
+    /* mvp:revenda-carrossel:ini */
+    const rvPool = this.state.live ? this.state.live.events.filter(e => ['venda', 'pre', 'esgotado'].includes(e.situacao) && !e.m && !(e.cats || []).includes('corridas')).sort((a, b) => (a.iso || '9').localeCompare(b.iso || '9')) : [];
+    const rvPasso = Math.max(1, Math.floor(rvPool.length / 10));
+    const rvLista = rvPool.filter((_, i) => i % rvPasso === 0).slice(0, 10).map(e => ({ ...window.IngresseCartao.evento(e, this.state.live, { revenda: true }), iso: e.iso || '' }));
+    const MVR = { mvpRvEventos: rvLista, mvpRvTem: rvLista.length > 0 };
+    /* mvp:revenda-carrossel:fim */
+    const urlCymArtista = function urlCymArtista(nome, genero) {
+  const n = (s) => (s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+  const g = n(genero);
+  const est = /eletr|techno|house|rave/.test(g) ? "eletronica"
+    : /rock|rap|trap|metal/.test(g) ? "rock"
+    : /pagode|samba|sertan|forro|funk|axe|arrocha|festa|festiv/.test(g) ? "samba"
+    : /mpb|brasil|jazz|blues|bossa|drama|teatro/.test(g) ? "mpb"
+    : "pop";
+  const slug = n(nome).replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+  return "./cymatics/art-" + est + "-" + slug + ".png";
+};
+    const artistDefs = [
+      { id: 'sorriso', name: 'Sorriso Maroto', genre: 'Samba e pagode', datas: '4 datas', img: B('6083b051a648edee2775457b3c8a9710'), pos: '50% 35%', href: 'Artista.dc.html' },
+      // Regra de imagem: só foto de cadastro do artista; pôster de evento nunca vira avatar (cai nas iniciais + símbolo).
+      { id: 'alok', name: 'Alok', genre: 'Eletrônica', img: '', pos: '50% 30%', href: 'Artista.dc.html' },
+      { id: 'dominguinho', name: 'Dominguinho', genre: 'MPB · turnê', img: '', pos: '50% 55%', href: 'Artista.dc.html' },
+      { id: 'marvvila', name: 'Marvvila', genre: 'Samba e pagode', img: B('639175e2297d42530c16a83b62e78b3d'), pos: '50% 40%', href: 'Artista.dc.html' },
+      { id: 'solomun', name: 'Solomun', genre: 'Eletrônica', img: '', pos: '50% 30%', href: 'Artista.dc.html' },
+      { id: 'boris', name: 'Boris Brejcha', genre: 'Eletrônica', img: '', pos: '50% 30%', href: 'Artista.dc.html' },
+      { id: 'manerinho', name: 'Manerinho', genre: 'Rap e trap', img: B('629e0989e099e7efddf9f677a1d998f0'), pos: '50% 45%', href: 'Artista.dc.html' },
+      { id: 'clementaum', name: 'Clementaum', genre: 'Festa e balada · Salvador', img: B('783be348a514cdedc84e195a749ad926'), pos: '50% 40%', href: 'Artista.dc.html' },
+      { id: 'victor', name: 'Victor Lou', genre: 'Eletrônica', img: '', pos: '50% 40%', href: 'Artista.dc.html' },
+      { id: 'eli', name: 'Eli iWasa', genre: 'Eletrônica', img: B('084151755aabb4b020356d6b487553ec'), pos: '50% 50%', href: 'Artista.dc.html' },
+      { id: 'ratier', name: 'Ratier', genre: 'Eletrônica', img: B('d97fce039f22811278a86f9ad25edb3b'), pos: '50% 20%', href: 'Artista.dc.html' },
+      { id: 'reycastro', name: 'Rey Castro', genre: 'Festival', img: '', pos: '50% 50%', href: 'Artista.dc.html' }
+    ];
+    const f = this.state.follow;
+    const norm = t => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    const defByName = new Map(artistDefs.map(a => [norm(a.name), a]));
+    const liveArtists = (live && Array.isArray(live.artists) ? live.artists : []).map(a => {
+      const def = defByName.get(norm(a.name));
+      return { id: a.id, name: a.name, genre: a.genre, img: a.img || (def ? def.img : ''), pos: a.img ? '50% 50%' : (def ? def.pos : '50% 40%'), href: 'Artista.dc.html' };
+    });
+    const spotifyImgs = (live && live.artistImages) || {};
+    const spotifyKey = t => norm(t).replace(/[^a-z0-9]/g, '');
+    const artistPool = artistDefs
+      .map(a => { const sp = spotifyImgs[spotifyKey(a.name)]; const r = sp ? { ...a, img: sp, pos: '50% 50%' } : a; return r.img ? r : (live ? { ...r, img: urlCymArtista(r.name, r.genre), pos: '50% 50%' } : r); }); /* sem o catálogo ao vivo ainda, mostra as iniciais: pedir o pôster de cymatics e trocá-lo pela foto do Spotify abortava a requisição */
+    const artists = artistPool.slice(0, this.state.artistCols || 8).map(a => {
+      const on = !!f[a.id];
+      return { ...a, temDatas: !!a.datas, hasImg: !!a.img, noImg: !a.img, initials: a.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase(), pressed: on ? 'true' : 'false', btnLabel: on ? 'Seguindo' : 'Seguir', isOn: on, isOff: !on,
+        toggle: () => this.setState({ follow: { ...f, [a.id]: !on } }) };
+    });
+    /* vn:ini */const venues = [
+      { name: "D-EDGE São Paulo", meta: "Club · Barra Funda", img: './assets/palcos/d-edge-sao-paulo-680.jpg', srcset: "./assets/palcos/d-edge-sao-paulo-680.jpg 680w, ./assets/palcos/d-edge-sao-paulo-824.jpg 824w", alt: "Pista do D-EDGE com lasers", hasCredito: false, href: 'Venue.dc.html' },
+      { name: "Autódromo de Interlagos", meta: "Festivais · São Paulo", img: './assets/palcos/autodromo-de-interlagos-680.jpg', srcset: "./assets/palcos/autodromo-de-interlagos-680.jpg 680w, ./assets/palcos/autodromo-de-interlagos-924.jpg 924w", alt: "Vista aérea do Autódromo de Interlagos", hasCredito: false, href: 'Venue.dc.html' },
+      { name: "Arena Anhembi", meta: "Shows · São Paulo", img: './assets/palcos/arena-anhembi-680.jpg', srcset: "./assets/palcos/arena-anhembi-680.jpg 680w, ./assets/palcos/arena-anhembi-1360.jpg 1360w", alt: "Interior da Arena Anhembi com a treliça do teto e as luzes", hasCredito: false, href: 'Venue.dc.html' },
+      { name: "Laroc Club", meta: "Club · Valinhos", img: './assets/palcos/laroc-club-680.jpg', srcset: "./assets/palcos/laroc-club-680.jpg 680w, ./assets/palcos/laroc-club-870.jpg 870w", alt: "Palco do Laroc com a placa I love Laroc", hasCredito: false, href: 'Venue.dc.html' },
+      { name: "Arena Fonte Nova", meta: "Estádio · Salvador", img: './assets/palcos/arena-fonte-nova-680.jpg', srcset: "./assets/palcos/arena-fonte-nova-680.jpg 680w, ./assets/palcos/arena-fonte-nova-1360.jpg 1360w", alt: "Arena Fonte Nova vista de dentro, com a cobertura aberta para o céu, a arquibancada e o gramado", hasCredito: false, href: 'Venue.dc.html' },
+      { name: "Villa, Planetário Gávea", meta: "Samba e club · Rio", img: B('e3247ee792aa6888ce3ded49878f5e66'), srcset: "", alt: "Foto de Villa, Planetário Gávea", hasCredito: false, href: 'Venue.dc.html' }
+    ];/* vn:fim */
+    // Eventos reais dos sites das empresas do grupo (ticketsports.com.br e pixelticket.com.br)
+    const groupDefs = [
+      { name: 'Disney Magic Run 2026', meta: 'Dom 22 nov · São Paulo, SP', company: 'TicketSports', integrated: true, img: B('f70937d41012cca5283c5c6771eb5e85'), ext: 'https://www.ticketsports.com.br/e/disney-magic-run-2026-sao-paulo-88237' },
+      { name: 'Maratona de Curitiba Santander 2026', meta: 'Dom 15 nov · Curitiba, PR', company: 'TicketSports', integrated: false, img: B('754eb2c470f52de98ebf409c36d530b2'), ext: 'https://www.ticketsports.com.br/e/maratona-de-curitiba-santander-2026-86884' },
+      { name: 'Corrida do Grêmio 2026', meta: 'Dom 15 nov · Porto Alegre, RS', company: 'TicketSports', integrated: true, img: B('73fa23e3d6ed421d64109f35a019b87b'), ext: 'https://www.ticketsports.com.br/e/corrida-do-gremio-2026-87730' },
+      { name: '21K de Pipa — Festival 2026', meta: 'Sáb 17 e dom 18 out · Tibau do Sul, RN', company: 'TicketSports', integrated: false, img: B('6e234775620d721b272e19bd3f364b55'), ext: 'https://www.ticketsports.com.br/e/21k-de-pipa-festival-2026-74794' },
+      { name: 'Taemin World Tour — LiMiNaL', meta: 'São Paulo, SP', company: 'PixelTicket', integrated: true, img: B('d6c7a28cada5ec25eb644d45d82b2604'), ext: 'https://pixelticket.com.br/eventos/33075/taemin' },
+      { name: 'Oneus World Tour [Full Moon]', meta: 'São Paulo, SP', company: 'PixelTicket', integrated: false, img: B('bdcf6d658a2adaa0fd968d0cfa2a73c4'), ext: 'https://pixelticket.com.br/eventos/33084/oneus-em-sao-paulo' },
+      { name: 'KARD 2026 World Tour [Now Here]', meta: 'São Paulo, SP', company: 'PixelTicket', integrated: true, img: B('11192082e2140b81666873331fc27941'), ext: 'https://pixelticket.com.br/eventos/32836/kard-2026-world-tour-now-here-in-sao-paulo' },
+      { name: 'Rave in SP — All Stars', meta: 'Sáb 17 out · Arena Épico, São Paulo', company: 'PixelTicket', integrated: false, img: B('ebbd3ec682b40697e900d2e6c94b1097'), ext: 'https://pixelticket.com.br/eventos/33280/rave-in-sp-all-stars' }
+    ];
+    const group = groupDefs.map(g => ({ ...g, href: g.integrated ? 'Evento.dc.html' : g.ext, mode: g.integrated ? 'Compra aqui' : 'Abre em outro site',
+      modeClass: g.integrated ? 'tag-brand' : '' }));
+    const KEEP = new Set(['SP','RJ','MG','BH','AL','BA','PE','CE','PR','SC','RS','DF','GO','ES','CWB','POA','DJ','MC','D-EDGE','UK','USA','EUA','LGBTQIA+']);
+    const SMALL = new Set(['de','da','do','das','dos','e','em','no','na','nos','nas','com','por','a','o','as','os','by','the','of','and','vs','x','b2b','pres.:','pres.','apresenta']);
+    const softTitle = s => {
+      const letters = s.replace(/[^A-Za-zÀ-ÿ]/g, '');
+      const upper = letters.replace(/[^A-ZÀ-Þ]/g, '').length;
+      if (!letters || upper / letters.length < 0.7) return s.replace(/\s+/g, ' ').trim();
+      return s.replace(/\s+/g, ' ').trim().split(' ').map((w, i) => {
+        if (KEEP.has(w.replace(/[.,:;()]/g, ''))) return w;
+        const lw = w.toLocaleLowerCase('pt-BR');
+        if (i > 0 && SMALL.has(lw)) return lw;
+        return lw.replace(/(^|[-(])([a-zà-ÿ])/g, (m, p, c) => p + c.toLocaleUpperCase('pt-BR'));
+      }).join(' ');
+    };
+    let slides = [
+      { name: 'Primavera Sound São Paulo 2026', kicker: 'Festival', date: 'Sáb 5 e dom 6 dez', venue: 'Autódromo de Interlagos', img: B('7936f484f211e3d92d2756518ec45abf'), cta: 'Ver pré-venda' },
+      { name: 'Rave the World by Alok', kicker: 'Esta semana', date: 'Sáb 17 out · 16h', venue: 'Laroc Club · Valinhos', img: B('0cc7b430ea7a9dd14644084531874c83'), cta: 'Ver ingressos' },
+      { name: 'Sorriso Eu Gosto no Pagode', kicker: 'Turnê · 4 cidades', date: 'Dom 8 nov · 13h', venue: 'Arena Anhembi · São Paulo', img: B('2959447541b48ebb1ca4a5422fd36f6c'), cta: 'Ver ingressos' },
+      { name: 'Solomun :: CWB', kicker: 'Eletrônica', date: 'Sáb 31 out · 14h', venue: 'Pedreira Paulo Leminski · Curitiba', img: B('b552a01adae792f30966fc41bad8be39'), cta: 'Ver ingressos' },
+      { name: 'Réveillon dos Milagres 2027', kicker: 'Réveillon', date: 'Dom 27 dez · 21h', venue: 'Praia de Marceneiro · AL', img: B('446c703cd44d165acb669098b67f9882'), cta: 'Ver ingressos' }
+    ];
+    if (live) {
+      const used = new Set();
+      const liveSlides = live.categories.map(c => {
+        const e = live.events.find(x => x.cats.includes(c.slug) && x.img && !used.has(x.id));
+        if (!e) return null;
+        used.add(e.id);
+        return { name: softTitle(e.name), kicker: c.name, date: e.date, venue: e.venue, img: e.img, cta: 'Ver ingressos' };
+      }).filter(Boolean).slice(0, 5);
+      /* hero com pôsteres reais: liveSlides só serve de referência (pedido de 26/10) */
+    }
+    /* dt:ini */
+    // Destinos dos destaques do hero (28/10): o destaque leva ao que ele é. Show individual continua no Evento padrão (a única página de evento de show).
+    const DT = window.IngresseDestinos || { categoria: s => 'Categoria.dc.html?c=' + s, estilo: i => 'Busca.dc.html?tags=' + i };
+    const DT_PADRAO = { href: 'Evento.dc.html', ctaHref: 'Evento.dc.html', verHref: 'Evento.dc.html', ver: 'Ver evento' };
+    const DT_SLIDES = {
+      'Primavera Sound São Paulo 2026': { href: DT.categoria('festivais'), verHref: DT.categoria('festivais'), ver: 'Ver festivais' },
+      'Rave the World by Alok': { verHref: DT.estilo('eletronica'), ver: 'Ver eletrônica' },
+      'Sorriso Eu Gosto no Pagode': { href: 'Colecao.dc.html', ctaHref: 'Colecao.dc.html' },
+      'Solomun :: CWB': { href: DT.categoria('musica-eletronica'), verHref: DT.categoria('musica-eletronica'), ver: 'Ver música eletrônica' },
+      'Réveillon dos Milagres 2027': { verHref: DT.estilo('reveillon'), ver: 'Ver réveillons' }
+    };
+    slides = slides.map(s => ({ ...DT_PADRAO, ...(DT_SLIDES[s.name] || {}), ...s }));
+    /* dt:fim */
+    const si = ((this.state.slide % slides.length) + slides.length) % slides.length;
+    const slide = slides[si];
+    const dots = slides.map((x, k) => ({ sel: k === si ? 'true' : 'false', aria: x.name, pick: () => this.setState({ slide: k }),
+      style: 'height:6px;border-radius:999px;border:none;cursor:pointer;padding:0;transition:width .3s;overflow:hidden;position:relative;' + (k === si ? 'width:40px;background:rgba(255,255,255,.35);background-image:linear-gradient(#fff,#fff);background-repeat:no-repeat;background-size:' + (this.state.paused ? '100%' : '0%') + ' 100%;animation:' + (this.state.paused ? 'none' : 'dotfill 8s linear forwards') : 'width:12px;background:rgba(255,255,255,.4)') }));
+    const banner = 'vitrine';
+    const still = this.state.paused || this.state.stopped;
+    const go = k => { this.setState({ slide: k }); if (this.restart) this.restart(); };
+    const queue = slides.map((x, k) => ({ name: x.name, date: x.date, img: x.img, sel: k === si ? 'true' : 'false', pick: () => go(k),
+      bar: k === si ? (still ? 'width:100%' : 'animation:vitfill 8s linear forwards') : 'width:0' }));
+    const mode = this.state.mode;
+    const modeDefs = [['padrao', 'Padrão'], ['primeiro', 'Primeiro acesso'], ['carregando', 'Carregando'], ['semlogin', 'Sem login']];
+    const modes = modeDefs.map(([id, label]) => { const on = id === mode; return { label, pressed: on ? 'true' : 'false', pick: () => { /* mc:conta */ if (window.IngresseLembretes) window.IngresseLembretes.definirConta(id !== 'semlogin'); this.setState({ mode: id }); }}; });
+    return { intents, ...HD, hdAnuncio: HDC.anunciar ? (featured.length === 1 ? '1 evento' : featured.length + ' eventos') + ': ' + labels[cur] : '', ...HB, ...SPV, ...GNV, ...MVR, featured, hasFeatured: featured.length > 0 && mode !== 'carregando', noFeatured: featured.length === 0 && mode !== 'carregando',
+      intentLower: labels[cur].toLowerCase(), cityName: cidNome || 'sua cidade',
+      elsewhere: [{ label: 'Bahia × Fortaleza · Salvador', href: 'Evento.dc.html?jogo=3011' }, { label: 'Pacotes e jogos do Brasileirão', href: 'Categoria.dc.html?c=futebol' }],
+      suggestions: ['pagode no domingo', 'eletrônica em SP', 'jogo do meu time', 'réveillon na praia'],
+      queue, vitrine: banner === 'vitrine', classico: banner === 'classico', slideNum: String(si + 1).padStart(2, '0'), slideTotal: String(slides.length).padStart(2, '0'),
+      artists, venues, group, modes, slide, dots, notifyMsg: 'Pronto. Avisamos você quando tiver eventos em ' + (cidNome || 'sua cidade') + '.',
+      pause: () => { if (!this.state.paused) this.setState({ paused: true }); }, resume: () => { if (this.state.paused) this.setState({ paused: false }); if (this.restart) this.restart(); },
+      toggleStop: () => { const stopped = !this.state.stopped; this.setState({ stopped }, () => this.restart && this.restart()); },
+      stopLabel: this.state.stopped ? 'Retomar destaques automáticos' : 'Pausar destaques automáticos', isStopped: !!this.state.stopped, isRunning: !this.state.stopped, intentTitle: labels[cur], intentHeading: cur === 'perto' || !cidNome ? labels[cur] : labels[cur] + ' em ' + cidNome, prev: () => this.setState({ slide: si - 1 }), next: () => this.setState({ slide: si + 1 }),
+      logged: mode !== 'semlogin', guest: mode === 'semlogin', loading: mode === 'carregando',
+      skeletons: [1, 2, 3, 4] };
+  }
+}
+</script>
+</body>
+</html>

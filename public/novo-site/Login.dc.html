@@ -1,0 +1,746 @@
+<!doctype html>
+<html lang="pt-BR" data-pagina="login" data-marca-fixa data-superficie="editorial">
+<head>
+<meta charset="utf-8">
+<script src="./ponte-backstage.js" data-ponte-backstage></script>
+<script src="./transicao-evento.js" data-previa-te></script>
+<script data-mvp-cedo>(function () {
+  var r = document.documentElement, v = null;
+  try {
+    var m = new URLSearchParams(location.search).get('modo');
+    if (m === 'mvp' || m === 'completo') localStorage.setItem('previa-modo', m);
+    v = localStorage.getItem('previa-modo') || 'mvp'; // padrão no design-prototypes: modo MVP
+  } catch (e) {}
+  if (v === 'mvp') { r.setAttribute('data-modo', 'mvp'); window.IngresseMvp = true; }
+})();</script>
+<script data-previa-esportes-cedo>(function () {
+  var root = document.documentElement, qs = new URLSearchParams(location.search), v = null;
+  try {
+    if (qs.get('dados') === 'mock' || qs.get('dados') === 'bff') localStorage.setItem('previa-dados', qs.get('dados'));
+    v = localStorage.getItem('previa-dados') || 'bff'; // padrão no design-prototypes: dados do Backstage (ponte-backstage.js)
+  } catch (e) {}
+  root.setAttribute('data-dados', v === 'bff' ? 'bff' : 'mock');
+  if (v !== 'bff' || !window.fetch) return;
+  var f0 = window.fetch;
+  window.fetch = function (u, o) {
+    var url = typeof u === 'string' ? u : (u && u.url) || '', alvo = null, md;
+    if (/\/api\/eventos(\.json)?(\?|$)/.test(url)) alvo = url.replace(/\/api\/eventos(\.json)?/, '/api/bff/eventos');
+    else if ((md = /(?:^|\/)dados\/((?:busca-artistas|busca-locais|catalogo-indice|sorteio-pool|home-reais|categoria-[a-z0-9-]+)\.json)(\?|$)/.exec(url))) alvo = '/api/bff/dados/' + md[1]; // os índices e as categorias também saem do BFF
+    if (!alvo) return f0.apply(this, arguments);
+    var self = this, args = arguments;
+    return f0.call(this, alvo, o).then(function (r) {
+      if (r.ok) { root.setAttribute('data-dados-ok', ''); return r; }
+      return r.clone().json().catch(function () { return {}; }).then(function (d) { root.setAttribute('data-dados-falha', (d && d.error) || ('HTTP ' + r.status)); return f0.apply(self, args); });
+    }, function () { root.setAttribute('data-dados-falha', 'sem conexão com o servidor local'); return f0.apply(self, args); });
+  };
+})();
+(function () {
+  var root = document.documentElement, qs = new URLSearchParams(location.search), v = null;
+  try {
+    if (qs.get('esportes') === 'on' || qs.get('esportes') === 'off') localStorage.setItem('previa-esportes', qs.get('esportes'));
+    v = localStorage.getItem('previa-esportes');
+  } catch (e) {}
+  var ligado = v === 'on';
+  root.setAttribute('data-esportes', ligado ? 'on' : 'off');
+  var DESCOBERTA = ['home', 'busca', 'categoria', 'artista', 'venue', 'colecao'];
+  if (ligado || DESCOBERTA.indexOf(root.getAttribute('data-pagina')) < 0 || qs.get('escopo') === 'esportes') return;
+  root.setAttribute('data-esportes-ocultar', '');
+  var prova = function (e) { var c = (e && e.cats) || []; return c.indexOf('corridas') >= 0 || (c.indexOf('esportes') >= 0 && c.indexOf('futebol') < 0); };
+  var f0 = window.fetch;
+  if (!f0) return;
+  window.fetch = function (u) {
+    var url = typeof u === 'string' ? u : (u && u.url) || '', p = f0.apply(this, arguments);
+    if (!/\/api\/eventos(\.json)?(\?|$)/.test(url)) return p;
+    return p.then(function (r) {
+      if (!r.ok) return r;
+      return r.clone().json().then(function (d) {
+        if (!d || !d.events) return r;
+        d.events = d.events.filter(function (e) { return !prova(e); });
+        if (d.categories) d.categories = d.categories.filter(function (c) { return c.id !== 'corridas'; });
+        return new Response(JSON.stringify(d), { status: r.status, statusText: r.statusText, headers: { 'Content-Type': 'application/json' } });
+      }).catch(function () { return r; });
+    });
+  };
+})();</script>
+<script data-previa-nav-cedo>(function () {
+  try {
+    var h = document.documentElement;
+    var tema = localStorage.getItem('prototipo-theme');
+    if (tema !== 'dark' && tema !== 'light') tema = window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    if (/\/(Ingressos|Checkout|Pagamento)\.dc\.html$/.test(location.pathname) || (/\/Evento\.dc\.html$/.test(location.pathname) && sessionStorage.getItem('mov:de'))) {
+      // chegada do movimento-compra.js (ele tem o seu portão e a sua entrada): aqui só o fundo da última tela vista, que fecha o quadro
+      // branco do tema escuro entre a saída e a entrada. Sai em movimento-navegacao.js quando o portão dele abre.
+      h.setAttribute('data-mov-dona', '');
+      var bgc = localStorage.getItem('mov:bg:' + tema);
+      if (bgc) {
+        h.style.setProperty('background-color', bgc, 'important');
+        h.setAttribute('data-mov-bgcompra', '');
+        setTimeout(function () { h.removeAttribute('data-mov-bgcompra'); h.style.removeProperty('background-color'); }, 3000);
+      }
+      return;
+    }
+    var j = sessionStorage.getItem('mov:nav');
+    var o = j ? JSON.parse(j) : null;
+    // o registro vale para esta URL (ou para qualquer uma, quando a tela anterior saiu sem clique nosso: Voltar, URL digitada, recarregar)
+    if (!o || o.v !== 1 || Date.now() - o.t > 6000 || (o.para && o.para !== location.pathname)) {
+      o = { v: 1, padrao: 'direta', bg: localStorage.getItem('mov:bg:' + tema) || '' };
+    }
+    h.setAttribute('data-mov-nav', o.padrao || '');
+    h.setAttribute('data-mov-nav-gate', '');
+    var g = document.createElement('style');
+    g.id = 'mov-nav-portao';
+    // sem transições (data-mov-nav, que sai 2 quadros depois do portão abrir): os estilos chegam com a tela escondida e, sem isto, cores e bordas
+    // ainda estariam em transição de 160 ms quando ela aparece (e, em movimento reduzido, a própria visibilidade levaria um quadro para virar)
+    g.textContent = 'html[data-mov-nav-gate] #dc-root{visibility:hidden}html[data-mov-nav] #dc-root,html[data-mov-nav] #dc-root *,html[data-mov-nav] #dc-root *::before,html[data-mov-nav] #dc-root *::after{transition:none !important}';
+    (document.head || h).appendChild(g);
+    if (o.bg) h.style.setProperty('background-color', o.bg, 'important');
+    if (o.ponte && o.ponte.html) {
+      // a fonte da ponte tem nome próprio (ElzaPonte): a identidade da tela nova declara "Elza" com font-display swap e, se a ponte usasse
+      // esse nome, o texto trocaria para a fonte de sistema quando o CSS novo chegasse. Os dados (base64, guardados pela tela anterior)
+      // entram por FontFace binária, sem espera; sem eles, cai na URL (block = texto invisível até a fonte chegar).
+      var r4 = sessionStorage.getItem('mov:fonte400'), r6 = sessionStorage.getItem('mov:fonte600');
+      var bin = function (b64) { var t = atob(b64), u = new Uint8Array(t.length), i; for (i = 0; i < t.length; i++) u[i] = t.charCodeAt(i); return u.buffer; };
+      var doDados = false;
+      if (r4 && r6 && window.FontFace) {
+        // FontFace com dados binários fica pronta na hora (status "loaded" no mesmo instante): o texto da ponte já nasce na fonte certa
+        try {
+          document.fonts.add(new FontFace('ElzaPonte', bin(r4), { weight: '400 500' }));
+          document.fonts.add(new FontFace('ElzaPonte', bin(r6), { weight: '600 700' }));
+          doDados = true;
+        } catch (e) {}
+      }
+      if (!doDados) {
+        var f = document.createElement('style');
+        f.id = 'mov-ponte-fonte';
+        f.textContent = '@font-face{font-family:"ElzaPonte";src:url(./fontes/Elza-Regular.woff2) format("woff2");font-weight:400 500;font-display:block}' +
+          '@font-face{font-family:"ElzaPonte";src:url(./fontes/Elza-Semibold.woff2) format("woff2");font-weight:600 700;font-display:block}';
+        (document.head || h).appendChild(f);
+      }
+      // dentro de um shadow root: o CSS da tela nova (div, span, a, svg…) não alcança a ponte enquanto ela espera
+      var d = document.createElement('div');
+      d.id = 'mov-ponte';
+      d.setAttribute('aria-hidden', 'true');
+      d.style.cssText = 'all:initial;position:fixed;left:0;top:' + (o.ponte.top || 0) + 'px;width:' + o.ponte.w + 'px;height:' + o.ponte.h + 'px;z-index:2147483000;pointer-events:none;overflow:hidden;display:block';
+      var sr = d.attachShadow ? d.attachShadow({ mode: 'open' }) : d;
+      sr.innerHTML = o.ponte.html;
+      h.appendChild(d);
+    }
+    if (o.poster && o.poster.src) {
+      var im = document.createElement('img');
+      im.id = 'mov-ponte-poster';
+      im.alt = '';
+      im.setAttribute('aria-hidden', 'true');
+      im.src = o.poster.src;
+      im.style.cssText = 'all:initial;position:fixed;left:' + o.poster.x + 'px;top:' + o.poster.y + 'px;width:' + o.poster.w + 'px;height:' + o.poster.h + 'px;object-fit:cover;border-radius:' + (o.poster.r || '0') + ';z-index:' + (o.poster.z || 1) + ';pointer-events:none;display:block';
+      h.appendChild(im);
+    }
+    setTimeout(function () {
+      var pp = document.getElementById('mov-ponte-poster');
+      if (pp) pp.remove();
+      var p = document.getElementById('mov-ponte');
+      if (p) p.remove();
+      var s = document.getElementById('mov-ponte-fonte');
+      if (s) s.remove();
+      h.removeAttribute('data-mov-nav-gate');
+      h.removeAttribute('data-mov-nav');
+      h.style.removeProperty('background-color');
+    }, 3000);
+  } catch (e) {}
+})();</script>
+<script data-bu-cedo>(function(){try{var p=new URLSearchParams(location.search),t=(p.get("tipo")||"").split(",").filter(Boolean);var so=t.length>0&&t.every(function(x){return x==="corridas"||x==="esportes"});if(p.get("escopo")==="esportes"||so){document.documentElement.setAttribute("data-marca","esportes");document.title="Busca de provas | Ingresse Sports";}}catch(e){}})();</script>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, follow">
+<meta name="theme-color" content="#F5F4F2">
+<meta name="format-detection" content="telephone=no">
+<link rel="preload" href="./fontes/Elza-Semibold.woff2" as="font" type="font/woff2" crossorigin data-previa>
+<link rel="preload" href="./fontes/Elza-Regular.woff2" as="font" type="font/woff2" crossorigin data-previa>
+<title>Entrar — Ingresse</title>
+<script src="./vendor/react.js"></script>
+<script src="./vendor/react-dom.js"></script>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<script src="./destinos.js" defer data-previa></script>
+<style data-lg>
+/* Login personalizado (tools/previa/login.mjs; Mariana com a Isadora, 28/10/2026). Classes lg-*, só tokens da identidade: raio 8 px, sem sombra, Elza, alvo de 48 px.
+   Composição da referência (login real do Primavera Sound São Paulo '26): painel grande de arte à esquerda, par de logos «marca | Ingresse» no alto da coluna da direita,
+   cartão com idioma, título, telefone e «Continuar», rodapé com «Ingresse» e copyright. Três marcas (?marca=ingresse | esportes | evento&evento=<id>) trocam só o painel e o par de logos.
+   Tema claro e escuro pelos tokens do site. Transições: opacity e transform com os tokens motion.* (em movimento reduzido valem 0). */
+html[data-pagina="login"], html[data-pagina="login"] body { background: var(--color-bg-page); }
+html[data-pagina="login"] main { max-width: none !important; padding: 0 !important; margin: 0 !important; }
+
+/* ---------- grade: celular em coluna (faixa de arte, logos, formulário, rodapé); desktop em duas colunas ---------- */
+.lg { min-height: 100vh; min-height: 100dvh; box-sizing: border-box; padding: var(--space-4); background: var(--color-bg-page); color: var(--color-text-primary);
+  display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto 1fr auto; grid-template-areas: "arte" "logos" "form" "rodape"; row-gap: var(--space-4); }
+.lg-arte { grid-area: arte; }
+.lg-hdr { grid-area: logos; }
+.lg-main { grid-area: form; }
+.lg-rodape { grid-area: rodape; }
+/* o rodapé único do site (rodape.mjs, 03/11/2026) entra no fim da raiz: aqui ocupa todas as colunas, abaixo da tela de entrada, e encosta nas bordas (desfaz o padding da .lg) */
+.lg { --lg-pad: var(--space-4); }
+.lg > footer.rp { grid-area: auto / 1 / auto / -1; margin: 0 calc(var(--lg-pad) * -1) calc(var(--lg-pad) * -1); }
+@media (min-width: 900px) {
+  .lg { --lg-pad: var(--space-5); padding: var(--space-5); grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: auto 1fr auto; grid-template-areas: "arte logos" "arte form" "arte rodape"; column-gap: var(--space-6); row-gap: var(--space-5); }
+}
+
+/* ---------- painel de arte (decorativo): a imagem entra por --lg-arte (lista de camadas; a primeira é a final, a segunda a provisória) ---------- */
+.lg-arte { position: relative; overflow: hidden; min-height: 96px; border-radius: var(--radius-base); background-color: var(--color-bg-island); display: flex; align-items: center; justify-content: center; }
+.lg-arte::before { content: ""; position: absolute; inset: 0; background-image: var(--lg-arte); background-size: cover; background-position: center; background-repeat: no-repeat; }
+@media (min-width: 900px) { .lg-arte { min-height: 0; } }
+/* institucional: o desenho em vermelho da marca fica discreto atrás do glifo (cymatics da Ingresse sobre fundo escuro, até 20% de opacidade, como pede a direção de arte) */
+.lg[data-marca-login="ingresse"] .lg-arte::before { opacity: .2; }
+.lg-glifo { position: relative; display: block; height: var(--size-icon-lg); aspect-ratio: 84 / 64; background-color: var(--color-fg-on-island); -webkit-mask: url("./assets/brand/ingresse-glifo.svg") center / contain no-repeat; mask: url("./assets/brand/ingresse-glifo.svg") center / contain no-repeat; }
+@media (min-width: 900px) { .lg-glifo { height: auto; width: min(46%, 22rem); } }
+/* esportes: o pôster esportivo é claro (branco, tinta e marcos vermelhos): o painel segue a leitura da referência, uma superfície clara com a marca, também no tema escuro */
+.lg[data-marca-login="esportes"] .lg-arte { background-color: var(--color-primitive-neutral-0); }
+
+/* ---------- par de logos ---------- */
+.lg .lg-hdr { position: static; z-index: auto; display: flex; align-items: center; justify-content: center; gap: var(--space-4); min-height: 0; padding: var(--space-2) 0 0; border: 0; background: transparent; box-shadow: none; }
+@media (min-width: 900px) { .lg .lg-hdr { padding-top: var(--space-7); gap: var(--space-5); } }
+.lg-logo-a { display: inline-flex; align-items: center; min-height: var(--size-touch-default); min-width: var(--size-touch-min); color: var(--color-text-primary); text-decoration: none; }
+.lg-logo-ing { display: block; height: calc(var(--size-icon-md) + var(--space-1)); width: auto; }
+.lg-logo-esp { display: block; height: calc(var(--size-icon-md) + var(--space-1)); aspect-ratio: 586.5 / 73; background-color: currentColor; -webkit-mask: url("./assets/brand/ingresse-sports.svg") left center / contain no-repeat; mask: url("./assets/brand/ingresse-sports.svg") left center / contain no-repeat; }
+.lg-logo-evento { display: block; height: calc(var(--size-icon-md) + var(--space-1)); width: auto; max-width: min(14rem, 40vw); object-fit: contain; } /* logo do evento como veio (colorido, como na referência) */
+.lg-nome { max-width: 14ch; font-size: var(--font-size-title-4); line-height: var(--font-lh-title-4); font-weight: 600; letter-spacing: var(--font-ls-title-4, 0); text-wrap: balance; }
+@media (min-width: 900px) { .lg-nome { max-width: 24ch; } }
+.lg-sep { align-self: center; width: var(--border-width-hairline); height: var(--space-7); background: var(--color-border-strong); }
+
+/* ---------- cartão ---------- */
+.lg-main { display: flex; align-items: flex-start; justify-content: center; min-width: 0; }
+@media (min-width: 900px) { .lg-main { align-items: center; } }
+.lg-card { width: min(100%, 30rem); box-sizing: border-box; display: flex; flex-direction: column; gap: var(--space-5); padding: var(--space-5); background: var(--color-bg-surface); border: var(--border-width-hairline) solid var(--color-border-subtle); border-radius: var(--radius-base); }
+@media (max-width: 420px) { .lg-card { padding: var(--space-4); gap: var(--space-4); } }
+
+/* idioma: o botão é um seletor discreto no alto do cartão; a lista é a do seletor de país (.tel-list) */
+.lg-idioma { width: 100%; }
+.lg-idioma-btn { display: flex; align-items: center; gap: var(--space-2); margin: 0 auto; min-height: var(--size-touch-default); padding: 0 var(--space-3); border: 0; border-radius: var(--radius-base); background: transparent; color: var(--color-text-primary); font: inherit; font-size: var(--font-size-body); cursor: pointer; transition: background-color var(--motion-duration-fast) var(--motion-ease-move); }
+.lg-idioma-btn:hover { background: var(--color-bg-hover); }
+.lg-idioma-btn img { width: 24px; height: 18px; flex: 0 0 auto; object-fit: cover; border: var(--border-width-hairline) solid var(--color-border-subtle); }
+.lg-idioma-btn svg { transition: transform var(--motion-duration-fast) var(--motion-ease-move); }
+.lg-idioma[data-open="true"] .lg-idioma-btn svg { transform: rotate(180deg); }
+.lg-idioma-lista { width: 100%; }
+.lg-idioma-lista .tel-ddi { flex: 0 0 0; }
+
+/* ---------- etapas: os três painéis dividem a mesma célula; o cartão tem a altura do maior e não pula entre etapas ---------- */
+.lg-panes { display: grid; }
+.lg-pane { grid-area: 1 / 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-5); visibility: hidden; opacity: 0; pointer-events: none; transform: translateY(var(--motion-distance-sm));
+  transition: opacity var(--motion-duration-fast) var(--motion-ease-exit), transform var(--motion-duration-fast) var(--motion-ease-exit), visibility 0s linear var(--motion-duration-fast); }
+.lg-pane[data-pos="antes"] { transform: translateY(calc(-1 * var(--motion-distance-sm))); }
+.lg-pane[data-on="true"] { visibility: visible; opacity: 1; pointer-events: auto; transform: none;
+  transition: opacity var(--motion-duration-base) var(--motion-ease-enter) var(--motion-duration-fast), transform var(--motion-duration-base) var(--motion-ease-enter) var(--motion-duration-fast), visibility 0s linear var(--motion-duration-fast); }
+.lg-h { margin: 0; text-align: center; font-size: var(--font-size-title-3); line-height: var(--font-lh-title-3); letter-spacing: var(--font-ls-title-3, 0); font-weight: 600; color: var(--color-text-primary); text-wrap: balance; }
+.lg-txt { margin: 0; text-align: center; font-size: var(--font-size-body); line-height: var(--font-lh-body); color: var(--color-text-secondary); text-wrap: pretty; }
+.lg-txt strong { color: var(--color-text-primary); font-weight: 600; white-space: nowrap; }
+.lg-cab { display: flex; flex-direction: column; align-items: center; gap: var(--space-2); }
+.lg-form { display: flex; flex-direction: column; gap: var(--space-4); }
+.lg .field.lg-field { flex: 0 0 auto; }
+.lg-cta { width: 100%; box-sizing: border-box; }
+.lg-ajuda, .lg-trocar, .lg-volta { align-self: center; }
+.lg-ajuda { margin-top: auto; }
+.lg .linkbtn { display: inline-flex; align-items: center; justify-content: center; min-height: var(--size-touch-default); }
+
+/* ---------- código de 6 números ---------- */
+.lg-cod { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: var(--space-2); }
+@media (max-width: 380px) { .lg-cod { gap: var(--space-1); } }
+.lg-cod-set { margin: 0; padding: 0; border: 0; min-width: 0; }
+.lg-cod-set > legend { padding: 0; margin-bottom: var(--space-2); font-size: var(--font-size-small); font-weight: 600; line-height: 1.3; color: var(--color-text-primary); }
+.lg .lg-cod input { width: 100%; min-width: 0; box-sizing: border-box; text-align: center; font-size: var(--font-size-body); font-weight: 600; font-variant-numeric: tabular-nums; }
+@media (min-width: 640px) { .lg .lg-cod input { font-size: var(--font-size-title-4); } }
+.lg .field[data-err="true"] .lg-cod input { border: var(--border-width-strong) solid var(--color-field-border-error); padding: 0 calc(var(--space-4) - 1px); }
+.lg .field[data-err="true"] .err::before { display: block; }
+.lg-reenvio { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; column-gap: var(--space-5); min-height: var(--size-touch-default); }
+.lg-espera { display: flex; align-items: center; min-height: var(--size-touch-default); }
+.lg-tempo { margin-left: var(--space-1); font-weight: 600; font-variant-numeric: tabular-nums; color: var(--color-text-primary); }
+/* aviso (erro ou reenvio): abre e fecha por grid-template-rows, sem salto */
+.lg-slot { display: grid; grid-template-rows: 0fr; visibility: hidden; transition: grid-template-rows var(--motion-duration-base) var(--motion-ease-enter), visibility 0s linear var(--motion-duration-base); }
+.lg-slot[data-on="true"] { grid-template-rows: 1fr; visibility: visible; transition: grid-template-rows var(--motion-duration-base) var(--motion-ease-enter), visibility 0s; }
+.lg-slot-in { min-height: 0; overflow: hidden; }
+
+/* ---------- sucesso ---------- */
+.lg-pane-ok { align-items: center; text-align: center; justify-content: center; }
+.lg-ok-ico { display: inline-flex; align-items: center; justify-content: center; width: var(--size-avatar-lg); height: var(--size-avatar-lg); border-radius: var(--radius-base); background: var(--color-alert-success-bg); color: var(--color-alert-success-icon); }
+.lg-ok-ico svg { width: var(--size-icon-lg); height: var(--size-icon-lg); fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.lg-barra { display: block; width: 100%; height: var(--space-1); background: var(--color-border-subtle); overflow: hidden; }
+.lg-barra i { display: block; height: 100%; width: 100%; background: var(--color-fg-brand); transform-origin: left center; transform: scaleX(0); }
+.lg-pane-ok[data-on="true"] .lg-barra i { animation: lg-barra calc(var(--motion-duration-slow) * 3) linear forwards; }
+@keyframes lg-barra { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
+/* ---------- rodapé ---------- */
+.lg-rodape { display: flex; flex-direction: column; align-items: center; gap: var(--space-1); }
+.lg-rodape-link { display: inline-flex; align-items: center; gap: var(--space-1); min-height: var(--size-touch-default); padding: 0 var(--space-3); color: var(--color-text-primary); font-size: var(--font-size-body); text-decoration: none; }
+.lg-rodape-link:hover { text-decoration: underline; text-underline-offset: 4px; }
+.lg-rodape-link svg { width: var(--space-3); height: var(--space-3); }
+.lg-copy { margin: 0; font-size: var(--font-size-small); line-height: var(--font-lh-small); color: var(--color-text-tertiary); }
+
+/* ---------- envio: o botão mostra o progresso (.spin); o campo fica parado ---------- */
+.lg[data-envio="enviando"] .lg-cta, .lg[data-envio="verificando"] .lg-cta { cursor: progress; }
+.lg-cta .spin { margin-right: var(--space-2); }
+
+/* ---------- movimento reduzido: sem deslocamento nem barra animada (a barra cheia indica que está pronto) ---------- */
+@media (prefers-reduced-motion: reduce) { .lg-pane-ok[data-on="true"] .lg-barra i { animation: none; transform: scaleX(1); } }
+html[data-motion="reduce"] .lg-pane-ok[data-on="true"] .lg-barra i { animation: none; transform: scaleX(1); }
+
+</style>
+<style data-lg-tel>
+.tel-box { position: relative; display: block; }
+.field .tel-box > input { width: 100%; padding-left: 84px !important; box-sizing: border-box; }
+.tel-flag { position: absolute; z-index: 1; left: 0; top: 0; bottom: 0; width: 72px; display: flex; align-items: center; justify-content: center; gap: var(--space-2); padding: 0; background: transparent; border: 0; border-right: var(--border-width-hairline) solid var(--color-border-subtle); border-radius: 0 !important; color: var(--color-text-tertiary); cursor: pointer; }
+.tel-flag:hover { color: var(--color-text-primary); background: var(--color-bg-hover); }
+.tel-flag img, .tel-list img { width: 24px; height: 18px; flex: 0 0 auto; object-fit: cover; border: var(--border-width-hairline) solid var(--color-border-subtle); }
+.tel-box[data-open="true"] .tel-flag svg { transform: rotate(180deg); }
+.tel-flag svg { transition: transform var(--motion-duration-fast) var(--motion-ease-move); }
+.tel-list { position: absolute; z-index: 30; left: 0; top: calc(100% + var(--space-1)); width: min(360px, 100%); max-height: 320px; overflow-y: auto; margin: 0; padding: var(--space-1) 0; list-style: none; background: var(--color-bg-surface); border: var(--border-width-strong) solid var(--color-border-strong); border-radius: var(--radius-base); visibility: hidden; opacity: 0; transform: translateY(calc(-1 * var(--space-1))); transition: opacity var(--motion-duration-fast) var(--motion-ease-enter), transform var(--motion-duration-fast) var(--motion-ease-enter), visibility 0s linear var(--motion-duration-fast); }
+.tel-box[data-open="true"] .tel-list { visibility: visible; opacity: 1; transform: none; transition: opacity var(--motion-duration-fast) var(--motion-ease-enter), transform var(--motion-duration-fast) var(--motion-ease-enter), visibility 0s; }
+.tel-list li { display: flex; align-items: center; gap: var(--space-3); min-height: var(--size-touch-default); padding: 0 var(--space-4); font-size: var(--font-size-body); cursor: pointer; color: var(--color-text-primary); }
+.tel-list li:hover, .tel-list li:focus-visible { background: var(--color-bg-hover); }
+.tel-list li[aria-selected="true"] { background: var(--color-bg-subtle); }
+.tel-nome { flex: 0 1 auto; min-width: 0; }
+.tel-ddi { flex: 1 1 auto; color: var(--color-text-tertiary); font-variant-numeric: tabular-nums; }
+.tel-ok { visibility: hidden; margin-left: auto; }
+.tel-list li[aria-selected="true"] .tel-ok { visibility: visible; }
+</style>
+<link rel="stylesheet" href="./theme.css">
+<link rel="stylesheet" href="./base.css">
+<script src="./theme.js"></script>
+<link rel="stylesheet" href="./ux.css">
+<link rel="stylesheet" href="./ds.css">
+<script src="./ux.js" defer></script>
+<link rel="stylesheet" href="./identidade-v1.css" data-previa>
+<script src="./previa.js" defer data-previa></script>
+<script src="./movimento-compra.js" defer data-previa></script>
+<script src="./movimento-navegacao.js" defer data-previa></script>
+<script src="./lacunas.js" defer data-previa></script>
+<link rel="stylesheet" href="./transicao-evento.css" data-previa data-previa-te>
+</helmet>
+
+<!-- Login personalizado (tools/previa/login.mjs). Regra do DOM: o filho `.hdr` direto do invólucro é o que o movimento de navegação (movimento-navegacao.js) espera para abrir a tela;
+     aqui ele carrega só o par de logos. O painel de arte (.lg-arte) é decorativo: no celular vira a faixa do topo e, no desktop, ocupa a coluna da esquerda. -->
+<div class="lg" data-marca-login="{{marca}}" data-etapa="{{etapa}}" data-envio="{{envioEstado}}" style="{{arteVars}}">
+
+  <header class="hdr lg-hdr">
+    <sc-if value="{{temLogoEvento}}" hint-placeholder-val="{{false}}">
+      <a href="{{voltaHref}}" class="lg-logo-a" aria-label="{{eventoNome}}: voltar"><sc-if value="{{temLogoArquivo}}" hint-placeholder-val="{{false}}"><img class="lg-logo-evento" src="{{logoSrc}}" alt="{{eventoNome}}"></sc-if><sc-if value="{{semLogoArquivo}}" hint-placeholder-val="{{true}}"><span class="lg-nome">{{eventoNome}}</span></sc-if></a>
+      <span class="lg-sep" aria-hidden="true"></span>
+    </sc-if>
+    <sc-if value="{{ehEsportes}}" hint-placeholder-val="{{false}}">
+      <a href="Esportes.dc.html" class="lg-logo-a" aria-label="Ingresse Sports"><span class="lg-logo-esp" role="img" aria-label="Ingresse Sports"></span></a>
+    </sc-if>
+    <sc-if value="{{naoEhEsportes}}" hint-placeholder-val="{{true}}">
+      <a href="Main.dc.html" class="lg-logo-a" aria-label="Ingresse"><img class="lg-logo-ing" src="./assets/8703fb5f412b57860d569f5abeea2cae.svg" alt="Ingresse"></a>
+    </sc-if>
+  </header>
+
+  <main class="lg-main" id="lg-main">
+    <div class="lg-card">
+
+      <!-- idioma: o mesmo controle do menu da conta (botões data-pv-lang, que o previa.js aplica), aqui como seletor com bandeira -->
+      <div class="lg-idioma tel-box" data-open="{{idiomaOpen}}">
+        <button type="button" class="lg-idioma-btn" id="lg-idioma-btn" aria-haspopup="listbox" aria-expanded="{{idiomaOpen}}" aria-label="{{idiomaRotulo}}" onClick="{{idiomaToggle}}"><img src="{{idiomaFlag}}" alt="" width="24" height="18"><span>{{idiomaNome}}</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg></button>
+        <ul class="tel-list lg-idioma-lista" role="listbox" aria-label="Idioma" id="lg-idioma-lista">
+          <sc-for list="{{idiomas}}" as="o" hint-placeholder-count="4">
+            <li role="option" tabindex="-1" aria-selected="{{o.on}}" data-pv-lang="{{o.c}}" onClick="{{o.pick}}" onKeyDown="{{o.key}}"><img src="{{o.flag}}" alt="" width="24" height="18"><span class="tel-nome">{{o.nome}}</span><span class="tel-ddi"></span><svg class="uui-ico tel-ok" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></li>
+          </sc-for>
+        </ul>
+      </div>
+
+      <div class="lg-panes">
+
+        <!-- 1. telefone -->
+        <section class="lg-pane" data-on="{{ePaneTel}}" data-pos="{{posTel}}" aria-labelledby="lg-h-tel">
+          <h1 class="lg-h" id="lg-h-tel">Cadastre-se ou acesse sua conta</h1>
+          <form class="lg-form" onSubmit="{{enviar}}" novalidate>
+            <div class="field lg-field">
+              <label for="lg-tel">Número de telefone</label>
+              <div class="tel-box" data-open="{{telOpen}}">
+                <button type="button" class="tel-flag" id="lg-tel_flag" aria-haspopup="listbox" aria-expanded="{{telOpen}}" aria-label="{{flagLabel}}" onClick="{{telToggle}}"><img src="{{flagSrc}}" alt="" width="24" height="18"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg></button>
+                <input id="lg-tel" type="tel" inputmode="tel" autocomplete="tel" value="{{tel}}" onInput="{{telInput}}" placeholder="{{telPh}}" disabled="{{enviando}}">
+                <ul class="tel-list" role="listbox" aria-label="País do telefone" id="lg-tel_lista">
+                  <sc-for list="{{paises}}" as="p" hint-placeholder-count="6">
+                    <li role="option" tabindex="-1" aria-selected="{{p.on}}" data-pais="{{p.c}}" onClick="{{p.pick}}" onKeyDown="{{p.key}}"><img src="{{p.flagSrc}}" alt="" width="24" height="18"><span class="tel-nome">{{p.nome}}</span><span class="tel-ddi">+{{p.ddi}}</span><svg class="uui-ico tel-ok" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></li>
+                  </sc-for>
+                </ul>
+              </div>
+            </div>
+            <button type="submit" class="bp bp-lg lg-cta" aria-disabled="{{telDesativado}}" aria-busy="{{enviandoS}}"><sc-if value="{{enviando}}" hint-placeholder-val="{{false}}"><span class="spin" aria-hidden="true"></span></sc-if>{{telCta}}</button>
+          </form>
+          <a href="#lg-ajuda" class="linkbtn lg-ajuda" data-gancho="central-de-ajuda" onClick="{{ajuda}}">Problemas com o login?</a>
+        </section>
+
+        <!-- 2. código por SMS ou WhatsApp -->
+        <section class="lg-pane" data-on="{{ePaneCod}}" data-pos="{{posCod}}" aria-labelledby="lg-h-cod">
+          <div class="lg-cab">
+            <h1 class="lg-h" id="lg-h-cod">Digite o código</h1>
+            <p class="lg-txt">Enviamos um código de 6 números por {{canalNome}} para <strong class="lg-tel-ok">{{telFmt}}</strong>.</p>
+            <button type="button" class="linkbtn lg-trocar" onClick="{{trocarNumero}}">Trocar número</button>
+          </div>
+          <form class="lg-form" onSubmit="{{verificarJa}}" novalidate>
+            <div class="field lg-field" data-err="{{codErrB}}">
+              <fieldset class="lg-cod-set" onPaste="{{colar}}">
+                <legend>Código de 6 números</legend>
+                <div class="lg-cod">
+                  <sc-for list="{{digitos}}" as="d" hint-placeholder-count="6">
+                    <input id="{{d.id}}" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="{{d.auto}}" value="{{d.v}}" aria-label="{{d.rot}}" aria-invalid="{{codErrB}}" disabled="{{verificando}}" onInput="{{d.onInput}}" onKeyDown="{{d.onKey}}" onFocus="{{d.onFoco}}">
+                  </sc-for>
+                </div>
+              </fieldset>
+              <div class="lg-slot" data-on="{{temErro}}">
+                <div class="lg-slot-in"><span class="err" role="alert">{{erroTexto}}</span></div>
+              </div>
+            </div>
+            <div class="lg-slot" data-on="{{temInfo}}">
+              <div class="lg-slot-in">
+                <div class="uui-alert uui-alert--success" role="status">
+          <span class="uui-alert__icon"><svg class="uui-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="m7.5 12 3 3 6-6m5.5 3c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10Z"/></svg></span>
+          <div class="uui-alert__body"><p class="uui-alert__text">{{infoTexto}}</p></div>
+        </div>
+              </div>
+            </div>
+            <button type="submit" class="bp bp-lg lg-cta" aria-disabled="{{codDesativado}}" aria-busy="{{verificandoS}}"><sc-if value="{{verificando}}" hint-placeholder-val="{{false}}"><span class="spin" aria-hidden="true"></span></sc-if>{{codCta}}</button>
+          </form>
+          <div class="lg-reenvio">
+            <sc-if value="{{esperando}}" hint-placeholder-val="{{true}}"><p class="lg-txt lg-espera" aria-live="off">Reenviar código em <span class="lg-tempo">{{tempo}}</span></p></sc-if>
+            <sc-if value="{{podeReenviar}}" hint-placeholder-val="{{false}}">
+              <button type="button" class="linkbtn" onClick="{{reenviar}}">Reenviar código</button>
+              <button type="button" class="linkbtn" onClick="{{outroCanal}}">{{outroCanalRotulo}}</button>
+            </sc-if>
+          </div>
+        </section>
+
+        <!-- 3. sucesso e retorno à tela de origem -->
+        <section class="lg-pane lg-pane-ok" data-on="{{ePaneOk}}" data-pos="{{posOk}}" aria-labelledby="lg-h-ok">
+          <span class="lg-ok-ico" aria-hidden="true"><svg class="uui-ico" viewBox="0 0 24 24"><path d="m7.5 12 3 3 6-6m5.5 3c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10Z"/></svg></span>
+          <h1 class="lg-h" id="lg-h-ok">Tudo certo</h1>
+          <p class="lg-txt" role="status">{{okTexto}}</p>
+          <span class="lg-barra" aria-hidden="true"><i></i></span>
+          <a href="{{voltaHref}}" class="linkbtn lg-volta" id="lg-volta">Voltar agora</a>
+        </section>
+
+      </div>
+    </div>
+  </main>
+
+  <div class="lg-rodape" role="contentinfo">
+    <a href="Main.dc.html" class="lg-rodape-link">Ingresse<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M7 7h10v10"/></svg></a>
+    <p class="lg-copy">Copyright © 2026 Ingresse</p>
+  </div>
+
+  <aside class="lg-arte" aria-hidden="true">
+    <sc-if value="{{temGlifo}}" hint-placeholder-val="{{false}}"><span class="lg-glifo"></span></sc-if>
+  </aside>
+
+  <details class="proto">
+    <summary>Protótipo</summary>
+    <div class="proto-in">
+      <div class="over">Resultado do código</div>
+      <button type="button" class="chip chip-sm" aria-pressed="{{simAceita}}" onClick="{{simOk}}">Código aceito</button>
+      <button type="button" class="chip chip-sm" aria-pressed="{{simRecusa}}" onClick="{{simNao}}">Código recusado</button>
+      <div class="over">Ir para</div>
+      <button type="button" class="chip chip-sm" onClick="{{irCodigo}}">Tela do código</button>
+      <button type="button" class="chip chip-sm" onClick="{{irErro}}">Código incorreto</button>
+      <button type="button" class="chip chip-sm" onClick="{{irOk}}">Tela de sucesso</button>
+      <div class="over">Reenvio</div>
+      <button type="button" class="chip chip-sm" onClick="{{liberar}}">Liberar o reenvio</button>
+    </div>
+  </details>
+<footer class="rp" aria-label="Rodapé">
+  <div class="rp-in">
+    <div class="rp-topo">
+      <a href="Main.dc.html" class="rp-marca" aria-label="Ingresse — início"><img src="./assets/8703fb5f412b57860d569f5abeea2cae.svg" alt="Ingresse"></a>
+      <div class="rp-cols">
+      <nav class="rp-col" aria-labelledby="rp-c0">
+        <h2 class="rp-col__t" id="rp-c0">A Ingresse</h2>
+        <ul class="rp-lista">
+          <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Sobre a Ingresse</a></li>
+          <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Trabalhe conosco</a></li>
+          <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Diversidade e inclusão</a></li>
+          <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Imprensa</a></li>
+        </ul>
+      </nav>
+      <nav class="rp-col" aria-labelledby="rp-c1">
+        <h2 class="rp-col__t" id="rp-c1">Ajuda</h2>
+        <ul class="rp-lista">
+          <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Central de ajuda</a></li>
+          <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Perguntas frequentes</a></li>
+          <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Pedir reembolso</a></li>
+          <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Regras de meia‑entrada</a></li>
+        </ul>
+      </nav>
+      <nav class="rp-col" aria-labelledby="rp-c2">
+        <h2 class="rp-col__t" id="rp-c2">Descubra</h2>
+        <ul class="rp-lista">
+          <li><a class="rp-link" href="Busca.dc.html?escopo=artistas">Artistas</a></li>
+          <li><a class="rp-link" href="Busca.dc.html?escopo=locais">Locais</a></li>
+          <li><a class="rp-link" href="https://revenda.ingresse.com" target="_blank" rel="noopener noreferrer" aria-label="Revenda Oficial, abre em nova aba">Revenda Oficial</a></li>
+          <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Para <span class="rp-nw">produtores<svg class="rp-ico rp-ico--sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M8 7h9v9"/></svg></span></a></li>
+        </ul>
+      </nav>
+      </div>
+    </div>
+    <div class="rp-linha">
+      <div class="rp-apps" role="group" aria-label="Baixe o app">
+        <a class="bs rp-app" href="#" data-toast="O link da App Store entra quando o app novo for publicado" aria-label="Baixar o app da Ingresse para iOS"><svg class="rp-ico" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16.37 12.83c-.02-2.3 1.88-3.4 1.97-3.46-1.07-1.57-2.74-1.78-3.33-1.8-1.42-.14-2.77.83-3.49.83-.72 0-1.83-.81-3.01-.79-1.55.02-2.98.9-3.78 2.29-1.61 2.8-.41 6.94 1.16 9.21.77 1.11 1.68 2.36 2.88 2.31 1.16-.05 1.59-.75 2.99-.75 1.4 0 1.79.75 3.01.72 1.24-.02 2.03-1.13 2.79-2.25.88-1.29 1.24-2.54 1.26-2.6-.03-.01-2.42-.93-2.45-3.71zM14.08 6.07c.64-.77 1.07-1.85.95-2.92-.92.04-2.03.61-2.69 1.38-.59.68-1.11 1.78-.97 2.83 1.02.08 2.07-.52 2.71-1.29z"/></svg><span>iOS</span></a>
+        <a class="bs rp-app" href="#" data-toast="O link do Google Play entra quando o app novo for publicado" aria-label="Baixar o app da Ingresse para Android"><svg class="rp-ico" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 18c0 .55.45 1 1 1h1v3.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5V19h2v3.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5V19h1c.55 0 1-.45 1-1V8H6v10zM3.5 8C2.67 8 2 8.67 2 9.5v7c0 .83.67 1.5 1.5 1.5S5 17.33 5 16.5v-7C5 8.67 4.33 8 3.5 8zm17 0c-.83 0-1.5.67-1.5 1.5v7c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5v-7c0-.83-.67-1.5-1.5-1.5zm-4.97-5.84l1.3-1.3c.2-.2.2-.51 0-.71-.2-.2-.51-.2-.71 0l-1.48 1.48A5.84 5.84 0 0 0 12 1c-.96 0-1.86.23-2.66.63L7.85.15c-.2-.2-.51-.2-.71 0-.2.2-.2.51 0 .71l1.31 1.31A5.98 5.98 0 0 0 6 7h12c0-1.99-.97-3.75-2.47-4.84zM10 5H9V4h1v1zm5 0h-1V4h1v1z"/></svg><span>Android</span></a>
+      </div>
+      <ul class="rp-redes" aria-label="Ingresse nas redes">
+        <li><a class="bs bs-icone rp-rede" href="https://www.instagram.com/ingresse/" target="_blank" rel="noopener noreferrer" aria-label="Ingresse no Instagram (abre em nova aba)"><svg class="rp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><path d="M17.5 6.5h.01"/></svg></a></li>
+        <li><a class="bs bs-icone rp-rede" href="https://www.tiktok.com/@ingresse" target="_blank" rel="noopener noreferrer" aria-label="Ingresse no TikTok (abre em nova aba)"><svg class="rp-ico" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16.6 5.82A4.28 4.28 0 0 1 15.54 3h-3.09v12.4a2.59 2.59 0 0 1-2.59 2.5c-1.42 0-2.6-1.16-2.6-2.6 0-1.72 1.66-3.01 3.37-2.48V9.66c-3.45-.46-6.47 2.22-6.47 5.64 0 3.33 2.76 5.7 5.69 5.7 3.14 0 5.69-2.55 5.69-5.7V9.01a7.35 7.35 0 0 0 4.3 1.38V7.3s-1.88.09-3.24-1.48z"/></svg></a></li>
+        <li><a class="bs bs-icone rp-rede" href="https://www.linkedin.com/company/ingresse/" target="_blank" rel="noopener noreferrer" aria-label="Ingresse no LinkedIn (abre em nova aba)"><svg class="rp-ico" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.45 20.45h-3.56v-5.57c0-1.33-.02-3.04-1.85-3.04-1.85 0-2.14 1.45-2.14 2.94v5.67H9.35V9h3.41v1.56h.05c.48-.9 1.64-1.85 3.37-1.85 3.6 0 4.27 2.37 4.27 5.46v6.28zM5.34 7.43a2.06 2.06 0 1 1 0-4.13 2.06 2.06 0 0 1 0 4.13zM7.12 20.45H3.56V9h3.56v11.45z"/></svg></a></li>
+      </ul>
+    </div>
+    <div class="rp-base">
+      <p class="rp-direitos">© 2026 Ingresse</p>
+      <details class="rp-idioma">
+        <summary class="rp-idioma__b" aria-haspopup="menu"><span class="sr-only">Idioma do site: </span><img class="rp-band" src="./assets/flags/br.svg" alt="" width="24" height="18" data-pv-lang-band><span data-pv-lang-nome>Português (Brasil)</span><svg class="rp-ico rp-ico--sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary>
+        <ul class="rp-idioma__lista" role="menu" aria-label="Idioma do site">
+          <li role="none"><button type="button" class="rp-idioma__op" role="menuitemradio" data-pv-lang="PT" aria-checked="true" tabindex="-1" lang="pt-BR"><img class="rp-band" src="./assets/flags/br.svg" alt="" width="24" height="18">Português (Brasil)</button></li>
+          <li role="none"><button type="button" class="rp-idioma__op" role="menuitemradio" data-pv-lang="PT-PT" aria-checked="false" tabindex="-1" lang="pt-PT"><img class="rp-band" src="./assets/flags/pt.svg" alt="" width="24" height="18">Português (Portugal)</button></li>
+          <li role="none"><button type="button" class="rp-idioma__op" role="menuitemradio" data-pv-lang="ES" aria-checked="false" tabindex="-1" lang="es"><img class="rp-band" src="./assets/flags/es.svg" alt="" width="24" height="18">Español</button></li>
+          <li role="none"><button type="button" class="rp-idioma__op" role="menuitemradio" data-pv-lang="EN" aria-checked="false" tabindex="-1" lang="en"><img class="rp-band" src="./assets/flags/us.svg" alt="" width="24" height="18">English</button></li>
+        </ul>
+      </details>
+      <ul class="rp-legais" aria-label="Termos e políticas">
+        <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Política de privacidade</a></li>
+        <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Termos de uso</a></li>
+        <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Termos de compra</a></li>
+        <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Configurações de cookies</a></li>
+      </ul>
+    </div>
+    <div class="rp-grupo">
+      <h2 class="rp-grupo__t" id="rp-grupo">Empresas do Grupo Ingresse</h2>
+      <ul class="rp-grupo__lista" aria-labelledby="rp-grupo">
+        <li><a class="rp-link" href="https://ingresse.com/" target="_blank" rel="noopener noreferrer" aria-label="Ingresse (ingresse.com, abre em nova aba)">Ingresse</a></li>
+        <li><a class="rp-link" href="https://ticketsports.com.br/" target="_blank" rel="noopener noreferrer" aria-label="TicketSports (ticketsports.com.br, abre em nova aba)">TicketSports</a></li>
+        <li><a class="rp-link" href="https://outgo.com.br/" target="_blank" rel="noopener noreferrer" aria-label="OutGo (outgo.com.br, abre em nova aba)">OutGo</a></li>
+        <li><a class="rp-link" href="https://ingressonacional.com.br/" target="_blank" rel="noopener noreferrer" aria-label="Ingresso Nacional (ingressonacional.com.br, abre em nova aba)">Ingresso Nacional</a></li>
+        <li><a class="rp-link" href="https://ingressolive.com/" target="_blank" rel="noopener noreferrer" aria-label="Ingresso Live (ingressolive.com, abre em nova aba)">Ingresso Live</a></li>
+        <li><a class="rp-link" href="https://blacktag.com.br/" target="_blank" rel="noopener noreferrer" aria-label="Blacktag (blacktag.com.br, abre em nova aba)">Blacktag</a></li>
+        <li><a class="rp-link" href="https://pixelticket.com.br/" target="_blank" rel="noopener noreferrer" aria-label="PixelTicket (pixelticket.com.br, abre em nova aba)">PixelTicket</a></li>
+        <li><a class="rp-link" href="https://meep.com.br/" target="_blank" rel="noopener noreferrer" aria-label="Meep (meep.com.br, abre em nova aba)">Meep</a></li>
+      </ul>
+    </div>
+  </div>
+</footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+const PAISES = [{"c": "BR", "ddi": "55", "nome": "Brasil", "g": [2, 5, 4]}, {"c": "DE", "ddi": "49", "nome": "Alemanha", "g": [3, 4, 4]}, {"c": "AO", "ddi": "244", "nome": "Angola", "g": [3, 3, 3]}, {"c": "AR", "ddi": "54", "nome": "Argentina", "g": [2, 4, 4]}, {"c": "AU", "ddi": "61", "nome": "Austrália", "g": [3, 3, 3]}, {"c": "BO", "ddi": "591", "nome": "Bolívia", "g": [4, 4]}, {"c": "CV", "ddi": "238", "nome": "Cabo Verde", "g": [3, 2, 2]}, {"c": "CA", "ddi": "1", "nome": "Canadá", "g": [3, 3, 4]}, {"c": "CL", "ddi": "56", "nome": "Chile", "g": [1, 4, 4]}, {"c": "CN", "ddi": "86", "nome": "China", "g": [3, 4, 4]}, {"c": "CO", "ddi": "57", "nome": "Colômbia", "g": [3, 3, 4]}, {"c": "EC", "ddi": "593", "nome": "Equador", "g": [2, 3, 4]}, {"c": "ES", "ddi": "34", "nome": "Espanha", "g": [3, 3, 3]}, {"c": "US", "ddi": "1", "nome": "Estados Unidos", "g": [3, 3, 4]}, {"c": "FR", "ddi": "33", "nome": "França", "g": [1, 2, 2, 2, 2]}, {"c": "IN", "ddi": "91", "nome": "Índia", "g": [5, 5]}, {"c": "IE", "ddi": "353", "nome": "Irlanda", "g": [2, 3, 4]}, {"c": "IL", "ddi": "972", "nome": "Israel", "g": [2, 3, 4]}, {"c": "IT", "ddi": "39", "nome": "Itália", "g": [3, 3, 4]}, {"c": "JP", "ddi": "81", "nome": "Japão", "g": [2, 4, 4]}, {"c": "MX", "ddi": "52", "nome": "México", "g": [2, 4, 4]}, {"c": "MZ", "ddi": "258", "nome": "Moçambique", "g": [2, 3, 4]}, {"c": "NL", "ddi": "31", "nome": "Países Baixos", "g": [1, 4, 4]}, {"c": "PY", "ddi": "595", "nome": "Paraguai", "g": [3, 3, 3]}, {"c": "PE", "ddi": "51", "nome": "Peru", "g": [3, 3, 3]}, {"c": "PT", "ddi": "351", "nome": "Portugal", "g": [3, 3, 3]}, {"c": "GB", "ddi": "44", "nome": "Reino Unido", "g": [4, 6]}, {"c": "CH", "ddi": "41", "nome": "Suíça", "g": [2, 3, 2, 2]}, {"c": "TR", "ddi": "90", "nome": "Turquia", "g": [3, 3, 4]}, {"c": "UY", "ddi": "598", "nome": "Uruguai", "g": [2, 3, 3]}, {"c": "VE", "ddi": "58", "nome": "Venezuela", "g": [3, 3, 4]}];
+const MARCAS = {"ingresse":{"arte":["./assets/login/ingresse.jpg"],"glifo":true},"esportes":{"arte":["./assets/login/esportes.jpg"],"glifo":false},"eventos":{"29":{"nome":"Vento Cobalto em São Paulo","arte":["./cymatics/evt-29.png"],"logo":null},"30":{"nome":"Lua Ventania em Belo Horizonte","arte":["./cymatics/evt-30.png"],"logo":null},"31":{"nome":"Festival Horizonte Sul 2027","arte":["./cymatics/evt-31.png"],"logo":null},"32":{"nome":"Grêmio x Internacional","arte":["./cymatics/evt-32.png"],"logo":null},"33":{"nome":"Liga Vale do Sol de Vôlei: Rodada 1","arte":["./cymatics/evt-33.png"],"logo":null},"34":{"nome":"A Casa de Vento","arte":["./cymatics/evt-34.png"],"logo":null},"35":{"nome":"Corrida do Farol 10 km","arte":["./cymatics/evt-35.png"],"logo":null},"36":{"nome":"Exposição Mares de Papel","arte":["./cymatics/evt-36.png"],"logo":null},"37":{"nome":"Passeio de Escuna pela Baía","arte":["./cymatics/evt-37.png"],"logo":null},"38":{"nome":"Mesa Longa do Pátio","arte":["./cymatics/evt-38.png"],"logo":null},"39":{"nome":"O Circo das Nuvens","arte":["./cymatics/evt-39.png"],"logo":null},"40":{"nome":"Noite Pulso com Nébula 808","arte":["./cymatics/evt-40.png"],"logo":null},"41":{"nome":"Festival Noite Elétrica","arte":["./cymatics/evt-41.png"],"logo":null},"42":{"nome":"Corinthians x Palmeiras","arte":["./cymatics/evt-42.png"],"logo":null},"43":{"nome":"O Último Trem para a Serra 2027","arte":["./cymatics/evt-43.png"],"logo":null},"44":{"nome":"Meia Maratona Orla Leste","arte":["./cymatics/evt-44.png"],"logo":null},"45":{"nome":"Flamengo x Vasco","arte":["./cymatics/evt-45.png"],"logo":null},"46":{"nome":"Lua Ventania em Salvador","arte":["./cymatics/evt-46.png"],"logo":null},"47":{"nome":"O Último Trem para a Serra 2026","arte":["./cymatics/evt-47.png"],"logo":null},"48":{"nome":"Festival Horizonte Sul 2026","arte":["./cymatics/evt-48.png"],"logo":null},"49":{"nome":"Liga Vale do Sol de Vôlei: Rodada 2","arte":["./cymatics/evt-49.png"],"logo":null},"101":{"nome":"Baile de Halloween do Tamborzão","arte":["./cymatics/evt-101.png"],"logo":null},"102":{"nome":"Funk na Laje Open Air","arte":["./cymatics/evt-102.png"],"logo":null},"103":{"nome":"Baile da Maré Cheia","arte":["./cymatics/evt-103.png"],"logo":null},"104":{"nome":"Funk Fest Sul","arte":["./cymatics/evt-104.png"],"logo":null},"105":{"nome":"Réveillon Funk Orla","arte":["./cymatics/evt-105.png"],"logo":null},"106":{"nome":"Noite do Passinho","arte":["./cymatics/evt-106.png"],"logo":null},"107":{"nome":"Baile Pré-Carnaval Funk","arte":["./cymatics/evt-107.png"],"logo":null},"108":{"nome":"Sertanejo no Planalto","arte":["./cymatics/evt-108.png"],"logo":null},"109":{"nome":"Noite Sertaneja Cerrado","arte":["./cymatics/evt-109.png"],"logo":null},"110":{"nome":"Rodeio Cerrado 2027","arte":["./cymatics/evt-110.png"],"logo":null},"111":{"nome":"Sertanejo Universitário Open Bar","arte":["./cymatics/evt-111.png"],"logo":null},"112":{"nome":"Sertanejo na Arena","arte":["./cymatics/evt-112.png"],"logo":null},"113":{"nome":"Festival Boiadeiro Sul","arte":["./cymatics/evt-113.png"],"logo":null},"114":{"nome":"Sunset Sertanejo","arte":["./cymatics/evt-114.png"],"logo":null},"115":{"nome":"Forró no Farol","arte":["./cymatics/evt-115.png"],"logo":null},"116":{"nome":"Piseiro das Gerais","arte":["./cymatics/evt-116.png"],"logo":null},"117":{"nome":"Arraiá Fora de Época","arte":["./cymatics/evt-117.png"],"logo":null},"118":{"nome":"Forró Pé na Areia","arte":["./cymatics/evt-118.png"],"logo":null},"119":{"nome":"Noite do Xote","arte":["./cymatics/evt-119.png"],"logo":null},"120":{"nome":"Vaquejada Sertão Forte","arte":["./cymatics/evt-120.png"],"logo":null},"121":{"nome":"São João da Ciranda","arte":["./cymatics/evt-121.png"],"logo":null},"122":{"nome":"Noite de Jazz no Boa Vista","arte":["./cymatics/evt-122.png"],"logo":null},"123":{"nome":"Blues no Porão","arte":["./cymatics/evt-123.png"],"logo":null},"124":{"nome":"Jazz ao Pôr do Sol","arte":["./cymatics/evt-124.png"],"logo":null},"125":{"nome":"Festival de Jazz e Blues da Serra","arte":["./cymatics/evt-125.png"],"logo":null},"126":{"nome":"Sexta do Blues","arte":["./cymatics/evt-126.png"],"logo":null},"127":{"nome":"Jazz e Gastronomia","arte":["./cymatics/evt-127.png"],"logo":null},"128":{"nome":"Batalha de Rima: Final Estadual","arte":["./cymatics/evt-128.png"],"logo":null},"129":{"nome":"Rap Nacional ao Vivo","arte":["./cymatics/evt-129.png"],"logo":null},"130":{"nome":"Trap e Neon","arte":["./cymatics/evt-130.png"],"logo":null},"131":{"nome":"Hip Hop na Praça Festival","arte":["./cymatics/evt-131.png"],"logo":null},"132":{"nome":"Noite Boom Bap","arte":["./cymatics/evt-132.png"],"logo":null},"133":{"nome":"Rap no Cerrado","arte":["./cymatics/evt-133.png"],"logo":null},"134":{"nome":"Pré-Carnaval da Baía","arte":["./cymatics/evt-134.png"],"logo":null},"135":{"nome":"Axé Pé na Areia","arte":["./cymatics/evt-135.png"],"logo":null},"136":{"nome":"Bloco Os Ventaneiros: Esquenta de Carnaval","arte":["./cymatics/evt-136.png"],"logo":null},"137":{"nome":"Axé Night","arte":["./cymatics/evt-137.png"],"logo":null},"138":{"nome":"Réveillon do Farol","arte":["./cymatics/evt-138.png"],"logo":null},"139":{"nome":"Axé na Orla Carioca","arte":["./cymatics/evt-139.png"],"logo":null},"140":{"nome":"Noite do Arrocha","arte":["./cymatics/evt-140.png"],"logo":null},"141":{"nome":"Arrocha Apaixonado","arte":["./cymatics/evt-141.png"],"logo":null},"142":{"nome":"Arrocha Sunset","arte":["./cymatics/evt-142.png"],"logo":null},"143":{"nome":"Arrocha Day São Paulo","arte":["./cymatics/evt-143.png"],"logo":null},"144":{"nome":"Festival Arrocha Nordeste","arte":["./cymatics/evt-144.png"],"logo":null},"145":{"nome":"Arrocha e Pagodão","arte":["./cymatics/evt-145.png"],"logo":null},"146":{"nome":"Tribal Halloween","arte":["./cymatics/evt-146.png"],"logo":null},"147":{"nome":"Noite Tribal: Batuque Sintético","arte":["./cymatics/evt-147.png"],"logo":null},"148":{"nome":"Tribal Sunset","arte":["./cymatics/evt-148.png"],"logo":null},"149":{"nome":"Tribal Open Air","arte":["./cymatics/evt-149.png"],"logo":null},"150":{"nome":"Tribal Réveillon","arte":["./cymatics/evt-150.png"],"logo":null},"151":{"nome":"Pista Tribal","arte":["./cymatics/evt-151.png"],"logo":null},"152":{"nome":"Roda de Samba do Terreirão","arte":["./cymatics/evt-152.png"],"logo":null},"153":{"nome":"Pagode de Quintal","arte":["./cymatics/evt-153.png"],"logo":null},"154":{"nome":"Samba da Gente","arte":["./cymatics/evt-154.png"],"logo":null},"155":{"nome":"Festival Samba e Pagode do Litoral","arte":["./cymatics/evt-155.png"],"logo":null},"156":{"nome":"Pagode Pós-Jogo","arte":["./cymatics/evt-156.png"],"logo":null},"157":{"nome":"Réveillon do Samba","arte":["./cymatics/evt-157.png"],"logo":null},"158":{"nome":"Roda de Samba Dominical","arte":["./cymatics/evt-158.png"],"logo":null},"159":{"nome":"Pagode das Antigas","arte":["./cymatics/evt-159.png"],"logo":null},"160":{"nome":"Noite do Cavaco","arte":["./cymatics/evt-160.png"],"logo":null},"161":{"nome":"Pulso Warehouse","arte":["./cymatics/evt-161.png"],"logo":null},"162":{"nome":"Sunset House Sessions","arte":["./cymatics/evt-162.png"],"logo":null},"163":{"nome":"Techno Orla","arte":["./cymatics/evt-163.png"],"logo":null},"164":{"nome":"Festival Voltagem","arte":["./cymatics/evt-164.png"],"logo":null},"165":{"nome":"Rave Cerrado","arte":["./cymatics/evt-165.png"],"logo":null},"166":{"nome":"Eletrônica na Pedreira","arte":["./cymatics/evt-166.png"],"logo":null},"167":{"nome":"Réveillon Eletrônico","arte":["./cymatics/evt-167.png"],"logo":null},"168":{"nome":"Minimal Noite","arte":["./cymatics/evt-168.png"],"logo":null},"169":{"nome":"Pop Night Aurora","arte":["./cymatics/evt-169.png"],"logo":null},"170":{"nome":"Festival Pop Orla","arte":["./cymatics/evt-170.png"],"logo":null},"171":{"nome":"Júlia Marés ao Vivo","arte":["./cymatics/evt-171.png"],"logo":null},"172":{"nome":"Aurora Lemos: Turnê Céu Aberto","arte":["./cymatics/evt-172.png"],"logo":null},"173":{"nome":"Festa Pop Anos 2000","arte":["./cymatics/evt-173.png"],"logo":null},"174":{"nome":"Vitrola Azul Acústico","arte":["./cymatics/evt-174.png"],"logo":null},"175":{"nome":"Caio Ventura e Os Satélites","arte":["./cymatics/evt-175.png"],"logo":null},"176":{"nome":"Pop Fest Recife","arte":["./cymatics/evt-176.png"],"logo":null},"177":{"nome":"MPB no Boa Vista","arte":["./cymatics/evt-177.png"],"logo":null},"178":{"nome":"Brasilidades ao Pôr do Sol","arte":["./cymatics/evt-178.png"],"logo":null},"179":{"nome":"Noite de Seresta","arte":["./cymatics/evt-179.png"],"logo":null},"180":{"nome":"Festival MPB Cultural 2027","arte":["./cymatics/evt-180.png"],"logo":null},"181":{"nome":"Helô Sabará Canta Clássicos","arte":["./cymatics/evt-181.png"],"logo":null},"182":{"nome":"Concerto de Fim de Ano da Orquestra Brasilidades","arte":["./cymatics/evt-182.png"],"logo":null},"183":{"nome":"Nanda Caracol: Violão e Voz","arte":["./cymatics/evt-183.png"],"logo":null},"184":{"nome":"Sábado de MPB","arte":["./cymatics/evt-184.png"],"logo":null},"185":{"nome":"Rock na Ferrovia","arte":["./cymatics/evt-185.png"],"logo":null},"186":{"nome":"Festival Distorção","arte":["./cymatics/evt-186.png"],"logo":null},"187":{"nome":"Noite do Rock Clássico","arte":["./cymatics/evt-187.png"],"logo":null},"188":{"nome":"Tempestade Elétrica ao Vivo","arte":["./cymatics/evt-188.png"],"logo":null},"189":{"nome":"Bruna Faísca: Turnê Fogo e Chuva","arte":["./cymatics/evt-189.png"],"logo":null},"190":{"nome":"Rock Cerrado Fest","arte":["./cymatics/evt-190.png"],"logo":null},"191":{"nome":"Garagem Sessions","arte":["./cymatics/evt-191.png"],"logo":null},"192":{"nome":"Rock Anos 90","arte":["./cymatics/evt-192.png"],"logo":null},"193":{"nome":"Sorriso Eu Gosto no Pagode — Ribeirão Preto","arte":["./cymatics/evt-193.png"],"logo":null},"194":{"nome":"Sorriso Eu Gosto no Pagode — São Paulo","arte":["./cymatics/evt-194.png"],"logo":null},"1125":{"nome":"Cruzeiro x Ceará","arte":["./cymatics/evt-1125.png"],"logo":null},"1126":{"nome":"Fluminense x São Paulo","arte":["./cymatics/evt-1126.png"],"logo":null},"1127":{"nome":"São Paulo x Palmeiras","arte":["./cymatics/evt-1127.png"],"logo":null},"1128":{"nome":"Santos x Palmeiras","arte":["./cymatics/evt-1128.png"],"logo":null},"1129":{"nome":"Vitória x Bahia","arte":["./cymatics/evt-1129.png"],"logo":null},"1130":{"nome":"Grêmio x Juventude","arte":["./cymatics/evt-1130.png"],"logo":null},"1131":{"nome":"Vasco x Botafogo","arte":["./cymatics/evt-1131.png"],"logo":null},"1132":{"nome":"Cruzeiro x Atlético Mineiro","arte":["./cymatics/evt-1132.png"],"logo":null},"1133":{"nome":"Flamengo x Athletico Paranaense","arte":["./cymatics/evt-1133.png"],"logo":null},"1134":{"nome":"Fortaleza x Ceará","arte":["./cymatics/evt-1134.png"],"logo":null},"1135":{"nome":"Corinthians x Racing Club","arte":["./cymatics/evt-1135.png"],"logo":null},"1136":{"nome":"Sport x Atlético Mineiro","arte":["./cymatics/evt-1136.png"],"logo":null},"1137":{"nome":"Flamengo x River Plate","arte":["./cymatics/evt-1137.png"],"logo":null},"1138":{"nome":"Internacional x Fortaleza","arte":["./cymatics/evt-1138.png"],"logo":null},"1139":{"nome":"São Paulo x Flamengo","arte":["./cymatics/evt-1139.png"],"logo":null},"1140":{"nome":"Palmeiras x Peñarol","arte":["./cymatics/evt-1140.png"],"logo":null},"1141":{"nome":"Bahia x Juazeirense","arte":["./cymatics/evt-1141.png"],"logo":null},"1142":{"nome":"Ceará x Juventude","arte":["./cymatics/evt-1142.png"],"logo":null},"1143":{"nome":"Sport x Náutico","arte":["./cymatics/evt-1143.png"],"logo":null},"1144":{"nome":"Palmeiras x Internacional","arte":["./cymatics/evt-1144.png"],"logo":null},"1145":{"nome":"Sport x Ceará","arte":["./cymatics/evt-1145.png"],"logo":null},"1146":{"nome":"CRB x CSA","arte":["./cymatics/evt-1146.png"],"logo":null},"1147":{"nome":"Athletico Paranaense x Corinthians","arte":["./cymatics/evt-1147.png"],"logo":null},"1148":{"nome":"Fluminense x Botafogo","arte":["./cymatics/evt-1148.png"],"logo":null},"1149":{"nome":"Brasil x Uruguai","arte":["./cymatics/evt-1149.png"],"logo":null},"1150":{"nome":"Santos x Corinthians","arte":["./cymatics/evt-1150.png"],"logo":null},"1151":{"nome":"Red Bull Bragantino x Santos","arte":["./cymatics/evt-1151.png"],"logo":null},"1152":{"nome":"Flamengo x Corinthians","arte":["./cymatics/evt-1152.png"],"logo":null},"1153":{"nome":"Brasil x Argentina","arte":["./cymatics/evt-1153.png"],"logo":null},"1154":{"nome":"Botafogo x Universitario","arte":["./cymatics/evt-1154.png"],"logo":null},"1155":{"nome":"Juventude x Grêmio","arte":["./cymatics/evt-1155.png"],"logo":null},"1156":{"nome":"Corinthians x Botafogo","arte":["./cymatics/evt-1156.png"],"logo":null},"1157":{"nome":"Fortaleza x Atlético Nacional","arte":["./cymatics/evt-1157.png"],"logo":null},"1158":{"nome":"Athletico Paranaense x Vélez Sarsfield","arte":["./cymatics/evt-1158.png"],"logo":null},"1159":{"nome":"Vitória x Fortaleza","arte":["./cymatics/evt-1159.png"],"logo":null},"1160":{"nome":"São Paulo x Libertad","arte":["./cymatics/evt-1160.png"],"logo":null},"1701":{"nome":"Calourada Unificada SP 2027","arte":["./cymatics/evt-1701.png"],"logo":null},"1702":{"nome":"Chopada da Medicina UFRJ","arte":["./cymatics/evt-1702.png"],"logo":null},"1703":{"nome":"Calourada UFMG 2027","arte":["./cymatics/evt-1703.png"],"logo":null},"1704":{"nome":"Engenharíadas Paulista 2027: Festa de Abertura","arte":["./cymatics/evt-1704.png"],"logo":null},"1705":{"nome":"Economíadas 2027: Festa Oficial","arte":["./cymatics/evt-1705.png"],"logo":null},"1706":{"nome":"Intermed 2027: Noite Sertaneja","arte":["./cymatics/evt-1706.png"],"logo":null},"1707":{"nome":"JUCA 2027: Festa de Encerramento","arte":["./cymatics/evt-1707.png"],"logo":null},"1708":{"nome":"Cervejada da Poli USP","arte":["./cymatics/evt-1708.png"],"logo":null},"1709":{"nome":"Calourada PUC Minas 2027","arte":["./cymatics/evt-1709.png"],"logo":null},"1710":{"nome":"Integração dos Calouros UnB","arte":["./cymatics/evt-1710.png"],"logo":null},"1711":{"nome":"Calourada UFBA 2027","arte":["./cymatics/evt-1711.png"],"logo":null},"1712":{"nome":"Chopada da Federal de Pernambuco","arte":["./cymatics/evt-1712.png"],"logo":null},"1713":{"nome":"Baile da Federal do Ceará","arte":["./cymatics/evt-1713.png"],"logo":null},"1714":{"nome":"Festa Pós-Inter UFRGS","arte":["./cymatics/evt-1714.png"],"logo":null},"1715":{"nome":"Calourada Unicamp 2027","arte":["./cymatics/evt-1715.png"],"logo":null},"1716":{"nome":"Baile de Máscaras da Atlética Mackenzie","arte":["./cymatics/evt-1716.png"],"logo":null},"1717":{"nome":"Arraiá das Atléticas de BH","arte":["./cymatics/evt-1717.png"],"logo":null},"1718":{"nome":"Halloween Universitário Rio","arte":["./cymatics/evt-1718.png"],"logo":null},"1719":{"nome":"Festa Neon Universitária SP","arte":["./cymatics/evt-1719.png"],"logo":null},"1720":{"nome":"Sertanejo Universitário: Open Bar das Federais","arte":["./cymatics/evt-1720.png"],"logo":null},"1721":{"nome":"Calourada UFPR 2027","arte":["./cymatics/evt-1721.png"],"logo":null},"1722":{"nome":"Pós-Prova FGV","arte":["./cymatics/evt-1722.png"],"logo":null},"1723":{"nome":"Esquenta de Carnaval das Atléticas","arte":["./cymatics/evt-1723.png"],"logo":null},"1724":{"nome":"Formatura Day: Festa dos Formandos SP","arte":["./cymatics/evt-1724.png"],"logo":null},"1725":{"nome":"Calourada Integrada Porto Alegre","arte":["./cymatics/evt-1725.png"],"logo":null},"1726":{"nome":"Interatléticas Salvador: Festa Oficial","arte":["./cymatics/evt-1726.png"],"logo":null},"1727":{"nome":"Fábio Porchat ao Vivo","arte":["./cymatics/evt-1727.png"],"logo":null},"1728":{"nome":"Thiago Ventura: Stand-up","arte":["./cymatics/evt-1728.png"],"logo":null},"1729":{"nome":"Afonso Padilha ao Vivo","arte":["./cymatics/evt-1729.png"],"logo":null},"1730":{"nome":"Whindersson Nunes: Turnê 2027","arte":["./cymatics/evt-1730.png"],"logo":null},"1731":{"nome":"Paulo Vieira: Stand-up","arte":["./cymatics/evt-1731.png"],"logo":null},"1732":{"nome":"Dani Calabresa ao Vivo","arte":["./cymatics/evt-1732.png"],"logo":null},"1733":{"nome":"Rafael Portugal: Stand-up","arte":["./cymatics/evt-1733.png"],"logo":null},"1734":{"nome":"Marcelo Adnet: Improviso e Stand-up","arte":["./cymatics/evt-1734.png"],"logo":null},"1735":{"nome":"Bruna Louise ao Vivo","arte":["./cymatics/evt-1735.png"],"logo":null},"1736":{"nome":"Murilo Couto: Stand-up","arte":["./cymatics/evt-1736.png"],"logo":null},"1737":{"nome":"Nando Viana ao Vivo","arte":["./cymatics/evt-1737.png"],"logo":null},"1738":{"nome":"Diogo Portugal: Stand-up","arte":["./cymatics/evt-1738.png"],"logo":null},"1739":{"nome":"Rodrigo Marques ao Vivo","arte":["./cymatics/evt-1739.png"],"logo":null},"1740":{"nome":"Mhel Marrer: Stand-up","arte":["./cymatics/evt-1740.png"],"logo":null},"1741":{"nome":"Victor Sarro ao Vivo","arte":["./cymatics/evt-1741.png"],"logo":null},"1742":{"nome":"Estevam Nabote: Stand-up","arte":["./cymatics/evt-1742.png"],"logo":null},"1743":{"nome":"Igor Guimarães ao Vivo","arte":["./cymatics/evt-1743.png"],"logo":null},"1744":{"nome":"Fábio Rabin: Stand-up","arte":["./cymatics/evt-1744.png"],"logo":null},"1745":{"nome":"Maurício Meirelles ao Vivo","arte":["./cymatics/evt-1745.png"],"logo":null},"1746":{"nome":"Marcos Castro: Stand-up","arte":["./cymatics/evt-1746.png"],"logo":null},"1747":{"nome":"Comedians: Noite de Stand-up","arte":["./cymatics/evt-1747.png"],"logo":null},"1748":{"nome":"Comedians: Sexta da Comédia","arte":["./cymatics/evt-1748.png"],"logo":null},"1749":{"nome":"Comedians: Novos Comediantes","arte":["./cymatics/evt-1749.png"],"logo":null},"1750":{"nome":"Risadaria 2027","arte":["./cymatics/evt-1750.png"],"logo":null},"1751":{"nome":"Whindersson Nunes ao Vivo em São Paulo","arte":["./cymatics/evt-1751.png"],"logo":null},"1752":{"nome":"Afonso Padilha e Thiago Ventura: Juntos","arte":["./cymatics/evt-1752.png"],"logo":null},"1753":{"nome":"CCXP 2026","arte":["./cymatics/evt-1753.png"],"logo":null},"1754":{"nome":"CCXP 2026: Ingresso Full Experience","arte":["./cymatics/evt-1754.png"],"logo":null},"1755":{"nome":"Bienal do Livro Rio 2027","arte":["./cymatics/evt-1755.png"],"logo":null},"1756":{"nome":"Anime Friends 2027","arte":["./cymatics/evt-1756.png"],"logo":null},"1757":{"nome":"Gamescom latam 2027","arte":["./cymatics/evt-1757.png"],"logo":null},"1758":{"nome":"SP-Arte 2027","arte":["./cymatics/evt-1758.png"],"logo":null},"1759":{"nome":"ArtRio 2027","arte":["./cymatics/evt-1759.png"],"logo":null},"1760":{"nome":"Feira Preta 2026","arte":["./cymatics/evt-1760.png"],"logo":null},"1761":{"nome":"Semana Internacional do Café 2026","arte":["./cymatics/evt-1761.png"],"logo":null},"1762":{"nome":"FLIP 2027: Mesas na Tenda dos Autores","arte":["./cymatics/evt-1762.png"],"logo":null},"1763":{"nome":"Rio2C 2027","arte":["./cymatics/evt-1763.png"],"logo":null},"1764":{"nome":"Agrishow 2027","arte":["./cymatics/evt-1764.png"],"logo":null},"1765":{"nome":"Brasil Game Show 2027","arte":["./cymatics/evt-1765.png"],"logo":null},"1766":{"nome":"Festival do Japão 2027","arte":["./cymatics/evt-1766.png"],"logo":null},"1767":{"nome":"Fenadoce 2027","arte":["./cymatics/evt-1767.png"],"logo":null},"1768":{"nome":"Rio Gastronomia 2027","arte":["./cymatics/evt-1768.png"],"logo":null},"1769":{"nome":"Mercado Mundo Mix: Edição de Natal","arte":["./cymatics/evt-1769.png"],"logo":null},"1770":{"nome":"Leonardo da Vinci: 500 Anos de um Gênio","arte":["./cymatics/evt-1770.png"],"logo":null},"1771":{"nome":"Exposição Imersiva Van Gogh Live 8K","arte":["./cymatics/evt-1771.png"],"logo":null},"1772":{"nome":"Salão Duas Rodas 2027","arte":["./cymatics/evt-1772.png"],"logo":null},"1773":{"nome":"Campus Party Brasil 2027","arte":["./cymatics/evt-1773.png"],"logo":null},"1774":{"nome":"Expo Brasília Gastronomia","arte":["./cymatics/evt-1774.png"],"logo":null},"1775":{"nome":"Feira do Livro de Salvador","arte":["./cymatics/evt-1775.png"],"logo":null},"1776":{"nome":"Exposição Mundo Pixar","arte":["./cymatics/evt-1776.png"],"logo":null},"1801":{"nome":"Roda de Samba no Tejo","arte":["./cymatics/evt-1801.png"],"logo":null},"1802":{"nome":"Forró Pé de Serra em Lisboa","arte":["./cymatics/evt-1802.png"],"logo":null},"1803":{"nome":"Festival Brasil em Lisboa","arte":["./cymatics/evt-1803.png"],"logo":null},"1804":{"nome":"Sunset Eletrônico Lisboa","arte":["./cymatics/evt-1804.png"],"logo":null},"1805":{"nome":"Pagode na Ribeira","arte":["./cymatics/evt-1805.png"],"logo":null},"1806":{"nome":"Noite de Rock no Douro","arte":["./cymatics/evt-1806.png"],"logo":null},"1807":{"nome":"MPB em Madri","arte":["./cymatics/evt-1807.png"],"logo":null},"1808":{"nome":"Noche Latina Madri","arte":["./cymatics/evt-1808.png"],"logo":null},"1809":{"nome":"Festival Tierra Eléctrica","arte":["./cymatics/evt-1809.png"],"logo":null},"1810":{"nome":"Pulso Sessions Barcelona","arte":["./cymatics/evt-1810.png"],"logo":null},"1811":{"nome":"Jazz no Anfiteatro","arte":["./cymatics/evt-1811.png"],"logo":null},"1812":{"nome":"Rock en la Costanera","arte":["./cymatics/evt-1812.png"],"logo":null},"1813":{"nome":"Samba em Buenos Aires","arte":["./cymatics/evt-1813.png"],"logo":null},"1814":{"nome":"Palermo Open Air","arte":["./cymatics/evt-1814.png"],"logo":null},"1815":{"nome":"Pop na Arena Puerto","arte":["./cymatics/evt-1815.png"],"logo":null},"1816":{"nome":"Rock Nocturno Santiago","arte":["./cymatics/evt-1816.png"],"logo":null},"1817":{"nome":"Festival Andino Eletrônico","arte":["./cymatics/evt-1817.png"],"logo":null},"1818":{"nome":"Rap en el Barrio","arte":["./cymatics/evt-1818.png"],"logo":null},"1819":{"nome":"Festa Brasil em Miami","arte":["./cymatics/evt-1819.png"],"logo":null},"1820":{"nome":"Miami Rooftop Sessions","arte":["./cymatics/evt-1820.png"],"logo":null},"1821":{"nome":"Sertanejo em Orlando","arte":["./cymatics/evt-1821.png"],"logo":null},"1822":{"nome":"Forró no Lago Verde","arte":["./cymatics/evt-1822.png"],"logo":null},"1823":{"nome":"Miami Jazz Night","arte":["./cymatics/evt-1823.png"],"logo":null},"1824":{"nome":"Samba Londres Warehouse","arte":["./cymatics/evt-1824.png"],"logo":null},"1825":{"nome":"Noite de Jazz em Londres","arte":["./cymatics/evt-1825.png"],"logo":null},"1826":{"nome":"Sunrise Sessions Londres","arte":["./cymatics/evt-1826.png"],"logo":null},"3001":{"nome":"Botafogo x Fluminense","arte":["./cymatics/evt-3001.png"],"logo":null},"3002":{"nome":"Atlético Mineiro x Grêmio","arte":["./cymatics/evt-3002.png"],"logo":null},"3003":{"nome":"Palmeiras x Flamengo","arte":["./cymatics/evt-3003.png"],"logo":null},"3004":{"nome":"Santos x São Paulo","arte":["./cymatics/evt-3004.png"],"logo":null},"3005":{"nome":"Vasco x Grêmio","arte":["./cymatics/evt-3005.png"],"logo":null},"3010":{"nome":"Bahia x Vitória","arte":["./cymatics/evt-3010.png"],"logo":null},"3011":{"nome":"Bahia x Fortaleza","arte":["./cymatics/evt-3011.png"],"logo":null},"3012":{"nome":"Bahia x Cruzeiro","arte":["./cymatics/evt-3012.png"],"logo":null}}};
+const IDIOMAS = [{ c: 'PT', nome: 'Português (Brasil)', flag: 'br', lang: 'pt-BR' }, { c: 'PT-PT', nome: 'Português (Portugal)', flag: 'pt', lang: 'pt-PT' }, { c: 'ES', nome: 'Español', flag: 'es', lang: 'es' }, { c: 'EN', nome: 'English', flag: 'us', lang: 'en' }]; // os quatro idiomas do site (03/11/2026), na ordem do menu da conta e do rodapé
+const ESPERA = 30;          // segundos até liberar o reenvio do código
+const ENVIO_MS = 1000;      // progresso do envio do código
+const CONFERE_MS = 900;     // progresso da conferência do código
+const SEGUE_MS = 1600;      // tempo do "Tudo certo" antes de voltar à tela de origem
+const digits = s => (s || '').replace(/\D/g, '');
+const ler = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
+// destino do retorno: só telas deste protótipo (caminho relativo .dc.html), nunca outro endereço (evita redirecionamento aberto)
+const voltaSegura = v => (typeof v === 'string' && /^[A-Za-z0-9_\-]+\.dc\.html(\?[A-Za-z0-9_\-=&%.:+,]*)?(#[A-Za-z0-9_\-]*)?$/.test(v)) ? v : '';
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    const qs = new URLSearchParams(location.search);
+    const root = document.documentElement;
+    // marca: ?marca=ingresse (padrão) | esportes | evento&evento=<id>
+    let marca = qs.get('marca');
+    const evento = marca === 'evento' ? (MARCAS.eventos[qs.get('evento')] || null) : null;
+    if (marca === 'evento' && !evento) marca = 'ingresse';
+    if (marca !== 'esportes' && marca !== 'evento') marca = 'ingresse';
+    if (marca === 'esportes') root.setAttribute('data-marca', 'esportes'); else root.removeAttribute('data-marca');
+    const cfgMarca = marca === 'evento' ? evento : MARCAS[marca];
+    const volta = voltaSegura(qs.get('volta')) || (marca === 'evento' ? 'Evento.dc.html' : marca === 'esportes' ? 'Esportes.dc.html' : 'Main.dc.html');
+    const cod = Array(6).fill('');
+    let etapa = 'tel';
+    const pedida = qs.get('etapa');
+    const lang = ler('prototipo-lang');
+    this.state = { marca, evento, cfgMarca, volta, etapa, saindo: false, tel: '', paisTel: 'BR', telOpen: false, enviando: false, canal: 'sms', cod, verificando: false, erro: '', aviso: '', resta: ESPERA, reenvios: 0,
+      sim: 'aceita', idioma: IDIOMAS.some(i => i.c === lang) ? lang : 'PT', idiomaOpen: false };
+    if (pedida === 'codigo' || pedida === 'erro' || pedida === 'sucesso') {
+      this.state.tel = '+55 11 91234-5678';
+      this.state.etapa = pedida === 'sucesso' ? 'ok' : 'cod';
+      if (pedida === 'erro') this.state.erro = 'Código incorreto. Confira os 6 números e tente de novo.';
+    }
+  }
+  componentDidMount() {
+    this.fora = e => {
+      const t = e.target && e.target.closest ? e.target : null;
+      if (this.state.telOpen && !(t && t.closest('#lg-tel_flag, #lg-tel_lista'))) this.setState({ telOpen: false });
+      if (this.state.idiomaOpen && !(t && t.closest('.lg-idioma'))) this.setState({ idiomaOpen: false });
+    };
+    document.addEventListener('click', this.fora);
+    this.tick = setInterval(() => { if (this.state.etapa === 'cod' && this.state.resta > 0) this.setState({ resta: this.state.resta - 1 }); }, 1000);
+    this.fixarHtml();
+  }
+  componentWillUnmount() {
+    clearInterval(this.tick); clearTimeout(this.tEnvio); clearTimeout(this.tConfere); clearTimeout(this.tVolta); clearTimeout(this.tEtapa);
+    document.removeEventListener('click', this.fora);
+  }
+  fixarHtml() { const i = IDIOMAS.find(x => x.c === this.state.idioma); if (i) document.documentElement.setAttribute('lang', i.lang); }
+  reduzido() { return document.documentElement.getAttribute('data-motion') === 'reduce' || (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); }
+  // troca de etapa: a que sai desaparece e a nova chega por transição de CSS (tokens motion.*); o foco vai para o primeiro controle depois da entrada
+  ir(etapa, foco) {
+    this.setState({ etapa, telOpen: false, idiomaOpen: false });
+    if (foco) { clearTimeout(this.tEtapa); this.tEtapa = setTimeout(() => { const el = document.getElementById(foco); if (el) el.focus({ preventScroll: true }); }, this.reduzido() ? 30 : 360); }
+  }
+  seguir() {
+    clearTimeout(this.tVolta);
+    this.tVolta = setTimeout(() => { const a = document.getElementById('lg-volta'); if (a) a.click(); }, this.reduzido() ? 900 : SEGUE_MS);
+  }
+  renderVals() {
+    const st = this.state;
+    const IX = window.IX;
+    // ---------- telefone internacional: o componente do checkout (tools/previa/checkout/quem-vai.html): mesma conta, mesma lista ----------
+    const paisPor = c => PAISES.find(x => x.c === c) || PAISES[0];
+    const maxNac = p => p.g.reduce((a, b) => a + b, 0);
+    const fmtNac = (p, d) => {
+      d = d.slice(0, maxNac(p));
+      if (p.c === 'BR') { const g = d.length > 10 ? [2, 5, 4] : [2, 4, 4]; const a = d.slice(0, g[0]), b = d.slice(g[0], g[0] + g[1]), c = d.slice(g[0] + g[1]); return [a, b && (c ? b + '-' + c : b)].filter(Boolean).join(' '); }
+      const out = []; let i = 0; for (const n of p.g) { if (i >= d.length) break; out.push(d.slice(i, i + n)); i += n; } return out.join(' ');
+    };
+    const fmtTel = (p, nac) => (nac ? '+' + p.ddi + ' ' + fmtNac(p, nac) : '');
+    const exTel = p => { const d = '1234567890123'.slice(0, maxNac(p)); return '+' + p.ddi + ' ' + (p.c === 'BR' ? '11 91234-5678' : fmtNac(p, d)); };
+    const ddiDe = (d, atual) => {
+      if (d.startsWith(atual.ddi)) return atual;
+      let melhor = null; PAISES.forEach(x => { if (d.startsWith(x.ddi) && (!melhor || x.ddi.length > melhor.ddi.length || (x.ddi === melhor.ddi && x.c === 'US'))) melhor = x; }); return melhor;
+    };
+    const nacDe = (v, p) => { const d = digits(v); return d.startsWith(p.ddi) ? d.slice(p.ddi.length) : d; };
+    const lerTel = (raw, atual) => {
+      const d = digits(raw);
+      if (!d) return { p: atual, v: /\+/.test(raw) ? '+' : '' };
+      if (/^\s*\+/.test(raw)) {
+        const p = ddiDe(d, atual);
+        if (p) return { p, v: fmtTel(p, d.slice(p.ddi.length)) || '+' + p.ddi };
+        if (PAISES.some(x => x.ddi.startsWith(d))) return { p: atual, v: '+' + d };
+        return { p: atual, v: fmtTel(atual, d) };
+      }
+      return { p: atual, v: fmtTel(atual, d) };
+    };
+    const telOk = (v, p) => nacDe(v, p).length >= (p.c === 'BR' ? 10 : maxNac(p));
+    const pais = st.tel.startsWith('+') ? (ddiDe(digits(st.tel), paisPor(st.paisTel)) || paisPor(st.paisTel)) : paisPor(st.paisTel);
+    const valido = telOk(st.tel, pais);
+    const fecharLista = voltar => { this.setState({ telOpen: false }); if (voltar) setTimeout(() => { const el = document.getElementById('lg-tel_flag'); if (el) el.focus(); }, 30); };
+    const abrirLista = () => { this.setState({ telOpen: true, idiomaOpen: false }); setTimeout(() => {
+      const box = document.getElementById('lg-tel_flag').closest('.tel-box'), lst = document.getElementById('lg-tel_lista');
+      const r = box.getBoundingClientRect(), falta = r.bottom + Math.min(lst.scrollHeight, 320) + 8 - window.innerHeight;
+      if (falta > 0) window.scrollBy({ top: Math.min(falta, Math.max(0, r.top - 80)), behavior: this.reduzido() ? 'auto' : 'smooth' });
+      const li = lst.querySelector('[aria-selected="true"]'); if (li) li.focus({ preventScroll: true }); }, 60); };
+    const trocarPais = x => {
+      this.setState({ paisTel: x.c, tel: fmtTel(x, nacDe(st.tel, pais)), telOpen: false });
+      setTimeout(() => { const el = document.getElementById('lg-tel'); if (el) el.focus(); }, 30);
+    };
+    const navLista = (e, acao) => {
+      const li = e.currentTarget, itens = [...li.parentNode.children], i = itens.indexOf(li);
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); itens[(i + (e.key === 'ArrowDown' ? 1 : -1) + itens.length) % itens.length].focus(); }
+      else if (e.key === 'Home') { e.preventDefault(); itens[0].focus(); } else if (e.key === 'End') { e.preventDefault(); itens[itens.length - 1].focus(); }
+      else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); acao(); }
+      else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); acao(true); }
+      else if (e.key.length === 1) { const t = e.key.toLowerCase(); const n = itens.find((el, j) => j > i && el.textContent.toLowerCase().replace(/^\+\d+/, '').startsWith(t)) || itens.find(el => el.textContent.toLowerCase().replace(/^\+\d+/, '').startsWith(t)); if (n) n.focus(); }
+    };
+    const paises = PAISES.map(x => ({ c: x.c, ddi: x.ddi, nome: x.nome, flagSrc: './assets/flags/' + x.c.toLowerCase() + '.svg', on: x.c === pais.c ? 'true' : 'false',
+      pick: () => trocarPais(x), key: e => navLista(e, v => (v === true ? fecharLista(true) : trocarPais(x))) }));
+
+    // ---------- idioma ----------
+    const idi = IDIOMAS.find(x => x.c === st.idioma) || IDIOMAS[0];
+    const idiomaFechar = voltar => { this.setState({ idiomaOpen: false }); if (voltar) setTimeout(() => { const el = document.getElementById('lg-idioma-btn'); if (el) el.focus(); }, 30); };
+    const idiomas = IDIOMAS.map(x => ({ c: x.c, nome: x.nome, flag: './assets/flags/' + x.flag + '.svg', on: x.c === st.idioma ? 'true' : 'false',
+      pick: () => { this.setState({ idioma: x.c, idiomaOpen: false }, () => this.fixarHtml()); setTimeout(() => { const el = document.getElementById('lg-idioma-btn'); if (el) el.focus(); }, 30); },
+      key: e => navLista(e, v => (v === true ? idiomaFechar(true) : e.currentTarget.click())) }));
+
+    // ---------- código ----------
+    const canal = st.canal === 'sms' ? 'SMS' : 'WhatsApp';
+    const outro = st.canal === 'sms' ? 'WhatsApp' : 'SMS';
+    const completo = st.cod.every(x => x !== '');
+    const mm = n => Math.floor(n / 60) + ':' + String(n % 60).padStart(2, '0');
+    const focar = i => { const el = document.getElementById('lg-c' + i); if (el) { el.focus(); el.select && el.select(); } };
+    const limpaErro = { erro: '', aviso: '' };
+    const preencher = (ds, a) => {
+      const cod = st.cod.slice(); let i = a;
+      for (const d of ds) { if (i > 5) break; cod[i++] = d; }
+      this.setState({ cod, ...limpaErro }, () => { if (cod.every(x => x !== '')) this.verificar(); else focar(Math.min(i, 5)); });
+    };
+    const digitos = st.cod.map((v, i) => ({ id: 'lg-c' + i, v, rot: 'Número ' + (i + 1) + ' de 6', auto: i === 0 ? 'one-time-code' : 'off',
+      onInput: e => {
+        const ds = digits(e.target.value);
+        if (!ds) { const cod = st.cod.slice(); cod[i] = ''; this.setState({ cod }); return; }
+        // uma tecla digitada vale um número (a caixa pode já ter outro); colar ou preencher automático (código do SMS) distribui os números pelas caixas
+        const ne = e.nativeEvent || {}; const um = ne.inputType === 'insertText' && ne.data && digits(ne.data).length === 1;
+        preencher(um ? digits(ne.data) : ds.length > 1 && !(ds.length === 2 && st.cod[i]) ? ds : ds.slice(-1), i);
+      },
+      onKey: e => {
+        if (e.key === 'Backspace' && !st.cod[i] && i > 0) { e.preventDefault(); const cod = st.cod.slice(); cod[i - 1] = ''; this.setState({ cod }, () => focar(i - 1)); }
+        else if (e.key === 'ArrowLeft' && i > 0) { e.preventDefault(); focar(i - 1); }
+        else if (e.key === 'ArrowRight' && i < 5) { e.preventDefault(); focar(i + 1); }
+      },
+      onFoco: e => { if (e.target.select) e.target.select(); } }));
+    const esperando = st.resta > 0;
+    const marca = st.marca;
+    const cfgM = st.cfgMarca || {};
+    const arteVars = '--lg-arte: ' + (cfgM.arte || []).map(u => 'url(' + u + ')').join(', ');
+    const etapas = ['tel', 'cod', 'ok'], idx = etapas.indexOf(st.etapa);
+    const pos = k => (k === idx ? 'agora' : k < idx ? 'antes' : 'depois');
+    const nomeVolta = marca === 'evento' && st.evento ? st.evento.nome : '';
+    return {
+      marca, etapa: st.etapa, envioEstado: st.enviando ? 'enviando' : st.verificando ? 'verificando' : 'livre', arteVars,
+      ehEsportes: marca === 'esportes', naoEhEsportes: marca !== 'esportes', temGlifo: marca === 'ingresse' || !!cfgM.glifo,
+      temLogoEvento: marca === 'evento' && !!st.evento, eventoNome: st.evento ? st.evento.nome : '', temLogoArquivo: !!(st.evento && st.evento.logo), semLogoArquivo: !(st.evento && st.evento.logo),
+      logoSrc: st.evento && st.evento.logo ? st.evento.logo : '', voltaHref: st.volta,
+      idiomas, idiomaOpen: st.idiomaOpen ? 'true' : 'false', idiomaNome: idi.nome, idiomaFlag: './assets/flags/' + idi.flag + '.svg', idiomaRotulo: 'Idioma: ' + idi.nome + '. Trocar idioma',
+      idiomaToggle: () => (st.idiomaOpen ? idiomaFechar(false) : (this.setState({ idiomaOpen: true, telOpen: false }), setTimeout(() => { const li = document.querySelector('#lg-idioma-lista [aria-selected="true"]'); if (li) li.focus({ preventScroll: true }); }, 60))),
+      ePaneTel: idx === 0 ? 'true' : 'false', ePaneCod: idx === 1 ? 'true' : 'false', ePaneOk: idx === 2 ? 'true' : 'false', posTel: pos(0), posCod: pos(1), posOk: pos(2),
+      // telefone
+      tel: st.tel, telPh: exTel(pais), paises, telOpen: st.telOpen ? 'true' : 'false', flagSrc: './assets/flags/' + pais.c.toLowerCase() + '.svg', flagLabel: 'País do telefone: ' + pais.nome + ' +' + pais.ddi + '. Trocar país',
+      telToggle: () => (st.telOpen ? fecharLista(false) : abrirLista()),
+      telInput: e => { const r = lerTel(e.target.value, pais); this.setState({ paisTel: r.p.c, tel: r.v }); },
+      enviando: st.enviando, enviandoS: st.enviando ? 'true' : 'false', telDesativado: !valido || st.enviando ? 'true' : 'false', telCta: st.enviando ? 'Enviando o código' : 'Continuar',
+      enviar: e => {
+        if (e && e.preventDefault) e.preventDefault();
+        if (!valido || st.enviando) return;
+        this.setState({ enviando: true, telOpen: false });
+        clearTimeout(this.tEnvio);
+        this.tEnvio = setTimeout(() => { this.setState({ enviando: false, resta: ESPERA, cod: Array(6).fill(''), ...limpaErro, canal: 'sms' }); this.ir('cod', 'lg-c0'); }, this.reduzido() ? 400 : ENVIO_MS);
+      },
+      ajuda: e => e.preventDefault(),
+      // código
+      canalNome: canal, telFmt: st.tel || '+55 11 91234-5678', digitos, codErrB: st.erro ? 'true' : 'false', verificando: st.verificando, verificandoS: st.verificando ? 'true' : 'false',
+      codDesativado: !completo || st.verificando ? 'true' : 'false', codCta: st.verificando ? 'Conferindo o código' : 'Continuar',
+      verificarJa: e => { if (e && e.preventDefault) e.preventDefault(); if (completo && !st.verificando) this.verificar(); },
+      colar: e => { const t = e.clipboardData && e.clipboardData.getData('text'); const ds = digits(t); if (!ds) return; e.preventDefault(); const cod = Array(6).fill('').map((_, i) => ds[i] || ''); this.setState({ cod, ...limpaErro }, () => { if (cod.every(x => x !== '')) this.verificar(); else focar(Math.min(ds.length, 5)); }); },
+      temErro: !!st.erro, erroTexto: st.erro, temInfo: !st.erro && !!st.aviso, infoTexto: st.aviso,
+      trocarNumero: () => { clearTimeout(this.tConfere); this.setState({ verificando: false, cod: Array(6).fill(''), ...limpaErro }); this.ir('tel', 'lg-tel'); },
+      esperando, podeReenviar: !esperando, tempo: mm(st.resta),
+      reenviar: () => this.setState({ resta: ESPERA, reenvios: st.reenvios + 1, cod: Array(6).fill(''), erro: '', aviso: 'Enviamos outro código por ' + canal + '.' }, () => focar(0)),
+      outroCanalRotulo: 'Receber por ' + outro,
+      outroCanal: () => { const novo = st.canal === 'sms' ? 'whats' : 'sms'; this.setState({ canal: novo, resta: ESPERA, reenvios: st.reenvios + 1, cod: Array(6).fill(''), erro: '', aviso: 'Enviamos o código por ' + outro + '.' }, () => focar(0)); },
+      // sucesso
+      okTexto: nomeVolta ? 'Você entrou na sua conta. Levamos você de volta para ' + nomeVolta + '.' : 'Você entrou na sua conta. Levamos você de volta.',
+      // protótipo
+      simAceita: st.sim === 'aceita' ? 'true' : 'false', simRecusa: st.sim === 'recusa' ? 'true' : 'false',
+      simOk: () => this.setState({ sim: 'aceita' }), simNao: () => this.setState({ sim: 'recusa' }),
+      irCodigo: () => { clearTimeout(this.tVolta); this.setState({ tel: st.tel || '+55 11 91234-5678', cod: Array(6).fill(''), resta: ESPERA, ...limpaErro, verificando: false, enviando: false }); this.ir('cod', 'lg-c0'); },
+      irErro: () => { clearTimeout(this.tVolta); this.setState({ tel: st.tel || '+55 11 91234-5678', cod: Array(6).fill(''), resta: ESPERA, aviso: '', erro: 'Código incorreto. Confira os 6 números e tente de novo.', verificando: false, enviando: false }); this.ir('cod', 'lg-c0'); },
+      irOk: () => { clearTimeout(this.tVolta); this.setState({ tel: st.tel || '+55 11 91234-5678', verificando: false, enviando: false, ...limpaErro }); this.ir('ok'); },
+      liberar: () => this.setState({ resta: 0 })
+    };
+  }
+  verificar() {
+    if (this.state.verificando) return;
+    this.setState({ verificando: true });
+    clearTimeout(this.tConfere);
+    this.tConfere = setTimeout(() => {
+      const st = this.state, codigo = st.cod.join('');
+      if (st.sim === 'recusa' || codigo === '000000') {
+        this.setState({ verificando: false, cod: Array(6).fill(''), aviso: '', erro: 'Código incorreto. Confira os 6 números e tente de novo.' });
+        setTimeout(() => { const el = document.getElementById('lg-c0'); if (el) el.focus(); }, 30);
+        return;
+      }
+      if (window.IX) window.IX.store.set('login', { tel: st.tel, canal: st.canal, em: Date.now() });
+      this.setState({ verificando: false, erro: '', aviso: '' });
+      this.ir('ok');
+      this.seguir();
+    }, this.reduzido() ? 300 : CONFERE_MS);
+  }
+}
+</script>
+</body>
+</html>
+<!-- login-assinatura:f6101cae278d -->

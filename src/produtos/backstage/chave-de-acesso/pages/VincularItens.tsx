@@ -1,393 +1,174 @@
-import { useMemo, useState } from "react";
-import { useLocation, useNavigate } from "react-router";
-import { motion } from "motion/react";
-import { ArrowLeft, Calendar, Cube01, SearchLg, ShoppingBag02, Ticket02 } from "@untitledui/icons";
-import { Badge } from "@/components/base/badges/badges";
+import { useEffect, useMemo, useState } from "react";
+import { Navigate, useLocation, useNavigate } from "react-router";
+import { toast } from "sonner";
+import { SlideoutMenu } from "@/components/application/slideout-menus/slideout-menu";
 import { Button } from "@/components/base/buttons/button";
-import { ButtonGroup, ButtonGroupItem } from "@/components/base/button-group/button-group";
-import { ButtonUtility } from "@/components/base/buttons/button-utility";
-import { Checkbox } from "@/components/base/checkbox/checkbox";
-import { Input } from "@/components/base/input/input";
-import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
-import { cx } from "@/utils/cx";
+import type { Evento, ProdutoDaOrganizacao } from "@/plataforma";
+import { combosDoEvento, ConferenciaDeVinculos, produtosDoEvento, SeletorDeVinculos, useResumoDosVinculos, useVinculos } from "../../components/arvore-de-vinculos";
 import { BackstageLayout } from "../../components/Backstage";
-import { COMBOS, PRODUTOS, SESSOES, comboLeafIds, produtoLeafIds, sessaoLeafIds, sessoesLeafIds } from "../data/itens-evento";
-import { TITULO_PAGINA } from "@/produtos/backstage/components/titulo-pagina";
+import { CabecalhoDaPagina } from "../../components/cabecalho-da-pagina";
+import { PainelLateral, useProtecaoDoPreenchido } from "../../components/painel-lateral";
+import { salvarPasskeys } from "../../components/passkeys-do-evento";
+import { CarregandoTabela } from "../../components/tabela";
+import { useCatalogo } from "../../itens/data/catalogo";
+import { useTextosItens } from "../../itens/data/textos-itens";
+import { apagarRascunho, ROTA_CRIAR_PASSKEY, ROTA_LISTA_DE_PASSKEYS, ROTA_PASSKEY } from "../data/rascunho";
 
-type Filtro = "todos" | "ingressos" | "combos" | "produtos";
+/*
+ * Vincular itens (CHA-20 a CHA-23, CHA-41, CHA-42): os ingressos na árvore comum com escala
+ * (`SeletorDeVinculos`), combos e produtos em abas. À direita (no celular, "Ver selecionados"),
+ * a conferência do escolhido, com os lotes de cada ingresso. Navega sem atraso.
+ */
+
+const T = {
+    titulo: "Passkey",
+    instrucao: "Marque os itens que serão liberados ao usar a Passkey",
+    adicionar: "Adicionar vínculos",
+    adicionarDica: "Esta ação só adiciona vínculos. Itens já vinculados continuam como estão.",
+    cancelar: "Cancelar",
+    salvar: "Salvar",
+    arvore: "Ingressos para vincular",
+    semItens: "Este evento ainda não tem ingressos, combos nem produtos para vincular.",
+    escolhidos: "Itens escolhidos",
+    verSelecionados: "Ver selecionados",
+    pronto: "Pronto",
+    descartarTitulo: "Descartar a seleção?",
+    descartarTexto: "Os itens marcados ainda não foram vinculados.",
+    criadas: { one: "Passkey criada.", other: "{n} Passkeys criadas." },
+    vinculados: "Vínculos adicionados.",
+    erro: "Não foi possível salvar os vínculos. Tente de novo.",
+};
+
+/** Largura do desktop (lg): a conferência fica ao lado; abaixo, num painel. */
+function useLargo() {
+    const consulta = "(min-width: 1024px)";
+    const [largo, setLargo] = useState(() => typeof window !== "undefined" && window.matchMedia(consulta).matches);
+    useEffect(() => {
+        const m = window.matchMedia(consulta);
+        const mudar = () => setLargo(m.matches);
+        m.addEventListener("change", mudar);
+        return () => m.removeEventListener("change", mudar);
+    }, []);
+    return largo;
+}
 
 export function VincularItens() {
-    const navigate = useNavigate();
     const location = useLocation();
-    // Modo "adicionar vínculos" (vindo da listagem) muda título/legenda e o destino do voltar.
-    const adicionarMode = !!(location.state as { adicionar?: boolean } | null)?.adicionar;
-    const backTo = adicionarMode ? "/backstage/marketing/chave-de-acesso/lista" : "/backstage/marketing/chave-de-acesso";
-    const [exiting, setExiting] = useState(false);
-    // Anima a saída antes de navegar, suavizando a transição.
-    const leaveTo = (path: string) => {
-        setExiting(true);
-        setTimeout(() => navigate(path), 260);
-    };
-    const [search, setSearch] = useState("");
-    const [filter, setFilter] = useState<Filtro>("todos");
-    const [selected, setSelected] = useState<Set<string>>(new Set());
+    // Modo "adicionar vínculos" (vindo da lista) muda o título e o destino do voltar.
+    const estado = location.state as { adicionar?: boolean; codigos?: string[]; limite?: number | null } | null;
+    const { carregando, evento, biblioteca } = useCatalogo();
+    const codigos = estado?.codigos ?? [];
 
-    const setIds = (ids: string[], select: boolean) =>
-        setSelected((prev) => {
-            const next = new Set(prev);
-            ids.forEach((id) => (select ? next.add(id) : next.delete(id)));
-            return next;
-        });
-    const allSelected = (ids: string[]) => ids.length > 0 && ids.every((id) => selected.has(id));
-    const indeterminate = (ids: string[]) => ids.some((id) => selected.has(id)) && !allSelected(ids);
-
-    // Itens vinculados, para o painel da direita.
-    const selectedIngressos = useMemo(
-        () =>
-            SESSOES.flatMap((s) =>
-                s.grupos.flatMap((g) =>
-                    g.ingressos.filter((t) => t.lotes.some((l) => selected.has(l.id))).map((t) => ({ ...t, groupName: g.name, date: s.date })),
-                ),
-            ),
-        [selected],
-    );
-    const selectedCombos = useMemo(() => COMBOS.filter((c) => c.lotes.some((l) => selected.has(l.id))), [selected]);
-    const selectedProdutos = useMemo(() => PRODUTOS.filter((p) => selected.has(p.id)), [selected]);
-
-    const hasIngressos = selectedIngressos.length > 0 || selectedCombos.length > 0;
-    const hasProdutos = selectedProdutos.length > 0;
-
-    const removerTodosIngressos = () => setIds([...sessoesLeafIds, ...comboLeafIds], false);
-    const limparProdutos = () => setIds(produtoLeafIds, false);
-
-    const showIngressos = filter === "todos" || filter === "ingressos";
-    const showProdutos = filter === "todos" || filter === "produtos";
-    const showCombos = filter === "todos" || filter === "combos";
+    // Sem Passkey para vincular (URL aberta direto): volta para o começo.
+    if (codigos.length === 0) return <Navigate to={ROTA_PASSKEY} replace />;
 
     return (
-        <BackstageLayout activeSection="marketing" activeItem="chave-de-acesso">
-            <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={exiting ? { opacity: 0, y: 10 } : { opacity: 1, y: 0 }}
-                transition={{ duration: exiting ? 0.25 : 0.3, ease: "easeOut" }}
-                className="flex min-w-0 flex-1 flex-col gap-6 md:h-[calc(100dvh-4.5rem)] md:overflow-hidden"
-            >
-                <header className="flex shrink-0 items-center justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                        <ButtonUtility size="md" color="secondary" icon={ArrowLeft} tooltip="Voltar" onClick={() => leaveTo(backTo)} />
-                        <h1 className={TITULO_PAGINA}>Passkey</h1>
-                    </div>
-                    <div className="flex items-center gap-3">
-                        <Button size="lg" color="secondary" onClick={() => leaveTo(backTo)}>
-                            Voltar
-                        </Button>
-                        <Button
-                            size="lg"
-                            color="primary"
-                            isDisabled={selected.size === 0}
-                            onClick={() => leaveTo("/backstage/marketing/chave-de-acesso/lista")}
-                        >
-                            Salvar
-                        </Button>
-                    </div>
-                </header>
-
-                <main className="flex-1 md:min-h-0 md:overflow-y-auto">
-                    <div className="mx-auto w-full max-w-5xl">
-                        <h2 className="text-lg font-semibold text-primary">
-                            {adicionarMode ? "Adicionar vínculos" : "Marque os itens que serão liberados ao utilizar a Passkey"}
-                        </h2>
-                        {adicionarMode && (
-                            <p className="mt-1 text-sm text-tertiary">
-                                Esta ação apenas adiciona novos vínculos. Itens já vinculados não serão alterados.
-                            </p>
-                        )}
-
-                        <div className="mt-6 flex gap-6">
-                            {/* Coluna esquerda: filtro + busca + seções */}
-                            <div className="flex min-w-0 flex-1 flex-col gap-4">
-                                <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                                    <ButtonGroup
-                                        selectedKeys={[filter]}
-                                        onSelectionChange={(keys) => {
-                                            const value = [...keys][0] as Filtro;
-                                            if (value) setFilter(value);
-                                        }}
-                                    >
-                                        <ButtonGroupItem id="todos">Todos</ButtonGroupItem>
-                                        <ButtonGroupItem id="ingressos">Ingressos</ButtonGroupItem>
-                                        <ButtonGroupItem id="combos">Combos</ButtonGroupItem>
-                                        <ButtonGroupItem id="produtos">Produtos</ButtonGroupItem>
-                                    </ButtonGroup>
-                                    <div className="min-w-0 flex-1">
-                                        <Input icon={SearchLg} placeholder="Busque por nome de grupo, item ou lote" value={search} onChange={setSearch} />
-                                    </div>
-                                </div>
-
-                                {/* Ingressos — um bloco por sessão */}
-                                {showIngressos &&
-                                    SESSOES.map((sessao) => {
-                                        const ids = sessaoLeafIds(sessao);
-                                        return (
-                                            <SectionCard key={sessao.id} icon={Calendar} title={sessao.date}>
-                                                <CheckRow
-                                                    label="Selecionar todos"
-                                                    bold
-                                                    isSelected={allSelected(ids)}
-                                                    isIndeterminate={indeterminate(ids)}
-                                                    onChange={(checked) => setIds(ids, checked)}
-                                                />
-                                                {sessao.grupos.map((group) => {
-                                                    const groupIds = group.ingressos.flatMap((t) => t.lotes.map((l) => l.id));
-                                                    return (
-                                                        <div key={group.id} className="flex flex-col">
-                                                            <CheckRow
-                                                                label={group.name}
-                                                                bold
-                                                                isSelected={allSelected(groupIds)}
-                                                                isIndeterminate={indeterminate(groupIds)}
-                                                                onChange={(checked) => setIds(groupIds, checked)}
-                                                            />
-                                                            {group.ingressos.map((ing) => {
-                                                                const ingIds = ing.lotes.map((l) => l.id);
-                                                                return (
-                                                                    <div key={ing.id} className="flex flex-col">
-                                                                        <CheckRow
-                                                                            indent="pl-6"
-                                                                            label={ing.name}
-                                                                            badge={ing.type}
-                                                                            isSelected={allSelected(ingIds)}
-                                                                            isIndeterminate={indeterminate(ingIds)}
-                                                                            onChange={(checked) => setIds(ingIds, checked)}
-                                                                        />
-                                                                        {ing.lotes.map((lote) => (
-                                                                            <CheckRow
-                                                                                key={lote.id}
-                                                                                indent="pl-12"
-                                                                                label={lote.name}
-                                                                                isSelected={selected.has(lote.id)}
-                                                                                onChange={(checked) => setIds([lote.id], checked)}
-                                                                            />
-                                                                        ))}
-                                                                    </div>
-                                                                );
-                                                            })}
-                                                        </div>
-                                                    );
-                                                })}
-                                            </SectionCard>
-                                        );
-                                    })}
-
-                                {/* Produtos */}
-                                {showProdutos && (
-                                    <SectionCard icon={ShoppingBag02} title="Produtos">
-                                        <CheckRow
-                                            label="Selecionar todos"
-                                            bold
-                                            isSelected={allSelected(produtoLeafIds)}
-                                            isIndeterminate={indeterminate(produtoLeafIds)}
-                                            onChange={(checked) => setIds(produtoLeafIds, checked)}
-                                        />
-                                        {PRODUTOS.map((product) => (
-                                            <div key={product.id} className="flex h-13 items-center gap-3">
-                                                <Checkbox size="sm" isSelected={selected.has(product.id)} onChange={(checked) => setIds([product.id], checked)} />
-                                                <img
-                                                    src={product.img}
-                                                    alt=""
-                                                    aria-hidden="true"
-                                                    className="size-9 shrink-0 rounded-md object-cover ring-1 ring-border-secondary ring-inset"
-                                                />
-                                                <span className="text-sm text-secondary">{product.name}</span>
-                                            </div>
-                                        ))}
-                                    </SectionCard>
-                                )}
-
-                                {/* Combos */}
-                                {showCombos && (
-                                    <SectionCard icon={Cube01} title="Combos">
-                                        <CheckRow
-                                            label="Selecionar todos"
-                                            bold
-                                            isSelected={allSelected(comboLeafIds)}
-                                            isIndeterminate={indeterminate(comboLeafIds)}
-                                            onChange={(checked) => setIds(comboLeafIds, checked)}
-                                        />
-                                        {COMBOS.map((combo) => {
-                                            const comboIds = combo.lotes.map((l) => l.id);
-                                            return (
-                                                <div key={combo.id} className="flex flex-col">
-                                                    <CheckRow
-                                                        label={combo.name}
-                                                        bold
-                                                        subtitle={combo.legenda}
-                                                        isSelected={allSelected(comboIds)}
-                                                        isIndeterminate={indeterminate(comboIds)}
-                                                        onChange={(checked) => setIds(comboIds, checked)}
-                                                    />
-                                                    {combo.lotes.map((lote) => (
-                                                        <CheckRow
-                                                            key={lote.id}
-                                                            indent="pl-6"
-                                                            label={lote.name}
-                                                            isSelected={selected.has(lote.id)}
-                                                            onChange={(checked) => setIds([lote.id], checked)}
-                                                        />
-                                                    ))}
-                                                </div>
-                                            );
-                                        })}
-                                    </SectionCard>
-                                )}
-
-                                <div className="flex flex-col items-center gap-2 py-4">
-                                    <div className="size-7 animate-spin rounded-full border-[3px] border-secondary border-t-brand" />
-                                    <span className="text-sm text-tertiary">Carregando...</span>
-                                </div>
-                            </div>
-
-                            {/* Coluna direita: itens vinculados */}
-                            <aside className="hidden w-80 shrink-0 lg:block">
-                                <div className="sticky top-2 flex max-h-[calc(100dvh-9rem)] flex-col rounded-xl ring-1 ring-border-secondary">
-                                    <header className="flex items-center justify-between gap-2 border-b border-secondary px-4 py-3">
-                                        <span className="text-sm font-semibold text-primary">Itens</span>
-                                        <span className="text-xs font-medium text-tertiary">
-                                            {selected.size} {selected.size === 1 ? "item vinculado" : "itens vinculados"}
-                                        </span>
-                                    </header>
-
-                                    {selected.size === 0 ? (
-                                        <div className="flex flex-1 flex-col items-center justify-center gap-3 px-6 py-12 text-center">
-                                            <FeaturedIcon icon={Ticket02} color="error" theme="dark" size="lg" />
-                                            <p className="text-sm font-medium text-tertiary">
-                                                Você ainda não
-                                                <br />
-                                                selecionou nenhum item
-                                            </p>
-                                        </div>
-                                    ) : (
-                                        <div className="flex flex-1 flex-col gap-5 overflow-y-auto px-4 py-4">
-                                            {hasIngressos && (
-                                                <div className="flex flex-col">
-                                                    <PanelGroupHeader title="Ingressos" action="Remover todos" onAction={removerTodosIngressos} />
-
-                                                    {selectedIngressos.map((ing) => (
-                                                        <div key={ing.id} className="flex flex-col gap-0.5 py-3">
-                                                            <div className="flex items-start justify-between gap-2">
-                                                                <span className="text-sm font-medium text-primary">{ing.name}</span>
-                                                                <RemoveLink onClick={() => setIds(ing.lotes.map((l) => l.id), false)} />
-                                                            </div>
-                                                            <span className="text-xs text-tertiary">
-                                                                {ing.groupName} • {ing.type}
-                                                            </span>
-                                                            <span className="text-xs text-tertiary">{ing.date}</span>
-                                                        </div>
-                                                    ))}
-
-                                                    {selectedCombos.map((combo) => (
-                                                        <div key={combo.id} className="flex flex-col gap-1 py-3">
-                                                            <div className="flex items-start justify-between gap-2">
-                                                                <span className="text-sm font-medium text-primary">{combo.name}</span>
-                                                                <RemoveLink onClick={() => setIds(combo.lotes.map((l) => l.id), false)} />
-                                                            </div>
-                                                            <span className="text-xs text-tertiary">{combo.legenda}</span>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            )}
-
-                                            {hasProdutos && (
-                                                <div className="flex flex-col">
-                                                    <PanelGroupHeader title="Produtos" action="Limpar tudo" onAction={limparProdutos} />
-                                                    {selectedProdutos.map((product) => (
-                                                        <div key={product.id} className="flex items-center gap-3 py-2">
-                                                            <img
-                                                                src={product.img}
-                                                                alt=""
-                                                                aria-hidden="true"
-                                                                className="size-9 shrink-0 rounded-md object-cover ring-1 ring-border-secondary ring-inset"
-                                                            />
-                                                            <span className="flex-1 truncate text-sm text-secondary">{product.name}</span>
-                                                            <RemoveLink onClick={() => setIds([product.id], false)} />
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
-                                </div>
-                            </aside>
-                        </div>
-                    </div>
-                </main>
-            </motion.div>
+        <BackstageLayout activeSection="itens" activeItem="chave-de-acesso">
+            <div className="flex min-w-0 flex-1 flex-col gap-6">
+                {carregando || !evento ? (
+                    <>
+                        <CabecalhoDaPagina titulo={T.titulo} />
+                        <CarregandoTabela />
+                    </>
+                ) : (
+                    <Vincular key={evento.id} evento={evento} biblioteca={biblioteca} codigos={codigos} limite={estado?.limite} adicionar={!!estado?.adicionar} />
+                )}
+            </div>
         </BackstageLayout>
     );
 }
 
-const PanelGroupHeader = ({ title, action, onAction }: { title: string; action: string; onAction: () => void }) => (
-    <div className="mb-1 flex items-center gap-2">
-        <span className="text-xs font-semibold text-tertiary">{title}</span>
-        <span className="h-px flex-1 border-t border-dashed border-border-secondary" />
-        <button type="button" onClick={onAction} className="text-xs font-medium text-tertiary transition duration-100 ease-linear hover:text-secondary">
-            {action}
-        </button>
-    </div>
-);
+function Vincular({ evento, biblioteca, codigos, limite, adicionar }: { evento: Evento; biblioteca: ProdutoDaOrganizacao[]; codigos: string[]; limite?: number | null; adicionar: boolean }) {
+    const navigate = useNavigate();
+    const { preco, plural } = useTextosItens();
+    const largo = useLargo();
+    const resumir = useResumoDosVinculos();
+    const vinculos = useVinculos(evento);
+    const [salvando, setSalvando] = useState(false);
+    const [conferindo, setConferindo] = useState(false);
+    const combos = useMemo(() => combosDoEvento(evento, preco), [evento, preco]);
+    const produtos = useMemo(() => produtosDoEvento(evento, biblioteca, preco, false), [evento, biblioteca, preco]);
 
-const RemoveLink = ({ onClick }: { onClick: () => void }) => (
-    <button type="button" onClick={onClick} className="shrink-0 text-xs font-medium text-tertiary transition duration-100 ease-linear hover:text-secondary">
-        Remover
-    </button>
-);
+    // O voltar devolve as chaves: a criação lê o rascunho da sessão (CHA-40). Da lista, volta para a lista.
+    const voltarPara = adicionar ? ROTA_LISTA_DE_PASSKEYS : ROTA_CRIAR_PASSKEY;
+    const protecao = useProtecaoDoPreenchido({ alterado: vinculos.alterado, onFechar: () => navigate(voltarPara), titulo: T.descartarTitulo, descricao: T.descartarTexto });
 
-interface SectionCardProps {
-    icon: typeof Calendar;
-    title: string;
-    children: React.ReactNode;
-}
+    const salvar = async () => {
+        if (vinculos.vazio || salvando) return;
+        setSalvando(true);
+        const r = vinculos.resultado();
+        try {
+            await salvarPasskeys(evento.id, codigos, { lotes: r.lotes, combos: r.combos, produtos: r.produtos }, limite);
+            if (!adicionar) apagarRascunho(evento.id);
+            toast.success(adicionar ? T.vinculados : plural(T.criadas, codigos.length));
+            navigate(ROTA_LISTA_DE_PASSKEYS, { state: adicionar ? undefined : { recem: codigos } });
+        } catch {
+            toast.error(T.erro);
+            setSalvando(false);
+        }
+    };
 
-const SectionCard = ({ icon: Icon, title, children }: SectionCardProps) => (
-    <section className="overflow-hidden rounded-xl ring-1 ring-border-secondary">
-        <header className="flex items-center gap-3 border-b border-secondary px-4 py-3">
-            <FeaturedIcon icon={Icon} color="gray" theme="modern" size="sm" />
-            <span className="text-sm font-semibold text-primary">{title}</span>
-        </header>
-        <div className="flex flex-col px-4 py-1">{children}</div>
-    </section>
-);
+    const conferencia = <ConferenciaDeVinculos vinculos={vinculos} combos={combos} produtos={produtos} />;
 
-interface CheckRowProps {
-    label: string;
-    badge?: string;
-    subtitle?: string;
-    indent?: string;
-    bold?: boolean;
-    isSelected: boolean;
-    isIndeterminate?: boolean;
-    onChange: (checked: boolean) => void;
-}
+    return (
+        <>
+            {/* Os dois destinos do voltar (lista ou criação) são telas "Passkey". */}
+            <CabecalhoDaPagina
+                voltar={{ rotulo: T.titulo, onClick: protecao.pedirParaFechar }}
+                titulo={T.titulo}
+                acoes={
+                    <>
+                        <Button size="md" color="secondary" onClick={protecao.pedirParaFechar}>
+                            {T.cancelar}
+                        </Button>
+                        <Button size="md" color="primary" isDisabled={vinculos.vazio} isLoading={salvando} showTextWhileLoading onClick={() => void salvar()}>
+                            {T.salvar}
+                        </Button>
+                    </>
+                }
+            />
 
-const CheckRow = ({ label, badge, subtitle, indent, bold, isSelected, isIndeterminate, onChange }: CheckRowProps) => (
-    <div className={cx("flex gap-2", subtitle ? "items-start py-2.5" : "h-13 items-center", indent)}>
-        <Checkbox
-            size="sm"
-            isSelected={isSelected}
-            isIndeterminate={isIndeterminate}
-            onChange={onChange}
-            className={subtitle ? "mt-0.5" : undefined}
-        />
-        <div className="flex min-w-0 flex-col gap-0.5">
-            <div className="flex items-center gap-2">
-                <span className={cx("text-sm", bold ? "font-semibold text-primary" : "text-secondary")}>{label}</span>
-                {badge && (
-                    <Badge size="sm" color="gray" type="modern">
-                        {badge}
-                    </Badge>
+            <div className="flex flex-col gap-1">
+                <h2 className="text-lg font-semibold text-primary">{adicionar ? T.adicionar : T.instrucao}</h2>
+                {adicionar && <p className="text-sm text-tertiary">{T.adicionarDica}</p>}
+            </div>
+
+            <div className="flex gap-6 pb-20 lg:pb-0">
+                <div className="flex min-w-0 flex-1 flex-col">
+                    <SeletorDeVinculos vinculos={vinculos} rotulo={T.arvore} combos={combos} produtos={produtos} vazio={<p className="py-6 text-sm text-tertiary">{T.semItens}</p>} />
+                </div>
+                {largo && (
+                    <aside aria-label={T.escolhidos} className="w-80 shrink-0">
+                        <div className="sticky top-2 flex max-h-[calc(100dvh-6rem)] flex-col gap-3 overflow-y-auto rounded-xl p-4 ring-1 ring-secondary">
+                            <h3 className="text-sm font-semibold text-primary">{T.escolhidos}</h3>
+                            {conferencia}
+                        </div>
+                    </aside>
                 )}
             </div>
-            {subtitle && <span className="text-xs text-tertiary">{subtitle}</span>}
-        </div>
-    </div>
-);
+
+            {/* Celular e tablet: a contagem fica presa embaixo, com "Ver selecionados" (UI-MOB-003). */}
+            {!largo && (
+                <div className="fixed inset-x-0 bottom-0 z-40 flex items-center justify-between gap-3 border-t border-secondary bg-primary px-4 py-3 shadow-lg">
+                    <span role="status" className="min-w-0 text-sm font-medium text-secondary">
+                        {resumir(vinculos)}
+                    </span>
+                    <Button size="sm" color="secondary" onClick={() => setConferindo(true)} isDisabled={vinculos.vazio}>
+                        {T.verSelecionados}
+                    </Button>
+                </div>
+            )}
+            {conferindo && !largo && (
+                <PainelLateral titulo={T.escolhidos} aoFechar={() => setConferindo(false)}>
+                    <SlideoutMenu.Content className="pb-6">{conferencia}</SlideoutMenu.Content>
+                    <SlideoutMenu.Footer className="mt-auto flex justify-end">
+                        <Button size="md" color="primary" onClick={() => setConferindo(false)}>
+                            {T.pronto}
+                        </Button>
+                    </SlideoutMenu.Footer>
+                </PainelLateral>
+            )}
+            {protecao.confirmacao}
+        </>
+    );
+}

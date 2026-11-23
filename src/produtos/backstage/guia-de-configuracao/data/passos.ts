@@ -43,7 +43,7 @@ interface DefinicaoDoPasso {
 export const PASSOS: readonly DefinicaoDoPasso[] = [
     {
         id: "setores",
-        rotulo: "Crie os grupos do evento",
+        rotulo: "Crie os grupos de ingressos",
         acao: "Criar",
         feito: (e) => e.setores === "algum",
     },
@@ -72,9 +72,10 @@ export const PASSOS: readonly DefinicaoDoPasso[] = [
         id: "publicar",
         rotulo: "Publique o evento",
         acao: "Publicar",
-        motivo: "Precisa de ingressos criados antes",
+        // Sem abertura de vendas não se publica (EVT-130).
+        motivo: "Precisa da abertura de vendas programada antes",
         feito: (e) => e.publicacao === "no-ar",
-        bloqueado: (e) => e.setores === "nenhum" || e.ingressos === "nenhum",
+        bloqueado: (e) => e.setores === "nenhum" || e.ingressos === "nenhum" || e.abertura === "nenhum",
     },
 ];
 

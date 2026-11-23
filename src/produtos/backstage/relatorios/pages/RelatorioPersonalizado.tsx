@@ -6,10 +6,11 @@ import { Button } from "@/components/base/buttons/button";
 import { CymaticsFill } from "@/components/application/loading-indicator/cymatics-loader";
 import { BackstageLayout } from "../../components/Backstage";
 import { RelatorioPageHeader } from "../components/RelatorioPageHeader";
+import { RelatorioPeriodoButton } from "../components/RelatorioFilterSlideout";
 import { RelatorioFiltersProvider, useRelatorioFilters } from "../components/relatorio-filters";
 import { RelatorioIABlocks } from "../components/RelatorioIABlocks";
 import { ComposerIA, useRelatorioChat } from "../components/RelatorioIAChat";
-import { PERIODO_PADRAO, type Bloco } from "../data/relatorio-ia";
+import { useFonteDoRelatorio, type Bloco, type FonteDoRelatorio } from "../data/relatorio-ia";
 
 interface ItemRelatorio {
     id: string;
@@ -55,7 +56,7 @@ function MensagemGerando() {
 
 const COMPOSER_TRANSITION = { duration: 0.45, ease: [0.16, 1, 0.3, 1] as const };
 
-function Body() {
+function Body({ fonte }: { fonte: FonteDoRelatorio }) {
     const { dateRange } = useRelatorioFilters();
     const [itens, setItens] = useState<ItemRelatorio[]>([]);
     const [pending, setPending] = useState(false);
@@ -88,7 +89,7 @@ function Body() {
     const remover = (i: number) => setItens((prev) => prev.filter((_, idx) => idx !== i));
     const limpar = () => setItens([]);
 
-    const chat = useRelatorioChat({ periodo: dateRange, onResult: adicionar, onPendingChange: setPending });
+    const chat = useRelatorioChat({ periodo: dateRange, fonte, onResult: adicionar, onPendingChange: setPending });
     const temConteudo = itens.length > 0 || pending;
 
     // Ao começar a gerar, rola até o container de loading.
@@ -153,9 +154,20 @@ function Body() {
                     <div className="flex flex-1 flex-col items-center justify-center gap-10 pb-10">
                         <div className="flex flex-col items-center gap-5 text-center">
                             <span className="size-16 rounded-full bg-gradient-to-br from-brand-300 to-brand-600 shadow-lg shadow-brand-600/30" aria-hidden="true" />
-                            <h1 className="text-display-sm font-semibold text-primary md:text-display-md">
-                                O que você quer <span className="text-brand-secondary">descobrir?</span>
-                            </h1>
+                            <div className="flex flex-col items-center gap-2">
+                                {/* h2: o h1 da página é o título do relatório (só para leitor de tela); este aparece (REL-170). */}
+                                <h2 className="text-display-sm font-semibold text-primary md:text-display-md">
+                                    O que você quer <span className="text-brand-secondary">descobrir?</span>
+                                </h2>
+                                {fonte.nome && (
+                                    <p className="text-md text-tertiary">
+                                        {fonte.todos ? "Dados de todos os eventos da organização" : `Dados de ${fonte.nome}`}
+                                        {fonte.vazio && ", ainda sem vendas"}
+                                    </p>
+                                )}
+                            </div>
+                            {/* O período vale desde o primeiro pedido: o botão aparece já no vazio (antes, só depois do 1º bloco). */}
+                            <RelatorioPeriodoButton />
                         </div>
                         <motion.div layoutId="composer-ia" transition={COMPOSER_TRANSITION} className="w-full">
                             <ComposerIA chat={chat} attached={false} />
@@ -177,10 +189,14 @@ function Body() {
 }
 
 export function RelatorioPersonalizado() {
+    const fonte = useFonteDoRelatorio();
+    const { start, end } = fonte.periodoPadrao;
+    // Outro evento, escopo ou janela de vendas: recomeça o relatório (os gráficos eram de outros dados).
+    const chave = `${fonte.todos}|${fonte.nome}|${start.toString()}|${end.toString()}`;
     return (
         <BackstageLayout activeSection="relatorios" activeItem="relatorio-personalizado">
-            <RelatorioFiltersProvider initialDateRange={PERIODO_PADRAO}>
-                <Body />
+            <RelatorioFiltersProvider key={chave} initialDateRange={fonte.periodoPadrao}>
+                <Body fonte={fonte} />
             </RelatorioFiltersProvider>
         </BackstageLayout>
     );

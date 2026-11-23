@@ -7,6 +7,9 @@
 /*  daqui num adaptador dentro do produto.                             */
 /* ------------------------------------------------------------------ */
 
+import type { Condicoes as CondicoesDoComissario, Repasse as RepasseAoComissario, VendaAtribuida } from "./comissarios";
+import type { GrupoEquipe } from "./equipe";
+
 export type EventoStatus = "rascunho" | "privado" | "publicado" | "encerrado";
 
 /** Hierarquia de venda: sessão > grupo (setor) > ingresso > lote. */
@@ -130,6 +133,8 @@ export interface ProdutoNoEvento {
     /** Antigo: as regras agora são do produto na organização. Não é mais lido nem editado. */
     vendas?: RegrasDeVenda;
     visivel?: boolean;
+    /** Códigos de Passkey (Marketing) que liberam o produto. */
+    chaves?: string[];
 }
 
 /** Um item dentro de um combo, com a quantidade. */
@@ -152,6 +157,19 @@ export interface Combo {
     ativo: boolean;
     vendas?: RegrasDeVenda;
     visivel?: boolean;
+    /** Códigos de Passkey (Marketing) que liberam o combo. */
+    chaves?: string[];
+}
+
+/** Passkey do evento (Marketing, CHA): o código e o uso; o que ela libera fica em `chaves` de cada item. */
+export interface Passkey {
+    /** Só letras e números, em maiúsculas (não distingue caixa). */
+    codigo: string;
+    ativa: boolean;
+    /** `null`: ilimitado. */
+    limite: number | null;
+    usos: number;
+    criadaEm: string;
 }
 
 export interface Sessao {
@@ -194,6 +212,18 @@ export interface Partida {
 
 export type MapaDoEvento = { tipo: "imagem"; url?: string } | { tipo: "assentos"; mapaId: string };
 
+/** Vídeo opcional da página do evento: link do YouTube ou do Vimeo (EVT-165). */
+export interface VideoDoEvento {
+    url: string;
+    origem: "youtube" | "vimeo";
+}
+
+/** Entrada (portão) do local do evento, cadastrada na criação (EVT-166). Os grupos de ingressos a oferecem em "Acesso na portaria". */
+export interface EntradaDoLocal {
+    id: string;
+    nome: string;
+}
+
 export interface ConfiguracoesAvancadas {
     /** Um pedido pode ter ingressos de grupos diferentes. */
     comprasEntreGrupos: boolean;
@@ -207,6 +237,30 @@ export interface ConfiguracoesAvancadas {
     qrCodeNoEmail: boolean;
 }
 
+/** Opção de lista da criação de evento acrescentada pela organização (time, campeonato, programa, política). */
+export interface OpcaoDaOrganizacao {
+    id: string;
+    nome: string;
+}
+
+/** Listas da criação de evento que cada organização completa com as suas opções. */
+export interface OpcoesDeEventoDaOrganizacao {
+    campeonatos?: OpcaoDaOrganizacao[];
+    times?: OpcaoDaOrganizacao[];
+    programasMembros?: OpcaoDaOrganizacao[];
+    politicas?: OpcaoDaOrganizacao[];
+}
+
+/** Marco da curva de vendas na Visão geral do evento: o que aconteceu num dia. */
+export interface MarcoDoEvento {
+    id: string;
+    /** ISO curto (AAAA-MM-DD). */
+    data: string;
+    tipo: "lote" | "atracao" | "marketing" | "externo";
+    titulo: string;
+    descricao?: string;
+}
+
 /** Conta da produtora no Backstage. Cada evento pertence a uma. */
 export interface Organizacao {
     id: string;
@@ -218,6 +272,147 @@ export interface Organizacao {
     produtos?: ProdutoDaOrganizacao[];
     /** Ajustes: ingressos dos eventos podem ser atribuídos direto a um CPF ou passaporte, sem conta (ORG-43). */
     atribuicaoADocumentos?: boolean;
+    /** Etiquetas de destaque, compartilhadas entre os eventos (Marketing). */
+    etiquetas?: Etiqueta[];
+    /** Termos de uso que o comprador aceita (Ajustes › Termos de uso, TDU). */
+    termosDeUso?: TermoDeUso[];
+    /** Mapas interativos da organização (Ajustes › Mapas interativos, MAP). Ausente: os de exemplo. */
+    mapas?: MapaInterativo[];
+    /** Segmentações do público (Público › Segmentações, SEG). Ausente: as de exemplo. */
+    segmentacoes?: Segmentacao[];
+    /** Contas que recebem repasses (Finanças, FIN). Ausente: a conta do contrato de exemplo. */
+    contasFavorecidas?: ContaFavorecida[];
+    /** Repasses pedidos (Finanças, FIN). Ausente: o histórico de exemplo. */
+    repasses?: Repasse[];
+    /** Quem acessa o Backstage da organização (Membros, MEM). Ausente: os de exemplo. */
+    membros?: MembroDaOrganizacao[];
+    /** Grupos de membros: em quais eventos cada um entra (MEM). Ausente: os de exemplo. */
+    gruposDeMembros?: GrupoDeMembros[];
+    /** Cargos criados pela organização; os padrão ficam no código (MEM-61). */
+    cargos?: CargoDaOrganizacao[];
+    /** Quando a organização recebeu os grupos-comissário de exemplo (COM-107). Ausente: ainda não recebeu. */
+    equipeSemeadaEm?: string;
+    /** Opções que a organização acrescentou nas listas da criação de evento (EVT). Ausente: só as padrão e as que os eventos dela já usam. */
+    opcoesDeEvento?: OpcoesDeEventoDaOrganizacao;
+}
+
+/** Nível de acesso de um cargo a uma funcionalidade. */
+export type NivelDePermissao = "none" | "viewer" | "editor" | "admin";
+
+export interface PermissaoDoCargo {
+    featureId: string;
+    nome: string;
+    level: NivelDePermissao;
+    /** Sub-itens com nível próprio (ex.: tipos de relatório). */
+    subitens?: { id: string; nome: string; level: NivelDePermissao }[];
+}
+
+/** Cargo (MEM): o que a pessoa pode fazer. */
+export interface CargoDaOrganizacao {
+    id: string;
+    nome: string;
+    descricao: string;
+    permissions?: PermissaoDoCargo[];
+    /** Ações concedidas no formato "recurso:acao" (catálogo real). */
+    acoes?: string[];
+    /** Sem permissão explícita: configurado por funcionalidade (ex.: Cortesias). */
+    porFeature?: boolean;
+}
+
+/** Grupo de membros (MEM): em quais eventos da organização as pessoas entram. */
+export interface GrupoDeMembros {
+    id: string;
+    nome: string;
+    eventoIds: string[];
+    membroIds: string[];
+    /** "Todos os eventos": cobre todo evento da organização, inclusive os criados depois; não se exclui. */
+    sistema?: boolean;
+}
+
+/** Membro (MEM): uma pessoa, por e-mail, com cargos e grupos. */
+export interface MembroDaOrganizacao {
+    id: string;
+    email: string;
+    cargoIds: string[];
+    grupoIds: string[];
+}
+
+/** Conta que recebe repasses (FIN): Pix ou conta bancária; a do contrato não paga taxa extra. */
+export interface ContaFavorecida {
+    id: string;
+    titular: string;
+    tipo: "pix" | "corrente" | "poupanca";
+    chavePix?: string;
+    documento?: string;
+    banco?: string;
+    agencia?: string;
+    conta?: string;
+    padraoDoContrato: boolean;
+    criadaEm: string;
+}
+
+export type StatusDoRepasse = "analisando" | "pendente" | "agendado" | "pago" | "cancelado" | "rejeitado" | "falhou";
+
+/** Pedido de repasse (FIN): de um ou mais eventos para uma conta, numa modalidade com data e taxa. */
+export interface Repasse {
+    id: string;
+    contaId: string;
+    solicitante: string;
+    /** Quanto sai de cada evento. */
+    liquidacoes: { eventoId: string; valor: number }[];
+    /** Valor bruto pedido. */
+    valorSolicitado: number;
+    taxaAntecipacao: number;
+    taxaTransferencia: number;
+    /** Valor líquido que chega na conta. */
+    valorTransferido: number;
+    modalidade: "basic" | "express";
+    status: StatusDoRepasse;
+    /** ISO. */
+    solicitadoEm: string;
+    /** "AAAA-MM-DD": data prevista do pagamento. */
+    dataPrevista: string;
+    concluidoEm?: string;
+    motivo?: string;
+    descricao?: string;
+    idDeControle?: string;
+}
+
+/** Segmentação (SEG): quem entra num grupo do público, por idade, lista de documentos ou documento no checkout. */
+export interface Segmentacao {
+    id: string;
+    nome: string;
+    descricao?: string;
+    idadeMinima?: number;
+    idadeMaxima?: number;
+    /** Lista manual: CPF (11 dígitos) ou passaporte. */
+    documentos: { documento: string; tipo: "cpf" | "passaporte" }[];
+    /** Documento que o comprador apresenta no checkout. */
+    documentoNoCheckout: "nenhum" | "cie";
+    atualizadoEm: string;
+}
+
+/** Mapa interativo (MAP): desenhado no editor, vinculado aos eventos com assento marcado. */
+export interface MapaInterativo {
+    id: string;
+    nome: string;
+    /** Nunca publicado, publicado, ou publicado com alterações em rascunho. */
+    status: "rascunho" | "publicado" | "publicado-com-rascunho";
+    arquivado: boolean;
+    assentos: number;
+    atualizadoEm: string;
+}
+
+/** Termo de uso da organização (TDU): o comprador vê o nome e aceita o texto. */
+export interface TermoDeUso {
+    id: string;
+    nome: string;
+    /** HTML do editor, até 5.000 caracteres de texto. */
+    texto: string;
+    /** Associado sozinho a eventos novos; só um por organização. */
+    padrao: boolean;
+    ativo: boolean;
+    criadoEm: string;
 }
 
 /** Item vendido numa abertura: ingresso, produto do evento ou combo. */
@@ -247,6 +442,122 @@ export interface AberturaDeVendas {
     itens?: ItemDaAbertura[];
     /** Antigo: lido por `itensDaAbertura` e apagado na próxima gravação. */
     configuracoes?: ConfiguracaoDeAbertura[];
+}
+
+/** Pixels do evento, carregados na página de compra (PIX). Vazio ou ausente: não configurado. */
+export interface RastreamentoDoEvento {
+    meta?: string;
+    tiktok?: string;
+    x?: string;
+    googleAdsId?: string;
+    googleAdsRotulo?: string;
+    /** Existe no modelo de produção, sem campo na tela. */
+    ga4?: string;
+}
+
+/** Onde um cupom vale: um lote de ingresso ou um combo (CUP). */
+export interface VinculoDoCupom {
+    tipo: "lote" | "combo";
+    id: string;
+}
+
+/** Cupom de desconto do evento (CUP). Limites ausentes: ilimitado. */
+export interface Cupom {
+    id: string;
+    /** Só letras e números, em maiúsculas; único no evento. */
+    codigo: string;
+    ativo: boolean;
+    tipoDesconto: "percentual" | "fixo";
+    /** Percentual: 0 a 100. Fixo: em reais. */
+    valor: number;
+    /** Itens que já receberam o desconto. */
+    usos: number;
+    /** Itens com desconto em todo o evento. */
+    limiteItens?: number;
+    /** Vezes que cada pessoa pode usar. */
+    limitePorComprador?: number;
+    /** Itens da compra que recebem o desconto (os de maior valor). */
+    limiteItensPorCompra?: number;
+    /** "AAAA-MM-DDTHH:mm", hora local do evento. */
+    inicio: string;
+    /** Ausente: não expira. */
+    fim?: string;
+    vinculos: VinculoDoCupom[];
+    criadoEm: string;
+}
+
+/** Onde uma etiqueta aparece, num evento (ETQ). */
+export interface VinculoDaEtiqueta {
+    eventoId: string;
+    tipo: "grupo" | "lote" | "combo" | "produto";
+    id: string;
+}
+
+/** Etiqueta de destaque ("Últimos ingressos"): é da organização; os vínculos são por evento (ETQ). */
+export interface Etiqueta {
+    id: string;
+    /** Até 30 caracteres, único na organização. */
+    nome: string;
+    vinculos: VinculoDaEtiqueta[];
+    criadoEm: string;
+}
+
+/** Item de um conjunto de lotes sincronizados (LSI): um ingresso, a partir do lote em que estava na criação. */
+export interface ItemSincronizado {
+    ingressoId: string;
+    /** Lote vigente quando o conjunto foi criado: a virada 1 fecha este lote e abre o seguinte. */
+    loteInicialId: string;
+}
+
+/** Conjunto de lotes sincronizados (LSI): os ingressos viram de lote juntos, pela soma das vendas. */
+export interface ConjuntoSincronizado {
+    id: string;
+    nome: string;
+    itens: ItemSincronizado[];
+    /** Gatilho de cada virada (número da virada → total de vendas que a dispara). Ausente: "Aguardando". */
+    gatilhos: Record<number, number>;
+    criadoEm: string;
+}
+
+/** Pedido de vagas de um gestor de grupo ou assessoria (CEG). */
+export interface SolicitacaoDeGrupo {
+    id: string;
+    grupo: string;
+    tipoDeGrupo: "assessoria" | "amigos" | "empresa" | "corrida" | "escola" | "outros";
+    descricao?: string;
+    responsavel: string;
+    email?: string;
+    telefone?: string;
+    cnpj?: string;
+    solicitadas: number;
+    status: "pendente" | "aprovada" | "reprovada";
+    /** Vagas aprovadas (cota). */
+    aprovadas?: number;
+    /** Vagas já usadas pelo grupo: pagas e em pagamento. */
+    pagas: number;
+    iniciadas: number;
+    motivo?: string;
+    solicitadaEm: string;
+    decididaEm?: string;
+    /** Até quando o gestor pode comprar com as vagas aprovadas. */
+    validaAte?: string;
+}
+
+/** Compras em grupo do evento (CEG): o formulário de pedidos e a fila de solicitações. */
+export interface ComprasEmGrupo {
+    /** Formulário publicado (o assistente terminou). */
+    publicado: boolean;
+    /** Recebendo novas solicitações (desabilitar só para de receber). */
+    habilitado: boolean;
+    minimo?: number;
+    maximo?: number;
+    /** "AAAA-MM-DDTHH:mm", hora local do evento. */
+    inicio?: string;
+    fim?: string;
+    prazo: { tipo: "data"; data?: string } | { tipo: "dias"; dias?: number };
+    /** Ingressos que o grupo pode comprar. */
+    itens: string[];
+    solicitacoes: SolicitacaoDeGrupo[];
 }
 
 /** Tipos de resposta do questionário (QST). */
@@ -288,6 +599,47 @@ export interface EdicaoNaCarteira {
     perguntas: string[];
 }
 
+/** Pedido recebido pelo formulário de participação do evento (Público, PUB-96). Dados fictícios. */
+export interface SolicitacaoDeParticipacao {
+    id: string;
+    nome: string;
+    /** CPF ("123.456.789-01") ou passaporte. */
+    documento: string;
+    email: string;
+    cid: string;
+    telefone: string;
+    /** Data de nascimento (DD/MM/AAAA). */
+    nascimento: string;
+    /** Data do laudo médico (DD/MM/AAAA). */
+    dataLaudo: string;
+    /** Data da solicitação (AAAA-MM-DD). */
+    data: string;
+    status: "pendente" | "aprovada" | "rejeitada";
+    /** Segmentação em que a pessoa entrou (ao aprovar). */
+    segmento?: string;
+    /** Motivo informado ao reprovar. */
+    justificativa?: string;
+    /** Quando foi aprovada ou reprovada (ISO). */
+    decididaEm?: string;
+}
+
+/**
+ * Equipe e Comissários do evento (ECO), gravada no próprio evento. As vendas e os pedidos dos grupos
+ * não ficam aqui: são lidos dos pedidos do evento (`Pedido.comissario`, bilheteria e cortesia) e
+ * completados com exemplos gerados do catálogo (`comissarios.ts`).
+ */
+export interface EquipeDoEvento {
+    grupos: GrupoEquipe[];
+    /** Pagamentos de comissão registrados pela organização (COM-40). */
+    repasses: RepasseAoComissario[];
+    /** Cortesias emitidas pelo Freepass e registradas fora de pedido (`registrarCortesias`, ECO-81). */
+    cortesias?: VendaAtribuida[];
+    /** Condição do comissário na hora da venda, por id de pedido do banco (congelada na primeira leitura). */
+    condicoes?: Record<string, CondicoesDoComissario>;
+    /** Os grupos de exemplo da equipe já entraram (ECO-06). */
+    exemplos?: boolean;
+}
+
 export interface Evento {
     id: string;
     /** Usado no link de compra: /e/<slug>. */
@@ -299,17 +651,45 @@ export interface Evento {
     organizacaoId?: string;
     status: EventoStatus;
     capa?: string;
+    /** Banners além da capa, na ordem (EVT-164). A capa continua sendo o banner principal; quem só lê `capa` não muda. */
+    bannersAdicionais?: string[];
+    /** Vídeo opcional da página do evento (EVT-165). */
+    video?: VideoDoEvento;
     local: string;
+    /** Entradas (portões) do local, opcionais (EVT-166). */
+    entradas?: EntradaDoLocal[];
     cidade?: string;
     /** Início da primeira sessão (ISO local). Duplicado aqui para listagens. */
     data: string;
     sessoes: Sessao[];
     /** Produtos da organização escolhidos para este evento. */
+    /** Passkeys do evento (Marketing). Ausente: nenhuma. */
+    passkeys?: Passkey[];
     produtos?: ProdutoNoEvento[];
     combos?: Combo[];
     aberturas?: AberturaDeVendas[];
     /** Questionário do evento, na ordem em que aparece para quem compra. */
     perguntas?: Pergunta[];
+    /** Cupons de desconto (Marketing). */
+    cupons?: Cupom[];
+    /** Pixels de rastreamento (Marketing). */
+    rastreamento?: RastreamentoDoEvento;
+    /** Conjuntos de lotes sincronizados (Configurações de venda). */
+    conjuntosSincronizados?: ConjuntoSincronizado[];
+    /** Compras em grupo (Configurações de venda). Ausente: módulo nunca habilitado. */
+    comprasEmGrupo?: ComprasEmGrupo;
+    /** Equipe e Comissários do evento (ECO). Ausente: nenhum grupo ainda. */
+    equipe?: EquipeDoEvento;
+    /** Formulário de participação do evento (Público, PUB). Ausente: o evento não tem formulário. */
+    formularioDeParticipacao?: { ativo: boolean; limite: "ilimitado" | "limitado"; quantidadeLimite?: number; criadoEm: string };
+    /** Pedidos do formulário de participação (PUB-96). Ausente: ainda não gravados; a primeira abertura grava os de exemplo. */
+    solicitacoesDeParticipacao?: SolicitacaoDeParticipacao[];
+    /** Simulação da Lista de usuários (LUS-09): inscrições fictícias geradas a partir desta marca. Ausente: sem simulação. */
+    listaDeUsuariosSimulada?: { quantidade: number; criadaEm: string };
+    /** Quem entrou na lista de espera (CART-084/085; relatório Lista de usuários). `origem`: pelo botão do link de compra esgotado ou pelo link de convite (LES-04). Inscrições antigas não têm. */
+    listaDeEspera?: { id: string; nome: string; email: string; telefone: string; inscritoEm: string; origem?: OrigemDaListaDeEspera }[];
+    /** Configuração da lista de espera (Backstage › Marketing › Lista de espera, LES). Ausente: as duas entradas desligadas. */
+    configuracaoDaListaDeEspera?: ConfiguracaoDaListaDeEspera;
     /** `null` ou ausente: desligada. */
     edicaoNaCarteira?: EdicaoNaCarteira | null;
     /** Alíquota da taxa de serviço sobre o preço de face (0.1 = 10%). */
@@ -334,6 +714,8 @@ export interface Evento {
     partida?: Partida;
     avancado?: ConfiguracoesAvancadas;
     vitrine?: Vitrine;
+    /** Marcos e anotações da Visão geral (EVT). Ausente: a tela deriva os iniciais dos dados do evento. */
+    marcos?: MarcoDoEvento[];
     criadoEm: string;
     atualizadoEm: string;
 }
@@ -358,6 +740,12 @@ export interface ItemPedido {
     grupoId?: string;
     ingressoId?: string;
     loteId?: string;
+    /** Produto do evento (id na biblioteca da organização), quando a linha é um produto (cortesia). */
+    produtoId?: string;
+    /** Combo do evento: na linha do combo e nos ingressos que vieram dentro dele (cortesia). */
+    comboId?: string;
+    /** Linha cancelada sozinha (produto ou combo de cortesia); o pedido continua. */
+    cancelado?: boolean;
     quantidade: number;
     face: number;
     taxa: number;
@@ -369,6 +757,18 @@ export interface Atribuicao {
     item: number;
     nome: string;
     email: string;
+}
+
+/** Por onde a pessoa entrou na lista de espera (LES). */
+export type OrigemDaListaDeEspera = "esgotado" | "convite";
+
+/** Lista de espera do evento (LES): cada entrada liga sozinha; as duas começam desligadas. */
+export interface ConfiguracaoDaListaDeEspera {
+    /** Com todos os ingressos esgotados, o link de compra mostra "Entrar na lista de espera". */
+    aoEsgotar: boolean;
+    /** O link de convite (`/e/<slug>/lista-de-espera`) recebe inscrições, inclusive antes da venda abrir. */
+    convite: boolean;
+    atualizadoEm: string;
 }
 
 export interface Pedido {
@@ -387,8 +787,50 @@ export interface Pedido {
     adicionais?: { protecao: number; juros: number };
     /** Envio feito pelo Backstage (cortesias): agrupa os pedidos de vários destinatários. */
     envio?: { id: string; nome: string; emissor: string };
+    /** Cupom aplicado (CUP): o desconto já saiu do total. `itens` = unidades que receberam desconto. */
+    cupom?: { id: string; codigo: string; desconto: number; itens: number };
+    /** Venda pela bilheteria do Backstage: o que a gestão mostra além do pedido (BIL). */
+    bilheteria?: DadosDaBilheteria;
+    /** Venda pelo código de um comissário (ECO): o grupo da equipe, o código usado e a pessoa que vendeu. */
+    comissario?: { grupoId: string; comissarioId: string; codigo: string; vendedor?: string };
+    /** Passkeys (CHA) que liberaram itens deste pedido. `contadas`: o uso já somou em `Evento.passkeys` (um por pedido pago). */
+    passkeys?: { codigos: string[]; contadas?: boolean };
+    /** Alterações feitas depois da compra pelo Backstage (Pedidos, PED): troca de item, formulário, transferência. */
+    alteracoes?: AlteracaoDoPedido[];
     criadoEm: string;
     atualizadoEm: string;
+}
+
+/** Alteração pós-compra registrada no pedido (PED): quem fez, quando e o que virou o quê. */
+export interface AlteracaoDoPedido {
+    id: string;
+    tipo: "troca-item" | "formulario" | "transferencia";
+    /** Nome de quem fez (o membro logado no Backstage). */
+    autor: string;
+    /** ISO. */
+    em: string;
+    descricao: string;
+    /** Ingressos emitidos afetados. */
+    ingressoIds: string[];
+    mudancas?: { escopo?: string; de: string; para: string }[];
+    /** Valor cobrado pela alteração, quando houve. */
+    valor?: number;
+    /** Motivo e chamado informados pelo operador. */
+    motivo?: string;
+}
+
+/** Gestão da bilheteria: cobrança, quem emitiu e os reenvios do link. */
+export interface DadosDaBilheteria {
+    /** Link de pagamento para o comprador, ou só a taxa paga pelo saldo da produtora. */
+    tipo: "link" | "saldo";
+    emissor: string;
+    /** Comprador sem conta: o ingresso espera o cadastro. */
+    contaPendente?: boolean;
+    /** O link venceu sem pagamento. */
+    expirado?: boolean;
+    /** Data e hora legíveis do último reenvio. */
+    reenviadoEm?: string;
+    envios?: { canal: "email" | "whatsapp"; destino: string; at: string }[];
 }
 
 export type IngressoEmitidoStatus = "valido" | "transferido" | "utilizado" | "cancelado";
@@ -404,9 +846,13 @@ export interface IngressoEmitido {
     loteId: string;
     /** Rótulos congelados na emissão: o catálogo pode mudar depois. */
     rotulo: { evento: string; grupo: string; ingresso: string; lote: string; acesso?: string };
+    /** Emitido dentro de um combo (id do combo no evento). */
+    comboId?: string;
     titular: { nome: string; email: string };
     codigo: string;
     status: IngressoEmitidoStatus;
+    /** Respostas do questionário do evento (id da pergunta → resposta). Editadas em Pedidos (PED). */
+    respostas?: Record<string, string>;
     emitidoEm: string;
     atualizadoEm: string;
 }

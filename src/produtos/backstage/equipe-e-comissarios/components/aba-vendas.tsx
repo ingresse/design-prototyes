@@ -1,15 +1,15 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import type { PessoaDoComissario } from "@/plataforma/comissarios";
-import { cx } from "@/utils/cx";
-import { FaixaDeMetricas, Metrica, Secao, TD, TH, moeda, numero, plural } from "../../comissarios/components/comuns";
+import { RodapeDePaginacao, usePaginacao } from "../../components/rodape-de-paginacao";
+import { CabecalhoDaTabela, CartaoDaTabela, Celula, LinhaDaTabela, TituloDaLinha } from "../../components/tabela";
+import { FaixaDeMetricas, Metrica, Secao, moeda, numero, plural } from "../../comissarios/components/comuns";
 import {
     CANAIS,
     CANAL_LABEL,
     canaisLigados,
-    cortesiasEnviadas,
     geraComissao,
     limiteDoCanal,
-    totais,
+    totaisDosPedidos,
     type GrupoEquipe,
     type Totais,
     type VendaAtribuida,
@@ -19,10 +19,9 @@ import { ListaDePedidos } from "./lista-de-pedidos";
 
 /**
  * Aba Pedidos do grupo com comissário (ECO-70 a ECO-74): métricas, venda por canal, por vendedor e
- * os pedidos de todos os canais do grupo.
+ * os pedidos de todos os canais do grupo. Todo número soma exatamente os pedidos listados (ECO-87).
  */
 export function AbaVendas({
-    vendas,
     pedidos,
     t,
     grupo,
@@ -31,9 +30,11 @@ export function AbaVendas({
     link,
     codigo,
 }: {
+    /** Linhas que contam para o comissário (mantido para quem chama; os números saem de `pedidos`). */
     vendas: VendaAtribuida[];
     /** Pedidos de todos os canais do grupo (ECO-74). */
     pedidos: PedidoDoGrupo[];
+    /** `totaisDosPedidos(pedidos, repasses)`. */
     t: Totais;
     grupo: GrupoEquipe;
     variosVendedores: boolean;
@@ -46,7 +47,7 @@ export function AbaVendas({
     const [filtroVendedor, setFiltroVendedor] = useState<string>("todos");
     // O filtro por vendedor lista todas as pessoas do grupo, com ou sem venda (ECO-29).
     const vendedores = pessoas.length > 0 ? pessoas.map((p) => p.nome) : [...new Set(pedidos.map((v) => v.vendedor))].sort((a, b) => a.localeCompare(b));
-    const cortesias = cortesiasEnviadas(vendas);
+    const cortesias = t.cortesias;
     // Canais do grupo que contam para o comissário: link, PDV e Bilheteria com comissão, e Cortesia.
     const ligados = canaisLigados(grupo);
     const ativos = new Set<string>([
@@ -55,6 +56,16 @@ export function AbaVendas({
         ...(ligados.includes("cortesia") ? ["cortesia"] : []),
     ]);
     const temCortesia = ligados.includes("cortesia");
+    // "Por vendedor", do maior vendido para o menor, com a paginação do DS acima de 10 (ECO-89).
+    const ranking = useMemo(
+        () =>
+            pessoas
+                .map((p) => ({ p, t: totaisDosPedidos(pedidos.filter((x) => x.vendedor === p.nome), []) }))
+                .sort((a, b) => b.t.receita - a.t.receita)
+                .map((x, i) => ({ ...x, posicao: i + 1 })),
+        [pessoas, pedidos],
+    );
+    const paginacao = usePaginacao(ranking);
     const cota = temCortesia && grupo.canais.cortesia ? limiteDoCanal(grupo.canais.cortesia) : null;
 
     return (
@@ -80,7 +91,13 @@ export function AbaVendas({
                             </dd>
                             <dd className="text-sm text-tertiary">
                                 {!ativos.has(canal)
-                                    ? canal === "online" ? "Link desligado" : canal === "bilheteria" ? "Sem canal com comissão" : "Canal desligado"
+                                    ? canal === "online"
+                                        ? "Link desligado"
+                                        : canal === "bilheteria"
+                                          ? t.porCanal.bilheteria.quantidade > 0
+                                              ? `${plural(t.porCanal.bilheteria.quantidade, "ingresso", "ingressos")}, sem comissão`
+                                              : "Sem canal com comissão"
+                                          : "Canal desligado"
                                     : canal === "online"
                                       ? `Link e cupom ${codigo}`
                                       : canal === "bilheteria"
@@ -99,47 +116,63 @@ export function AbaVendas({
             </Secao>
 
             {pessoas.length > 1 && (
-                <Secao titulo="Por vendedor" descricao="Cada pessoa vende pelo próprio código; o do grupo é do responsável. A comissão é do grupo. Clique numa pessoa para ver só os pedidos dela.">
-                    <div className="-mx-5 overflow-x-auto md:-mx-6">
-                        <table className="w-full">
-                            <thead className="bg-secondary">
-                                <tr>
-                                    <th className={TH}>Vendedor</th>
-                                    <th className={TH}>Código</th>
-                                    <th className={cx(TH, "text-right")}>Ingressos</th>
-                                    <th className={cx(TH, "text-right")}>Vendido</th>
-                                    <th className={cx(TH, "text-right")}>Comissão</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-secondary">
-                                {pessoas
-                                    .map((p) => ({ p, t: totais(vendas.filter((v) => v.vendedor === p.nome), []) }))
-                                    .sort((a, b) => b.t.receita - a.t.receita)
-                                    .map(({ p, t: tp }, i) => (
-                                        <tr
-                                            key={p.email}
-                                            onClick={() => setFiltroVendedor(filtroVendedor === p.nome ? "todos" : p.nome)}
-                                            className={cx("cursor-pointer transition duration-100 ease-linear hover:bg-primary_hover", filtroVendedor === p.nome && "bg-active")}
-                                        >
-                                            <td className={TD}>
-                                                <span className="flex items-center gap-2">
-                                                    <span className="w-6 shrink-0 font-medium text-quaternary tabular-nums">{i + 1}º</span>
-                                                    <span className="flex min-w-0 flex-col">
-                                                        <span className="truncate font-medium text-primary">{p.nome}</span>
-                                                        <span>{p.papel === "responsavel" ? "Responsável" : "Vendedor"}</span>
-                                                    </span>
-                                                </span>
-                                            </td>
-                                            <td className={cx(TD, "font-medium text-secondary")}>{p.codigo ?? "Sem código"}</td>
-                                            <td className={cx(TD, "text-right tabular-nums")}>{numero(tp.vendidos)}</td>
-                                            <td className={cx(TD, "text-right font-medium text-primary tabular-nums")}>{moeda(tp.receita)}</td>
-                                            <td className={cx(TD, "text-right tabular-nums")}>{moeda(tp.comissao)}</td>
-                                        </tr>
-                                    ))}
-                            </tbody>
-                        </table>
+                <section className="flex flex-col gap-4">
+                    <div className="flex min-w-0 flex-col gap-0.5">
+                        <h2 className="text-lg font-semibold text-primary">Por vendedor</h2>
+                        <p className="max-w-[65ch] text-sm text-tertiary">
+                            Cada pessoa vende pelo próprio código; o do grupo é do responsável. A comissão é do grupo. Escolha uma pessoa para ver só os pedidos dela.
+                        </p>
                     </div>
-                </Secao>
+                    <CartaoDaTabela>
+                        <CabecalhoDaTabela>
+                            <span className="w-6 shrink-0" />
+                            <span className="min-w-0 flex-1">Vendedor</span>
+                            <span className="w-28">Código</span>
+                            <span className="w-20 text-right">Ingressos</span>
+                            <span className="w-28 text-right">Vendido</span>
+                            <span className="w-28 text-right">Comissão</span>
+                        </CabecalhoDaTabela>
+                        <ul className="flex flex-col divide-y divide-secondary">
+                            {paginacao.visiveis.map(({ p, t: tp, posicao }) => {
+                                    const ativo = filtroVendedor === p.nome;
+                                    return (
+                                        // Clicar na pessoa filtra os pedidos por ela; de novo, limpa (ECO-29).
+                                        <LinhaDaTabela key={p.email} interativa selecionada={ativo} className="relative">
+                                            <span className="w-6 shrink-0 text-sm font-medium text-quaternary tabular-nums">{posicao}º</span>
+                                            <div className="flex min-w-0 flex-1 flex-col gap-1.5 @min-[44rem]:flex-row @min-[44rem]:items-center @min-[44rem]:gap-4">
+                                                <TituloDaLinha
+                                                    titulo={
+                                                        <button
+                                                            type="button"
+                                                            aria-pressed={ativo}
+                                                            onClick={() => setFiltroVendedor(ativo ? "todos" : p.nome)}
+                                                            className="text-left outline-hidden after:absolute after:inset-0 focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-focus-ring"
+                                                        >
+                                                            {p.nome}
+                                                        </button>
+                                                    }
+                                                    apoio={p.papel === "responsavel" ? "Responsável" : "Vendedor"}
+                                                />
+                                                <Celula rotulo="Código" className="text-secondary @min-[44rem]:w-28">
+                                                    {p.codigo ?? "Sem código"}
+                                                </Celula>
+                                                <Celula rotulo="Ingressos" numero className="@min-[44rem]:w-20">
+                                                    {numero(tp.vendidos)}
+                                                </Celula>
+                                                <Celula rotulo="Vendido" numero className="@min-[44rem]:w-28 @min-[44rem]:font-medium">
+                                                    {moeda(tp.receita)}
+                                                </Celula>
+                                                <Celula rotulo="Comissão" numero className="@min-[44rem]:w-28">
+                                                    {moeda(tp.comissao)}
+                                                </Celula>
+                                            </div>
+                                        </LinhaDaTabela>
+                                    );
+                                })}
+                        </ul>
+                        <RodapeDePaginacao {...paginacao} />
+                    </CartaoDaTabela>
+                </section>
             )}
 
             <ListaDePedidos pedidos={pedidos} vendedores={vendedores} comComissao filtroVendedor={filtroVendedor} onFiltroVendedor={setFiltroVendedor} />

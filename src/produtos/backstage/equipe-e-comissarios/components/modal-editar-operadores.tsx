@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react";
-import { XClose } from "@untitledui/icons";
-import { Dialog, Modal, ModalOverlay } from "@/components/application/modals/modal";
 import { Button } from "@/components/base/buttons/button";
 import type { GrupoEquipe } from "@/plataforma/equipe";
+import { CascaDoModalDeMembros } from "../../components/CriarMembroModal";
 import { operadoresDe, SeletorOperadores } from "./seletor-operadores";
 
 interface Props {
@@ -11,9 +10,12 @@ interface Props {
     onSalvar: (gruposMembrosIds: string[], emailsAvulsos: string[]) => void;
 }
 
+const mesmaLista = (a: string[], b: string[]) => a.length === b.length && a.every((x) => b.includes(x));
+
 /**
- * "Editar operadores" no detalhe: a mesma seleção da etapa Grupo (grupos de Membros +
- * pessoas individuais) num modal. Header e rodapé fixos; só o conteúdo rola.
+ * "Editar pessoas" no grupo: a mesma seleção da criação (grupos de Membros + pessoas por e-mail), na
+ * casca dos modais de Membros (MEM-75): tela cheia no celular e "Descartar o que você preencheu?" ao
+ * fechar com algo mudado (ECO-99).
  */
 export function ModalEditarOperadores({ grupo, onCancelar, onSalvar }: Props) {
     const [grupos, setGrupos] = useState<string[]>([]);
@@ -27,40 +29,28 @@ export function ModalEditarOperadores({ grupo, onCancelar, onSalvar }: Props) {
     }, [grupo]);
 
     const vazio = operadoresDe(grupos, emails).length === 0;
+    const alterado = !!grupo && (!mesmaLista(grupos, grupo.gruposMembrosIds) || !mesmaLista(emails, grupo.emailsAvulsos));
 
     return (
-        <ModalOverlay isOpen={Boolean(grupo)} onOpenChange={(abrir) => !abrir && onCancelar()} isDismissable className="bg-black/40 backdrop-blur-[16px]">
-            <Modal className="max-w-[720px]">
-                <Dialog aria-label="Editar operadores">
-                    <div className="relative flex max-h-[calc(100dvh-96px)] w-full flex-col overflow-hidden rounded-2xl bg-primary shadow-xl ring-1 ring-border-secondary ring-inset">
-                        <button
-                            type="button"
-                            onClick={onCancelar}
-                            aria-label="Fechar"
-                            className="absolute top-4 right-4 flex size-9 items-center justify-center rounded-lg text-fg-quaternary transition duration-100 ease-linear hover:bg-primary_hover hover:text-fg-quaternary_hover"
-                        >
-                            <XClose className="size-5" aria-hidden="true" />
-                        </button>
-                        <div className="flex shrink-0 flex-col gap-0.5 px-6 pt-6 pr-14">
-                            <h2 className="text-md font-semibold text-primary">Editar operadores</h2>
-                            <p className="text-sm text-tertiary">Selecione grupos de membros ou adicione pessoas individualmente.</p>
-                        </div>
-
-                        <div className="min-h-0 overflow-y-auto px-6 pt-5">
-                            <SeletorOperadores grupos={grupos} onGrupos={setGrupos} emails={emails} onEmails={setEmails} semMoldura />
-                        </div>
-
-                        <div className="flex shrink-0 gap-3 border-t border-secondary px-6 pt-6 pb-6 mt-6">
-                            <Button size="md" color="secondary" className="flex-1" onClick={onCancelar}>
-                                Cancelar
-                            </Button>
-                            <Button size="md" color="primary" className="flex-1" isDisabled={vazio} onClick={() => onSalvar(grupos, emails)}>
-                                Salvar alterações
-                            </Button>
-                        </div>
-                    </div>
-                </Dialog>
-            </Modal>
-        </ModalOverlay>
+        <CascaDoModalDeMembros
+            isOpen={Boolean(grupo)}
+            titulo="Editar pessoas"
+            alterado={alterado}
+            onFechar={onCancelar}
+            largura="sm:max-w-[640px]"
+            rodape={(pedirParaFechar) => (
+                <>
+                    <Button size="lg" color="secondary" onClick={pedirParaFechar}>
+                        Cancelar
+                    </Button>
+                    <Button size="lg" color="primary" isDisabled={vazio} onClick={() => onSalvar(grupos, emails)}>
+                        Salvar alterações
+                    </Button>
+                </>
+            )}
+        >
+            <p className="-mt-3 text-sm text-tertiary">Escolha grupos de Membros ou adicione pessoas por e-mail.</p>
+            <SeletorOperadores grupos={grupos} onGrupos={setGrupos} emails={emails} onEmails={setEmails} semMoldura />
+        </CascaDoModalDeMembros>
     );
 }

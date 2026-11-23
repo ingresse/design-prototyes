@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useMemo, useState, type ReactNo
 import { CalendarDate, getLocalTimeZone } from "@internationalized/date";
 import type { DateValue } from "react-aria-components";
 import type { FilterRow } from "@/components/application/filter-bar/filter-dropdown-menu";
-import { EVENT, parseEventDate, type Sessao } from "../data/event";
+import { EVENT, parseEventDate, useEventoDosRelatorios, type Sessao } from "../data/event";
 
 export type { FilterRow };
 
@@ -79,16 +79,17 @@ interface ProviderProps {
     children: ReactNode;
 }
 
-export const countApplied = (a: AppliedFilters): number =>
-    a.filters.filter((f) => f.field && f.value).length +
-    (a.dateRange ? 1 : 0) +
-    (a.sessao && a.sessao !== "all" ? 1 : 0);
+// O período tem o próprio botão (REL-220) e não conta como filtro aplicado.
+export const countApplied = (a: AppliedFilters): number => a.filters.filter((f) => f.field && f.value).length + (a.sessao && a.sessao !== "all" ? 1 : 0);
 
 export const RelatorioFiltersProvider = ({ fields = [], sessoes = [], initialDateRange = null, children }: ProviderProps) => {
+    // Redesenha o relatório quando o evento em contexto, o escopo ou o banco mudam.
+    useEventoDosRelatorios();
     const [applied, setApplied] = useState<AppliedFilters>({ dateRange: initialDateRange, sessao: "all", filters: [] });
 
     const apply = useCallback((next: AppliedFilters) => setApplied(next), []);
-    const clear = useCallback(() => setApplied({ dateRange: initialDateRange, sessao: "all", filters: [] }), [initialDateRange]);
+    // "Limpar tudo" limpa sessão e campos; o período fica (ele tem o próprio botão, REL-220).
+    const clear = useCallback(() => setApplied((a) => ({ dateRange: a.dateRange, sessao: "all", filters: [] })), []);
 
     const value = useMemo<RelatorioFiltersContextValue>(
         () => ({

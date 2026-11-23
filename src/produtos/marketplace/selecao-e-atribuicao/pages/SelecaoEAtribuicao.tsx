@@ -16,6 +16,7 @@ import { LoginModal } from "../../components/LoginModal";
 import { AbasCarrossel, ChipLegenda, type AbaItem } from "../components/abas-carrossel";
 import { BarraTotal } from "../components/barra-total";
 import { CupomModal } from "../components/CupomModal";
+import { ListaDeEspera } from "../components/lista-de-espera";
 import { MeiaSlideout, TaxaSlideout } from "../components/info-slideouts";
 import { PrecoBloco, PrecoFaixa, PrecoPar } from "../components/preco-bloco";
 import { SelecaoItensModal, type ItemSelecao } from "../components/SelecaoItensModal";
@@ -23,8 +24,8 @@ import { TermosModal } from "../components/TermosModal";
 import { precoExtraDoItem, TAXA_PRODUTO_PADRAO } from "../data/combos";
 import type { Beneficio, ComboDinamico, ComboDinamicoView, ComboFixo, DataEvento, Item, PerguntaEvento, Produto, Quantitativo, TaxaProduto, TaxaServico } from "../data/combos";
 import { DEFAULT_CONFIG, STORAGE_KEY, decodeConfig, resolverLinkCurto, type EventConfig } from "../data/config";
-import { eventoParaConfig } from "../data/plataforma";
-import { criarPedido, entrar, lerSessao, slugificar, useSessao, useVendidos, type Atribuicao, type Evento as EventoBanco, type ItemPedido } from "@/plataforma";
+import { comissarioDoCodigo, conferirPasskey, eventoParaConfig, loteNoLink, passkeysDoItem, passkeysValidas } from "../data/plataforma";
+import { criarPedidoComOrigem, descontoDoCupom, listaDeEsperaAberta, entrar, lerColecao, lerSessao, motivoDoCupomInvalido, slugificar, useSessao, useVendidos, type Atribuicao, type Evento as EventoBanco, type ItemPedido, type Pedido as PedidoBanco } from "@/plataforma";
 import {
     brl,
     escalar,
@@ -109,7 +110,12 @@ export function SelecaoEAtribuicao({ evento }: { evento?: EventoBanco } = {}) {
     const [params] = useSearchParams();
     const sessao = useSessao();
     const vendidos = useVendidos();
-    const configDoBanco = useMemo(() => (evento ? eventoParaConfig(evento, vendidos) : null), [evento, vendidos]);
+    /* Passkeys aplicadas (CHA, SEL-07): liberam os itens trancados. Valem só enquanto ativas e com uso
+       sobrando; o código do comissário (ECO, SEL-08) só vai para o pedido. */
+    const [passkeys, setPasskeys] = useState<string[]>([]);
+    const [comissario, setComissario] = useState<PedidoBanco["comissario"] | null>(null);
+    const chavesValidas = useMemo(() => (evento ? passkeysValidas(evento, passkeys) : []), [evento, passkeys]);
+    const configDoBanco = useMemo(() => (evento ? eventoParaConfig(evento, vendidos, chavesValidas) : null), [evento, vendidos, chavesValidas]);
 
     // Config inicial síncrona: ?cfg= (link longo) → localStorage → DEFAULT.
     const configInicial = useMemo(() => {
@@ -178,6 +184,7 @@ export function SelecaoEAtribuicao({ evento }: { evento?: EventoBanco } = {}) {
                 imagem: i.imagem,
                 beneficio: i.beneficio,
                 cotaEsgotada: i.cotaEsgotada,
+                etiquetas: i.etiquetas,
             });
         }
         for (const p of config.produtos) map.set(p.id, { id: p.id, nome: p.nome, preco: p.preco, imagem: p.imagem, isProduto: true });
@@ -342,9 +349,57 @@ export function SelecaoEAtribuicao({ evento }: { evento?: EventoBanco } = {}) {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    const aplicarCupom = (codigo: string) => {
+    // Pixels do Backstage: em produção carregam na página de compra; no protótipo, avisam no console (PIX-50).
+    useEffect(() => {
+        const r = evento?.rastreamento;
+        if (!r) return;
+        const ativos = [r.meta && `Meta ${r.meta}`, r.tiktok && `TikTok ${r.tiktok}`, r.x && `X ${r.x}`, r.googleAdsId && `Google Ads ${r.googleAdsId}${r.googleAdsRotulo ? `/${r.googleAdsRotulo}` : ""}`].filter(Boolean);
+        if (ativos.length) console.info(`[pixel] Página de compra de ${evento.nome}: ${ativos.join(", ")}`);
+    }, [evento?.id]);
+
+    // Link da Passkey (`?passkey=`, CHA-31): já entra com a chave aplicada, se ela ainda vale.
+    useEffect(() => {
+        const codigo = params.get("passkey");
+        if (!evento || !codigo) return;
+        const r = conferirPasskey(evento, codigo);
+        if (r?.ok) setPasskeys((atuais) => (atuais.includes(r.codigo) ? atuais : [...atuais, r.codigo]));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [evento?.id]);
+
+    /** Tirar a Passkey tranca de novo o que ela liberou: sai do carrinho também. */
+    const removerPasskey = (codigo: string) => {
+        const restantes = passkeys.filter((c) => c !== codigo);
+        setPasskeys(restantes);
+        if (!evento) return;
+        const visiveis = new Set(eventoParaConfig(evento, vendidos, passkeysValidas(evento, restantes)).ingressos.map((i) => i.id));
+        setCart((prev) => Object.fromEntries(Object.entries(prev).filter(([k]) => !k.startsWith("data:") || visiveis.has(k.split(":")[2]))));
+    };
+
+    const aplicarCupom = (codigo: string): true | string => {
         const achado = config.cupons.find((c) => c.codigo.toLowerCase() === codigo.toLowerCase());
-        if (!achado) return false;
+        if (!achado && evento) {
+            // Não é cupom: pode ser Passkey (libera itens) ou código de comissário (registra a venda).
+            const chave = conferirPasskey(evento, codigo);
+            if (chave) {
+                if (!chave.ok) return chave.motivo;
+                setPasskeys((atuais) => (atuais.includes(chave.codigo) ? atuais : [...atuais, chave.codigo]));
+                return true;
+            }
+            const doComissario = comissarioDoCodigo(evento.id, codigo);
+            if (doComissario) {
+                setComissario(doComissario);
+                return true;
+            }
+        }
+        if (!achado) return "Cupom inválido ou não encontrado.";
+        // Cupom do Backstage: vale só se estiver ativo, no prazo e dentro dos limites (CUP-51).
+        const doBanco = evento?.cupons?.find((c) => c.codigo === achado.codigo);
+        if (doBanco) {
+            const email = lerSessao()?.email;
+            const usos = email ? lerColecao("pedidos").filter((p) => p.status === "pago" && p.cupom?.id === doBanco.id && p.comprador.email === email).length : 0;
+            const motivo = motivoDoCupomInvalido(doBanco, new Date(), usos);
+            if (motivo) return motivo;
+        }
         setCupom({ codigo: achado.codigo, ajuda: achado.ajuda });
         return true;
     };
@@ -623,14 +678,17 @@ export function SelecaoEAtribuicao({ evento }: { evento?: EventoBanco } = {}) {
             lerSessao() ?? entrar({ nome: usuario ?? "Comprador", email: `${slugificar(usuario ?? "comprador")}@exemplo.com` });
         const itens: ItemPedido[] = [];
         const indicePorChave = new Map<string, number>();
+        const usadas = new Set<string>();
         for (const [key, g] of grupos) {
             const [tipo, sessaoId, ingressoId] = key.split(":");
             if (tipo === "data") {
                 const s = ev.sessoes.find((x) => x.id === sessaoId);
                 const grupo = s?.grupos.find((gr) => gr.ingressos.some((t) => t.id === ingressoId));
                 const t = grupo?.ingressos.find((x) => x.id === ingressoId);
-                const lote = t?.lotes.find((l) => (vendidos.get(l.id) ?? 0) < l.quantidade) ?? t?.lotes[t.lotes.length - 1];
+                // O lote à venda, inclusive no conjunto de lotes sincronizados (LSI-31) e com as Passkeys (SEL-07).
+                const lote = t && loteNoLink(ev, t, vendidos, chavesValidas);
                 if (!s || !grupo || !t || !lote) continue;
+                passkeysDoItem(t, lote, chavesValidas).forEach((c) => usadas.add(c));
                 indicePorChave.set(key, itens.length);
                 itens.push({ tipo: "ingresso", nome: t.nome, detalhe: lote.nome, sessaoId: s.id, grupoId: grupo.id, ingressoId: t.id, loteId: lote.id, quantidade: g.qtd, face: g.preco.face, taxa: g.preco.taxa });
             } else if (tipo === "prod") {
@@ -648,7 +706,21 @@ export function SelecaoEAtribuicao({ evento }: { evento?: EventoBanco } = {}) {
         });
         setGravandoPedido(true);
         try {
-            const pedido = await criarPedido({ eventoId: ev.id, comprador, canal: "link", itens, atribuicoes });
+            // Cupom aplicado: o desconto vai no pedido e sai do total do checkout (CUP-52).
+            const doBanco = cupom ? ev.cupons?.find((c) => c.codigo === cupom.codigo) : undefined;
+            const calculo = doBanco ? descontoDoCupom(doBanco, itens.map((i) => ({ loteId: i.loteId, face: i.face, quantidade: i.quantidade }))) : null;
+            const cupomDoPedido = doBanco && calculo && calculo.desconto > 0 ? { id: doBanco.id, codigo: doBanco.codigo, desconto: calculo.desconto, itens: calculo.itens } : undefined;
+            // Passkeys que liberaram itens do carrinho (contam um uso quando o pedido for pago) e o código do comissário.
+            const pedido = await criarPedidoComOrigem({
+                eventoId: ev.id,
+                comprador,
+                canal: "link",
+                itens,
+                atribuicoes,
+                cupom: cupomDoPedido,
+                ...(usadas.size ? { passkeys: { codigos: [...usadas] } } : {}),
+                ...(comissario ? { comissario } : {}),
+            });
             navigate(`/checkout/melhorias-de-compra?pedido=${pedido.id}`);
         } finally {
             setGravandoPedido(false);
@@ -796,28 +868,58 @@ export function SelecaoEAtribuicao({ evento }: { evento?: EventoBanco } = {}) {
         </div>
     );
 
-    const cupomBlock = cupom ? (
-        <div className="flex flex-col gap-2">
+    /* Código aplicado: cupom, Passkey (SEL-07) ou código do comissário (SEL-08). Cada um com o seu
+       chip e o "x" para tirar; o botão de adicionar continua para somar outro código. */
+    const chipDeCodigo = (chave: string, rotulo: string, codigo: string, ajuda: string, aoRemover: () => void, rotuloRemover: string) => (
+        <div key={chave} className="flex flex-col gap-2">
             <div className="flex items-center justify-between gap-3 rounded-xl bg-primary px-4 py-3 ring-1 ring-border-secondary">
                 <span className="flex items-center gap-2 text-sm text-secondary">
                     <Tag01 className="size-4 text-fg-quaternary" />
-                    código/cupom: <span className="font-bold text-brand-secondary">{cupom.codigo}</span>
+                    {rotulo}: <span className="font-bold text-brand-secondary">{codigo}</span>
                 </span>
-                <button type="button" onClick={() => setCupom(null)} aria-label="Remover cupom" className="text-fg-quaternary transition hover:text-fg-secondary">
+                <button type="button" onClick={aoRemover} aria-label={rotuloRemover} className="text-fg-quaternary transition hover:text-fg-secondary">
                     <XClose className="size-4" />
                 </button>
             </div>
-            <p className="px-1 text-sm text-tertiary">{cupom.ajuda}</p>
+            <p className="px-1 text-sm text-tertiary">{ajuda}</p>
+        </div>
+    );
+    const cupomBlockBase = (
+        <div className="flex flex-col gap-3">
+            {cupom && chipDeCodigo("cupom", "código/cupom", cupom.codigo, cupom.ajuda, () => setCupom(null), "Remover cupom")}
+            {passkeys.map((codigo) =>
+                chipDeCodigo(
+                    `passkey:${codigo}`,
+                    "Passkey",
+                    codigo,
+                    chavesValidas.includes(codigo) ? "Itens exclusivos liberados para esta compra." : "Esta Passkey não vale mais: os itens dela voltaram a ficar ocultos.",
+                    () => removerPasskey(codigo),
+                    `Remover a Passkey ${codigo}`,
+                ),
+            )}
+            {comissario &&
+                chipDeCodigo("comissario", "Código de quem indicou", comissario.codigo, "A compra fica registrada para quem te passou o código.", () => setComissario(null), "Remover código de quem indicou")}
+            <button
+                type="button"
+                onClick={() => setCupomOpen(true)}
+                className="flex w-fit items-center gap-2 self-start rounded-xl bg-primary px-4 py-3.5 text-sm font-medium text-secondary ring-1 ring-border-secondary transition hover:bg-primary_hover"
+            >
+                <Tag01 className="size-4 text-fg-quaternary" />
+                Adicionar código ou cupom
+            </button>
+        </div>
+    );
+
+    // Tudo esgotado no link de compra: a lista de espera aparece junto do cupom (CART-084), se o produtor
+    // ligou "Quando esgotar" em Backstage › Divulgação › Lista de espera (LES-02).
+    const tudoEsgotado = !!evento && config.ingressos.length > 0 && config.ingressos.every((i) => i.cotaEsgotada);
+    const cupomBlock = tudoEsgotado && listaDeEsperaAberta(evento!, "esgotado") ? (
+        <div className="flex flex-col gap-3">
+            <ListaDeEspera eventoId={evento!.id} />
+            {cupomBlockBase}
         </div>
     ) : (
-        <button
-            type="button"
-            onClick={() => setCupomOpen(true)}
-            className="flex w-fit items-center gap-2 self-start rounded-xl bg-primary px-4 py-3.5 text-sm font-medium text-secondary ring-1 ring-border-secondary transition hover:bg-primary_hover"
-        >
-            <Tag01 className="size-4 text-fg-quaternary" />
-            Adicionar código ou cupom
-        </button>
+        cupomBlockBase
     );
 
     const barraTotal = (variante: "desktop" | "mobile", comoCard?: boolean) => (
@@ -2272,6 +2374,12 @@ function IngressoRow({
                 <div className="flex min-w-0 flex-1 flex-col gap-1">
                     <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                         <span className="text-md font-semibold text-primary">{it.nome}</span>
+                        {/* Etiquetas de destaque do Backstage (ETQ-50). */}
+                        {it.etiquetas?.map((e) => (
+                            <Badge key={e} size="sm" color="brand" type="pill-color">
+                                {e}
+                            </Badge>
+                        ))}
                         {esgotado && (
                             <Badge size="sm" color="gray" type="modern">
                                 Esgotado

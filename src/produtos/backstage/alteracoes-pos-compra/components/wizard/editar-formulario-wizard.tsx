@@ -1,11 +1,10 @@
 import { useState } from "react";
 import { toast } from "sonner";
-import { CampoMotivo, MOTIVO_INICIAL, Regra, ResumoFinanceiro, mascararEmail } from "../pos-compra-ui";
-import { ComparativoResposta, EditorResposta } from "../respostas-ui";
+import { CampoMotivo, InfoDaCobranca, MOTIVO_INICIAL, Regra, ResumoFinanceiro } from "../pos-compra-ui";
+import { AvisoDeEstoque, ComparativoResposta, EditorResposta } from "../respostas-ui";
 import {
     calcularEdicaoRespostas,
     criarSolicitacao,
-    formatarMoeda,
     getConta,
     getFormulario,
     getItem,
@@ -86,7 +85,7 @@ export function EditarFormularioWizard({ pedido, linhaId, onFechar, onEnviado }:
         <WizardShell
             onClose={onFechar}
             titulo={`Editar ${vocabularioDoEvento(pedido.eventoId).formulario}`}
-            subtitulo={`${comprador?.nome ?? "Comprador"} · Pedido ${uuidCurto(pedido.id)}`}
+            subtitulo={`Pedido ${uuidCurto(pedido.id)}, de ${comprador?.nome ?? "comprador sem nome"}`}
             etapas={["Respostas", "Revisão"]}
             indiceAtual={etapa === "revisao" ? 1 : 0}
             podeAvancar={etapa === "respostas" ? alteradas.length > 0 : motivoValido(motivo)}
@@ -94,7 +93,17 @@ export function EditarFormularioWizard({ pedido, linhaId, onFechar, onEnviado }:
             ultimaEtapa={etapa === "revisao"}
             rotuloConfirmar="Enviar cobrança"
             rotuloContinuar="Continuar editando"
-            infoRodape={etapa === "revisao" ? `${formatarMoeda(calculo.total)} para ${mascararEmail(destino)}` : undefined}
+            /* Botão desligado diz por quê (PED-108). */
+            infoRodape={
+                etapa === "revisao" ? (
+                    <span className="flex flex-col gap-1">
+                        <InfoDaCobranca total={calculo.total} destino={destino} />
+                        {!motivoValido(motivo) && <span className="text-sm text-warning-primary">Preencha o número do chamado e o motivo para enviar a cobrança.</span>}
+                    </span>
+                ) : alteradas.length === 0 ? (
+                    "Mude ao menos uma resposta para continuar."
+                ) : undefined
+            }
             onVoltar={voltar}
             onAvancar={avancar}
             onConfirmar={confirmar}
@@ -104,6 +113,7 @@ export function EditarFormularioWizard({ pedido, linhaId, onFechar, onEnviado }:
             {etapa === "respostas" && (
                 <>
                     <div className="flex flex-col gap-4 rounded-2xl bg-primary p-5 ring-1 ring-border-secondary">
+                        <AvisoDeEstoque perguntas={perguntasDoItem} />
                         {perguntasDoItem.map((pergunta) => (
                             <EditorResposta key={pergunta.id} pergunta={pergunta} valor={valorDaResposta(pergunta.id)} valorOriginal={linha.respostas[pergunta.id] ?? ""} onChange={(valor) => setNovos((mapa) => ({ ...mapa, [pergunta.id]: valor }))} />
                         ))}

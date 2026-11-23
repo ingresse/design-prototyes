@@ -1,71 +1,47 @@
-import { useCallback, useMemo, useState } from "react";
-import { useLocation } from "react-router";
-import {
-    Calendar,
-    CheckCircle,
-    ChevronDown,
-    ChevronLeft,
-    Package,
-    SearchLg,
-    ShoppingCart01,
-    Users01,
-} from "@untitledui/icons";
-import { Badge } from "@/components/base/badges/badges";
+import { useCallback, useDeferredValue, useMemo, useState, type FC, type ReactNode } from "react";
+import { Calendar, ChevronDown, ChevronLeft, ChevronRight, Package, SearchLg, ShoppingCart01, Trash01 } from "@untitledui/icons";
+import { motion, useReducedMotion } from "motion/react";
 import { Button } from "@/components/base/buttons/button";
-import { ButtonUtility } from "@/components/base/buttons/button-utility";
 import { Checkbox } from "@/components/base/checkbox/checkbox";
 import { Input } from "@/components/base/input/input";
-import { Progress } from "@/components/application/progress-steps/progress-steps";
-import type { ProgressFeaturedIconType } from "@/components/application/progress-steps/progress-types";
+import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
+import { Surgir } from "@/components/foundations/transicao";
 import { cx } from "@/utils/cx";
 import { useNavegarNoPainel } from "../../components/painel";
 import { BackstageLayout } from "../../components/Backstage";
-import { CortesiaSelectionPanel } from  "../components/CortesiaSelectionPanel";
-import {
-    COMBOS,
-    MAX_SELECTIONS,
-    PRODUCTS,
-    SESSIONS,
-    type ComboEntry,
-    type ProductEntry,
-    type SessionSection,
-} from "../data/cortesia-items";
-import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
-import { TITULO_PAGINA } from "@/produtos/backstage/components/titulo-pagina";
+import { ModalDeConfirmacao } from "../../components/modal-de-confirmacao";
+import { PainelDePassos } from "../../components/painel-de-passos";
+import { AvisoDeEscala, BotaoMostrarMais, paraBusca, useMostrarMais } from "../../itens/components/escala";
+import { CortesiaSelectionPanel } from "../components/CortesiaSelectionPanel";
+import { MAX_SELECTIONS, type ComboEntry, type GroupSection, type ProductEntry, type SessionSection } from "../data/cortesia-items";
+import { useCatalogoDeCortesia } from "../data/plataforma";
+import { useAvisoAoSair, useRascunhoDaEmissao } from "../data/rascunho-da-emissao";
 
-const steps: ProgressFeaturedIconType[] = [
-    {
-        title: "Itens",
-        description: "Escolha quais ingressos deseja enviar",
-        status: "current",
-        icon: ShoppingCart01,
-    },
-    {
-        title: "Destinatários",
-        description: "Informe quem vai receber os itens",
-        status: "incomplete",
-        icon: Users01,
-    },
-    {
-        title: "Verificação final",
-        description: "Confirme se está tudo certo e envie!",
-        status: "incomplete",
-        icon: CheckCircle,
-    },
-];
+/** Etapas da emissão de cortesia, as mesmas nos três passos (COR-50). */
+export const ETAPAS_DA_EMISSAO = ["Itens", "Destinatários", "Verificação final"];
+export const TITULO_DA_EMISSAO = "Emitir cortesia";
+
+/** Quantas sessões e quantos grupos aparecem antes do "Mostrar mais" (UI-LST-001). */
+const PASSO_SESSOES = 20;
+const PASSO_GRUPOS = 30;
+const PASSO_INGRESSOS = 50;
 
 export function SelecaoItens() {
     const navigate = useNavegarNoPainel();
-    const location = useLocation();
-    const initialSelection = (location.state as { itemIds?: string[] } | null)?.itemIds ?? [];
+    // Ingressos, produtos e combos do evento em contexto, do banco ou do catálogo simulado (COR-22, COR-54).
+    const { sessoes: SESSIONS, produtos: PRODUCTS, combos: COMBOS } = useCatalogoDeCortesia();
+    // O escolhido fica na sessão do navegador (COR-53): recarregar ou voltar não perde.
+    const { rascunho, mudar, descartar, temAlgo } = useRascunhoDaEmissao();
+    useAvisoAoSair(temAlgo);
+    const selectedIds = useMemo(() => new Set(rascunho.itemIds), [rascunho.itemIds]);
+    const setSelectedIds = useCallback((fn: (prev: Set<string>) => Set<string>) => mudar((atual) => ({ itemIds: [...fn(new Set(atual.itemIds))] })), [mudar]);
 
-    const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set(initialSelection));
     const [searchQuery, setSearchQuery] = useState("");
-    // Por padrão já abre as sessões (lista aberta).
-    const [openAccordions, setOpenAccordions] = useState<Set<string>>(() => new Set(SESSIONS.map((s) => `session-${s.id}`)));
-
-    const toggleAccordion = useCallback((id: string) => {
-        setOpenAccordions((prev) => {
+    const [confirmandoDescarte, setConfirmandoDescarte] = useState(false);
+    // Sessões e grupos nascem fechados (COR-55); guarda o que a pessoa abriu.
+    const [abertos, setAbertos] = useState<Set<string>>(() => new Set());
+    const alternar = useCallback((id: string) => {
+        setAbertos((prev) => {
             const next = new Set(prev);
             if (next.has(id)) next.delete(id);
             else next.add(id);
@@ -73,426 +49,377 @@ export function SelecaoItens() {
         });
     }, []);
 
-    const toggleSelection = useCallback((id: string, isSelected: boolean) => {
-        setSelectedIds((prev) => {
-            const next = new Set(prev);
-            if (isSelected) {
-                if (next.size >= MAX_SELECTIONS) return prev;
-                next.add(id);
-            } else {
-                next.delete(id);
-            }
-            return next;
-        });
-    }, []);
-
-    const removeSelection = useCallback((id: string) => {
-        setSelectedIds((prev) => {
-            const next = new Set(prev);
-            next.delete(id);
-            return next;
-        });
-    }, []);
-
-    const removeManySelections = useCallback((ids: string[]) => {
-        setSelectedIds((prev) => {
-            const next = new Set(prev);
-            for (const id of ids) next.delete(id);
-            return next;
-        });
-    }, []);
+    const toggleSelection = useCallback(
+        (id: string, isSelected: boolean) =>
+            setSelectedIds((prev) => {
+                const next = new Set(prev);
+                if (isSelected) {
+                    if (next.size >= MAX_SELECTIONS) return prev;
+                    next.add(id);
+                } else next.delete(id);
+                return next;
+            }),
+        [setSelectedIds],
+    );
+    const removeManySelections = useCallback(
+        (ids: string[]) =>
+            setSelectedIds((prev) => {
+                const next = new Set(prev);
+                for (const id of ids) next.delete(id);
+                return next;
+            }),
+        [setSelectedIds],
+    );
+    const removeSelection = useCallback((id: string) => removeManySelections([id]), [removeManySelections]);
 
     const canAdvance = selectedIds.size > 0;
     const reachedLimit = selectedIds.size >= MAX_SELECTIONS;
 
     const handleAdvance = useCallback(() => {
-        if (!canAdvance) return;
-        navigate("/backstage/destinatarios", {
-            state: { itemIds: Array.from(selectedIds) },
-        });
-    }, [canAdvance, navigate, selectedIds]);
+        if (canAdvance) navigate("/backstage/destinatarios");
+    }, [canAdvance, navigate]);
 
-    const query = searchQuery.trim().toLowerCase();
-    const matches = (text: string) => text.toLowerCase().includes(query);
+    // Voltar com algo escolhido pergunta antes de descartar (COR-53).
+    const sair = useCallback(() => {
+        descartar();
+        navigate("/backstage/cortesias");
+    }, [descartar, navigate]);
+    const handleBack = useCallback(() => (temAlgo ? setConfirmandoDescarte(true) : sair()), [temAlgo, sair]);
+
+    const query = paraBusca(useDeferredValue(searchQuery).trim());
+    const buscando = query !== "";
 
     const filteredSessions = useMemo(() => {
         if (!query) return SESSIONS;
+        const casa = (t: string) => paraBusca(t).includes(query);
         return SESSIONS.map((session) => ({
             ...session,
             groups: session.groups
-                .map((group) => ({
-                    ...group,
-                    tickets: group.tickets.filter(
-                        (t) =>
-                            matches(t.name) ||
-                            matches(t.type) ||
-                            matches(group.name) ||
-                            matches(session.datetime),
-                    ),
-                }))
+                .map((group) => ({ ...group, tickets: group.tickets.filter((t) => casa(t.name) || casa(t.type) || casa(group.name) || casa(session.datetime)) }))
                 .filter((g) => g.tickets.length > 0),
         })).filter((s) => s.groups.length > 0);
-    }, [query]);
+    }, [query, SESSIONS]);
+    const filteredProducts = useMemo(() => (query ? PRODUCTS.filter((p) => paraBusca(p.name).includes(query)) : PRODUCTS), [query, PRODUCTS]);
+    const filteredCombos = useMemo(
+        () =>
+            query ? COMBOS.filter((c) => paraBusca(c.name).includes(query) || paraBusca(c.subtitle).includes(query) || c.subItems.some((i) => paraBusca(i.name).includes(query))) : COMBOS,
+        [query, COMBOS],
+    );
 
-    const filteredProducts = useMemo(() => {
-        if (!query) return PRODUCTS;
-        return PRODUCTS.filter((p) => matches(p.name));
-    }, [query]);
+    const sessoesVisiveis = useMostrarMais(filteredSessions, PASSO_SESSOES);
+    // Com a busca, sessão e grupo abrem sozinhos (até 3 sessões, para não desenhar milhares de linhas).
+    const abertoPelaBusca = buscando && filteredSessions.length <= 3;
+    const estaAberto = (id: string) => abertoPelaBusca || abertos.has(id);
 
-    const filteredCombos = useMemo(() => {
-        if (!query) return COMBOS;
-        return COMBOS.filter((c) => matches(c.name) || matches(c.subtitle));
-    }, [query]);
+    const contagem = `${selectedIds.size} de ${MAX_SELECTIONS} cortesias selecionadas`;
 
     return (
         <BackstageLayout activeSection="cortesias" activeItem="emissao-cortesias">
             <div className="flex min-w-0 flex-1 flex-col gap-6">
-                <PageHeader
-                    canAdvance={canAdvance}
-                    onAdvance={handleAdvance}
-                    onBack={() => navigate("/backstage/cortesias")}
-                />
-                <main className="flex flex-1 flex-col gap-8">
-                    <Progress.IconsWithText
-                        items={steps}
-                        size="sm"
-                        type="icon"
-                        orientation="horizontal"
-                        className="max-w-[760px] self-center max-md:hidden"
-                    />
-                    <Progress.IconsWithText
-                        items={steps}
-                        size="sm"
-                        type="icon"
-                        orientation="vertical"
-                        className="w-full md:hidden"
-                    />
-
-                    <div className="flex w-full gap-6">
-                        <section className="flex min-w-0 flex-1 flex-col gap-4">
-                            <Input
-                                icon={SearchLg}
-                                label="Buscar itens"
-                                placeholder="Busque por nome de grupo, item ou lote"
-                                value={searchQuery}
-                                onChange={setSearchQuery}
-                            />
-
-                            {filteredSessions.map((session) => (
-                                <AccordionShell
-                                    key={session.id}
-                                    icon={Calendar}
-                                    title={session.datetime}
-                                    isOpen={
-                                        query !== "" ||
-                                        openAccordions.has(`session-${session.id}`)
-                                    }
-                                    onToggle={() =>
-                                        toggleAccordion(`session-${session.id}`)
-                                    }
-                                >
-                                    <SessionContent
-                                        session={session}
-                                        selectedIds={selectedIds}
-                                        onToggle={toggleSelection}
-                                        reachedLimit={reachedLimit}
-                                    />
-                                </AccordionShell>
-                            ))}
-
-                            {filteredCombos.length > 0 && (
-                                <AccordionShell
-                                    icon={Package}
-                                    title="Combos"
-                                    isOpen={query !== "" || openAccordions.has("combos")}
-                                    onToggle={() => toggleAccordion("combos")}
-                                >
-                                    <CombosContent
-                                        combos={filteredCombos}
-                                        selectedIds={selectedIds}
-                                        onToggle={toggleSelection}
-                                        reachedLimit={reachedLimit}
-                                    />
-                                </AccordionShell>
-                            )}
-
-                            {filteredProducts.length > 0 && (
-                                <AccordionShell
-                                    icon={ShoppingCart01}
-                                    title="Produtos"
-                                    isOpen={query !== "" || openAccordions.has("produtos")}
-                                    onToggle={() => toggleAccordion("produtos")}
-                                >
-                                    <ProductsContent
-                                        products={filteredProducts}
-                                        selectedIds={selectedIds}
-                                        onToggle={toggleSelection}
-                                        reachedLimit={reachedLimit}
-                                    />
-                                </AccordionShell>
-                            )}
-
-                            {filteredSessions.length === 0 &&
-                                filteredProducts.length === 0 &&
-                                filteredCombos.length === 0 && (
-                                    <p className="rounded-lg bg-secondary px-4 py-8 text-center text-sm text-tertiary">
-                                        Nenhum item corresponde à busca.
-                                    </p>
-                                )}
-                        </section>
-
+                <PainelDePassos
+                    titulo={TITULO_DA_EMISSAO}
+                    passos={ETAPAS_DA_EMISSAO}
+                    atual={0}
+                    lateral={
                         <CortesiaSelectionPanel
                             selectedIds={selectedIds}
                             onRemove={removeSelection}
                             onRemoveMany={removeManySelections}
-                            className="lg:mt-[24px]"
+                            className="max-h-[calc(100vh-22rem)] min-h-60"
                         />
-                    </div>
-                </main>
+                    }
+                    resumoNoCelular={
+                        // A contagem do escolhido fica no pé, junto do Avançar (COR-21).
+                        <div className="flex items-center justify-between gap-3">
+                            <p className="text-sm font-semibold text-primary" aria-live="polite">
+                                {contagem}
+                            </p>
+                            {selectedIds.size > 0 && (
+                                <Button size="sm" color="link-gray" iconLeading={Trash01} onClick={() => removeManySelections([...selectedIds])} className="min-h-11">
+                                    Remover todos
+                                </Button>
+                            )}
+                        </div>
+                    }
+                    rodapeFim={
+                        <>
+                            <Button size="md" color="secondary" iconLeading={ChevronLeft} onClick={handleBack}>
+                                Voltar
+                            </Button>
+                            <Button size="md" color="primary" iconTrailing={ChevronRight} isDisabled={!canAdvance} onClick={handleAdvance}>
+                                Avançar
+                            </Button>
+                        </>
+                    }
+                >
+                    <AvisoDeEscala />
+                    <section className="flex min-w-0 flex-col gap-4">
+                        <Input icon={SearchLg} label="Buscar itens" placeholder="Busque por nome de grupo, item ou lote" value={searchQuery} onChange={setSearchQuery} />
+
+                        {sessoesVisiveis.visiveis.map((session) => (
+                            <Recolhivel
+                                key={session.id}
+                                icon={Calendar}
+                                title={session.datetime}
+                                contagem={contarNaSessao(session, selectedIds)}
+                                total={session.groups.length}
+                                rotuloDoTotal={(n) => (n === 1 ? "1 grupo" : `${n} grupos`)}
+                                isOpen={estaAberto(`s:${session.id}`)}
+                                onToggle={() => alternar(`s:${session.id}`)}
+                            >
+                                <GruposDaSessao
+                                    session={session}
+                                    selectedIds={selectedIds}
+                                    onToggle={toggleSelection}
+                                    reachedLimit={reachedLimit}
+                                    estaAberto={estaAberto}
+                                    alternar={alternar}
+                                />
+                            </Recolhivel>
+                        ))}
+                        <BotaoMostrarMais restantes={sessoesVisiveis.restantes} onClick={sessoesVisiveis.mostrarMais} passo={PASSO_SESSOES} />
+
+                        {filteredCombos.length > 0 && (
+                            <Recolhivel
+                                icon={Package}
+                                title="Combos"
+                                contagem={filteredCombos.filter((c) => selectedIds.has(c.id)).length}
+                                total={filteredCombos.length}
+                                rotuloDoTotal={(n) => (n === 1 ? "1 combo" : `${n} combos`)}
+                                isOpen={buscando || abertos.has("combos")}
+                                onToggle={() => alternar("combos")}
+                            >
+                                <CombosContent combos={filteredCombos} selectedIds={selectedIds} onToggle={toggleSelection} reachedLimit={reachedLimit} />
+                            </Recolhivel>
+                        )}
+
+                        {filteredProducts.length > 0 && (
+                            <Recolhivel
+                                icon={ShoppingCart01}
+                                title="Produtos"
+                                contagem={filteredProducts.filter((p) => selectedIds.has(p.id)).length}
+                                total={filteredProducts.length}
+                                rotuloDoTotal={(n) => (n === 1 ? "1 produto" : `${n} produtos`)}
+                                isOpen={buscando || abertos.has("produtos")}
+                                onToggle={() => alternar("produtos")}
+                            >
+                                <ProductsContent products={filteredProducts} selectedIds={selectedIds} onToggle={toggleSelection} reachedLimit={reachedLimit} />
+                            </Recolhivel>
+                        )}
+
+                        {filteredSessions.length === 0 && filteredProducts.length === 0 && filteredCombos.length === 0 && (
+                            <p role="status" className="rounded-lg bg-secondary px-4 py-8 text-center text-sm text-tertiary">
+                                Nenhum item corresponde à busca.
+                            </p>
+                        )}
+                    </section>
+                </PainelDePassos>
             </div>
+            <ModalDeConfirmacao
+                aberto={confirmandoDescarte}
+                titulo="Descartar a emissão?"
+                descricao={`Os ${selectedIds.size === 1 ? "item escolhido" : `${selectedIds.size} itens escolhidos`}${rascunho.emails.length > 0 ? " e os e-mails" : ""} serão perdidos.`}
+                confirmar="Descartar"
+                cancelar="Continuar emitindo"
+                destrutiva
+                onConfirmar={sair}
+                onFechar={() => setConfirmandoDescarte(false)}
+            />
         </BackstageLayout>
     );
 }
 
-/* ------------------------------------------------------------------ */
-/*  Page header                                                       */
-/* ------------------------------------------------------------------ */
-
-interface PageHeaderProps {
-    canAdvance: boolean;
-    onAdvance: () => void;
-    onBack: () => void;
+/** Quantos itens escolhidos há na sessão (os ids de ingresso começam com `c:<sessão>:`). */
+function contarNaSessao(session: SessionSection, selecionados: Set<string>) {
+    const prefixo = `c:${session.id}:`;
+    let n = 0;
+    for (const id of selecionados) if (id.startsWith(prefixo)) n++;
+    return n;
 }
 
-const PageHeader = ({ canAdvance, onAdvance, onBack }: PageHeaderProps) => (
-    <header className="relative flex items-center justify-between gap-3 max-md:flex-wrap">
-        <ButtonUtility size="sm" color="secondary" icon={ChevronLeft} tooltip="Voltar" onClick={onBack} />
-        <h1 className={cx(TITULO_PAGINA, "pointer-events-none md:absolute md:left-1/2 md:-translate-x-1/2 md:whitespace-nowrap max-md:order-last max-md:w-full")}>
-            Enviar cortesias
-        </h1>
-        <Button size="md" color="primary" isDisabled={!canAdvance} onClick={onAdvance}>
-            Avançar
-        </Button>
-    </header>
-);
-
 /* ------------------------------------------------------------------ */
-/*  Accordion primitives                                              */
+/*  Grupo recolhível                                                   */
+/*                                                                     */
+/*  Composto do DS com o desenho do Accordion (`application/accordion`:*/
+/*  borda secundária, cabeçalho em botão com a seta, conteúdo que abre */
+/*  deslizando a altura com o Surgir). Fica aqui porque o Accordion do */
+/*  DS não deixa a tela abrir um item (a busca abre os grupos achados).*/
 /* ------------------------------------------------------------------ */
 
-interface AccordionShellProps {
-    icon: React.FC<{ className?: string }>;
+interface RecolhivelProps {
+    icon?: FC<{ className?: string }>;
     title: string;
+    /** Itens escolhidos dentro dele. */
+    contagem: number;
+    total: number;
+    rotuloDoTotal: (n: number) => string;
     isOpen: boolean;
     onToggle: () => void;
-    children: React.ReactNode;
+    nivel?: "sessao" | "grupo";
+    children: ReactNode;
 }
 
-const AccordionShell = ({ icon: Icon, title, isOpen, onToggle, children }: AccordionShellProps) => (
-    <div className="flex flex-col rounded-xl bg-primary ring-1 ring-border-secondary overflow-hidden">
-        <button
-            type="button"
-            onClick={onToggle}
-            aria-expanded={isOpen}
-            className={cx(
-                "flex items-center gap-3 px-4 py-3 text-left hover:bg-primary_hover",
-                isOpen && "border-b border-secondary ",
-            )}
-        >
-            <FeaturedIcon icon={Icon} color="gray" size="sm" theme="modern" />
-            <h3 className="flex-1 text-sm font-semibold text-primary">{title}</h3>
-            <ChevronDown
-                aria-hidden="true"
-                className={cx(
-                    "size-4 shrink-0 text-fg-quaternary",
-                    isOpen && "rotate-180",
-                )}
-            />
-        </button>
-        {isOpen && <div className="flex flex-col gap-4 p-4">{children}</div>}
-    </div>
-);
-
-/* ------------------------------------------------------------------ */
-/*  Section content (no wrapper, used inside accordions)              */
-/* ------------------------------------------------------------------ */
-
-interface SessionContentProps {
-    session: SessionSection;
-    selectedIds: Set<string>;
-    onToggle: (id: string, isSelected: boolean) => void;
-    reachedLimit: boolean;
-}
-
-const SessionContent = ({ session, selectedIds, onToggle, reachedLimit }: SessionContentProps) => (
-    <>
-        {session.groups.map((group) => (
-            <div key={group.name} className="flex flex-col gap-2">
-                <p className="text-sm font-semibold tracking-wide text-primary">
-                    {group.name}
-                </p>
-                <div className="flex flex-col gap-1">
-                    {group.tickets.map((ticket) => (
-                        <div className="flex items-center gap-2" key={ticket.id}>
-                            <CheckboxRow
-                                id={ticket.id}
-                                label={ticket.name}
-                                sublabel={""}
-                                isSelected={selectedIds.has(ticket.id)}
-                                isDisabledByLimit={reachedLimit}
-                                onToggle={onToggle}
-                            />
-                            <Badge type="pill-color" color="gray" size="sm">
-                                {ticket.type}
-                            </Badge>
-                        </div>
-                    ))}
-                </div>
-            </div>
-        ))}
-    </>
-);
-
-interface ProductsContentProps {
-    products: ProductEntry[];
-    selectedIds: Set<string>;
-    onToggle: (id: string, isSelected: boolean) => void;
-    reachedLimit: boolean;
-}
-
-const ProductsContent = ({ products, selectedIds, onToggle, reachedLimit }: ProductsContentProps) => (
-    <div className="flex flex-col gap-2">
-        {products.map((product) => {
-            const isSelected = selectedIds.has(product.id);
-            const disabled = !isSelected && reachedLimit;
-            return (
-                <label
-                    key={product.id}
-                    className={cx(
-                        "flex cursor-pointer items-center gap-3 rounded-md px-2 py-2 transition duration-100 ease-linear hover:bg-primary_hover",
-                        disabled && "cursor-not-allowed opacity-50",
-                    )}
-                >
-                    <Checkbox
-                        isSelected={isSelected}
-                        isDisabled={disabled}
-                        onChange={(s: boolean) => onToggle(product.id, s)}
-                    />
-                    <img
-                        src={product.imageUrl}
-                        alt=""
-                        className="size-9 shrink-0 rounded-md object-cover ring-1 ring-secondary"
-                    />
-                    <span className="text-sm font-medium text-primary">{product.name}</span>
-                </label>
-            );
-        })}
-    </div>
-);
-
-interface CombosContentProps {
-    combos: ComboEntry[];
-    selectedIds: Set<string>;
-    onToggle: (id: string, isSelected: boolean) => void;
-    reachedLimit: boolean;
-}
-
-const CombosContent = ({ combos, selectedIds, onToggle, reachedLimit }: CombosContentProps) => (
-    <div className="flex flex-col gap-4">
-        {combos.map((combo) => {
-            const isSelected = selectedIds.has(combo.id);
-            const disabled = !isSelected && reachedLimit;
-            return (
-                <div
-                    key={combo.id}
-                    className={cx(
-                        "flex flex-col gap-2 rounded-lg bg-secondary_subtle",
-                        disabled && "opacity-50",
-                    )}
-                >
-                    <label className="flex cursor-pointer items-start gap-3">
-                        <Checkbox
-                            isSelected={isSelected}
-                            isDisabled={disabled}
-                            onChange={(s: boolean) => onToggle(combo.id, s)}
-                            label={
-                                <span className="flex flex-col gap-0.5">
-                                    <span className="text-sm font-semibold text-primary">
-                                        {combo.name}
-                                    </span>
-                                    <span className="text-xs font-normal text-tertiary">
-                                        {combo.subtitle}
-                                    </span>
-                                </span>
-                            }
-                        />
-                    </label>
-                    <ul className="flex flex-col gap-1.5 ml-4">
-                        {combo.subItems.map((item, i) => (
-                            <li
-                                key={`${combo.id}-${i}`}
-                                className="flex items-start gap-2 text-xs text-secondary"
-                            >
-                                <span className="flex size-4 shrink-0 items-center justify-center rounded-full bg-tertiary text-[10px] font-semibold text-secondary">
-                                    {i + 1}
-                                </span>
-                                <div className="flex flex-col">
-                                    <span>
-                                        <span className="font-medium text-primary">{item.name}</span>
-                                        <span> - </span>
-                                        <span className="text-secondary">{item.type}</span>
-                                    </span>
-                                    <span>{item.date}</span>
-                                </div>
-                            </li>
-                        ))}
-                    </ul>
-                </div>
-            );
-        })}
-    </div>
-);
-
-/* ------------------------------------------------------------------ */
-/*  Checkbox row (shared for tickets)                                 */
-/* ------------------------------------------------------------------ */
-
-interface CheckboxRowProps {
-    id: string;
-    label: string;
-    sublabel: string;
-    isSelected: boolean;
-    isDisabledByLimit: boolean;
-    onToggle: (id: string, isSelected: boolean) => void;
-}
-
-const CheckboxRow = ({
-    id,
-    label,
-    sublabel,
-    isSelected,
-    isDisabledByLimit,
-    onToggle,
-}: CheckboxRowProps) => {
-    const disabled = !isSelected && isDisabledByLimit;
+function Recolhivel({ icon: Icon, title, contagem, total, rotuloDoTotal, isOpen, onToggle, nivel = "sessao", children }: RecolhivelProps) {
+    const reduzir = useReducedMotion();
+    const grupo = nivel === "grupo";
     return (
-        <label
-            className={cx(
-                "flex cursor-pointer items-center gap-3 rounded-md px-2 py-1.5 transition duration-100 ease-linear hover:bg-primary_hover",
-                disabled && "cursor-not-allowed opacity-50",
-            )}
-        >
-            <Checkbox
-                isSelected={isSelected}
-                isDisabled={disabled}
-                onChange={(s) => onToggle(id, s)}
-                label={
-                    <span className="flex items-baseline gap-2">
-                        <span className="text-sm font-medium text-primary">{label}</span>
-                        <span className="text-xs font-normal text-tertiary">{sublabel}</span>
+        <div className={cx("flex flex-col overflow-hidden", grupo ? "rounded-lg ring-1 ring-secondary" : "rounded-xl bg-primary ring-1 ring-secondary")}>
+            <button
+                type="button"
+                onClick={onToggle}
+                aria-expanded={isOpen}
+                className={cx(
+                    "flex min-h-11 items-center gap-3 text-left outline-focus-ring transition duration-100 ease-linear hover:bg-primary_hover focus-visible:outline-2 focus-visible:-outline-offset-2",
+                    grupo ? "px-3 py-2" : "px-4 py-3",
+                )}
+            >
+                {Icon && <FeaturedIcon icon={Icon} color="gray" size="sm" theme="modern" />}
+                <span className="flex min-w-0 flex-1 flex-col">
+                    <span className={cx("text-sm font-semibold text-primary", grupo && "font-medium")}>{title}</span>
+                    <span className="text-sm text-tertiary">
+                        {rotuloDoTotal(total)}
+                        {contagem > 0 && <span className="font-medium text-brand-secondary">{`, ${contagem} ${contagem === 1 ? "escolhido" : "escolhidos"}`}</span>}
                     </span>
-                }
-            />
-        </label>
+                </span>
+                <motion.span animate={{ rotate: isOpen ? 180 : 0 }} transition={reduzir ? { duration: 0 } : { duration: 0.2 }} className="flex shrink-0">
+                    <ChevronDown aria-hidden="true" className="size-4 text-fg-quaternary" />
+                </motion.span>
+            </button>
+            {/* Abre e fecha deslizando a altura; fechado não desenha o conteúdo (UI-VIS-008, UI-LST-001). */}
+            <Surgir visivel={isOpen}>
+                <div className={cx("flex flex-col border-t border-secondary", grupo ? "gap-1 p-2" : "gap-3 p-3 md:p-4")}>{children}</div>
+            </Surgir>
+        </div>
     );
-};
+}
+
+/* ------------------------------------------------------------------ */
+/*  Conteúdo                                                           */
+/* ------------------------------------------------------------------ */
+
+interface ConteudoProps {
+    selectedIds: Set<string>;
+    onToggle: (id: string, isSelected: boolean) => void;
+    reachedLimit: boolean;
+}
+
+function GruposDaSessao({
+    session,
+    estaAberto,
+    alternar,
+    ...props
+}: ConteudoProps & { session: SessionSection; estaAberto: (id: string) => boolean; alternar: (id: string) => void }) {
+    const grupos = useMostrarMais(session.groups, PASSO_GRUPOS);
+    return (
+        <>
+            {grupos.visiveis.map((group, i) => {
+                const chave = `g:${session.id}:${group.id ?? i}`;
+                return (
+                    <Recolhivel
+                        key={chave}
+                        nivel="grupo"
+                        title={group.name}
+                        contagem={group.tickets.filter((t) => props.selectedIds.has(t.id)).length}
+                        total={group.tickets.length}
+                        rotuloDoTotal={(n) => (n === 1 ? "1 ingresso" : `${n} ingressos`)}
+                        isOpen={estaAberto(chave)}
+                        onToggle={() => alternar(chave)}
+                    >
+                        <IngressosDoGrupo group={group} {...props} />
+                    </Recolhivel>
+                );
+            })}
+            <BotaoMostrarMais restantes={grupos.restantes} onClick={grupos.mostrarMais} passo={PASSO_GRUPOS} />
+        </>
+    );
+}
+
+function IngressosDoGrupo({ group, ...props }: ConteudoProps & { group: GroupSection }) {
+    const ingressos = useMostrarMais(group.tickets, PASSO_INGRESSOS);
+    return (
+        <>
+            {ingressos.visiveis.map((ticket) => (
+                <LinhaDeEscolha key={ticket.id} id={ticket.id} label={ticket.name} hint={ticket.type} {...props} />
+            ))}
+            <BotaoMostrarMais restantes={ingressos.restantes} onClick={ingressos.mostrarMais} passo={PASSO_INGRESSOS} />
+        </>
+    );
+}
+
+function ProductsContent({ products, ...props }: ConteudoProps & { products: ProductEntry[] }) {
+    return (
+        <div className="flex flex-col gap-1">
+            {products.map((product) => (
+                <LinhaDeEscolha
+                    key={product.id}
+                    id={product.id}
+                    label={
+                        <span className="flex items-center gap-3">
+                            <img src={product.imageUrl} alt="" className="size-9 shrink-0 rounded-md object-cover ring-1 ring-secondary" />
+                            {product.name}
+                        </span>
+                    }
+                    {...props}
+                />
+            ))}
+        </div>
+    );
+}
+
+function CombosContent({ combos, ...props }: ConteudoProps & { combos: ComboEntry[] }) {
+    return (
+        <div className="flex flex-col gap-1">
+            {combos.map((combo) => (
+                <LinhaDeEscolha
+                    key={combo.id}
+                    id={combo.id}
+                    label={combo.name}
+                    hint={
+                        <span className="flex flex-col gap-1.5">
+                            <span>{combo.subtitle}</span>
+                            <ol className="flex flex-col gap-1">
+                                {combo.subItems.map((item, i) => (
+                                    <li key={`${combo.id}-${i}`} className="flex items-start gap-2 text-sm">
+                                        <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-tertiary text-sm font-semibold text-secondary">{i + 1}</span>
+                                        <span className="flex flex-col">
+                                            <span>
+                                                <span className="font-medium text-primary">{item.name}</span>
+                                                {item.type && <span className="text-secondary">{`, ${item.type}`}</span>}
+                                            </span>
+                                            {item.date && <span>{item.date}</span>}
+                                        </span>
+                                    </li>
+                                ))}
+                            </ol>
+                        </span>
+                    }
+                    {...props}
+                />
+            ))}
+        </div>
+    );
+}
+
+/**
+ * Uma escolha: o `Checkbox` do DS com `label` e `hint`, a linha inteira é o alvo (44 px no celular) e o
+ * hover pinta a linha. Até 22/11/2026 a caixa ficava dentro de outro `<label>` e o clique marcava e
+ * desmarcava na mesma hora (COR-25).
+ */
+function LinhaDeEscolha({ id, label, hint, selectedIds, onToggle, reachedLimit }: ConteudoProps & { id: string; label: ReactNode; hint?: ReactNode }) {
+    const isSelected = selectedIds.has(id);
+    const disabled = !isSelected && reachedLimit;
+    return (
+        <Checkbox
+            isSelected={isSelected}
+            isDisabled={disabled}
+            onChange={(s: boolean) => onToggle(id, s)}
+            label={label}
+            hint={hint}
+            className={cx(
+                "w-full cursor-pointer rounded-md px-2 py-2 transition duration-100 ease-linear max-md:min-h-11 max-md:py-3",
+                // A caixa do DS já fica com opacity-50 quando desativada; o texto acompanha.
+                disabled ? "[&>div:last-child]:opacity-50" : "hover:bg-primary_hover",
+            )}
+        />
+    );
+}

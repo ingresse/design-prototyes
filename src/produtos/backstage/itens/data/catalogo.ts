@@ -22,8 +22,10 @@ import tirante from "@/assets/products/tirante/1.png";
 
 export interface Catalogo {
     carregando: boolean;
-    /** Catálogo simulado com N ingressos (`?escala=N`), só na memória; `null` no catálogo real. */
+    /** Catálogo simulado com N ingressos (`?escala`), só na memória; `null` no catálogo real. */
     simulado: number | null;
+    /** Formato da simulação (sessões, grupos por sessão e ingressos por grupo); `null` no catálogo real. */
+    escala: EscalaSimulada | null;
     evento?: Evento;
     organizacao?: Organizacao;
     /** Biblioteca de produtos da organização (a inicial, se ela ainda não salvou a sua). */
@@ -48,9 +50,11 @@ export function useCatalogo(): Catalogo {
     const vendidos = useMemo(() => somarPorLote(pagos, pendentes), [pagos, pendentes]);
     const biblioteca = useMemo(() => bibliotecaDe(organizacao, evento ? organizacaoDoEvento(evento) : ""), [organizacao, evento]);
     const escala = escalaSimulada();
-    const simulado = useMemo(() => (escala && evento ? catalogoSimulado(evento, escala) : null), [escala, evento?.id]);
-    if (simulado) return { carregando: false, simulado: escala, evento: simulado.evento, organizacao, biblioteca: simulado.biblioteca, vendidos: simulado.vendidos, pendentes: simulado.pendentes };
-    return { carregando: modo === "carregando" || !evento, simulado: null, evento: comTipoDeAcesso(evento), organizacao, biblioteca, vendidos, pendentes };
+    // Um catálogo simulado por evento e formato, guardado fora do componente: cada linha da lista que lê o
+    // catálogo recebe o mesmo, sem gerar 300 mil ingressos de novo (UI-LST-002).
+    const simulado = escala && evento ? catalogoSimulado(evento, escala) : null;
+    if (simulado && escala) return { carregando: false, simulado: escala.total, escala, evento: simulado.evento, organizacao, biblioteca: simulado.biblioteca, vendidos: simulado.vendidos, pendentes: simulado.pendentes };
+    return { carregando: modo === "carregando" || !evento, simulado: null, escala: null, evento: comTipoDeAcesso(evento), organizacao, biblioteca, vendidos, pendentes };
 }
 
 /**
@@ -72,20 +76,58 @@ function comTipoDeAcesso(evento: Evento | undefined): Evento | undefined {
 
 const CHAVE_ESCALA = "itens-escala";
 
+/** Formato do catálogo simulado (ITM-85). */
+export interface EscalaSimulada {
+    sessoes: number;
+    /** Grupos por sessão. */
+    grupos: number;
+    /** Ingressos por grupo. */
+    ingressos: number;
+    /** Ingressos no catálogo todo. */
+    total: number;
+}
+
+/** Limites do simulador: o pior caso real é 1.000 grupos com 300 ingressos cada (UI-LST-002). */
+const MAX_SESSOES = 1000;
+const MAX_GRUPOS = 1000;
+const MAX_INGRESSOS = 300;
+const MAX_TOTAL = 300_000;
+
 /**
- * Tamanho do catálogo simulado: `?escala=N` liga para a sessão do navegador, `?escala=0` desliga.
- * Serve para testar a interface com milhares de itens sem tocar no banco.
+ * Lê o formato: `N` (até 5.000 ingressos em sessões diárias de 40, 5 grupos por sessão) ou
+ * `SxGxI` (sessões × grupos por sessão × ingressos por grupo, ex.: `1x1000x300`).
  */
-export function escalaSimulada(): number | null {
+function lerEscala(valor: string): EscalaSimulada | null {
+    const partes = valor.toLowerCase().split("x").map((p) => Math.round(Number(p)));
+    if (partes.some((n) => !Number.isFinite(n) || n <= 0)) return null;
+    if (partes.length === 1) {
+        const total = Math.min(5000, partes[0]);
+        return { sessoes: Math.ceil(total / 40), grupos: 5, ingressos: 8, total };
+    }
+    if (partes.length !== 3) return null;
+    const sessoes = Math.min(MAX_SESSOES, partes[0]);
+    const grupos = Math.min(MAX_GRUPOS, partes[1]);
+    const ingressos = Math.min(MAX_INGRESSOS, partes[2]);
+    return { sessoes, grupos, ingressos, total: Math.min(MAX_TOTAL, sessoes * grupos * ingressos) };
+}
+
+const chaveDa = (e: EscalaSimulada, formato: "n" | "sgi") => (formato === "n" ? String(e.total) : `${e.sessoes}x${e.grupos}x${e.ingressos}`);
+
+/**
+ * Tamanho do catálogo simulado: `?escala=N` ou `?escala=SxGxI` liga para a sessão do navegador,
+ * `?escala=0` desliga. Serve para testar a interface com milhares de itens sem tocar no banco.
+ */
+export function escalaSimulada(): EscalaSimulada | null {
     if (typeof window === "undefined") return null;
-    const param = new URLSearchParams(window.location.search).get("escala");
     try {
+        const param = new URLSearchParams(window.location.search).get("escala");
         if (param !== null) {
-            if (Number(param) > 0) window.sessionStorage.setItem(CHAVE_ESCALA, String(Math.min(5000, Math.round(Number(param)))));
+            const lida = lerEscala(param);
+            if (lida) window.sessionStorage.setItem(CHAVE_ESCALA, chaveDa(lida, param.includes("x") ? "sgi" : "n"));
             else window.sessionStorage.removeItem(CHAVE_ESCALA);
         }
-        const v = Number(window.sessionStorage.getItem(CHAVE_ESCALA));
-        return v > 0 ? v : null;
+        const guardada = window.sessionStorage.getItem(CHAVE_ESCALA);
+        return guardada ? lerEscala(guardada) : null;
     } catch {
         return null;
     }
@@ -97,33 +139,54 @@ export function sairDaSimulacao() {
     } catch {
         /* sem armazenamento: a simulação já some ao recarregar sem o parâmetro */
     }
-    window.location.href = window.location.pathname.replace(/\/(ingressos|produtos|combos)\/[^/]+$/, "/$1");
+    window.location.href = window.location.pathname.replace(/\/(ingressos|produtos|combos|questionario)\/[^/]+$/, "/$1");
 }
 
 const NOMES_SETOR = ["Pista", "Pista Premium", "Camarote", "Arquibancada Norte", "Arquibancada Sul", "Frontstage", "Mezanino", "Cadeira Inferior"];
 const NOMES_TIPO = ["Inteira", "Meia-entrada", "Inteira promocional", "Social", "Acompanhante PCD", "Sócio", "Grupo de 4", "Estudante", "Professor", "Doador de sangue"];
+/** Nome único na lista: depois do fim dos nomes, eles voltam com número ("Pista 2"). */
+const nomeDaVez = (nomes: string[], i: number) => (i < nomes.length ? nomes[i] : `${nomes[i % nomes.length]} ${Math.floor(i / nomes.length) + 1}`);
+
+/** Último catálogo simulado: um por evento e formato, para a sessão do navegador. */
+let ultimaSimulacao: { chave: string; resultado: ReturnType<typeof gerarCatalogoSimulado> } | null = null;
+
+function catalogoSimulado(base: Evento, escala: EscalaSimulada) {
+    const chave = `${base.id}|${escala.sessoes}x${escala.grupos}x${escala.ingressos}|${escala.total}`;
+    if (ultimaSimulacao?.chave !== chave) ultimaSimulacao = { chave, resultado: gerarCatalogoSimulado(base, escala) };
+    return ultimaSimulacao.resultado;
+}
 
 /** Gera um catálogo grande e determinístico a partir do evento real, só na memória. */
-function catalogoSimulado(base: Evento, total: number) {
+function gerarCatalogoSimulado(base: Evento, escala: EscalaSimulada) {
     let semente = 7;
     const rand = () => ((semente = (semente * 16807) % 2147483647) - 1) / 2147483646;
     const vendidos = new Map<string, number>();
     const pendentes = new Map<string, number>();
-    const porSessao = 40;
-    const nSessoes = Math.max(1, Math.ceil(total / porSessao));
+    // Cada grupo recebe os seus ingressos em sequência; o total corta o fim (no formato N, a última sessão fica menor).
+    const porSessao = escala.grupos * escala.ingressos;
+    const total = escala.total;
     const inicio = new Date(base.data);
     let criados = 0;
     const sessoes: Sessao[] = [];
-    for (let s = 0; s < nSessoes && criados < total; s++) {
+    for (let s = 0; s < escala.sessoes && criados < total; s++) {
         const dia = new Date(inicio.getTime() + s * 86400000);
         const iso = `${dia.getFullYear()}-${String(dia.getMonth() + 1).padStart(2, "0")}-${String(dia.getDate()).padStart(2, "0")}T${base.data.slice(11, 16) || "20:00"}`;
-        const grupos: Grupo[] = NOMES_SETOR.slice(0, 5).map((nome, g) => ({ id: `sim-s${s}-g${g}`, nome, acesso: `Portão ${String.fromCharCode(65 + g)}`, tipoAcesso: g === 1 ? "facial" : "qr", capacidade: 500 + g * 250, ingressos: [] }));
+        const grupos: Grupo[] = Array.from({ length: escala.grupos }, (_, g) => ({
+            id: `sim-s${s}-g${g}`,
+            nome: nomeDaVez(NOMES_SETOR, g),
+            acesso: g < 26 ? `Portão ${String.fromCharCode(65 + g)}` : undefined,
+            tipoAcesso: g % 5 === 1 ? ("facial" as const) : ("qr" as const),
+            capacidade: 0,
+            ingressos: [],
+        }));
         for (let i = 0; i < porSessao && criados < total; i++, criados++) {
-            const g = grupos[i % grupos.length];
+            const g = grupos[Math.floor(i / escala.ingressos)];
+            const posNoGrupo = i % escala.ingressos;
             const id = `sim-s${s}-t${i}`;
             const precoBase = 80 + Math.round(rand() * 40) * 10;
             const lotes: Lote[] = [0, 1, 2].slice(0, 1 + Math.floor(rand() * 3)).map((k) => ({ id: `${id}-l${k}`, nome: `${k + 1}º lote`, preco: precoBase + k * 20, quantidade: 50 + Math.round(rand() * 15) * 10 }));
-            lotes.forEach((l, k) => vendidos.set(l.id, k === 0 ? Math.round(l.quantidade * rand()) : 0));
+            // Só o 1º lote tem vendas: os outros ficam sem entrada no mapa (zero).
+            vendidos.set(lotes[0].id, Math.round(lotes[0].quantidade * rand()));
             // Alguns ingressos com compras em pagamento no 1º lote (já contadas em vendidos, que segura o estoque).
             const pend = i % 3 === 0 ? Math.min(1 + Math.floor(rand() * 8), lotes[0].quantidade - (vendidos.get(lotes[0].id) ?? 0)) : 0;
             if (pend > 0) {
@@ -133,12 +196,15 @@ function catalogoSimulado(base: Evento, total: number) {
             const ativo = rand() > 0.1;
             // Passkeys de exemplo: algumas no ingresso inteiro (de 3 a 120), outras só no 1º lote.
             const chaves = i % 6 === 0 ? CHAVES_DE_EXEMPLO.slice(i % 50, (i % 50) + [3, 12, 120][s % 3]) : undefined;
-            if (i % 9 === 4) lotes[0] = { ...lotes[0], chaves: CHAVES_DE_EXEMPLO.slice(200 + i, 205 + i) };
-            g.ingressos.push({ id, nome: NOMES_TIPO[Math.floor(i / grupos.length) % NOMES_TIPO.length], beneficio: i % 2 ? "meia-entrada" : "inteira", ativo, lotes, ...(chaves ? { chaves } : {}) });
+            if (i % 9 === 4) lotes[0] = { ...lotes[0], chaves: CHAVES_DE_EXEMPLO.slice(200 + (i % 300), 205 + (i % 300)) };
+            g.ingressos.push({ id, nome: nomeDaVez(NOMES_TIPO, posNoGrupo), beneficio: i % 2 ? "meia-entrada" : "inteira", ativo, lotes, ...(chaves ? { chaves } : {}) });
         }
-        sessoes.push({ id: `sim-s${s}`, inicio: iso, grupos });
+        // Capacidade coerente com o que o grupo vende: a soma dos lotes (as emissões nunca passam dela).
+        const comIngressos = grupos.filter((g) => g.ingressos.length > 0);
+        for (const g of comIngressos) g.capacidade = ofertaDoSetor(g);
+        sessoes.push({ id: `sim-s${s}`, inicio: iso, grupos: comIngressos });
     }
-    const nProdutos = Math.max(2, Math.round(total / 10));
+    const nProdutos = Math.min(500, Math.max(2, Math.round(total / 10)));
     const biblioteca: ProdutoDaOrganizacao[] = Array.from({ length: nProdutos }, (_, i) => ({
         id: `sim-p${i}`,
         nome: `${["Camiseta", "Copo", "Boné", "Pôster", "Estacionamento"][i % 5]} ${Math.floor(i / 5) + 1}`,
@@ -147,17 +213,17 @@ function catalogoSimulado(base: Evento, total: number) {
     }));
     const produtos: ProdutoNoEvento[] = biblioteca.map((p, i) => ({ produtoId: p.id, estoque: 100 + i * 3, ativo: i % 7 !== 0 }));
     const tipos = sessoes.flatMap((s) => s.grupos.flatMap((g) => g.ingressos));
-    const combos: Combo[] = Array.from({ length: Math.max(1, Math.round(total / 20)) }, (_, i) => ({
+    const combos: Combo[] = Array.from({ length: Math.min(200, Math.max(1, Math.round(total / 20))) }, (_, i) => ({
         id: `sim-c${i}`,
         nome: `Combo ${i + 1}`,
         preco: 150 + (i % 6) * 25,
         itens: [
-            { tipo: "ingresso", id: tipos[i % tipos.length].id, quantidade: 1 + (i % 2) },
+            { tipo: "ingresso", id: tipos[(i * 7) % tipos.length].id, quantidade: 1 + (i % 2) },
             { tipo: "produto", id: biblioteca[i % biblioteca.length].id, quantidade: 1 },
         ],
         ativo: i % 9 !== 0,
     }));
-    // Uma abertura com setores completos e ingressos avulsos, para testar o seletor em escala (ABV-04).
+    // Uma abertura com grupos completos e ingressos avulsos, para testar o seletor em escala (ABV-09).
     const hoje = new Date();
     const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}T10:00`;
     const aberturas: AberturaDeVendas[] = [
@@ -195,11 +261,12 @@ function catalogoSimulado(base: Evento, total: number) {
             tipo: b.tipo,
             obrigatoria: i % 4 !== 3,
             opcoes: b.opcoes?.map((r, k) => ({ id: `sim-prg${i}-o${k}`, rotulo: r, ...(b.tipo === "opcao-unica" && k === 1 ? { estoque: 0 } : k === 2 ? { estoque: 40 } : {}) })),
+            // Até 5.000 ingressos por pergunta: o bastante para testar o seletor sem pesar a memória.
             itens:
                 i % 7 === 6
                     ? []
                     : [
-                          ...(volta === 0 ? tipos : tipos.slice(volta * 400, volta * 400 + 300)).map((t) => ({ tipo: "ingresso" as const, id: t.id })),
+                          ...(volta === 0 ? tipos.slice(0, 5000) : tipos.slice(volta * 400, volta * 400 + 300)).map((t) => ({ tipo: "ingresso" as const, id: t.id })),
                           ...(i % 2 ? combos.slice(0, 2).map((c) => ({ tipo: "combo" as const, id: c.id })) : []),
                       ],
         };
@@ -279,8 +346,28 @@ const agoraLocal = () => {
  * acabou ou nenhuma. A primeira abertura futura vem junto, para dizer quando abre.
  */
 export function janelaDoIngresso(tipoId: string, aberturas: AberturaDeVendas[] | undefined, agora = agoraLocal()) {
-    const dele = (aberturas ?? []).filter((a) => itensDaAbertura(a).some((i) => i.tipo === "ingresso" && i.id === tipoId));
-    if (dele.length === 0) return { janela: "sem-abertura" as const };
+    return janelaDasAberturas((aberturas ?? []).filter((a) => itensDaAbertura(a).some((i) => i.tipo === "ingresso" && i.id === tipoId)), agora);
+}
+
+/**
+ * As aberturas de cada ingresso, calculadas uma vez para a lista toda: com milhares de ingressos, procurar
+ * o ingresso em cada abertura a cada linha pesa (UI-LST-002).
+ */
+export function aberturasPorIngresso(aberturas: AberturaDeVendas[] | undefined): Map<string, AberturaDeVendas[]> {
+    const mapa = new Map<string, AberturaDeVendas[]>();
+    for (const a of aberturas ?? [])
+        for (const i of itensDaAbertura(a)) {
+            if (i.tipo !== "ingresso") continue;
+            const lista = mapa.get(i.id);
+            if (lista) lista.push(a);
+            else mapa.set(i.id, [a]);
+        }
+    return mapa;
+}
+
+/** Igual a `janelaDoIngresso`, com as aberturas que já incluem o ingresso (de `aberturasPorIngresso`). */
+export function janelaDasAberturas(dele: AberturaDeVendas[] | undefined, agora = agoraLocal()) {
+    if (!dele || dele.length === 0) return { janela: "sem-abertura" as const };
     if (dele.some((a) => a.inicio <= agora && agora < a.fim)) return { janela: "aberta" as const };
     const proxima = dele.filter((a) => a.inicio > agora).sort((a, b) => a.inicio.localeCompare(b.inicio))[0];
     return proxima ? { janela: "agendado" as const, inicio: proxima.inicio } : { janela: "encerrado" as const };
@@ -294,6 +381,14 @@ export function estadoComAbertura(t: TipoIngresso, vendidos: Map<string, number>
     const base = estadoDoIngresso(t, vendidos);
     if (base !== "a-venda") return base;
     const { janela } = janelaDoIngresso(t.id, aberturas);
+    return janela === "aberta" ? "a-venda" : janela;
+}
+
+/** Igual a `estadoComAbertura`, com as aberturas que já incluem o ingresso (de `aberturasPorIngresso`). */
+export function estadoComAberturasDele(t: TipoIngresso, vendidos: Map<string, number>, dele: AberturaDeVendas[] | undefined): EstadoItem {
+    const base = estadoDoIngresso(t, vendidos);
+    if (base !== "a-venda") return base;
+    const { janela } = janelaDasAberturas(dele);
     return janela === "aberta" ? "a-venda" : janela;
 }
 
@@ -431,6 +526,86 @@ export const ingressoNovo = (): TipoIngresso => {
 };
 
 export const setorNovo = (nome: string): Grupo => ({ id: novoId("grp"), nome: nome.trim(), ingressos: [] });
+
+/* ---------------- duplicar (ITM-135, ITM-136) ---------------- */
+
+/** "Pista (cópia)", "Pista (cópia 2)"... sem repetir um nome que já existe (sem diferenciar maiúsculas). */
+export function nomeDeCopia(nome: string, existentes: string[]): string {
+    const usados = new Set(existentes.map((n) => n.trim().toLowerCase()));
+    const base = nome.trim().replace(/ \(cópia(?: \d+)?\)$/, "");
+    for (let n = 1; ; n++) {
+        const candidato = n === 1 ? `${base} (cópia)` : `${base} (cópia ${n})`;
+        if (!usados.has(candidato.toLowerCase())) return candidato;
+    }
+}
+
+/**
+ * Cópia do ingresso com ids novos para ele e para os lotes: as vendas são contadas por id, então a
+ * cópia nasce sem vendas. Nasce fora da venda, para não vender antes de o produtor revisar.
+ */
+export function copiaDoIngresso(tipo: TipoIngresso, nome = tipo.nome): TipoIngresso {
+    const id = novoId("tip");
+    const copia: TipoIngresso = JSON.parse(JSON.stringify(tipo));
+    return { ...copia, id, nome, ativo: false, lotes: copia.lotes.map((l, i) => ({ ...l, id: `${id}-l${i + 1}` })) };
+}
+
+/**
+ * Duplica o ingresso nos grupos escolhidos (padrão: o próprio grupo). No grupo de origem, a cópia entra
+ * logo abaixo do original como "Inteira (cópia)"; nos outros, entra no fim, com o mesmo nome se ele
+ * estiver livre lá (senão, "(cópia)").
+ */
+export function comIngressoDuplicado(ev: Evento, ingressoId: string, destinos?: string[]): { sessoes: Sessao[]; copias: { grupoId: string; copia: TipoIngresso }[] } {
+    const origem = ev.sessoes.flatMap((s) => s.grupos).find((g) => g.ingressos.some((t) => t.id === ingressoId));
+    const original = origem?.ingressos.find((t) => t.id === ingressoId);
+    const copias: { grupoId: string; copia: TipoIngresso }[] = [];
+    if (!origem || !original) return { sessoes: ev.sessoes, copias };
+    const alvo = new Set(destinos?.length ? destinos : [origem.id]);
+    const sessoes = ev.sessoes.map((s) => ({
+        ...s,
+        grupos: s.grupos.map((g) => {
+            if (!alvo.has(g.id)) return g;
+            const nomes = g.ingressos.map((t) => t.nome);
+            const livre = g.id !== origem.id && !nomes.some((n) => n.trim().toLowerCase() === original.nome.trim().toLowerCase());
+            const copia = copiaDoIngresso(original, livre ? original.nome : nomeDeCopia(original.nome, nomes));
+            copias.push({ grupoId: g.id, copia });
+            const ingressos = [...g.ingressos];
+            if (g.id === origem.id) ingressos.splice(ingressos.findIndex((t) => t.id === ingressoId) + 1, 0, copia);
+            else ingressos.push(copia);
+            return { ...g, ingressos };
+        }),
+    }));
+    return { sessoes, copias };
+}
+
+/**
+ * Duplica o grupo nas sessões escolhidas (padrão: a própria sessão), com cópias de todos os ingressos e
+ * lotes, fora da venda. Na sessão de origem, a cópia entra logo abaixo do original como "Pista (cópia)";
+ * nas outras, entra no fim, com o mesmo nome se ele estiver livre lá (senão, "(cópia)").
+ */
+export function comGrupoDuplicado(ev: Evento, grupoId: string, destinos?: string[]): { sessoes: Sessao[]; copias: { sessaoId: string; copia: Grupo }[] } {
+    const origem = ev.sessoes.find((s) => s.grupos.some((g) => g.id === grupoId));
+    const original = origem?.grupos.find((g) => g.id === grupoId);
+    const copias: { sessaoId: string; copia: Grupo }[] = [];
+    if (!origem || !original) return { sessoes: ev.sessoes, copias };
+    const alvo = new Set(destinos?.length ? destinos : [origem.id]);
+    const sessoes = ev.sessoes.map((s) => {
+        if (!alvo.has(s.id)) return s;
+        const nomes = s.grupos.map((g) => g.nome);
+        const livre = s.id !== origem.id && !nomes.some((n) => n.trim().toLowerCase() === original.nome.trim().toLowerCase());
+        const copia: Grupo = {
+            ...original,
+            id: novoId("grp"),
+            nome: livre ? original.nome : nomeDeCopia(original.nome, nomes),
+            ingressos: original.ingressos.map((t) => copiaDoIngresso(t)),
+        };
+        copias.push({ sessaoId: s.id, copia });
+        const grupos = [...s.grupos];
+        if (s.id === origem.id) grupos.splice(grupos.findIndex((g) => g.id === grupoId) + 1, 0, copia);
+        else grupos.push(copia);
+        return { ...s, grupos };
+    });
+    return { sessoes, copias };
+}
 
 export const comboNovo = (): Combo => ({ id: novoId("cmb"), nome: "", preco: 0, itens: [], ativo: true });
 

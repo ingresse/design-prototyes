@@ -1,24 +1,29 @@
-import { useMemo, useState } from "react";
-import { useNavigate } from "react-router";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router";
 import type { Key } from "react-aria-components";
-import { Edit01, LinkExternal01, Lock01, Plus, SearchLg, Trash01, Users01 } from "@untitledui/icons";
+import { ChevronDown, Edit01, Lock01, Plus, Trash01 } from "@untitledui/icons";
 import { toast } from "sonner";
 import { Badge } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
+import { ButtonUtility } from "@/components/base/buttons/button-utility";
 import { Checkbox } from "@/components/base/checkbox/checkbox";
-import { Input } from "@/components/base/input/input";
+import { Dropdown } from "@/components/base/dropdown/dropdown";
+import { Select } from "@/components/base/select/select";
 import { Tooltip, TooltipTrigger } from "@/components/base/tooltip/tooltip";
 import { Tabs } from "@/components/application/tabs/tabs";
 import { Dialog, Modal, ModalOverlay } from "@/components/application/modals/modal";
-import { EmptyState } from "@/components/application/empty-state/empty-state";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
-import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
+import { CabecalhoDaPagina } from "../../components/cabecalho-da-pagina";
 import { CriarGrupoModal } from "../../components/CriarGrupoModal";
 import { CriarMembroModal } from "../../components/CriarMembroModal";
+import { BarraDaLista, CabecalhoDaTabela, CarregandoTabela, CartaoDaTabela, Celula, LinhaDaTabela, SemResultados, TituloDaLinha } from "../../components/tabela";
+import { RodapeDePaginacao, usePaginacao } from "../../components/rodape-de-paginacao";
 import {
+    adicionarAosMembros,
     cargoById,
     eventoById,
+    eventosDoMembro,
     isCargoSistema,
     removeCargo,
     removeGrupos,
@@ -26,13 +31,19 @@ import {
     useCargos,
     useGrupos,
     useMembros,
+    useMembrosCarregando,
     type Cargo,
     type Grupo,
     type Membro,
 } from "../../components/membros-store";
-import { TITULO_PAGINA } from "@/produtos/backstage/components/titulo-pagina";
 
 type TabKey = "membros" | "grupos" | "cargos";
+
+const ABAS: TabKey[] = ["membros", "grupos", "cargos"];
+/** A aba fica na URL (`?aba=grupos`): voltar do navegador e de Criar cargo caem nela (MEM-78). */
+export const rotaDaAba = (aba: TabKey) => (aba === "membros" ? "/backstage/membros" : `/backstage/membros?aba=${aba}`);
+
+const TODOS = "todos";
 
 const PLACEHOLDERS: Record<TabKey, string> = {
     membros: "Busque por e-mail",
@@ -45,8 +56,16 @@ export function Membros() {
     const membros = useMembros();
     const grupos = useGrupos();
     const cargos = useCargos();
-    const [tab, setTab] = useState<TabKey>("membros");
+    // Membros, grupos e cargos da organização em contexto, gravados nela (MEM-45).
+    const carregando = useMembrosCarregando();
+    const [params, setParams] = useSearchParams();
+    const abaDaUrl = params.get("aba") as TabKey | null;
+    const tab: TabKey = abaDaUrl && ABAS.includes(abaDaUrl) ? abaDaUrl : "membros";
     const [busca, setBusca] = useState("");
+    // Filtros da aba Membros (MEM-79).
+    const [filtroCargo, setFiltroCargo] = useState(TODOS);
+    const [filtroGrupo, setFiltroGrupo] = useState(TODOS);
+    const [grupoEditando, setGrupoEditando] = useState<Grupo | null>(null);
     const [membroModalOpen, setMembroModalOpen] = useState(false);
     const [grupoModalOpen, setGrupoModalOpen] = useState(false);
     const [selMembros, setSelMembros] = useState<Set<string>>(new Set());
@@ -58,9 +77,21 @@ export function Membros() {
     const termo = busca.trim().toLowerCase();
 
     const membrosFiltrados = useMemo(
-        () => (termo ? membros.filter((m) => m.email.toLowerCase().includes(termo)) : membros),
-        [membros, termo],
+        () =>
+            membros.filter(
+                (m) =>
+                    (!termo || m.email.toLowerCase().includes(termo)) &&
+                    (filtroCargo === TODOS || m.cargoIds.includes(filtroCargo)) &&
+                    (filtroGrupo === TODOS || m.grupoIds.includes(filtroGrupo)),
+            ),
+        [membros, termo, filtroCargo, filtroGrupo],
     );
+    const filtrando = Boolean(termo) || filtroCargo !== TODOS || filtroGrupo !== TODOS;
+    const limparFiltros = () => {
+        setBusca("");
+        setFiltroCargo(TODOS);
+        setFiltroGrupo(TODOS);
+    };
     const gruposFiltrados = useMemo(() => {
         if (!termo) return grupos;
         return grupos.filter(
@@ -69,14 +100,30 @@ export function Membros() {
     }, [grupos, termo]);
     const cargosFiltrados = useMemo(() => (termo ? cargos.filter((c) => c.nome.toLowerCase().includes(termo)) : cargos), [cargos, termo]);
 
-    const changeTab = (key: TabKey) => {
-        setTab(key);
-        setBusca("");
+    const changeTab = (key: TabKey) => setParams(key === "membros" ? {} : { aba: key });
+    // Trocar de aba (pelas abas ou pelo voltar do navegador) limpa busca, filtros e seleções (MEM-03).
+    useEffect(() => {
+        limparFiltros();
         setSelMembros(new Set());
         setSelGrupos(new Set());
-    };
+    }, [tab]);
 
     const selCount = tab === "membros" ? selMembros.size : tab === "grupos" ? selGrupos.size : 0;
+
+    /** Ação em lote na aba Membros: dá um cargo ou põe num grupo, sem tirar o que já têm (MEM-79). */
+    const emLote = (chave: string) => {
+        const [tipo, id] = chave.split(":");
+        const n = selMembros.size;
+        const quem = n === 1 ? "1 membro" : `${n} membros`;
+        if (tipo === "cargo") {
+            adicionarAosMembros(selMembros, { cargoId: id });
+            toast.success(`Cargo "${cargoById(id)?.nome ?? id}" dado a ${quem}`);
+        } else {
+            adicionarAosMembros(selMembros, { grupoId: id });
+            toast.success(`${n === 1 ? "1 membro incluído" : `${n} membros incluídos`} no grupo "${grupos.find((g) => g.id === id)?.nome ?? id}"`);
+        }
+        setSelMembros(new Set());
+    };
     const podeRemover = tab === "membros" || tab === "grupos";
 
     const confirmarRemocao = () => {
@@ -95,67 +142,134 @@ export function Membros() {
     return (
         <BackstageLayout showEventContext={false} activeProducer="equipe">
             <div className="flex min-w-0 flex-1 flex-col gap-6">
-                <header className="flex min-h-11 flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                    <h1 className={TITULO_PAGINA}>Membros</h1>
-                    <div className="flex min-h-11 items-center">
+                <CabecalhoDaPagina
+                    titulo="Membros"
+                    acoes={
+                        <>
+                            {tab === "membros" && (
+                                <Button size="md" color="primary" iconLeading={Plus} onClick={() => setMembroModalOpen(true)}>
+                                    Adicionar membro
+                                </Button>
+                            )}
+                            {tab === "grupos" && (
+                                <Button size="md" color="primary" iconLeading={Plus} onClick={() => setGrupoModalOpen(true)}>
+                                    Novo grupo
+                                </Button>
+                            )}
+                            {tab === "cargos" && (
+                                <Button size="md" color="primary" iconLeading={Plus} onClick={() => navigate("/backstage/membros/criar-cargo")}>
+                                    Novo cargo
+                                </Button>
+                            )}
+                        </>
+                    }
+                />
+
+                {/* Abas só trocam de seção (BKS-111); a barra e o cartão são os comuns (BKS-110). */}
+                <Tabs selectedKey={tab} onSelectionChange={(key: Key) => changeTab(key as TabKey)} className="w-fit!">
+                    <Tabs.List type="button-border" size="sm">
+                        <Tabs.Item id="membros">{`Membros (${membros.length})`}</Tabs.Item>
+                        <Tabs.Item id="grupos">{`Grupos (${grupos.length})`}</Tabs.Item>
+                        <Tabs.Item id="cargos">{`Cargos (${cargos.length})`}</Tabs.Item>
+                    </Tabs.List>
+                </Tabs>
+
+                <div className="flex flex-col gap-4">
+                    <BarraDaLista
+                        busca={{ valor: busca, onChange: setBusca, placeholder: PLACEHOLDERS[tab], rotulo: "Buscar" }}
+                        filtro={
+                            tab === "membros" && (
+                                <>
+                                    <div className="w-full @min-[36rem]:w-48">
+                                        <Select
+                                            size="sm"
+                                            aria-label="Filtrar por cargo"
+                                            selectedKey={filtroCargo}
+                                            onSelectionChange={(k) => k && setFiltroCargo(String(k))}
+                                            items={[{ id: TODOS, label: "Todos os cargos" }, ...cargos.map((c) => ({ id: c.id, label: c.nome }))]}
+                                        >
+                                            {(item) => <Select.Item id={item.id}>{item.label}</Select.Item>}
+                                        </Select>
+                                    </div>
+                                    <div className="w-full @min-[36rem]:w-48">
+                                        <Select
+                                            size="sm"
+                                            aria-label="Filtrar por grupo"
+                                            selectedKey={filtroGrupo}
+                                            onSelectionChange={(k) => k && setFiltroGrupo(String(k))}
+                                            items={[{ id: TODOS, label: "Todos os grupos" }, ...grupos.map((g) => ({ id: g.id, label: g.nome }))]}
+                                        >
+                                            {(item) => <Select.Item id={item.id}>{item.label}</Select.Item>}
+                                        </Select>
+                                    </div>
+                                </>
+                            )
+                        }
+                    >
                         {tab === "membros" && (
-                            <Button size="md" color="primary" iconLeading={Plus} onClick={() => setMembroModalOpen(true)}>
-                                Adicionar membro
+                            <Dropdown.Root>
+                                <Button size="sm" color="secondary" iconTrailing={ChevronDown} isDisabled={selCount === 0}>
+                                    {`Editar em lote (${selCount})`}
+                                </Button>
+                                <Dropdown.Popover className="max-h-80 w-64" placement="bottom end">
+                                    <Dropdown.Menu aria-label="Editar os membros selecionados" onAction={(k) => emLote(String(k))}>
+                                        <Dropdown.Section>
+                                            <Dropdown.SectionHeader className="px-4 pt-2 pb-1 text-xs font-semibold text-tertiary">Dar o cargo</Dropdown.SectionHeader>
+                                            {cargos.map((c) => (
+                                                <Dropdown.Item key={c.id} id={`cargo:${c.id}`} label={c.nome} />
+                                            ))}
+                                        </Dropdown.Section>
+                                        <Dropdown.Separator />
+                                        <Dropdown.Section>
+                                            <Dropdown.SectionHeader className="px-4 pt-2 pb-1 text-xs font-semibold text-tertiary">Incluir no grupo</Dropdown.SectionHeader>
+                                            {grupos
+                                                .filter((g) => !g.sistema)
+                                                .map((g) => (
+                                                    <Dropdown.Item key={g.id} id={`grupo:${g.id}`} label={g.nome} />
+                                                ))}
+                                        </Dropdown.Section>
+                                    </Dropdown.Menu>
+                                </Dropdown.Popover>
+                            </Dropdown.Root>
+                        )}
+                        {podeRemover && (
+                            <Button size="sm" color="secondary-destructive" iconLeading={Trash01} isDisabled={selCount === 0} onClick={() => setConfirmRemover(true)}>
+                                {`Remover (${selCount})`}
                             </Button>
                         )}
-                        {tab === "grupos" && (
-                            <Button size="md" color="primary" iconLeading={Plus} onClick={() => setGrupoModalOpen(true)}>
-                                Novo grupo
-                            </Button>
-                        )}
-                        {tab === "cargos" && (
-                            <Button size="md" color="primary" iconLeading={Plus} onClick={() => navigate("/backstage/membros/criar-cargo")}>
-                                Novo cargo
-                            </Button>
-                        )}
-                    </div>
-                </header>
+                    </BarraDaLista>
 
-                <main className="flex flex-1 flex-col gap-5">
-                    <div className="overflow-hidden rounded-2xl bg-primary ring-1 ring-border-secondary">
-                        {/* Barra: tabs (esquerda) + [Remover · busca] (direita) */}
-                        <div className="flex flex-col gap-3 border-b border-secondary p-4 md:flex-row md:items-center md:justify-between md:px-6">
-                            <Tabs selectedKey={tab} onSelectionChange={(key: Key) => changeTab(key as TabKey)} className="w-fit!">
-                                <Tabs.List type="button-border" size="sm">
-                                    <Tabs.Item id="membros">{`Membros (${membros.length})`}</Tabs.Item>
-                                    <Tabs.Item id="grupos">{`Grupos (${grupos.length})`}</Tabs.Item>
-                                    <Tabs.Item id="cargos">{`Cargos (${cargos.length})`}</Tabs.Item>
-                                </Tabs.List>
-                            </Tabs>
-                            <div className="flex items-center gap-3">
-                                {podeRemover && (
-                                    <Button
-                                        size="sm"
-                                        color="secondary-destructive"
-                                        iconLeading={Trash01}
-                                        isDisabled={selCount === 0}
-                                        onClick={() => setConfirmRemover(true)}
-                                    >
-                                        {`Remover (${selCount})`}
-                                    </Button>
-                                )}
-                                <div className="w-full md:w-72">
-                                    <Input icon={SearchLg} size="sm" aria-label="Buscar" placeholder={PLACEHOLDERS[tab]} value={busca} onChange={setBusca} />
-                                </div>
-                            </div>
-                        </div>
-
-                        {tab === "membros" && <MembrosTable rows={membrosFiltrados} selected={selMembros} onChange={setSelMembros} onEdit={setMembroEditando} />}
-                        {tab === "grupos" && <GruposTable rows={gruposFiltrados} selected={selGrupos} onChange={setSelGrupos} />}
-                        {tab === "cargos" && (
-                            <CargosTable
-                                rows={cargosFiltrados}
-                                onEdit={(c) => navigate(`/backstage/membros/cargos/${c.id}/editar`)}
-                                onDelete={setCargoExcluindo}
-                            />
-                        )}
-                    </div>
-                </main>
+                    {carregando ? (
+                        <CarregandoTabela />
+                    ) : (
+                        <CartaoDaTabela>
+                            {tab === "membros" && (
+                                <MembrosTable
+                                    rows={membrosFiltrados}
+                                    filtros={[termo, filtroCargo, filtroGrupo]}
+                                    filtrando={filtrando}
+                                    grupos={grupos}
+                                    selected={selMembros}
+                                    onChange={setSelMembros}
+                                    onEdit={setMembroEditando}
+                                    onLimpar={limparFiltros}
+                                />
+                            )}
+                            {tab === "grupos" && (
+                                <GruposTable rows={gruposFiltrados} termo={termo} selected={selGrupos} onChange={setSelGrupos} onEdit={setGrupoEditando} onLimpar={() => setBusca("")} />
+                            )}
+                            {tab === "cargos" && (
+                                <CargosTable
+                                    rows={cargosFiltrados}
+                                    termo={termo}
+                                    onEdit={(c) => navigate(`/backstage/membros/cargos/${c.id}/editar`)}
+                                    onDelete={setCargoExcluindo}
+                                    onLimpar={() => setBusca("")}
+                                />
+                            )}
+                        </CartaoDaTabela>
+                    )}
+                </div>
             </div>
 
             <CriarMembroModal isOpen={membroModalOpen} onClose={() => setMembroModalOpen(false)} />
@@ -172,6 +286,7 @@ export function Membros() {
                 }}
             />
             <CriarGrupoModal isOpen={grupoModalOpen} onClose={() => setGrupoModalOpen(false)} />
+            <CriarGrupoModal isOpen={grupoEditando !== null} grupo={grupoEditando ?? undefined} onClose={() => setGrupoEditando(null)} />
 
             <ConfirmarRemocaoModal
                 isOpen={confirmRemover}
@@ -185,27 +300,8 @@ export function Membros() {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Helpers                                                            */
+/*  Tabelas (peças comuns de ../../components/tabela, BKS-110 a BKS-118) */
 /* ------------------------------------------------------------------ */
-
-function TableEmpty({ description }: { description: string }) {
-    return (
-        <div className="flex items-center justify-center overflow-hidden px-6 py-16">
-            <EmptyState size="sm">
-                <EmptyState.Header>
-                    <EmptyState.FeaturedIcon icon={SearchLg} color="gray" theme="modern" />
-                </EmptyState.Header>
-                <EmptyState.Content>
-                    <EmptyState.Title>Nenhum resultado</EmptyState.Title>
-                    <EmptyState.Description>{description}</EmptyState.Description>
-                </EmptyState.Content>
-            </EmptyState>
-        </div>
-    );
-}
-
-const CELL = "px-4 py-4 md:px-6";
-const HEADER_CELL = "px-4 py-3 text-sm font-semibold text-tertiary md:px-6";
 
 function toggleId(set: Set<string>, id: string): Set<string> {
     const next = new Set(set);
@@ -214,24 +310,57 @@ function toggleId(set: Set<string>, id: string): Set<string> {
     return next;
 }
 
-/* ------------------------------------------------------------------ */
-/*  Membros table                                                      */
-/* ------------------------------------------------------------------ */
+/** Valores da linha: empilhados com rótulo no cartão estreito; colunas no largo (BKS-115). */
+const VALORES = "flex min-w-0 flex-1 flex-col gap-2 @min-[44rem]:flex-row @min-[44rem]:items-center @min-[44rem]:gap-4";
 
-const MEMBROS_COLS = "grid-cols-[44px_minmax(0,2fr)_minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_64px]";
+/** Cabeçalho com "selecionar todos": fica visível também no cartão estreito, onde vira "Selecionar todos". */
+function CabecalhoSelecionavel({
+    allSel,
+    someSel,
+    onToggle,
+    isDisabled,
+    children,
+}: {
+    allSel: boolean;
+    someSel: boolean;
+    onToggle: () => void;
+    isDisabled?: boolean;
+    children: ReactNode;
+}) {
+    return (
+        <CabecalhoDaTabela ordenavel className="flex">
+            <Checkbox size="sm" isSelected={allSel} isIndeterminate={someSel} isDisabled={isDisabled} onChange={onToggle} aria-label="Selecionar todos" />
+            <span aria-hidden="true" className="min-w-0 flex-1 @min-[44rem]:hidden">
+                Selecionar todos
+            </span>
+            {children}
+        </CabecalhoDaTabela>
+    );
+}
+
+const plural = (n: number, um: string, varios: string) => `${n} ${n === 1 ? um : varios}`;
 
 function MembrosTable({
     rows,
+    filtros,
+    filtrando,
+    grupos,
     selected,
     onChange,
     onEdit,
+    onLimpar,
 }: {
     rows: Membro[];
+    filtros: string[];
+    filtrando: boolean;
+    grupos: Grupo[];
     selected: Set<string>;
     onChange: (s: Set<string>) => void;
     onEdit: (m: Membro) => void;
+    onLimpar: () => void;
 }) {
-    if (rows.length === 0) return <TableEmpty description="Não encontramos membros para essa busca." />;
+    const paginacao = usePaginacao(rows, filtros);
+    if (rows.length === 0) return <SemResultados texto={filtrando ? "Não encontramos membros com esses filtros." : "Nenhum membro."} onLimpar={filtrando ? onLimpar : undefined} />;
 
     const allSel = rows.every((r) => selected.has(r.id));
     const someSel = !allSel && rows.some((r) => selected.has(r.id));
@@ -239,59 +368,77 @@ function MembrosTable({
 
     return (
         <>
-            <div className={cx("hidden items-center border-b border-secondary bg-secondary_subtle md:grid", MEMBROS_COLS)}>
-                <span className="flex items-center justify-center py-3">
-                    <Checkbox isSelected={allSel} isIndeterminate={someSel} onChange={toggleAll} aria-label="Selecionar todos" />
+            <CabecalhoSelecionavel allSel={allSel} someSel={someSel} onToggle={toggleAll}>
+                <span aria-hidden="true" className="hidden min-w-0 flex-1 @min-[44rem]:block">
+                    E-mail
                 </span>
-                <span className={HEADER_CELL}>E-mail</span>
-                <span className={HEADER_CELL}>Cargos</span>
-                <span className={HEADER_CELL}>Grupos</span>
-                <span className={HEADER_CELL}>Eventos</span>
-                <span className="sr-only">Ações</span>
-            </div>
-            {rows.map((m, i) => {
-                const grupoCount = m.grupoIds.length;
-                return (
-                    <div
-                        key={m.id}
-                        className={cx("flex flex-col gap-3 py-3 md:grid md:items-center md:gap-0 md:py-0", MEMBROS_COLS, i !== rows.length - 1 && "border-b border-secondary")}
-                    >
-                        <span className="flex items-center gap-2 px-4 md:justify-center md:px-0">
-                            <Checkbox isSelected={selected.has(m.id)} onChange={() => onChange(toggleId(selected, m.id))} aria-label={`Selecionar ${m.email}`} />
-                        </span>
-                        <div className={cx(CELL, "flex items-center gap-2 py-0 md:py-4")}>
-                            <span className="truncate text-sm font-medium text-primary">{m.email}</span>
-                            <LinkExternal01 className="size-4 shrink-0 text-fg-quaternary" aria-hidden="true" />
+                <span aria-hidden="true" className="hidden w-56 @min-[44rem]:block">
+                    Cargos
+                </span>
+                <span aria-hidden="true" className="hidden w-24 text-right @min-[44rem]:block">
+                    Grupos
+                </span>
+                <span aria-hidden="true" className="hidden w-24 text-right @min-[44rem]:block">
+                    Eventos
+                </span>
+                <span aria-hidden="true" className="hidden w-8 @min-[44rem]:block" />
+            </CabecalhoSelecionavel>
+            <ul className="flex flex-col divide-y divide-secondary">
+                {paginacao.visiveis.map((m) => (
+                    <LinhaDaTabela key={m.id} selecionada={selected.has(m.id)}>
+                        <Checkbox
+                            size="sm"
+                            isSelected={selected.has(m.id)}
+                            onChange={() => onChange(toggleId(selected, m.id))}
+                            aria-label={`Selecionar ${m.email}`}
+                            className="mt-0.5 @min-[44rem]:mt-0"
+                        />
+                        <div className={VALORES}>
+                            <TituloDaLinha titulo={m.email} />
+                            <Celula rotulo="Cargos" className="@min-[44rem]:w-56">
+                                <span className="inline-flex flex-wrap gap-1.5">
+                                    {m.cargoIds.map((id) => (
+                                        <Badge key={id} size="sm" type="pill-color" color="gray">
+                                            {cargoById(id)?.nome ?? id}
+                                        </Badge>
+                                    ))}
+                                </span>
+                            </Celula>
+                            <Celula rotulo="Grupos" numero className="@min-[44rem]:w-24">
+                                {m.grupoIds.length}
+                            </Celula>
+                            <Celula rotulo="Eventos" numero className="@min-[44rem]:w-24">
+                                {eventosDoMembro(m, grupos)}
+                            </Celula>
                         </div>
-                        <div className={cx(CELL, "flex flex-wrap gap-1.5 py-0 md:py-4")}>
-                            {m.cargoIds.map((id) => (
-                                <Badge key={id} size="sm" type="pill-color" color="gray">
-                                    {cargoById(id)?.nome ?? id}
-                                </Badge>
-                            ))}
+                        <div className="flex shrink-0 justify-end @min-[44rem]:w-8">
+                            <ButtonUtility icon={Edit01} color="tertiary" size="sm" tooltip="Editar membro" aria-label={`Editar ${m.email}`} onClick={() => onEdit(m)} />
                         </div>
-                        <div className={cx(CELL, "py-0 text-sm text-tertiary md:py-4")}>
-                            {grupoCount} {grupoCount === 1 ? "grupo" : "grupos"}
-                        </div>
-                        <div className={cx(CELL, "py-0 text-sm text-tertiary md:py-4")}>{m.eventosCount} eventos</div>
-                        <div className="flex items-center px-4 md:justify-center md:px-0">
-                            <Button size="sm" color="tertiary" iconLeading={Edit01} aria-label={`Editar ${m.email}`} onClick={() => onEdit(m)} />
-                        </div>
-                    </div>
-                );
-            })}
+                    </LinhaDaTabela>
+                ))}
+            </ul>
+            <RodapeDePaginacao {...paginacao} />
         </>
     );
 }
 
-/* ------------------------------------------------------------------ */
-/*  Grupos table                                                       */
-/* ------------------------------------------------------------------ */
-
-const GRUPOS_COLS = "grid-cols-[44px_minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)]";
-
-function GruposTable({ rows, selected, onChange }: { rows: Grupo[]; selected: Set<string>; onChange: (s: Set<string>) => void }) {
-    if (rows.length === 0) return <TableEmpty description="Não encontramos grupos para essa busca." />;
+function GruposTable({
+    rows,
+    termo,
+    selected,
+    onChange,
+    onEdit,
+    onLimpar,
+}: {
+    rows: Grupo[];
+    termo: string;
+    selected: Set<string>;
+    onChange: (s: Set<string>) => void;
+    onEdit: (g: Grupo) => void;
+    onLimpar: () => void;
+}) {
+    const paginacao = usePaginacao(rows, [termo]);
+    if (rows.length === 0) return <SemResultados texto="Não encontramos grupos para essa busca." onLimpar={onLimpar} />;
 
     const selecionaveis = rows.filter((r) => !r.sistema);
     const allSel = selecionaveis.length > 0 && selecionaveis.every((r) => selected.has(r.id));
@@ -300,125 +447,149 @@ function GruposTable({ rows, selected, onChange }: { rows: Grupo[]; selected: Se
 
     return (
         <>
-            <div className={cx("hidden items-center border-b border-secondary bg-secondary_subtle md:grid", GRUPOS_COLS)}>
-                <span className="flex items-center justify-center py-3">
-                    <Checkbox isSelected={allSel} isIndeterminate={someSel} onChange={toggleAll} aria-label="Selecionar todos" />
+            <CabecalhoSelecionavel allSel={allSel} someSel={someSel} onToggle={toggleAll} isDisabled={selecionaveis.length === 0}>
+                <span aria-hidden="true" className="hidden min-w-0 flex-1 @min-[44rem]:block">
+                    Nome do grupo
                 </span>
-                <span className={HEADER_CELL}>Nome do grupo</span>
-                <span className={HEADER_CELL}>Membros</span>
-                <span className={HEADER_CELL}>Eventos</span>
-            </div>
-            {rows.map((g, i) => {
-                const membroCount = g.membroIds.length;
-                const eventoCount = g.eventoIds.length;
-                return (
-                    <div
-                        key={g.id}
-                        className={cx("flex flex-col gap-3 py-3 md:grid md:items-center md:gap-0 md:py-0", GRUPOS_COLS, i !== rows.length - 1 && "border-b border-secondary")}
-                    >
-                        <span className="flex items-center gap-2 px-4 md:justify-center md:px-0">
-                            <Checkbox
-                                isSelected={selected.has(g.id)}
-                                isDisabled={g.sistema}
-                                onChange={() => onChange(toggleId(selected, g.id))}
-                                aria-label={g.sistema ? `${g.nome} (grupo padrão, não removível)` : `Selecionar ${g.nome}`}
+                <span aria-hidden="true" className="hidden w-28 text-right @min-[44rem]:block">
+                    Membros
+                </span>
+                <span aria-hidden="true" className="hidden w-28 text-right @min-[44rem]:block">
+                    Eventos
+                </span>
+                <span aria-hidden="true" className="hidden w-8 @min-[44rem]:block" />
+            </CabecalhoSelecionavel>
+            <ul className="flex flex-col divide-y divide-secondary">
+                {paginacao.visiveis.map((g) => (
+                    // A linha abre o grupo para editar nome, eventos e membros (MEM-77): o nome cobre a linha para o mouse;
+                    // no teclado, o lápis (uma parada só por linha). Checkbox e lápis ficam por cima.
+                    <LinhaDaTabela key={g.id} interativa selecionada={selected.has(g.id)} className="relative">
+                        <Checkbox
+                            size="sm"
+                            isSelected={selected.has(g.id)}
+                            isDisabled={g.sistema}
+                            onChange={() => onChange(toggleId(selected, g.id))}
+                            aria-label={g.sistema ? `${g.nome} (grupo padrão, não removível)` : `Selecionar ${g.nome}`}
+                            className="relative z-10 mt-0.5 @min-[44rem]:mt-0"
+                        />
+                        <div className={VALORES}>
+                            <TituloDaLinha
+                                titulo={
+                                    <>
+                                        <button
+                                            type="button"
+                                            tabIndex={-1}
+                                            onClick={() => onEdit(g)}
+                                            className="cursor-pointer text-left outline-hidden after:absolute after:inset-0"
+                                        >
+                                            {g.nome}
+                                        </button>
+                                        {g.sistema && (
+                                            <Badge size="sm" type="pill-color" color="gray" className="ml-2 inline-flex align-middle">
+                                                Padrão
+                                            </Badge>
+                                        )}
+                                    </>
+                                }
                             />
-                        </span>
-                        <div className={cx(CELL, "flex items-center gap-2 py-0 md:py-4")}>
-                            <Users01 className="size-4 shrink-0 text-fg-quaternary" aria-hidden="true" />
-                            <span className="truncate text-sm font-semibold text-primary">{g.nome}</span>
-                            {g.sistema && (
-                                <Badge size="sm" type="pill-color" color="gray">
-                                    Padrão
-                                </Badge>
-                            )}
+                            <Celula rotulo="Membros" numero className="@min-[44rem]:w-28">
+                                {g.membroIds.length}
+                            </Celula>
+                            <Celula rotulo="Eventos" numero className="@min-[44rem]:w-28">
+                                {g.eventoIds.length}
+                            </Celula>
                         </div>
-                        <div className={cx(CELL, "py-0 text-sm text-tertiary md:py-4")}>
-                            {membroCount} {membroCount === 1 ? "usuário" : "usuários"}
+                        <div className="relative z-10 flex shrink-0 justify-end @min-[44rem]:w-8">
+                            <ButtonUtility icon={Edit01} color="tertiary" size="sm" tooltip="Editar grupo" aria-label={`Editar ${g.nome}`} onClick={() => onEdit(g)} />
                         </div>
-                        <div className={cx(CELL, "py-0 text-sm text-tertiary md:py-4")}>
-                            {eventoCount} {eventoCount === 1 ? "evento" : "eventos"}
-                        </div>
-                    </div>
-                );
-            })}
+                    </LinhaDaTabela>
+                ))}
+            </ul>
+            <RodapeDePaginacao {...paginacao} />
         </>
     );
 }
 
-/* ------------------------------------------------------------------ */
-/*  Cargos table                                                       */
-/* ------------------------------------------------------------------ */
-
-const CARGOS_COLS = "md:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_104px]";
-
-function CargosTable({ rows, onEdit, onDelete }: { rows: Cargo[]; onEdit: (c: Cargo) => void; onDelete: (c: Cargo) => void }) {
-    if (rows.length === 0) return <TableEmpty description="Não encontramos cargos para essa busca." />;
+function CargosTable({
+    rows,
+    termo,
+    onEdit,
+    onDelete,
+    onLimpar,
+}: {
+    rows: Cargo[];
+    termo: string;
+    onEdit: (c: Cargo) => void;
+    onDelete: (c: Cargo) => void;
+    onLimpar: () => void;
+}) {
+    const paginacao = usePaginacao(rows, [termo]);
+    if (rows.length === 0) return <SemResultados texto="Não encontramos cargos para essa busca." onLimpar={onLimpar} />;
 
     return (
         <>
-            <div className={cx("hidden border-b border-secondary bg-secondary_subtle md:grid", CARGOS_COLS)}>
-                <span className={HEADER_CELL}>Nome do cargo</span>
-                <span className={HEADER_CELL}>Informações</span>
-                <span className="sr-only">Ações</span>
-            </div>
-            {rows.map((c, i) => {
-                const hasPermissions = c.permissions && c.permissions.some((p) => p.level !== "none");
-                const permissionsSummary = hasPermissions
-                    ? c.permissions
-                        ?.filter((p) => p.level !== "none")
-                        .map((p) => `${p.nome}: ${p.level === "admin" ? "Admin" : p.level === "editor" ? "Editor" : "Visualizador"}`)
-                        .join(", ")
-                    : null;
-                const totalAcoes = c.acoes?.length ?? 0;
+            <CabecalhoDaTabela>
+                <span className="min-w-0 flex-1">Nome do cargo</span>
+                <span className="min-w-0 flex-[2]">Informações</span>
+                <span className="w-17" />
+            </CabecalhoDaTabela>
+            <ul className="flex flex-col divide-y divide-secondary">
+                {paginacao.visiveis.map((c) => {
+                    const permissionsSummary = c.permissions?.some((p) => p.level !== "none")
+                        ? c.permissions
+                              .filter((p) => p.level !== "none")
+                              .map((p) => `${p.nome}: ${p.level === "admin" ? "Admin" : p.level === "editor" ? "Editor" : "Visualizador"}`)
+                              .join(", ")
+                        : null;
+                    const totalAcoes = c.acoes?.length ?? 0;
 
-                return (
-                    <div
-                        key={c.id}
-                        className={cx("flex flex-col gap-2 md:grid md:gap-0", CARGOS_COLS, i !== rows.length - 1 && "border-b border-secondary")}
-                    >
-                        <div className={cx(CELL, "flex flex-wrap items-center gap-2")}>
-                            <span className="text-sm font-semibold text-primary">{c.nome}</span>
-                            {c.porFeature && (
-                                <Badge size="sm" type="pill-color" color="blue">
-                                    Por feature
-                                </Badge>
-                            )}
-                        </div>
-                        <div className={cx(CELL, "text-sm text-tertiary")}>
-                            {permissionsSummary ? (
-                                <div className="space-y-1">
-                                    <div className="font-medium text-secondary">Permissões:</div>
-                                    <div>{permissionsSummary}</div>
-                                </div>
-                            ) : (
-                                <div className="flex flex-col gap-1">
-                                    {c.descricao && <span>{c.descricao}</span>}
-                                    {c.acoes && (
-                                        <span className="text-quaternary">
-                                            {totalAcoes} {totalAcoes === 1 ? "permissão" : "permissões"}
+                    return (
+                        <LinhaDaTabela key={c.id}>
+                            <div className={VALORES}>
+                                <TituloDaLinha
+                                    titulo={c.nome}
+                                    // O selo vai na linha de baixo: ao lado do nome, o truncamento o escondia no estreito.
+                                    apoio={
+                                        c.porFeature && (
+                                            <Badge size="sm" type="pill-color" color="blue" className="mt-1 inline-flex">
+                                                Limites em cada funcionalidade
+                                            </Badge>
+                                        )
+                                    }
+                                />
+                                <Celula rotulo="Informações" className="min-w-0 text-tertiary @min-[44rem]:flex-[2]">
+                                    {permissionsSummary ? (
+                                        <span>
+                                            <span className="font-medium text-secondary">Permissões: </span>
+                                            {permissionsSummary}
+                                        </span>
+                                    ) : (
+                                        <span className="flex flex-col gap-1">
+                                            {c.descricao && <span>{c.descricao}</span>}
+                                            {c.acoes && <span className="text-quaternary">{plural(totalAcoes, "permissão", "permissões")}</span>}
                                         </span>
                                     )}
-                                </div>
-                            )}
-                        </div>
-                        <div className="flex items-center gap-1 px-4 pb-4 md:justify-end md:px-6 md:pb-0">
-                            {isCargoSistema(c.id) ? (
-                                <Tooltip title="Cargo padrão" description="Cargos padrão não podem ser editados nem excluídos.">
-                                    <TooltipTrigger aria-label={`${c.nome}: cargo padrão`} className="flex size-9 items-center justify-center rounded-lg text-fg-quaternary">
-                                        <Lock01 className="size-5" aria-hidden="true" />
-                                    </TooltipTrigger>
-                                </Tooltip>
-                            ) : (
-                                <>
-                                    <Button size="sm" color="tertiary" iconLeading={Edit01} aria-label={`Editar ${c.nome}`} onClick={() => onEdit(c)} />
-                                    <Button size="sm" color="tertiary-destructive" iconLeading={Trash01} aria-label={`Excluir ${c.nome}`} onClick={() => onDelete(c)} />
-                                </>
-                            )}
-                        </div>
-                    </div>
-                );
-            })}
+                                </Celula>
+                            </div>
+                            <div className="flex shrink-0 justify-end gap-1 @min-[44rem]:w-17">
+                                {isCargoSistema(c.id) ? (
+                                    <Tooltip title="Cargo padrão" description="Cargos padrão não podem ser editados nem excluídos.">
+                                        <TooltipTrigger aria-label={`${c.nome}: cargo padrão`} className="flex size-8 items-center justify-center rounded-md text-fg-quaternary">
+                                            <Lock01 className="size-5" aria-hidden="true" />
+                                        </TooltipTrigger>
+                                    </Tooltip>
+                                ) : (
+                                    <>
+                                        <ButtonUtility icon={Edit01} color="tertiary" size="sm" tooltip="Editar cargo" aria-label={`Editar ${c.nome}`} onClick={() => onEdit(c)} />
+                                        <ButtonUtility icon={Trash01} color="tertiary" size="sm" tooltip="Excluir cargo" aria-label={`Excluir ${c.nome}`} onClick={() => onDelete(c)} />
+                                    </>
+                                )}
+                            </div>
+                        </LinhaDaTabela>
+                    );
+                })}
+            </ul>
+            <RodapeDePaginacao {...paginacao} />
         </>
     );
 }

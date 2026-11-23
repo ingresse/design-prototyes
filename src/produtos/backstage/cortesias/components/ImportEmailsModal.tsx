@@ -156,7 +156,7 @@ export function ImportEmailsModal({
                                         ou arraste arquivos aqui
                                     </span>
                                 </p>
-                                <p className="mt-1 text-xs text-tertiary">
+                                <p className="mt-1 text-sm text-tertiary">
                                     Use um arquivo .CSV ou .XLSX com até 100 contatos. O arquivo deve incluir uma coluna chamada email.
                                 </p>
                             </div>
@@ -178,15 +178,12 @@ export function ImportEmailsModal({
                                             <span className="truncate text-sm font-medium text-primary">
                                                 {file.name}
                                             </span>
-                                            <span className="text-xs text-tertiary">
+                                            <span className="text-sm text-tertiary">
                                                 {(file.size / 1024).toFixed(1)} KB
                                                 {errorMessage && (
-                                                    <>
-                                                        {" · "}
-                                                        <span className="font-medium text-error-primary">
-                                                            Failed
-                                                        </span>
-                                                    </>
+                                                    <span className="block font-medium text-error-primary">
+                                                        Arquivo com erro
+                                                    </span>
                                                 )}
                                             </span>
                                         </div>

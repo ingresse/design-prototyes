@@ -3,12 +3,15 @@ import { toast } from "sonner";
 import { ChevronRight, Package, Ticket01 } from "@untitledui/icons";
 import { Button } from "@/components/base/buttons/button";
 import { Checkbox } from "@/components/base/checkbox/checkbox";
+import { RadioButton, RadioGroup } from "@/components/base/radio-buttons/radio-buttons";
 import { InputNumber } from "@/components/base/input/input-number";
 import { cx } from "@/utils/cx";
 import { FOCO, ListaLimitada, caminhoDoItem, formatarCPF } from "../pos-compra-ui";
 import {
     getConta,
+    getFormulario,
     getItem,
+    getPergunta,
     motivoIndisponivel,
     sessaoDoItem,
     sessaoLabel,
@@ -36,7 +39,7 @@ const MiniaturaEmLinha = ({ item }: { item?: CatalogoItem }) => {
     );
 };
 
-export const detalheDoItem = (item?: CatalogoItem) => [item?.lote, sessaoDoItem(item) ? sessaoLabel(item) : null].filter(Boolean).join(" | ");
+export const detalheDoItem = (item?: CatalogoItem) => [item?.lote, sessaoDoItem(item) ? sessaoLabel(item) : null].filter(Boolean).join(", ");
 
 /** Quem é a pessoa desta unidade, do jeito que o operador confere ao telefone. Toda linha diz
  *  o nome e o CPF mascarado: três "Corrida 5 km" iguais deixam de ser indistinguíveis. */
@@ -46,7 +49,19 @@ export const identidadeDaLinha = (pedido: Pedido, linha: PedidoItem) => {
     const origem = linha.titularId
         ? ["Recebeu por transferência", linha.transferidoEmLabel && `em ${linha.transferidoEmLabel}`, linha.transferidoPor && `por ${linha.transferidoPor}`].filter(Boolean).join(" ")
         : "Fez a compra";
-    return { nome: conta?.nome ?? "Participante", apoio: [origem, cpf].filter(Boolean).join(" · ") };
+    return { nome: conta?.nome ?? "Participante", apoio: [origem, cpf].filter(Boolean).join(", ") };
+};
+
+/** O que distingue uma unidade das irmãs: a primeira resposta da ficha, com o rótulo da pergunta.
+ *  Sem resposta nenhuma, só o número da unidade diz qual é. Serve ao detalhe do pedido e à escolha
+ *  da unidade cujo formulário se vai editar (PED-116, PED-117). */
+export const respostaQueIdentifica = (item: CatalogoItem | undefined, linha: PedidoItem) => {
+    for (const perguntaId of getFormulario(item?.formularioId)?.perguntaIds ?? []) {
+        const valor = linha.respostas[perguntaId]?.trim();
+        const pergunta = getPergunta(perguntaId);
+        if (valor && pergunta && pergunta.tipo !== "anexo") return `${pergunta.label}: ${valor}`;
+    }
+    return "Sem respostas ainda";
 };
 
 /**
@@ -120,6 +135,52 @@ export function SeletorUnidades({
        aí duas linhas seriam idênticas na tela. Com tudo na mão do comprador — o caso
        normal — o nome repetiria a mesma pessoa linha após linha. */
     const precisaDoNome = (itemId: string) => grupos.filter((g) => g.itemId === itemId).length > 1;
+
+    /* Uma unidade só (formulário): rádio, uma linha por unidade (PED-117). Era a lista de caixas de
+       seleção agrupada por item, em que marcar uma desmarcava a outra (escolha única com aparência
+       de múltipla) e o grupo pegava sempre a primeira unidade, sem deixar escolher qual. */
+    if (unica) {
+        const marcada = Object.keys(selecao).find((id) => selecao[id]) ?? null;
+        const ordinal = new Map<string, number>();
+        const contagem = new Map<string, number>();
+        for (const linha of disponiveis) {
+            const n = (contagem.get(linha.itemId) ?? 0) + 1;
+            contagem.set(linha.itemId, n);
+            ordinal.set(linha.id, n);
+        }
+        return (
+            <div className="flex flex-col gap-4">
+                {disponiveis.length === 0 && <p className="rounded-xl bg-secondary px-4 py-6 text-center text-sm text-tertiary">Nenhuma unidade deste pedido pode entrar nesta alteração agora.</p>}
+                {disponiveis.length > 0 && (
+                    <RadioGroup
+                        aria-label="Unidade"
+                        value={marcada}
+                        onChange={(id) => onChange({ [id]: true })}
+                        className="gap-2"
+                    >
+                        {disponiveis.map((linha) => {
+                            const item = getItem(linha.itemId);
+                            const repetido = (contagem.get(linha.itemId) ?? 0) > 1;
+                            return (
+                                <RadioButton
+                                    key={linha.id}
+                                    value={linha.id}
+                                    label={repetido ? `${item?.nome}, unidade ${ordinal.get(linha.id)}` : item?.nome}
+                                    hint={[identidadeDaLinha(pedido, linha).nome, respostaQueIdentifica(item, linha)].join(". ")}
+                                    className={({ isSelected }) =>
+                                        cx(
+                                            "w-full cursor-pointer rounded-xl px-4 py-3 ring-1 transition duration-100 ease-linear max-md:min-h-14",
+                                            isSelected ? "bg-secondary ring-brand" : "bg-primary ring-border-secondary hover:bg-primary_hover",
+                                        )
+                                    }
+                                />
+                            );
+                        })}
+                    </RadioGroup>
+                )}
+            </div>
+        );
+    }
 
     return (
         <div className="flex flex-col gap-4">
@@ -221,13 +282,13 @@ export function SeletorUnidades({
                         {indisponiveis.length === 1
                             ? `1 unidade não pode ser ${PARTICIPIO[verbo].singular}`
                             : `${indisponiveis.length} unidades não podem ser ${PARTICIPIO[verbo].plural}`}
-                        <span className="font-normal text-tertiary"> · ver motivo</span>
+                        <span className="font-normal text-tertiary">. Ver por quê</span>
                     </summary>
                     <ul className="flex flex-col divide-y divide-border-secondary border-t border-secondary">
                         {indisponiveis.map((linha) => (
                             <li key={linha.id} className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 px-4 py-3">
                                 <span className="text-sm text-secondary">
-                                    {getItem(linha.itemId)?.nome} · {identidadeDaLinha(pedido, linha).nome}
+                                    {getItem(linha.itemId)?.nome}, de {identidadeDaLinha(pedido, linha).nome}
                                 </span>
                                 <span className="text-sm text-tertiary">{motivo(linha)}</span>
                             </li>

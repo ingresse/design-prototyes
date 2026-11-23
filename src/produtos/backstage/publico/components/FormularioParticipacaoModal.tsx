@@ -1,26 +1,17 @@
 import { useEffect, useState } from "react";
-import { Dialog as AriaDialog, Modal as AriaModal, ModalOverlay as AriaModalOverlay, Radio as AriaRadio, RadioGroup as AriaRadioGroup } from "react-aria-components";
-import { UserPlus01, XClose } from "@untitledui/icons";
+import { Heading as AriaHeading } from "react-aria-components";
+import { XClose } from "@untitledui/icons";
+import { Dialog, Modal, ModalOverlay } from "@/components/application/modals/modal";
+import { Surgir } from "@/components/foundations/transicao";
 import { Button } from "@/components/base/buttons/button";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
 import { Input } from "@/components/base/input/input";
+import { Label } from "@/components/base/input/label";
+import { RadioButton, RadioGroup } from "@/components/base/radio-buttons/radio-buttons";
 import { Toggle } from "@/components/base/toggle/toggle";
-import { cx } from "@/utils/cx";
+import { useProtecaoDeDescarte } from "./protecao-de-descarte";
 
 export type LimiteSolicitacoes = "ilimitado" | "limitado";
-
-const LIMITE_OPCOES: Array<{ value: LimiteSolicitacoes; titulo: string; descricao: string }> = [
-    {
-        value: "ilimitado",
-        titulo: "Ilimitado",
-        descricao: "Você receberá solicitações enquanto o recebimento estiver ativo",
-    },
-    {
-        value: "limitado",
-        titulo: "Limitado",
-        descricao: "O recebimento será desativado quando atingir este limite",
-    },
-];
 
 /** Remove tudo que não for dígito. */
 const apenasDigitos = (valor: string) => valor.replace(/\D/g, "");
@@ -44,11 +35,15 @@ interface FormularioParticipacaoModalProps {
     ativoInicial: boolean;
     limiteInicial: LimiteSolicitacoes;
     quantidadeInicial?: number;
-    /** Total de solicitações já recebidas — usado para validar o novo limite. */
+    /** Total de pedidos já recebidos: o novo limite não pode ser menor. */
     solicitacoesRecebidas: number;
+    /** Nome do evento do formulário, abaixo do título. */
+    evento?: string;
+    /** Formulário novo: o título muda, o salvar vira "Criar formulário" e o secundário volta à escolha do evento (PUB-106). */
+    onVoltar?: () => void;
 }
 
-/** Modal "Formulário de participação": ativa/desativa o recebimento e define o limite de solicitações. */
+/** Modal "Novo formulário" / "Configurar formulário": liga e desliga o recebimento e define o limite de pedidos. */
 export function FormularioParticipacaoModal({
     isOpen,
     onClose,
@@ -57,171 +52,128 @@ export function FormularioParticipacaoModal({
     limiteInicial,
     quantidadeInicial,
     solicitacoesRecebidas,
+    evento,
+    onVoltar,
 }: FormularioParticipacaoModalProps) {
+    const novo = Boolean(onVoltar);
+    const quantidadeFormatada = quantidadeInicial ? formatarMilhar(String(quantidadeInicial)) : "";
     const [recebimentoAtivo, setRecebimentoAtivo] = useState(ativoInicial);
     const [limite, setLimite] = useState<LimiteSolicitacoes>(limiteInicial);
-    const [limiteQuantidade, setLimiteQuantidade] = useState(quantidadeInicial ? formatarMilhar(String(quantidadeInicial)) : "");
+    const [limiteQuantidade, setLimiteQuantidade] = useState(quantidadeFormatada);
     const [erroLimite, setErroLimite] = useState<string | null>(null);
 
     useEffect(() => {
         if (isOpen) {
             setRecebimentoAtivo(ativoInicial);
             setLimite(limiteInicial);
-            setLimiteQuantidade(quantidadeInicial ? formatarMilhar(String(quantidadeInicial)) : "");
+            setLimiteQuantidade(quantidadeFormatada);
             setErroLimite(null);
         }
-    }, [isOpen, ativoInicial, limiteInicial, quantidadeInicial]);
+    }, [isOpen, ativoInicial, limiteInicial, quantidadeFormatada]);
+
+    // Formulário novo tem o evento escolhido para perder; o existente, só o que mudou (PUB-108).
+    const alterado = novo || recebimentoAtivo !== ativoInicial || limite !== limiteInicial || (limite === "limitado" && limiteQuantidade !== quantidadeFormatada);
+    const protecao = useProtecaoDeDescarte({
+        aberto: isOpen,
+        alterado,
+        onFechar: onClose,
+        titulo: novo ? "Descartar o novo formulário?" : "Descartar as alterações?",
+        descricao: novo ? "O formulário não será criado." : "A configuração do formulário continua como estava.",
+    });
 
     const handleSalvar = () => {
         if (limite === "limitado") {
             const quantidade = Number(apenasDigitos(limiteQuantidade));
-
-            if (!apenasDigitos(limiteQuantidade)) {
-                setErroLimite("Campo obrigatório");
+            if (!apenasDigitos(limiteQuantidade) || quantidade === 0) {
+                setErroLimite("Informe quantos pedidos o formulário aceita.");
                 return;
             }
-
             if (quantidade < solicitacoesRecebidas) {
-                setErroLimite(`O limite deve ser maior ou igual a ${solicitacoesRecebidas.toLocaleString("pt-BR")}, que é o total de solicitações já recebidas.`);
+                const n = solicitacoesRecebidas.toLocaleString("pt-BR");
+                setErroLimite(`Use ${n} ou mais: o formulário já recebeu ${n} ${solicitacoesRecebidas === 1 ? "pedido" : "pedidos"}.`);
                 return;
             }
-
             onSalvar({ ativo: recebimentoAtivo, limite, quantidade });
         } else {
             onSalvar({ ativo: recebimentoAtivo, limite });
         }
-
         onClose();
     };
 
     return (
-        <AriaModalOverlay
-            isOpen={isOpen}
-            onOpenChange={(open) => {
-                if (!open) onClose();
-            }}
-            isDismissable
-            className={({ isEntering, isExiting }) =>
-                cx(
-                    "fixed inset-0 z-[80] flex items-center justify-center bg-overlay/70 p-4 outline-hidden backdrop-blur-[2px]",
-                    isEntering && "duration-200 ease-out animate-in fade-in",
-                    isExiting && "duration-150 ease-in animate-out fade-out",
-                )
-            }
-        >
-            <AriaModal
-                className={({ isEntering, isExiting }) =>
-                    cx(
-                        "w-full max-w-[560px] overflow-hidden rounded-2xl bg-primary shadow-xl ring-1 ring-secondary outline-hidden",
-                        isEntering && "duration-200 ease-out animate-in zoom-in-95 fade-in",
-                        isExiting && "duration-150 ease-in animate-out zoom-out-95 fade-out",
-                    )
-                }
-            >
-                <AriaDialog className="flex flex-col outline-hidden">
-                    <div className="flex items-start justify-between gap-4 px-6 pt-6">
-                        <div className="flex flex-col gap-1">
-                            <h2 className="text-lg font-semibold text-primary">Formulário de participação</h2>
-                            <p className="text-sm text-tertiary">Defina até quando gostaria de receber pedidos de participação</p>
-                        </div>
-                        <ButtonUtility size="sm" color="tertiary" icon={XClose} tooltip="Fechar" onClick={onClose} />
-                    </div>
-
-                    <div className="flex flex-col gap-5 px-6 pt-5">
-                        <div className="flex items-center gap-3 rounded-xl px-4 py-3 ring-1 ring-secondary">
-                            <div className="flex size-10 shrink-0 items-center justify-center rounded-md ring-1 ring-secondary">
-                                <UserPlus01 className="size-5 text-fg-secondary" aria-hidden="true" />
+        // Modal do DS; o título (slot "title") dá o nome do diálogo para leitor de tela (PUB-103).
+        <>
+            <ModalOverlay isOpen={isOpen} onOpenChange={(open) => !open && protecao.pedirParaFechar()} isDismissable={protecao.isDismissable}>
+                <Modal className="max-w-[560px]">
+                    <Dialog className="flex-col items-stretch justify-start overflow-hidden rounded-2xl bg-primary shadow-xl ring-1 ring-secondary">
+                        <div className="flex items-start justify-between gap-4 px-6 pt-6">
+                            <div className="flex min-w-0 flex-col gap-1">
+                                <AriaHeading slot="title" className="text-lg font-semibold text-primary">
+                                    {novo ? "Novo formulário" : "Configurar formulário"}
+                                </AriaHeading>
+                                {evento && <p className="text-sm text-tertiary">{evento}</p>}
                             </div>
-                            <div className="flex min-w-px flex-1 flex-col">
-                                <span className="text-md font-medium text-primary">{recebimentoAtivo ? "Recebimento ativo" : "Recebimento inativo"}</span>
-                                <span className="text-sm text-tertiary">
-                                    {recebimentoAtivo
-                                        ? "Você receberá solicitações enquanto o limite permitir."
-                                        : "Ative para receber solicitações de acordo com o limite"}
-                                </span>
+                            <ButtonUtility size="sm" color="tertiary" icon={XClose} tooltip="Fechar" onClick={protecao.pedirParaFechar} />
+                        </div>
+
+                        <div className="flex flex-col gap-6 px-6 pt-5">
+                            <div className="rounded-xl px-4 py-3 ring-1 ring-secondary">
+                                <Toggle
+                                    isSelected={recebimentoAtivo}
+                                    onChange={setRecebimentoAtivo}
+                                    label="Receber pedidos"
+                                    hint={recebimentoAtivo ? "O formulário aceita pedidos." : "O formulário não aceita pedidos. Os já recebidos continuam na lista."}
+                                />
                             </div>
-                            <Toggle isSelected={recebimentoAtivo} onChange={setRecebimentoAtivo} aria-label="Recebimento ativo" />
+
+                            <div className="flex flex-col gap-3">
+                                <RadioGroup
+                                    value={limite}
+                                    onChange={(value) => {
+                                        setLimite(value as LimiteSolicitacoes);
+                                        setErroLimite(null);
+                                    }}
+                                    className="gap-3"
+                                >
+                                    <Label>Limite de pedidos</Label>
+                                    <RadioButton value="ilimitado" label="Sem limite" hint="Aceita pedidos enquanto o recebimento estiver ligado." />
+                                    <RadioButton value="limitado" label="Com limite" hint="Para de aceitar pedidos ao chegar na quantidade." />
+                                </RadioGroup>
+                                {/* Campo fora da opção, com rótulo visível; entra com a altura animada (PUB-107). */}
+                                <Surgir visivel={limite === "limitado"} gap={12}>
+                                    <div className="pr-0.5 pb-1 pl-6">
+                                        <Input
+                                            label="Quantidade de pedidos"
+                                            isRequired
+                                            type="text"
+                                            inputMode="numeric"
+                                            size="md"
+                                            placeholder="Ex.: 500"
+                                            value={limiteQuantidade}
+                                            onChange={(value) => {
+                                                setLimiteQuantidade(formatarMilhar(value));
+                                                setErroLimite(null);
+                                            }}
+                                            isInvalid={!!erroLimite}
+                                            hint={erroLimite ?? (solicitacoesRecebidas > 0 ? `Já ${solicitacoesRecebidas === 1 ? "chegou 1 pedido" : `chegaram ${solicitacoesRecebidas.toLocaleString("pt-BR")} pedidos`}.` : undefined)}
+                                        />
+                                    </div>
+                                </Surgir>
+                            </div>
                         </div>
 
-                        <div className="flex flex-col gap-3">
-                            <span className="text-sm font-semibold text-primary">Limite de solicitações</span>
-                            <AriaRadioGroup
-                                value={limite}
-                                onChange={(value) => {
-                                    setLimite(value as LimiteSolicitacoes);
-                                    setErroLimite(null);
-                                }}
-                                className="flex flex-col gap-3"
-                                aria-label="Limite de solicitações"
-                            >
-                                {LIMITE_OPCOES.map((opcao) => (
-                                    <AriaRadio
-                                        key={opcao.value}
-                                        value={opcao.value}
-                                        className={({ isSelected, isFocusVisible }) =>
-                                            cx(
-                                                "flex cursor-pointer items-start gap-3 rounded-xl p-4 outline-focus-ring ring-inset",
-                                                isSelected ? "ring-2 ring-brand" : "ring-1 ring-secondary",
-                                                isFocusVisible && "outline-2 outline-offset-2",
-                                            )
-                                        }
-                                    >
-                                        {({ isSelected }) => (
-                                            <>
-                                                <div
-                                                    className={cx(
-                                                        "relative mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full ring-inset",
-                                                        isSelected ? "bg-brand-solid" : "ring-1 ring-primary",
-                                                    )}
-                                                >
-                                                    <div className={cx("absolute size-1.5 rounded-full bg-fg-white", isSelected ? "opacity-100" : "opacity-0")} />
-                                                </div>
-                                                <div className="flex min-w-px flex-1 flex-col gap-0.5">
-                                                    <span className="text-md font-medium text-primary">{opcao.titulo}</span>
-                                                    <span className="text-sm text-tertiary">{opcao.descricao}</span>
-                                                    {opcao.value === "limitado" && isSelected && (
-                                                        <div
-                                                            className="pt-3"
-                                                            onPointerDown={(e) => e.stopPropagation()}
-                                                            onMouseDown={(e) => e.stopPropagation()}
-                                                            onClick={(e) => e.stopPropagation()}
-                                                            onKeyDown={(e) => e.stopPropagation()}
-                                                        >
-                                                            <Input
-                                                                type="text"
-                                                                inputMode="numeric"
-                                                                size="md"
-                                                                placeholder="Defina aqui o limite"
-                                                                value={limiteQuantidade}
-                                                                onChange={(value) => {
-                                                                    setLimiteQuantidade(formatarMilhar(value));
-                                                                    setErroLimite(null);
-                                                                }}
-                                                                isInvalid={!!erroLimite}
-                                                                hint={erroLimite ?? undefined}
-                                                                aria-label="Limite de solicitações"
-                                                            />
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </>
-                                        )}
-                                    </AriaRadio>
-                                ))}
-                            </AriaRadioGroup>
+                        <div className="flex gap-3 px-6 pt-8 pb-6">
+                            <Button size="lg" color="secondary" className="flex-1" onClick={onVoltar ?? protecao.pedirParaFechar}>
+                                {novo ? "Voltar" : "Cancelar"}
+                            </Button>
+                            <Button size="lg" color="primary" className="flex-1" onClick={handleSalvar}>
+                                {novo ? "Criar formulário" : "Salvar"}
+                            </Button>
                         </div>
-                    </div>
-
-                    <div className="flex gap-3 px-6 pt-8 pb-6">
-                        <Button size="lg" color="secondary" className="flex-1" onClick={onClose}>
-                            Cancelar
-                        </Button>
-                        <Button size="lg" color="primary" className="flex-1" onClick={handleSalvar}>
-                            Salvar
-                        </Button>
-                    </div>
-                </AriaDialog>
-            </AriaModal>
-        </AriaModalOverlay>
+                    </Dialog>
+                </Modal>
+            </ModalOverlay>
+            {protecao.confirmacao}
+        </>
     );
 }

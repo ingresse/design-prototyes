@@ -2,7 +2,6 @@ import { useState } from "react";
 import { Check, Copy01, Download01, FaceId, Mail01, QrCode01, RefreshCcw01, Send01, SlashCircle01, Ticket02, XClose } from "@untitledui/icons";
 import { Dialog as AriaDialog, Modal as AriaModal, ModalOverlay as AriaModalOverlay } from "react-aria-components";
 import { toast } from "sonner";
-import { BadgeWithDot } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
 import { InputBase } from "@/components/base/input/input";
 import { InputGroup } from "@/components/base/input/input-group";
@@ -10,7 +9,8 @@ import { useClipboard } from "@/hooks/use-clipboard";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
 import { cx } from "@/utils/cx";
 import { EVENTO, formatBRL, isValidEmail } from "../data/catalogo";
-import { PEDIDO_STATUS_META, PEDIDO_TIPO_LABEL, type Pedido } from "../data/pedidos";
+import { PEDIDO_TIPO_LABEL, type Pedido } from "../data/pedidos";
+import { SeloDeStatus } from "../../components/estado-de-pedido";
 import { EnviarModal, type CanalEnvio } from "./EnviarModal";
 import { QrMock } from "./QrMock";
 
@@ -82,9 +82,7 @@ export function PedidoDetailsSlideOut({ pedido, onClose, onResend, onDownload, o
                                     <div className="flex items-center gap-2">
                                         <dt className="text-sm text-tertiary">Status:</dt>
                                         <dd>
-                                            <BadgeWithDot size="sm" type="pill-color" color={PEDIDO_STATUS_META[pedido.status].color}>
-                                                {PEDIDO_STATUS_META[pedido.status].label}
-                                            </BadgeWithDot>
+                                            <SeloDeStatus status={pedido.status} />
                                         </dd>
                                     </div>
                                     <Field label="Emissor responsável:">{pedido.emissor}</Field>

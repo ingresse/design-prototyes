@@ -31,7 +31,7 @@ export function Alca({
                 }
             }}
             className={cx(
-                "relative z-10 flex size-8 shrink-0 cursor-grab touch-none items-center justify-center rounded-md text-fg-quaternary outline-focus-ring transition-opacity duration-100 hover:bg-primary_hover hover:text-fg-quaternary_hover focus-visible:opacity-100 focus-visible:outline-2 active:cursor-grabbing motion-reduce:transition-none",
+                "relative z-10 flex size-8 shrink-0 cursor-grab! touch-none items-center justify-center rounded-md text-fg-quaternary outline-focus-ring transition-opacity duration-100 hover:bg-primary_hover hover:text-fg-quaternary_hover focus-visible:opacity-100 focus-visible:outline-2 active:cursor-grabbing! motion-reduce:transition-none",
                 // A do grupo fica sempre visível; a do ingresso, só no hover em telas com mouse (no toque, sempre).
                 grupo === "linha" && "md:opacity-0 md:group-hover/linha:opacity-100",
             )}

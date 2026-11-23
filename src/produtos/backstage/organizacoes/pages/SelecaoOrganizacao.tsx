@@ -4,6 +4,7 @@ import LogoBlack from "../../../../assets/Company logo_black.svg";
 import LogoWhite from "../../../../assets/Company logo_white.svg";
 import { useBanco } from "@/plataforma";
 import { ThemeToggle } from "../../components/ThemeToggle";
+import { TITULO_PAGINA } from "../../components/titulo-pagina";
 import { BuscaOrganizacaoEvento } from "../components/BuscaOrganizacaoEvento";
 import { escolheuNestaSessao, setOrganizacaoAtual, useOrganizacoes } from "../data/organizacao-atual";
 
@@ -35,7 +36,7 @@ export function SelecaoOrganizacao() {
             <main className="flex flex-1 flex-col items-center px-4 pt-6 pb-10 md:pt-[clamp(32px,10vh,120px)]">
                 <div className="flex w-full max-w-xl flex-col gap-6">
                     <div className="flex flex-col gap-1 text-center">
-                        <h1 className="text-display-xs font-semibold text-primary">Escolha onde trabalhar</h1>
+                        <h1 className={TITULO_PAGINA}>Escolha onde trabalhar</h1>
                         <p className="text-md text-tertiary">Busque uma organização ou vá direto para um evento.</p>
                     </div>
                     <BuscaOrganizacaoEvento variante="pagina" className="overflow-hidden rounded-xl bg-primary shadow-lg ring-1 ring-secondary" />

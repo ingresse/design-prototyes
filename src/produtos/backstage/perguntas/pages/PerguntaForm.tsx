@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronLeft, InfoCircle, Trash01 } from "@untitledui/icons";
+import { InfoCircle, Trash01 } from "@untitledui/icons";
 import { useNavigate, useParams } from "react-router";
 import { Button } from "@/components/base/buttons/button";
 import { Input } from "@/components/base/input/input";
@@ -7,9 +7,9 @@ import { Label } from "@/components/base/input/label";
 import { Select } from "@/components/base/select/select";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { BackstageLayout } from "../../components/Backstage";
+import { CabecalhoDaPagina } from "../../components/cabecalho-da-pagina";
 import { TIPO_RESPOSTA, type TipoResposta } from "../data/perguntas";
 import { usePerguntas } from "../data/perguntas-store";
-import { TITULO_PAGINA } from "@/produtos/backstage/components/titulo-pagina";
 
 const TIPO_ITEMS = (Object.keys(TIPO_RESPOSTA) as TipoResposta[]).map((id) => ({
     id,
@@ -50,29 +50,15 @@ export function PerguntaForm() {
     return (
         <BackstageLayout activeProducer="perguntas" showEventContext={false}>
         <div className="flex min-w-0 flex-1 flex-col gap-6">
-            <header className="flex items-center gap-3">
-                <button
-                    type="button"
-                    onClick={() => navigate("/backstage/perguntas")}
-                    aria-label="Voltar"
-                    className="flex size-9 shrink-0 items-center justify-center rounded-lg text-fg-secondary ring-1 ring-border-secondary transition duration-100 ease-linear hover:bg-secondary"
-                >
-                    <ChevronLeft className="size-5" />
-                </button>
-                <h1 className={TITULO_PAGINA}>
-                    {isEditing ? "Editar pergunta" : "Nova pergunta"}
-                </h1>
-
-                <Button
-                    size="md"
-                    color="primary"
-                    className="ml-auto"
-                    isDisabled={!canSave}
-                    onClick={handleSave}
-                >
-                    Salvar
-                </Button>
-            </header>
+            <CabecalhoDaPagina
+                voltar={{ rotulo: "Perguntas", onClick: () => navigate("/backstage/perguntas") }}
+                titulo={isEditing ? "Editar pergunta" : "Nova pergunta"}
+                acoes={
+                    <Button size="md" color="primary" isDisabled={!canSave} onClick={handleSave}>
+                        Salvar
+                    </Button>
+                }
+            />
 
             <main className="flex flex-1 flex-col items-center gap-6">
                 {emUso && (

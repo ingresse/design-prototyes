@@ -45,12 +45,12 @@ export const EXPORT_FIELD_GROUPS: ExportFieldGroup[] = [
             { id: "pedido_valorUnitario", label: "Valor original" },
             { id: "pedido_valorDesconto", label: "Valor do desconto" },
             { id: "pedido_valorTotal", label: "Valor final" },
-            { id: "pedido_idInscricao", label: "ID da inscrição" },
+            { id: "pedido_idInscricao", label: "ID do ingresso" },
         ],
     },
     {
         id: "inscricao",
-        title: "Dados da inscrição",
+        title: "Dados do ingresso",
         fields: [
             { id: "inscricao_item", label: "Item vendido" },
             { id: "inscricao_categoria", label: "Categoria" },
@@ -60,14 +60,14 @@ export const EXPORT_FIELD_GROUPS: ExportFieldGroup[] = [
     },
     {
         id: "atleta",
-        title: "Dados do atleta",
+        title: "Dados do portador",
         fields: [
-            { id: "atleta_nome", label: "Atleta" },
-            { id: "atleta_tipoDocumento", label: "Doc. do atleta" },
-            { id: "atleta_documento", label: "Nº de doc. do atleta" },
-            { id: "atleta_email", label: "E-mail do atleta" },
-            { id: "atleta_telefone", label: "Telefone do atleta" },
-            { id: "atleta_dataNascimento", label: "Data de nasc. do atleta" },
+            { id: "atleta_nome", label: "Portador" },
+            { id: "atleta_tipoDocumento", label: "Documento do portador" },
+            { id: "atleta_documento", label: "Nº do documento do portador" },
+            { id: "atleta_email", label: "E-mail do portador" },
+            { id: "atleta_telefone", label: "Telefone do portador" },
+            { id: "atleta_dataNascimento", label: "Data de nasc. do portador" },
         ],
     },
     {

@@ -1,0 +1,1461 @@
+<!doctype html>
+<html lang="pt-BR" data-pagina="ingressos" data-superficie="chao">
+<head>
+<meta charset="utf-8">
+<script src="./ponte-backstage.js" data-ponte-backstage></script>
+<script src="./transicao-evento.js" data-previa-te></script>
+<script data-previa-esportes-cedo>(function () {
+  var root = document.documentElement, qs = new URLSearchParams(location.search), v = null;
+  try {
+    if (qs.get('dados') === 'mock' || qs.get('dados') === 'bff') localStorage.setItem('previa-dados', qs.get('dados'));
+    v = localStorage.getItem('previa-dados') || 'bff'; // padrão no design-prototypes: dados do Backstage (ponte-backstage.js)
+  } catch (e) {}
+  root.setAttribute('data-dados', v === 'bff' ? 'bff' : 'mock');
+  if (v !== 'bff' || !window.fetch) return;
+  var f0 = window.fetch;
+  window.fetch = function (u, o) {
+    var url = typeof u === 'string' ? u : (u && u.url) || '', alvo = null, md;
+    if (/\/api\/eventos(\.json)?(\?|$)/.test(url)) alvo = url.replace(/\/api\/eventos(\.json)?/, '/api/bff/eventos');
+    else if ((md = /(?:^|\/)dados\/((?:busca-artistas|busca-locais|catalogo-indice|sorteio-pool|home-reais|categoria-[a-z0-9-]+)\.json)(\?|$)/.exec(url))) alvo = '/api/bff/dados/' + md[1]; // os índices e as categorias também saem do BFF
+    if (!alvo) return f0.apply(this, arguments);
+    var self = this, args = arguments;
+    return f0.call(this, alvo, o).then(function (r) {
+      if (r.ok) { root.setAttribute('data-dados-ok', ''); return r; }
+      return r.clone().json().catch(function () { return {}; }).then(function (d) { root.setAttribute('data-dados-falha', (d && d.error) || ('HTTP ' + r.status)); return f0.apply(self, args); });
+    }, function () { root.setAttribute('data-dados-falha', 'sem conexão com o servidor local'); return f0.apply(self, args); });
+  };
+})();
+(function () {
+  var root = document.documentElement, qs = new URLSearchParams(location.search), v = null;
+  try {
+    if (qs.get('esportes') === 'on' || qs.get('esportes') === 'off') localStorage.setItem('previa-esportes', qs.get('esportes'));
+    v = localStorage.getItem('previa-esportes');
+  } catch (e) {}
+  var ligado = v === 'on';
+  root.setAttribute('data-esportes', ligado ? 'on' : 'off');
+  var DESCOBERTA = ['home', 'busca', 'categoria', 'artista', 'venue', 'colecao'];
+  if (ligado || DESCOBERTA.indexOf(root.getAttribute('data-pagina')) < 0 || qs.get('escopo') === 'esportes') return;
+  root.setAttribute('data-esportes-ocultar', '');
+  var prova = function (e) { var c = (e && e.cats) || []; return c.indexOf('corridas') >= 0 || (c.indexOf('esportes') >= 0 && c.indexOf('futebol') < 0); };
+  var f0 = window.fetch;
+  if (!f0) return;
+  window.fetch = function (u) {
+    var url = typeof u === 'string' ? u : (u && u.url) || '', p = f0.apply(this, arguments);
+    if (!/\/api\/eventos(\.json)?(\?|$)/.test(url)) return p;
+    return p.then(function (r) {
+      if (!r.ok) return r;
+      return r.clone().json().then(function (d) {
+        if (!d || !d.events) return r;
+        d.events = d.events.filter(function (e) { return !prova(e); });
+        if (d.categories) d.categories = d.categories.filter(function (c) { return c.id !== 'corridas'; });
+        return new Response(JSON.stringify(d), { status: r.status, statusText: r.statusText, headers: { 'Content-Type': 'application/json' } });
+      }).catch(function () { return r; });
+    });
+  };
+})();</script>
+<script data-previa-nav-cedo>(function () {
+  try {
+    var h = document.documentElement;
+    var tema = localStorage.getItem('prototipo-theme');
+    if (tema !== 'dark' && tema !== 'light') tema = window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    if (/\/(Ingressos|Checkout|Pagamento)\.dc\.html$/.test(location.pathname) || (/\/Evento\.dc\.html$/.test(location.pathname) && sessionStorage.getItem('mov:de'))) {
+      // chegada do movimento-compra.js (ele tem o seu portão e a sua entrada): aqui só o fundo da última tela vista, que fecha o quadro
+      // branco do tema escuro entre a saída e a entrada. Sai em movimento-navegacao.js quando o portão dele abre.
+      h.setAttribute('data-mov-dona', '');
+      var bgc = localStorage.getItem('mov:bg:' + tema);
+      if (bgc) {
+        h.style.setProperty('background-color', bgc, 'important');
+        h.setAttribute('data-mov-bgcompra', '');
+        setTimeout(function () { h.removeAttribute('data-mov-bgcompra'); h.style.removeProperty('background-color'); }, 3000);
+      }
+      return;
+    }
+    var j = sessionStorage.getItem('mov:nav');
+    var o = j ? JSON.parse(j) : null;
+    // o registro vale para esta URL (ou para qualquer uma, quando a tela anterior saiu sem clique nosso: Voltar, URL digitada, recarregar)
+    if (!o || o.v !== 1 || Date.now() - o.t > 6000 || (o.para && o.para !== location.pathname)) {
+      o = { v: 1, padrao: 'direta', bg: localStorage.getItem('mov:bg:' + tema) || '' };
+    }
+    h.setAttribute('data-mov-nav', o.padrao || '');
+    h.setAttribute('data-mov-nav-gate', '');
+    var g = document.createElement('style');
+    g.id = 'mov-nav-portao';
+    // sem transições (data-mov-nav, que sai 2 quadros depois do portão abrir): os estilos chegam com a tela escondida e, sem isto, cores e bordas
+    // ainda estariam em transição de 160 ms quando ela aparece (e, em movimento reduzido, a própria visibilidade levaria um quadro para virar)
+    g.textContent = 'html[data-mov-nav-gate] #dc-root{visibility:hidden}html[data-mov-nav] #dc-root,html[data-mov-nav] #dc-root *,html[data-mov-nav] #dc-root *::before,html[data-mov-nav] #dc-root *::after{transition:none !important}';
+    (document.head || h).appendChild(g);
+    if (o.bg) h.style.setProperty('background-color', o.bg, 'important');
+    if (o.ponte && o.ponte.html) {
+      // a fonte da ponte tem nome próprio (ElzaPonte): a identidade da tela nova declara "Elza" com font-display swap e, se a ponte usasse
+      // esse nome, o texto trocaria para a fonte de sistema quando o CSS novo chegasse. Os dados (base64, guardados pela tela anterior)
+      // entram por FontFace binária, sem espera; sem eles, cai na URL (block = texto invisível até a fonte chegar).
+      var r4 = sessionStorage.getItem('mov:fonte400'), r6 = sessionStorage.getItem('mov:fonte600');
+      var bin = function (b64) { var t = atob(b64), u = new Uint8Array(t.length), i; for (i = 0; i < t.length; i++) u[i] = t.charCodeAt(i); return u.buffer; };
+      var doDados = false;
+      if (r4 && r6 && window.FontFace) {
+        // FontFace com dados binários fica pronta na hora (status "loaded" no mesmo instante): o texto da ponte já nasce na fonte certa
+        try {
+          document.fonts.add(new FontFace('ElzaPonte', bin(r4), { weight: '400 500' }));
+          document.fonts.add(new FontFace('ElzaPonte', bin(r6), { weight: '600 700' }));
+          doDados = true;
+        } catch (e) {}
+      }
+      if (!doDados) {
+        var f = document.createElement('style');
+        f.id = 'mov-ponte-fonte';
+        f.textContent = '@font-face{font-family:"ElzaPonte";src:url(./fontes/Elza-Regular.woff2) format("woff2");font-weight:400 500;font-display:block}' +
+          '@font-face{font-family:"ElzaPonte";src:url(./fontes/Elza-Semibold.woff2) format("woff2");font-weight:600 700;font-display:block}';
+        (document.head || h).appendChild(f);
+      }
+      // dentro de um shadow root: o CSS da tela nova (div, span, a, svg…) não alcança a ponte enquanto ela espera
+      var d = document.createElement('div');
+      d.id = 'mov-ponte';
+      d.setAttribute('aria-hidden', 'true');
+      d.style.cssText = 'all:initial;position:fixed;left:0;top:' + (o.ponte.top || 0) + 'px;width:' + o.ponte.w + 'px;height:' + o.ponte.h + 'px;z-index:2147483000;pointer-events:none;overflow:hidden;display:block';
+      var sr = d.attachShadow ? d.attachShadow({ mode: 'open' }) : d;
+      sr.innerHTML = o.ponte.html;
+      h.appendChild(d);
+    }
+    if (o.poster && o.poster.src) {
+      var im = document.createElement('img');
+      im.id = 'mov-ponte-poster';
+      im.alt = '';
+      im.setAttribute('aria-hidden', 'true');
+      im.src = o.poster.src;
+      im.style.cssText = 'all:initial;position:fixed;left:' + o.poster.x + 'px;top:' + o.poster.y + 'px;width:' + o.poster.w + 'px;height:' + o.poster.h + 'px;object-fit:cover;border-radius:' + (o.poster.r || '0') + ';z-index:' + (o.poster.z || 1) + ';pointer-events:none;display:block';
+      h.appendChild(im);
+    }
+    setTimeout(function () {
+      var pp = document.getElementById('mov-ponte-poster');
+      if (pp) pp.remove();
+      var p = document.getElementById('mov-ponte');
+      if (p) p.remove();
+      var s = document.getElementById('mov-ponte-fonte');
+      if (s) s.remove();
+      h.removeAttribute('data-mov-nav-gate');
+      h.removeAttribute('data-mov-nav');
+      h.style.removeProperty('background-color');
+    }, 3000);
+  } catch (e) {}
+})();</script>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#F5F4F2">
+<meta name="format-detection" content="telephone=no">
+<link rel="preload" href="./fontes/Elza-Semibold.woff2" as="font" type="font/woff2" crossorigin data-previa>
+<link rel="preload" href="./fontes/Elza-Regular.woff2" as="font" type="font/woff2" crossorigin data-previa>
+<title>Escolha seus ingressos — Sorriso Eu Gosto no Pagode | Ingresse</title>
+<script data-jf-titulo>try{if(/[?&]jogo=/.test(location.search)&&window.IngresseJornadaFutebol&&window.IngresseJornadaFutebol.ativo())document.title=window.IngresseJornadaFutebol.tituloInicial(document.documentElement.getAttribute("data-pagina"))}catch(e){}</script>
+<script data-je-loader>if(/[?&]esporte=/.test(location.search)){document.write('<script src="./jornada-esporte-dados.js"><\/script><script src="./jornada-esporte.js"><\/script>')}</script>
+<script src="./produtos-dados.js" data-prd></script>
+<script src="./produtos.js" data-prd></script>
+<script data-jf-loader>if(/[?&]jogo=/.test(location.search)){document.write('<script src="./jornada-futebol-dados.js"><\/script><script src="./jornada-futebol-textos.js"><\/script><script src="./jornada-futebol-regras.js"><\/script><script src="./modal-uui.js"><\/script><script src="./vendor/qr-code-styling.js"><\/script><script src="./qr-ingresse.js"><\/script><script src="./mapa-estadio.js"><\/script><script src="./rosto.js"><\/script><script src="./dependentes.js"><\/script><script src="./jornada-futebol.js"><\/script>')}</script>
+<script src="./vendor/react.js"></script>
+<script src="./vendor/react-dom.js"></script>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<script src="./destinos.js" defer data-previa></script>
+<style>
+/* Estilos específicos desta tela. Componentes: base.css */
+.stp{padding:8px 14px;border-radius:var(--r-pill);background:var(--surface);border:1px solid var(--line);color:var(--muted)}
+.stp-on{background:var(--inverse);border-color:var(--inverse);color:#fff}
+/* Datas */
+.days{display:flex;gap:8px;overflow-x:auto;padding:2px 2px 6px;scrollbar-width:thin}
+/* Cupom */
+.coupon{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;padding:14px 16px;border:1px dashed var(--line-strong);border-radius:14px;background:var(--bg-alt)}
+.coupon-ok{display:inline-flex;align-items:center;gap:8px;font-size:14px;font-weight:700;color:#0E7C3A;background:rgba(14,124,58,.1);border-radius:999px;padding:8px 14px}
+html[data-theme="dark"] .coupon-ok{color:#5BD08A;background:rgba(91,208,138,.12)}
+.coupon-err{flex:1 1 100%;font-size:13px;color:var(--accent-ink);margin:0}
+/* Alternância lista / mapa */
+.seg{display:inline-flex;padding:4px;border-radius:999px;background:var(--surface);border:1px solid var(--line-strong)}
+/* Mapa de assentos */
+.map-wrap{display:flex;flex-direction:column;gap:20px}
+.stage{align-self:center;width:min(420px,80%);text-align:center;padding:10px 0;border-radius:0 0 80px 80px;background:var(--ink);color:var(--bg);font-size:12px;font-weight:700;letter-spacing:.3em}
+.secs{display:flex;gap:10px;justify-content:center}
+.sec{flex:1 1 0;max-width:220px;display:flex;flex-direction:column;gap:2px;align-items:flex-start;text-align:left;padding:12px 14px;border:1px solid var(--line-strong);border-radius:12px;background:var(--surface);color:var(--ink);font:inherit;cursor:pointer;transition:all .2s}
+.sec:hover{border-color:var(--inverse-line)}
+.sec[aria-pressed="true"]{border-color:#E82113;box-shadow:0 0 0 1px #E82113 inset;background:var(--accent-soft)}
+.sec-n{font-size:15px;font-weight:700}
+.sec-m{font-size:12px;color:var(--muted)}
+.grid{overflow-x:auto;padding:4px 0 8px}
+.grid-in{display:flex;flex-direction:column;gap:6px;width:max-content;margin:0 auto}
+.row-l{width:18px;font-size:12px;font-weight:700;color:var(--muted);text-align:center}
+.seat{width:26px;height:26px;padding:0;border:0;border-radius:8px 8px 5px 5px;cursor:pointer;transition:transform .12s}
+.seat:hover:not(:disabled){transform:scale(1.15)}
+.seat[data-gap="true"]{margin-left:18px}
+.seat[data-st="t1"],.lg-t1{background:#E82113}
+.seat[data-st="t2"],.lg-t2{background:#FF7A6E}
+.seat[data-st="t3"],.lg-t3{background:#FFC2BB}
+.seat[data-st="sold"],.lg-sold{background:var(--line);cursor:not-allowed}
+.seat[data-st="sel"],.lg-sel{background:var(--ink);box-shadow:0 0 0 2px var(--surface),0 0 0 4px var(--ink)}
+.legend{display:flex;flex-wrap:wrap;gap:8px 18px;justify-content:center;font-size:13px;color:var(--ink-2)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:14px;height:14px;border-radius:4px;display:inline-block}
+.best{display:flex;flex-wrap:wrap;align-items:center;gap:12px 20px;padding:18px 20px;border-radius:14px;background:var(--inverse);color:#fff}
+.best .step{background:transparent;color:#fff;border-color:rgba(255,255,255,.35)}
+.best .step:hover{background:rgba(255,255,255,.12)}
+.best-msg{flex:1 1 100%;margin:0;font-size:14px;color:rgba(255,255,255,.85)}
+
+@media (max-width:760px){.secs{flex-wrap:wrap}.sec{flex:1 1 30%}}
+</style>
+<link rel="stylesheet" href="./theme.css">
+<link rel="stylesheet" href="./base.css">
+<script src="./theme.js"></script>
+<link rel="stylesheet" href="./ux.css">
+<link rel="stylesheet" href="./ds.css">
+<script src="./ux.js" defer></script>
+<link rel="stylesheet" href="./identidade-v1.css" data-previa>
+<script src="./previa.js" defer data-previa></script>
+<script src="./movimento-compra.js" defer data-previa></script>
+<script src="./movimento-navegacao.js" defer data-previa></script>
+<link rel="stylesheet" href="./jornada-esporte.css" data-previa>
+<link rel="stylesheet" href="./jornada-futebol.css" data-previa>
+<script src="./lacunas.js" defer data-previa></script>
+<link rel="stylesheet" href="./transicao-evento.css" data-previa data-previa-te>
+</helmet>
+
+<div class="has-cbar" style="min-height: 100vh; background: var(--pagina-bg); --prog: 25%">
+<!-- jf:cab -->
+<sc-if value="{{jfOff}}" hint-placeholder-val="{{true}}">
+<!-- je:cab -->
+<sc-if value="{{espOff}}" hint-placeholder-val="{{true}}">
+<header class="hdr">
+  <div style="max-width: 1280px; margin: 0 auto; padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; gap: 16px">
+    <a href="Evento.dc.html" style="display: flex; align-items: center; gap: 12px; min-width: 0" aria-label="Voltar para a página do evento">
+      <span aria-hidden="true" style="flex: 0 0 auto; width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--line-strong); display: flex; align-items: center; justify-content: center"><svg class="ico ico-16" viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></span>
+      <span style="display: flex; flex-direction: column; min-width: 0"><span style="font-size: 15px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Sorriso Eu Gosto no Pagode — São Paulo</span><span style="font-size: 13px; color: var(--muted)">{{dayLabel}} · 13h · Arena Anhembi</span></span>
+    </a>
+    <ol class="steps" style="display: flex; gap: 6px; list-style: none; margin: 0; padding: 0; font-size: 13px; font-weight: 600; flex: 0 0 auto" aria-label="Etapas da compra">
+      <li class="stp stp-on" aria-current="step">1<span class="st-l"> · Ingressos</span></li>
+      <li class="stp">2<span class="st-l"> · Quem vai</span></li>
+      <li class="stp">3<span class="st-l"> · Como pagar</span></li>
+      <li class="stp">4<span class="st-l"> · Pronto</span></li>
+    </ol>
+  </div>
+</header>
+</sc-if>
+<!-- je:cab-esp -->
+<sc-if value="{{espOn}}" hint-placeholder-val="{{false}}">
+<header class="hdr je-hdr" data-passo="{{jePasso}}">
+  <div class="je-hdr-in">
+    <div class="je-hdr-esq">
+      <a href="{{jeBack}}" class="je-voltar" aria-label="{{jeBackAria}}"><svg class="ico ico-16" viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></a>
+      <a href="{{jeLogoHref}}" class="je-logo" aria-label="Ingresse Sports, início"><span class="je-lockup" aria-hidden="true"></span></a>
+      <span class="je-evt"><strong>{{jeTitulo}}</strong><span>{{jeQuando}}</span></span>
+    </div>
+    <div class="je-fluxo" role="group" aria-label="Etapas da inscrição">
+      <ol class="je-steps">
+        <sc-for list="{{jePassos}}" as="p" hint-placeholder-count="4">
+          <li class="stp {{p.cls}}" aria-current="{{p.cur}}"><sc-if value="{{p.feito}}" hint-placeholder-val="{{false}}"><svg class="ico ico-14" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg><span class="st-l"> {{p.rot}}</span></sc-if><sc-if value="{{p.aFazer}}" hint-placeholder-val="{{true}}">{{p.n}}<span class="st-l"> · {{p.rot}}</span></sc-if></li>
+        </sc-for>
+      </ol>
+      <p class="je-mob">{{jeMob}}</p>
+      <div class="je-percurso" style="{{jeEstilo}}" data-de="{{jeDe}}" data-ate="{{jeAte}}" aria-hidden="true">
+        <span class="je-trilho"></span>
+        <span class="je-avanco"></span>
+        <sc-for list="{{jeNos}}" as="n" hint-placeholder-count="3"><span class="je-no" data-e="{{n.e}}" style="left: {{n.left}}"></span></sc-for>
+        <span class="je-bandeira" data-on="{{jeChegou}}"><svg class="ico ico-14" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 21V4m0 0h12l-2.5 4.5L17 13H5"/></svg></span>
+      </div>
+    </div>
+  </div>
+</header>
+</sc-if>
+<!-- je:cab-esp-fim -->
+<!-- je:cab-fim -->
+</sc-if>
+<!-- jf:cab-jf -->
+<sc-if value="{{jfOn}}" hint-placeholder-val="{{false}}">
+<header class="hdr jf-hdr" data-passo="{{jfPasso}}">
+  <div class="jf-hdr-in">
+    <div class="jf-hdr-esq">
+      <a href="{{jfBack}}" class="jf-voltar" aria-label="{{jfBackAria}}"><svg class="ico ico-16" viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></a>
+      <span class="jf-escudos" aria-hidden="true">
+        <span class="jf-esc"><img class="jf-esc__i jf-esc__i--claro" src="{{jfMandSrc}}" alt="" width="40" height="40"><img class="jf-esc__i jf-esc__i--escuro" src="{{jfMandSrcEsc}}" alt="" width="40" height="40"></span>
+        <span class="jf-esc"><img class="jf-esc__i jf-esc__i--claro" src="{{jfVisSrc}}" alt="" width="40" height="40"><img class="jf-esc__i jf-esc__i--escuro" src="{{jfVisSrcEsc}}" alt="" width="40" height="40"></span>
+      </span>
+      <span class="jf-evt"><strong>{{jfTitulo}}</strong><span>{{jfQuando}}</span></span>
+    </div>
+    <div class="jf-fluxo" role="group" aria-label="{{jfEtapasAria}}">
+      <ol class="jf-steps">
+        <sc-for list="{{jfPassos}}" as="p" hint-placeholder-count="4">
+          <li class="stp {{p.cls}}" aria-current="{{p.cur}}"><sc-if value="{{p.feito}}" hint-placeholder-val="{{false}}"><svg class="ico ico-14" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg><span class="st-l"> {{p.rot}}</span></sc-if><sc-if value="{{p.aFazer}}" hint-placeholder-val="{{true}}">{{p.n}}<span class="st-l"> · {{p.rot}}</span></sc-if></li>
+        </sc-for>
+      </ol>
+      <p class="jf-mob">{{jfMob}}</p>
+      <span class="jf-prog" aria-hidden="true"></span>
+    </div>
+  </div>
+</header>
+</sc-if>
+<!-- jf:cab-jf-fim -->
+<!-- jf:cab-fim -->
+
+<!-- jf:ing -->
+<sc-if value="{{jfOff}}" hint-placeholder-val="{{true}}">
+<!-- je:ini -->
+<sc-if value="{{espOff}}" hint-placeholder-val="{{true}}">
+<div style="max-width: 1280px; margin: 0 auto; padding: 40px 24px 96px; display: flex; flex-wrap: wrap; gap: 40px; align-items: flex-start">
+  <main style="flex: 999 1 620px; min-width: 0; display: flex; flex-direction: column; gap: 24px">
+    <div>
+      <div class="over" style="margin-bottom: 12px">Etapa 1 de 4</div>
+      <h1 class="h1">Escolha data, setor e quantidade</h1>
+      <p style="margin: 12px 0 0; font-size: 15px; color: var(--ink-2)">Os preços abaixo já incluem a taxa de serviço. O que você vê é o que você paga.</p>
+    </div>
+
+    <section aria-labelledby="t-data">
+      <div class="over" id="t-data" style="margin-bottom: 10px">1 · Data</div>
+      <div class="days" role="radiogroup" aria-labelledby="t-data">
+        <sc-for list="{{days}}" as="d" hint-placeholder-count="2">
+          <button type="button" class="day" role="radio" aria-checked="{{d.checked}}" disabled="{{d.off}}" onClick="{{d.pick}}">
+            <span class="day-w">{{d.w}}</span>
+            <span class="day-d">{{d.d}}</span>
+            <span class="day-note" data-hot="{{d.hot}}">{{d.note}}</span>
+          </button>
+        </sc-for>
+      </div>
+    </section>
+
+    <section id="cupom" aria-label="Cupom ou código de acesso" style="scroll-margin-top: 90px">
+      <sc-if value="{{couponClosed}}" hint-placeholder-val="{{true}}">
+        <p style="margin: 0; font-size: 14px; color: var(--ink-2)"><button type="button" class="linkbtn" onClick="{{openCoupon}}">Tem cupom ou código de acesso?</button></p>
+      </sc-if>
+      <sc-if value="{{couponOpenB}}" hint-placeholder-val="{{false}}">
+        <div class="coupon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9a2 2 0 0 0 0 6v3a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1v-3a2 2 0 0 0 0-6V6a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1z"></path><path d="M13 5v2M13 11v2M13 17v2"></path></svg>
+          <label for="cupom-in" style="font-size: 15px; font-weight: 600">Tem cupom ou código de acesso?</label>
+          <input id="cupom-in" class="coupon-in" type="text" placeholder="Ex.: INGRESSE10" autocomplete="off" autocapitalize="characters" enterkeyhint="go" aria-describedby="cupom-err" aria-invalid="{{couponInvalid}}" value="{{couponDraft}}" onInput="{{typeCoupon}}" onKeyDown="{{couponKey}}">
+          <button type="button" class="bs" onClick="{{applyCoupon}}">Aplicar</button>
+          <sc-if value="{{hasCouponErr}}" hint-placeholder-val="{{false}}"><p id="cupom-err" class="coupon-err" role="alert">{{couponErr}}</p></sc-if>
+        </div>
+      </sc-if>
+      <sc-if value="{{hasCoupon}}" hint-placeholder-val="{{false}}">
+        <div class="coupon">
+          <div class="uui-alert uui-alert--success uui-alert--inline" role="status">
+          <span class="uui-alert__icon"><svg class="uui-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="m7.5 12 3 3 6-6m5.5 3c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10Z"/></svg></span>
+          <div class="uui-alert__body"><p class="uui-alert__text">{{coupon}} aplicado · 10% de desconto nos ingressos</p></div>
+        </div>
+          <button type="button" class="linkbtn" onClick="{{removeCoupon}}">Remover cupom</button>
+        </div>
+      </sc-if>
+    </section>
+
+    <section aria-labelledby="t-modo" style="display: flex; flex-direction: column; gap: 16px">
+      <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px">
+        <div class="over" id="t-modo">2 · Ingressos</div>
+        <div class="seg" role="group" aria-label="Forma de escolher">
+          <button type="button" aria-pressed="{{isList}}" onClick="{{toList}}">Setores e combos</button>
+          <button type="button" aria-pressed="{{isMap}}" onClick="{{toMap}}">Mapa de assentos</button>
+        </div>
+      </div>
+
+      <sc-if value="{{isListB}}" hint-placeholder-val="{{true}}">
+        <div style="display: flex; flex-direction: column; gap: 16px">
+          <sc-for list="{{sectors}}" as="s" hint-placeholder-count="3">
+            <section class="card" style="overflow: hidden">
+              <div style="padding: 20px 24px; display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--line)">
+                <div>
+                  <h2 style="margin: 0 0 2px; font-size: 22px; font-weight: 700">{{s.name}}</h2>
+                  <div style="font-size: 14px; color: var(--muted)">{{s.desc}}</div>
+                </div>
+                <span class="tag tag-lg {{s.tagClass}}">{{s.tag}}</span>
+              </div>
+              <sc-for list="{{s.items}}" as="t" hint-placeholder-count="2">
+                <div class="qrow" style="padding: 16px 24px; display: flex; flex-wrap: wrap; gap: 12px 16px; align-items: center; border-bottom: 1px solid var(--line)">
+                  <div style="flex: 1 1 200px">
+                    <div style="font-size: 16px; font-weight: 600">{{t.label}}</div>
+                    <div style="font-size: 13px; color: var(--muted)">{{t.note}}</div>
+                  </div>
+                  <div style="text-align: right; min-width: 116px">
+                    <div style="font-size: 18px; font-weight: 700">{{t.priceFmt}}</div>
+                    <div class="fee-in">inclui {{t.feeFmt}} de taxa</div>
+                  </div>
+                  <div class="qtd" role="group" aria-label="{{t.grupoLabel}}">
+                    <button type="button" class="step" onClick="{{t.dec}}" disabled="{{t.noDec}}" aria-label="{{t.decLabel}}">−</button>
+                    <span class="qtd__n" aria-live="polite" aria-label="{{t.qtyLabel}}">{{t.qty}}</span>
+                    <button type="button" class="step" onClick="{{t.inc}}" disabled="{{t.noInc}}" aria-label="{{t.incLabel}}">+</button>
+                  </div>
+                </div>
+              </sc-for>
+            </section>
+          </sc-for>
+
+          <section class="card" style="overflow: hidden">
+            <div style="padding: 20px 24px; display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--line)">
+              <div>
+                <h2 style="margin: 0 0 2px; font-size: 22px; font-weight: 700">Combos e pacotes</h2>
+                <div style="font-size: 14px; color: var(--ink-2)">As duas datas ou a galera toda, pagando menos</div>
+              </div>
+              <span class="save">Economize até R$ 264</span>
+            </div>
+            <sc-for list="{{combos}}" as="t" hint-placeholder-count="3">
+              <div class="qrow" style="padding: 16px 24px; display: flex; flex-wrap: wrap; gap: 12px 16px; align-items: center; border-bottom: 1px solid var(--line)">
+                <div style="flex: 1 1 200px; display: flex; flex-direction: column; gap: 4px; align-items: flex-start">
+                  <div style="font-size: 16px; font-weight: 600">{{t.label}}</div>
+                  <div style="font-size: 13px; color: var(--muted)">{{t.note}}</div>
+                  <span class="save">{{t.saveFmt}}</span>
+                </div>
+                <div style="text-align: right; min-width: 116px">
+                  <div style="font-size: 18px; font-weight: 700">{{t.priceFmt}}</div>
+                  <div class="was">{{t.wasFmt}}</div>
+                  <div class="fee-in">inclui {{t.feeFmt}} de taxa</div>
+                </div>
+                <div class="qtd" role="group" aria-label="{{t.grupoLabel}}">
+                  <button type="button" class="step" onClick="{{t.dec}}" disabled="{{t.noDec}}" aria-label="{{t.decLabel}}">−</button>
+                  <span class="qtd__n" aria-live="polite" aria-label="{{t.qtyLabel}}">{{t.qty}}</span>
+                  <button type="button" class="step" onClick="{{t.inc}}" disabled="{{t.noInc}}" aria-label="{{t.incLabel}}">+</button>
+                </div>
+              </div>
+            </sc-for>
+          </section>
+
+          <button type="button" class="card" onClick="{{toMap}}" style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; padding: 20px 24px; text-align: left; font: inherit; color: var(--ink); cursor: pointer">
+            <span style="flex: 1 1 220px">
+              <span style="display: block; font-size: 18px; font-weight: 700">Cadeira numerada · Arquibancada</span>
+              <span style="font-size: 14px; color: var(--muted)">Escolha o lugar exato no mapa · a partir de R$ 242 com taxa</span>
+            </span>
+            <span class="bs" style="pointer-events: none">Abrir mapa <svg class="ico ico-16" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+          </button>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{isMapB}}" hint-placeholder-val="{{false}}">
+        <div class="card map-wrap" style="padding: 24px">
+          <div class="best" role="group" aria-label="Encontrar melhores lugares">
+            <div style="flex: 1 1 200px">
+              <div style="font-size: 17px; font-weight: 700">Melhores lugares disponíveis</div>
+              <div style="font-size: 13px; color: rgba(255,255,255,.7)">A gente escolhe lugares juntos, o mais perto do palco possível</div>
+            </div>
+            <div class="qtd" role="group" aria-label="Quantidade de lugares">
+              <button type="button" class="step" onClick="{{wantDec}}" disabled="{{wantMin}}" aria-label="Menos lugares">−</button>
+              <span class="qtd__n" aria-live="polite">{{want}} {{wantWord}}</span>
+              <button type="button" class="step" onClick="{{wantInc}}" disabled="{{wantMax}}" aria-label="Mais lugares">+</button>
+            </div>
+            <button type="button" class="bp bp-sm" style="min-height: 48px; font-size: 15px" onClick="{{findBest}}">Encontrar lugares</button>
+            <p class="best-msg" aria-live="polite">{{bestMsg}}</p>
+          </div>
+
+          <div class="stage" aria-hidden="true">PALCO</div>
+          <div class="secs" role="group" aria-label="Setor da arquibancada">
+            <sc-for list="{{secs}}" as="c" hint-placeholder-count="3">
+              <button type="button" class="sec" aria-pressed="{{c.on}}" onClick="{{c.pick}}">
+                <span class="sec-n">{{c.name}}</span>
+                <span class="sec-m">{{c.meta}}</span>
+              </button>
+            </sc-for>
+          </div>
+
+          <div class="grid" role="group" aria-label="{{gridLabel}}">
+            <div class="grid-in">
+              <sc-for list="{{rows}}" as="r" hint-placeholder-count="8">
+                <sc-if value="{{r.bandStart}}" hint-placeholder-val="{{false}}"><div class="band" data-tier="{{r.tier}}" aria-hidden="true">{{r.bandLabel}}</div></sc-if>
+                <div class="row">
+                  <span class="row-l" aria-hidden="true" data-tier="{{r.tier}}">{{r.label}}</span>
+                  <sc-for list="{{r.seats}}" as="x" hint-placeholder-count="12">
+                    <button type="button" class="seat" data-st="{{x.st}}" data-tier="{{x.tier}}" data-gap="{{x.gap}}" disabled="{{x.sold}}" aria-pressed="{{x.sel}}" aria-label="{{x.aria}}" title="{{x.aria}}" onClick="{{x.toggle}}"></button>
+                  </sc-for>
+                  <span class="row-l" aria-hidden="true">{{r.label}}</span>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+
+          <div class="legend">
+            <span><i class="lg-t1"></i>Premium · filas A–B · R$ 418</span>
+            <span><i class="lg-t2"></i>Superior · filas C–E · R$ 308</span>
+            <span><i class="lg-t3"></i>Standard · filas F–H · R$ 242</span>
+            <span><i class="lg-sel"></i>Seu lugar</span>
+            <span><i class="lg-sold"></i>Ocupado</span>
+          </div>
+          <p style="margin: 0; text-align: center; font-size: 12px; color: var(--muted)">Preços com taxa incluída. Para cadeira acessível ou assento adaptado, peça pela Central de Ajuda.</p>
+        </div>
+      </sc-if>
+    </section>
+  
+    <!-- prd:ini -->
+<sc-if value="{{prdBloco}}" hint-placeholder-val="{{false}}">
+<section id="produtos" class="prd-bloco" data-entra="{{prdEntra}}" aria-labelledby="prd-t">
+  <div class="over" id="prd-t">{{prdTitulo}}</div>
+  <p class="prd-apoio">{{prdApoio}}</p>
+  <sc-for list="{{prdAvisos}}" as="a" hint-placeholder-count="0">
+    <div class="uui-alert uui-alert--warning" role="alert" id="{{a.id}}" tabindex="-1">
+          <span class="uui-alert__icon"><svg class="uui-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 9v4m0 4h.01M10.615 3.892 2.39 18.098c-.456.788-.684 1.182-.65 1.506a1 1 0 0 0 .406.705c.263.191.718.191 1.629.191h16.45c.91 0 1.365 0 1.628-.191a1 1 0 0 0 .407-.705c.034-.324-.195-.718-.65-1.506L13.383 3.892c-.454-.785-.681-1.178-.978-1.31a1 1 0 0 0-.813 0c-.296.132-.523.525-.978 1.31Z"/></svg></span>
+          <div class="uui-alert__body"><p class="uui-alert__text">{{a.texto}}</p></div>
+        </div>
+  </sc-for>
+  <div class="card prd-lista">
+    <sc-for list="{{prdLinhas}}" as="p" hint-placeholder-count="3">
+      <div class="prd" data-estado="{{p.estado}}" data-mais="{{p.mais}}">
+        <div class="prd__info">
+          <strong>{{p.nome}}</strong>
+          <sc-if value="{{p.hasNota}}" hint-placeholder-val="{{true}}"><span class="prd__nota">{{p.nota}}</span></sc-if>
+          <sc-if value="{{p.temSelo}}" hint-placeholder-val="{{false}}"><span class="{{p.seloClasse}}" data-sit="{{p.seloSit}}">{{p.selo}}</span></sc-if>
+        </div>
+        <strong class="prd__preco">{{p.preco}}</strong>
+        <sc-if value="{{p.isQtd}}" hint-placeholder-val="{{true}}">
+          <div class="qtd" role="group" aria-label="{{p.grupoLabel}}">
+            <button type="button" class="step" onClick="{{p.dec}}" disabled="{{p.noDec}}" aria-label="{{p.decLabel}}">−</button>
+            <span class="qtd__n" aria-live="polite" aria-label="{{p.qtyLabel}}">{{p.qty}}</span>
+            <button type="button" class="step" onClick="{{p.inc}}" disabled="{{p.noInc}}" aria-label="{{p.incLabel}}">+</button>
+          </div>
+        </sc-if>
+        <sc-if value="{{p.isDoacao}}" hint-placeholder-val="{{false}}">
+          <div class="seg prd__seg" role="group" aria-label="{{p.grupoLabel}}">
+            <sc-for list="{{p.valores}}" as="o" hint-placeholder-count="4"><button type="button" aria-pressed="{{o.on}}" onClick="{{o.pick}}">{{o.label}}</button></sc-for>
+          </div>
+        </sc-if>
+        <sc-if value="{{p.isVar}}" hint-placeholder-val="{{false}}">
+          <button type="button" class="bs bs-sm prd__var-bt" aria-expanded="{{p.aberto}}" aria-controls="{{p.idVar}}" disabled="{{p.varOff}}" onClick="{{p.alternar}}">{{p.varRot}} <svg class="ico ico-16" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
+          <div class="acd prd__var" id="{{p.idVar}}" data-aberto="{{p.aberto}}" inert="{{p.fechado}}">
+            <div class="acd__in">
+              <sc-if value="{{p.temModelo}}" hint-placeholder-val="{{false}}">
+                <div class="prd__modelos">
+                  <div class="seg" role="group" aria-label="{{p.modeloLabel}}">
+                    <sc-for list="{{p.modelos}}" as="m" hint-placeholder-count="2"><button type="button" aria-pressed="{{m.on}}" onClick="{{m.pick}}">{{m.label}}</button></sc-for>
+                  </div>
+                </div>
+              </sc-if>
+              <sc-for list="{{p.opcoes}}" as="o" hint-placeholder-count="4">
+                <div class="prd__opt" data-estado="{{o.estado}}">
+                  <div class="prd__opt-info">
+                    <span>{{o.rot}}</span>
+                    <sc-if value="{{o.temSelo}}" hint-placeholder-val="{{false}}"><span class="tag" data-sit="esgotado">{{o.selo}}</span></sc-if>
+                  </div>
+                  <div class="qtd" role="group" aria-label="{{o.grupoLabel}}">
+                    <button type="button" class="step" onClick="{{o.dec}}" disabled="{{o.noDec}}" aria-label="{{o.decLabel}}">−</button>
+                    <span class="qtd__n" aria-live="polite" aria-label="{{o.qtyLabel}}">{{o.qty}}</span>
+                    <button type="button" class="step" onClick="{{o.inc}}" disabled="{{o.noInc}}" aria-label="{{o.incLabel}}">+</button>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </sc-if>
+      </div>
+    </sc-for>
+    <sc-if value="{{prdTemMais}}" hint-placeholder-val="{{false}}">
+      <div class="prd-mais"><button type="button" class="linkbtn" onClick="{{prdMaisPick}}">{{prdMaisTxt}}</button></div>
+    </sc-if>
+  </div>
+</section>
+</sc-if>
+<!-- prd:fim -->
+  </main>
+
+  <aside id="resumo" class="aside-sum" style="flex: 1 1 340px; min-width: 0; position: sticky; top: 96px; scroll-margin-top: 80px">
+    <div class="card" style="padding: 28px; box-shadow: 0 16px 40px rgba(10,10,11,.14)">
+      <div class="over" style="margin-bottom: 16px">Resumo do pedido</div>
+      <sc-if value="{{holdOn}}" hint-placeholder-val="{{false}}">
+        <div class="uui-alert uui-alert--neutral hold" role="status" data-state="{{holdState}}">
+          <span class="uui-alert__icon"><svg class="uui-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6v6l4 2m6-2c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10Z"/></svg></span>
+          <div class="uui-alert__body"><p class="uui-alert__text hold-t">{{holdMsgA}} <strong>{{holdLeft}}</strong> {{holdMsgB}}<sc-if value="{{holdExpired}}" hint-placeholder-val="{{false}}"> <button type="button" class="linkbtn" onClick="{{renewHold}}">Reservar de novo</button></sc-if></p></div>
+        </div>
+      </sc-if>
+      <sc-if value="{{hasItems}}" hint-placeholder-val="{{true}}">
+        <div style="display: flex; flex-direction: column; gap: 10px; padding-bottom: 18px; border-bottom: 1px solid var(--line)">
+          <sc-for list="{{lines}}" as="l" hint-placeholder-count="2">
+            <div style="display: flex; justify-content: space-between; gap: 12px; font-size: 15px"><span style="color: var(--ink-2)">{{l.qty}}× {{l.label}}</span><span style="font-weight: 600; white-space: nowrap">{{l.total}}</span></div>
+          </sc-for>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 8px; padding: 18px 0; border-bottom: 1px solid var(--line); font-size: 15px">
+          <div class="sum-row"><span>Ingressos</span><span>{{subtotal}}</span></div>
+          <!-- prd:resumo --><sc-if value="{{prdOn}}" hint-placeholder-val="{{false}}"><div class="sum-row"><span>Produtos</span><span>{{prdFmt}}</span></div></sc-if><!-- prd:resumo-fim -->
+          <sc-if value="{{hasCoupon}}" hint-placeholder-val="{{false}}">
+            <div style="display: flex; justify-content: space-between"><span style="color: var(--muted)">Cupom {{coupon}}</span><span class="save" style="font-size: 14px">− {{discount}}</span></div>
+          </sc-if>
+          <div class="sum-row"><span>Taxa de serviço (10%)</span><span>{{fees}}</span></div>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: baseline; padding: 18px 0 6px">
+          <span style="font-size: 16px; font-weight: 600">Total</span>
+          <span class="total">{{total}}</span>
+        </div>
+        <p style="margin: 0 0 18px; text-align: right; font-size: 13px; color: var(--muted)">{{peopleLine}} · ou em até 6× no cartão</p>
+      </sc-if>
+      <sc-if value="{{noItems}}" hint-placeholder-val="{{false}}">
+        <p style="margin: 0 0 22px; color: var(--muted); font-size: 15px; line-height: 1.55">Escolha pelo menos 1 ingresso. A gente segura seus lugares por 10 minutos assim que você escolher.</p>
+      </sc-if>
+      <sc-if value="{{atLimit}}" hint-placeholder-val="{{false}}">
+        <p class="apoio" style="margin: 0 0 14px; padding: 10px 12px; border-radius: 10px; font-size: 13px; color: var(--ink-2)">Você chegou ao limite de 6 ingressos por CPF para este evento.</p>
+      </sc-if>
+      <button type="button" class="bp bp-lg" style="width: 100%; box-sizing: border-box" onClick="{{goNext}}" aria-disabled="{{ctaDisabled}}">{{ctaLabel}}</button>
+      <sc-if value="{{noCoupon}}" hint-placeholder-val="{{true}}">
+        <p style="margin: 12px 0 0; text-align: center"><a href="#cupom" class="linkbtn" onClick="{{openCoupon}}">Tem cupom? Aplicar</a></p>
+      </sc-if>
+      <ul class="trust" aria-label="Garantias da compra">
+        <li>Ingresso oficial, emitido pela produtora</li>
+        <li>Pix, cartão em até 6×, Apple Pay e Google Pay</li>
+        <li>Ingresso nominal na sua Carteira, com transferência segura</li>
+      </ul>
+    </div>
+  </aside>
+</div>
+
+<div class="cbar" role="region" aria-label="Total e continuar">
+  <a href="#resumo" class="cbar-t" style="color: var(--ink)"><small>{{cbarNote}}</small><strong>{{cbarTotal}}</strong></a>
+  <button type="button" class="bp" onClick="{{goNext}}" aria-disabled="{{ctaDisabled}}">{{ctaShort}}</button>
+</div>
+
+</sc-if>
+<!-- je:ing-esp -->
+<sc-if value="{{espOn}}" hint-placeholder-val="{{false}}">
+<div class="je-pagina">
+  <main class="je-main">
+    <div>
+      <div class="over">Etapa 1 de 4 · {{jeEvento}}</div>
+      <h1 class="h1">Escolha sua prova</h1>
+      <p class="je-lead">Escolha a distância, o tipo de inscrição e os produtos. O total fica no resumo.</p>
+      <p class="je-lead">Os preços já incluem a taxa de serviço. O que você vê é o que você paga.</p>
+    </div>
+
+    <sc-if value="{{jeFechado}}" hint-placeholder-val="{{false}}">
+      <section class="card je-estado" aria-labelledby="je-t-estado">
+        <h2 id="je-t-estado" class="je-estado-t">{{jeFechadoTitulo}}</h2>
+        <p class="je-estado-p">{{jeFechadoTexto}}</p>
+        <div class="je-acoes">
+          <a href="{{jeEventoHref}}" class="bp">Voltar para a prova</a>
+          <a href="{{jeParecidasHref}}" class="bs">Ver provas parecidas</a>
+        </div>
+      </section>
+    </sc-if>
+
+    <sc-if value="{{jeAberto}}" hint-placeholder-val="{{true}}">
+      <sc-if value="{{jePre}}" hint-placeholder-val="{{false}}">
+        <div class="uui-alert uui-alert--neutral" role="status">
+          <span class="uui-alert__icon"><svg class="uui-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16v-4m0-4h.01M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10Z"/></svg></span>
+          <div class="uui-alert__body"><p class="uui-alert__title">Inscrições em pré-venda</p><p class="uui-alert__text">Exclusiva para quem tem código de acesso. Você informa o código ao escolher a prova.</p></div>
+        </div>
+      </sc-if>
+
+      <section aria-labelledby="je-t-provas" class="je-sec">
+        <div class="over" id="je-t-provas">1 · Prova</div>
+        <div class="je-provas">
+          <sc-for list="{{jeProvas}}" as="r" hint-placeholder-count="2">
+            <section class="je-prova" data-sel="{{r.sel}}" data-off="{{r.off}}" data-destaque="{{r.destaque}}" aria-labelledby="{{r.idNome}}">
+              <div class="je-prova-cab">
+                <div class="je-stat" aria-hidden="true"><span class="je-stat-n">{{r.big}}</span><span class="je-stat-u">{{r.unidade}}</span></div>
+                <div class="je-prova-info">
+                  <h2 id="{{r.idNome}}" class="je-prova-nome">{{r.nome}}</h2>
+                  <p class="je-prova-p">{{r.largada}}</p>
+                  <p class="je-prova-p">{{r.loteAnt}}</p>
+                  <p class="je-prova-p">{{r.lote}}</p>
+                  <sc-if value="{{r.hasSelo}}" hint-placeholder-val="{{false}}"><span class="tag" data-sit="{{r.seloSit}}">{{r.selo}}</span></sc-if>
+                </div>
+                <sc-if value="{{r.unico}}" hint-placeholder-val="{{true}}">
+                  <div class="je-prova-acao">
+                    <div class="je-preco"><strong>{{r.preco}}</strong><span>{{r.precoNota}}</span></div>
+                    <div class="qtd" role="group" aria-label="{{r.grupoLabel}}">
+                      <button type="button" class="step" onClick="{{r.dec}}" disabled="{{r.noDec}}" aria-label="{{r.decLabel}}">−</button>
+                      <span class="qtd__n" aria-live="polite" aria-label="{{r.qtyLabel}}">{{r.qty}}</span>
+                      <button type="button" class="step" onClick="{{r.inc}}" disabled="{{r.noInc}}" aria-label="{{r.incLabel}}">+</button>
+                    </div>
+                  </div>
+                </sc-if>
+                <sc-if value="{{r.multi}}" hint-placeholder-val="{{false}}">
+                  <div class="je-prova-acao"><div class="je-preco"><span>{{r.aPartir}}</span><strong>{{r.preco}}</strong></div></div>
+                </sc-if>
+              </div>
+              <sc-if value="{{r.multi}}" hint-placeholder-val="{{false}}">
+                <div class="je-tipos" role="group" aria-label="Tipo de inscrição">
+                  <sc-for list="{{r.tipos}}" as="t" hint-placeholder-count="2">
+                    <div class="je-tipo">
+                      <div class="je-tipo-info"><strong>{{t.rot}}</strong><span>{{t.nota}}</span></div>
+                      <strong class="je-tipo-preco">{{t.preco}}</strong>
+                      <div class="qtd" role="group" aria-label="{{t.grupoLabel}}">
+                        <button type="button" class="step" onClick="{{t.dec}}" disabled="{{t.noDec}}" aria-label="{{t.decLabel}}">−</button>
+                        <span class="qtd__n" aria-live="polite" aria-label="{{t.qtyLabel}}">{{t.qty}}</span>
+                        <button type="button" class="step" onClick="{{t.inc}}" disabled="{{t.noInc}}" aria-label="{{t.incLabel}}">+</button>
+                      </div>
+                    </div>
+                  </sc-for>
+                  <p class="je-tipos-nota">{{r.tiposNota}}</p>
+                </div>
+              </sc-if>
+            </section>
+          </sc-for>
+        </div>
+        <sc-if value="{{atLimit}}" hint-placeholder-val="{{false}}"><p class="je-aviso">{{limitMsg}}</p></sc-if>
+      </section>
+
+      <!-- prd:ini -->
+<sc-if value="{{prdBloco}}" hint-placeholder-val="{{false}}">
+<section id="produtos" class="prd-bloco" data-entra="{{prdEntra}}" aria-labelledby="prd-t">
+  <div class="over" id="prd-t">{{prdTitulo}}</div>
+  <p class="prd-apoio">{{prdApoio}}</p>
+  <sc-for list="{{prdAvisos}}" as="a" hint-placeholder-count="0">
+    <div class="uui-alert uui-alert--warning" role="alert" id="{{a.id}}" tabindex="-1">
+          <span class="uui-alert__icon"><svg class="uui-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 9v4m0 4h.01M10.615 3.892 2.39 18.098c-.456.788-.684 1.182-.65 1.506a1 1 0 0 0 .406.705c.263.191.718.191 1.629.191h16.45c.91 0 1.365 0 1.628-.191a1 1 0 0 0 .407-.705c.034-.324-.195-.718-.65-1.506L13.383 3.892c-.454-.785-.681-1.178-.978-1.31a1 1 0 0 0-.813 0c-.296.132-.523.525-.978 1.31Z"/></svg></span>
+          <div class="uui-alert__body"><p class="uui-alert__text">{{a.texto}}</p></div>
+        </div>
+  </sc-for>
+  <div class="card prd-lista">
+    <sc-for list="{{prdLinhas}}" as="p" hint-placeholder-count="3">
+      <div class="prd" data-estado="{{p.estado}}" data-mais="{{p.mais}}">
+        <div class="prd__info">
+          <strong>{{p.nome}}</strong>
+          <sc-if value="{{p.hasNota}}" hint-placeholder-val="{{true}}"><span class="prd__nota">{{p.nota}}</span></sc-if>
+          <sc-if value="{{p.temSelo}}" hint-placeholder-val="{{false}}"><span class="{{p.seloClasse}}" data-sit="{{p.seloSit}}">{{p.selo}}</span></sc-if>
+        </div>
+        <strong class="prd__preco">{{p.preco}}</strong>
+        <sc-if value="{{p.isQtd}}" hint-placeholder-val="{{true}}">
+          <div class="qtd" role="group" aria-label="{{p.grupoLabel}}">
+            <button type="button" class="step" onClick="{{p.dec}}" disabled="{{p.noDec}}" aria-label="{{p.decLabel}}">−</button>
+            <span class="qtd__n" aria-live="polite" aria-label="{{p.qtyLabel}}">{{p.qty}}</span>
+            <button type="button" class="step" onClick="{{p.inc}}" disabled="{{p.noInc}}" aria-label="{{p.incLabel}}">+</button>
+          </div>
+        </sc-if>
+        <sc-if value="{{p.isDoacao}}" hint-placeholder-val="{{false}}">
+          <div class="seg prd__seg" role="group" aria-label="{{p.grupoLabel}}">
+            <sc-for list="{{p.valores}}" as="o" hint-placeholder-count="4"><button type="button" aria-pressed="{{o.on}}" onClick="{{o.pick}}">{{o.label}}</button></sc-for>
+          </div>
+        </sc-if>
+        <sc-if value="{{p.isVar}}" hint-placeholder-val="{{false}}">
+          <button type="button" class="bs bs-sm prd__var-bt" aria-expanded="{{p.aberto}}" aria-controls="{{p.idVar}}" disabled="{{p.varOff}}" onClick="{{p.alternar}}">{{p.varRot}} <svg class="ico ico-16" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
+          <div class="acd prd__var" id="{{p.idVar}}" data-aberto="{{p.aberto}}" inert="{{p.fechado}}">
+            <div class="acd__in">
+              <sc-if value="{{p.temModelo}}" hint-placeholder-val="{{false}}">
+                <div class="prd__modelos">
+                  <div class="seg" role="group" aria-label="{{p.modeloLabel}}">
+                    <sc-for list="{{p.modelos}}" as="m" hint-placeholder-count="2"><button type="button" aria-pressed="{{m.on}}" onClick="{{m.pick}}">{{m.label}}</button></sc-for>
+                  </div>
+                </div>
+              </sc-if>
+              <sc-for list="{{p.opcoes}}" as="o" hint-placeholder-count="4">
+                <div class="prd__opt" data-estado="{{o.estado}}">
+                  <div class="prd__opt-info">
+                    <span>{{o.rot}}</span>
+                    <sc-if value="{{o.temSelo}}" hint-placeholder-val="{{false}}"><span class="tag" data-sit="esgotado">{{o.selo}}</span></sc-if>
+                  </div>
+                  <div class="qtd" role="group" aria-label="{{o.grupoLabel}}">
+                    <button type="button" class="step" onClick="{{o.dec}}" disabled="{{o.noDec}}" aria-label="{{o.decLabel}}">−</button>
+                    <span class="qtd__n" aria-live="polite" aria-label="{{o.qtyLabel}}">{{o.qty}}</span>
+                    <button type="button" class="step" onClick="{{o.inc}}" disabled="{{o.noInc}}" aria-label="{{o.incLabel}}">+</button>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </sc-if>
+      </div>
+    </sc-for>
+    <sc-if value="{{prdTemMais}}" hint-placeholder-val="{{false}}">
+      <div class="prd-mais"><button type="button" class="linkbtn" onClick="{{prdMaisPick}}">{{prdMaisTxt}}</button></div>
+    </sc-if>
+  </div>
+</section>
+</sc-if>
+<!-- prd:fim -->
+
+      <section id="cupom" aria-label="Cupom" class="je-sec je-cupom">
+        <sc-if value="{{couponClosed}}" hint-placeholder-val="{{true}}">
+          <p class="je-cupom-p"><button type="button" class="linkbtn" onClick="{{openCoupon}}">Tem um cupom?</button></p>
+        </sc-if>
+        <sc-if value="{{couponOpenB}}" hint-placeholder-val="{{false}}">
+          <div class="coupon">
+            <label for="cupom-in" class="je-cupom-l">Tem um cupom?</label>
+            <input id="cupom-in" class="coupon-in" type="text" placeholder="Cupom" autocomplete="off" autocapitalize="characters" enterkeyhint="go" aria-describedby="cupom-err" aria-invalid="{{couponInvalid}}" value="{{couponDraft}}" onInput="{{typeCoupon}}" onKeyDown="{{couponKey}}">
+            <button type="button" class="bs" onClick="{{applyCoupon}}">Aplicar</button>
+            <sc-if value="{{hasCouponErr}}" hint-placeholder-val="{{false}}"><p id="cupom-err" class="coupon-err" role="alert">{{couponErr}}</p></sc-if>
+          </div>
+        </sc-if>
+        <sc-if value="{{hasCoupon}}" hint-placeholder-val="{{false}}">
+          <div class="coupon">
+            <div class="uui-alert uui-alert--success uui-alert--inline" role="status">
+              <span class="uui-alert__icon"><svg class="uui-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="m7.5 12 3 3 6-6m5.5 3c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10Z"/></svg></span>
+              <div class="uui-alert__body"><p class="uui-alert__text">Cupom aplicado: {{coupon}}.</p></div>
+            </div>
+            <button type="button" class="linkbtn" onClick="{{removeCoupon}}">Remover cupom</button>
+          </div>
+        </sc-if>
+      </section>
+
+      <sc-if value="{{jeGrupo}}" hint-placeholder-val="{{false}}">
+        <div class="je-grupo">
+          <a href="{{jeGrupoHref}}" target="_blank" rel="noopener" class="bs je-grupo-bt" aria-label="{{jeGrupoAria}}" data-je-grupo="inscricao">Solicitar compra em grupo</a>
+          <span class="je-grupo-p">Para grupos, clubes e assessorias.</span>
+        </div>
+      </sc-if>
+    </sc-if>
+  </main>
+
+  <aside id="resumo" class="aside-sum je-aside">
+    <div class="card je-resumo" style="padding: 28px">
+      <div class="over" style="margin-bottom: 16px">Resumo do pedido</div>
+      <sc-if value="{{holdOn}}" hint-placeholder-val="{{false}}">
+        <div class="uui-alert uui-alert--neutral hold" role="status" data-state="{{holdState}}">
+          <span class="uui-alert__icon"><svg class="uui-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6v6l4 2m6-2c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10Z"/></svg></span>
+          <div class="uui-alert__body"><p class="uui-alert__text hold-t">{{holdMsgA}} <strong>{{holdLeft}}</strong> {{holdMsgB}}<sc-if value="{{holdExpired}}" hint-placeholder-val="{{false}}"> <button type="button" class="linkbtn" onClick="{{renewHold}}">Reservar de novo</button></sc-if></p></div>
+        </div>
+      </sc-if>
+      <sc-if value="{{hasItems}}" hint-placeholder-val="{{true}}">
+        <div style="display: flex; flex-direction: column; gap: 10px; padding-bottom: 18px; border-bottom: 1px solid var(--line)">
+          <sc-for list="{{lines}}" as="l" hint-placeholder-count="2">
+            <div style="display: flex; justify-content: space-between; gap: 12px; font-size: 15px"><span style="color: var(--ink-2)">{{l.qty}}× {{l.label}}</span><span style="font-weight: 600; white-space: nowrap">{{l.total}}</span></div>
+          </sc-for>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 8px; padding: 18px 0; border-bottom: 1px solid var(--line); font-size: 15px">
+          <div class="sum-row"><span>Inscrições</span><span>{{subtotal}}</span></div>
+          <!-- prd:resumo --><sc-if value="{{prdOn}}" hint-placeholder-val="{{false}}"><div class="sum-row"><span>Produtos</span><span>{{prdFmt}}</span></div></sc-if><!-- prd:resumo-fim -->
+          <sc-if value="{{hasCoupon}}" hint-placeholder-val="{{false}}">
+            <div style="display: flex; justify-content: space-between"><span style="color: var(--muted)">Cupom {{coupon}}</span><span class="save" style="font-size: 14px">− {{discount}}</span></div>
+          </sc-if>
+          <div class="sum-row"><span>Taxa de serviço</span><span>{{fees}}</span></div>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: baseline; padding: 18px 0 6px">
+          <span style="font-size: 16px; font-weight: 600">Total</span>
+          <span class="total">{{total}}</span>
+        </div>
+        <p style="margin: 0 0 18px; text-align: right; font-size: 13px; color: var(--muted)">{{peopleLine}}</p>
+      </sc-if>
+      <sc-if value="{{noItems}}" hint-placeholder-val="{{false}}">
+        <p style="margin: 0 0 22px; color: var(--muted); font-size: 15px; line-height: 1.55">Escolha pelo menos 1 inscrição para seguir. A gente segura sua vaga por 20 minutos.</p>
+      </sc-if>
+      <button type="button" class="bp bp-lg" style="width: 100%; box-sizing: border-box" onClick="{{goNext}}" aria-disabled="{{ctaDisabled}}">{{ctaLabel}}</button>
+      <sc-if value="{{noCoupon}}" hint-placeholder-val="{{true}}">
+        <p style="margin: 12px 0 0; text-align: center"><a href="#cupom" class="linkbtn" onClick="{{openCoupon}}">Tem um cupom?</a></p>
+      </sc-if>
+      <ul class="trust" aria-label="Garantias da compra">
+        <li>Preço final, com todas as taxas</li>
+        <li>Inscrição nominal, na sua Carteira</li>
+        <li>Transferência e cancelamento pela Carteira, nos prazos da prova</li>
+      </ul>
+    </div>
+  </aside>
+</div>
+
+<div class="cbar" role="region" aria-label="Total e continuar">
+  <a href="#resumo" class="cbar-t" style="color: var(--ink)"><small>{{cbarNote}}</small><strong>{{cbarTotal}}</strong></a>
+  <button type="button" class="bp" onClick="{{goNext}}" aria-disabled="{{ctaDisabled}}">{{ctaShort}}</button>
+</div>
+</sc-if>
+<!-- je:ing-esp-fim -->
+<!-- je:fim -->
+</sc-if>
+<!-- jf:ing-jf -->
+<sc-if value="{{jfOn}}" hint-placeholder-val="{{false}}">
+<div class="jf-pagina">
+  <main class="jf-main" id="jf-conteudo">
+    <div class="jf-topo">
+      <div class="over">{{jfOver}}</div>
+      <h1 class="h1" id="jf-h1" tabindex="-1">{{jfH1}}</h1>
+      <p class="jf-lead">{{jfLead}}</p>
+    </div>
+
+    <sc-if value="{{jfTemAvisos}}" hint-placeholder-val="{{false}}">
+      <div class="jf-avisos">
+        <sc-for list="{{jfAvisos}}" as="a" hint-placeholder-count="1">
+          <div class="uui-alert uui-alert--{{a.variante}}" role="{{a.role}}" id="{{a.id}}" tabindex="-1">
+            <span class="uui-alert__icon"><span class="jf-ic" data-ic="{{a.ic}}" aria-hidden="true"></span></span>
+            <div class="uui-alert__body">
+              <sc-if value="{{a.temTitulo}}" hint-placeholder-val="{{false}}"><p class="uui-alert__title">{{a.titulo}}</p></sc-if>
+              <p class="uui-alert__text">{{a.texto}}</p>
+              <sc-if value="{{a.temAcoes}}" hint-placeholder-val="{{false}}">
+                <div class="uui-alert__actions">
+                  <sc-for list="{{a.acoes}}" as="b" hint-placeholder-count="1">
+                    <sc-if value="{{b.isLink}}" hint-placeholder-val="{{false}}"><a href="{{b.href}}" class="{{b.cls}}">{{b.txt}}</a></sc-if>
+                    <sc-if value="{{b.isBtn}}" hint-placeholder-val="{{true}}"><button type="button" class="{{b.cls}}" onClick="{{b.pick}}">{{b.txt}}</button></sc-if>
+                  </sc-for>
+                </div>
+              </sc-if>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </sc-if>
+
+    <div class="jf-banner-rosto" data-jf-slot="banner-rosto"></div>
+
+    <sc-if value="{{jfSetorAberto}}" hint-placeholder-val="{{true}}">
+      <section aria-labelledby="jf-t-setor" class="jf-sec" id="lugares">
+        <div class="jf-sec-cab">
+          <div class="over" id="jf-t-setor">{{jfSecTitulo}}</div>
+          <div class="jf-sec-ferr">
+            <sc-if value="{{jfTemFiltro}}" hint-placeholder-val="{{false}}"><button type="button" class="chip" aria-pressed="{{jfFiltroOn}}" onClick="{{jfFiltroPick}}">{{jfFiltroTx}}</button></sc-if>
+            <sc-if value="{{jfTemMapa}}" hint-placeholder-val="{{false}}">
+              <div class="seg" role="group" aria-label="{{jfVistaAria}}">
+                <button type="button" aria-pressed="{{jfVistaMapaOn}}" onClick="{{jfVistaMapaPick}}">{{jfVistaMapaTx}}</button>
+                <button type="button" aria-pressed="{{jfVistaListaOn}}" onClick="{{jfVistaListaPick}}">{{jfVistaListaTx}}</button>
+              </div>
+            </sc-if>
+          </div>
+        </div>
+
+        <sc-if value="{{jfMapaVisivel}}" hint-placeholder-val="{{false}}">
+          <div class="jf-mapa-bloco">
+            <div class="jf-mapa-quadro">
+              <img class="jf-mapa-img" src="./assets/futebol/mapa/estadio-mapa.png" alt="{{jfMapaAlt}}" width="1698" height="1384" loading="lazy" decoding="async">
+            </div>
+          </div>
+        </sc-if>
+
+        <div class="jf-setores" role="list">
+          <sc-for list="{{jfSetores}}" as="s" hint-placeholder-count="4">
+            <div class="jf-setor" role="listitem" data-k="{{s.k}}" data-sel="{{s.sel}}" data-so-painel="{{s.soPainel}}" id="{{s.idItem}}">
+              <sc-if value="{{s.comCartao}}" hint-placeholder-val="{{true}}">
+                <button type="button" class="jf-setor__bt" id="{{s.idBt}}" aria-expanded="{{s.aberto}}" aria-controls="{{s.idPainel}}" aria-disabled="{{s.off}}" aria-describedby="{{s.idMotivo}}" onClick="{{s.alternar}}">
+                  <span class="jf-setor__t"><strong>{{s.nome}}</strong><span>{{s.info}}</span></span>
+                  <span class="tag jf-setor__selo" data-sit="{{s.seloSit}}" data-k="{{s.k}}"><sc-if value="{{s.temIco}}" hint-placeholder-val="{{false}}"><span class="jf-ic sit-ico" data-ic="{{s.ic}}" aria-hidden="true"></span></sc-if>{{s.selo}}</span>
+                  <svg class="ico ico-16 jf-setor__seta" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+                </button>
+                <p class="jf-setor__motivo" id="{{s.idMotivo}}">{{s.motivo}}</p>
+              </sc-if>
+              <div class="acd jf-painel" id="{{s.idPainel}}" data-aberto="{{s.aberto}}" inert="{{s.fechado}}">
+                <div class="acd__in">
+                  <div class="jf-painel__pad">
+                    <div class="jf-painel__cab">
+                      <h2 class="jf-painel__t" id="{{s.idTitulo}}" tabindex="-1">{{s.nome}}</h2>
+                      <span class="jf-painel__sub">{{s.sub}}</span>
+                    </div>
+                    <sc-if value="{{s.temFatos}}" hint-placeholder-val="{{false}}">
+                      <ul class="jf-fatos" aria-label="{{s.fatosAria}}">
+                        <sc-for list="{{s.fatos}}" as="f" hint-placeholder-count="1"><li>{{f.t}}</li></sc-for>
+                      </ul>
+                    </sc-if>
+
+                    <sc-if value="{{s.temTipos}}" hint-placeholder-val="{{false}}">
+                      <div class="jf-tipos" role="group" aria-label="{{s.tiposAria}}">
+                        <sc-for list="{{s.tipos}}" as="t" hint-placeholder-count="2">
+                          <div class="jf-tipo" data-off="{{t.off}}">
+                            <div class="jf-tipo__info"><strong>{{t.rot}}</strong><span>{{t.nota}}</span><span class="jf-tipo__motivo">{{t.motivo}}</span></div>
+                            <strong class="jf-tipo__preco">{{t.preco}}</strong>
+                            <div class="qtd" role="group" aria-label="{{t.grupoLabel}}">
+                              <button type="button" class="step" onClick="{{t.dec}}" disabled="{{t.noDec}}" aria-label="{{t.decLabel}}">−</button>
+                              <span class="qtd__n" aria-live="polite" aria-label="{{t.qtyLabel}}">{{t.qty}}</span>
+                              <button type="button" class="step" onClick="{{t.inc}}" disabled="{{t.noInc}}" aria-label="{{t.incLabel}}">+</button>
+                            </div>
+                          </div>
+                        </sc-for>
+                        <p class="jf-tipos__nota">{{s.tiposNota}}</p>
+                      </div>
+                    </sc-if>
+
+                    <sc-if value="{{s.temAssentos}}" hint-placeholder-val="{{false}}">
+                      <div class="jf-assentos-bloco">
+                        <sc-if value="{{s.temStub}}" hint-placeholder-val="{{false}}">
+                        <p class="jf-orienta">{{s.orientaAssentos}}</p>
+                        <div class="jf-encontrar">
+                          <div class="qtd" role="group" aria-label="{{s.quantosGrupo}}">
+                            <button type="button" class="step" onClick="{{s.quantosDec}}" disabled="{{s.quantosNoDec}}" aria-label="{{s.quantosDecLabel}}">−</button>
+                            <span class="qtd__n" aria-live="polite" aria-label="{{s.quantosLabel}}">{{s.quantos}}</span>
+                            <button type="button" class="step" onClick="{{s.quantosInc}}" disabled="{{s.quantosNoInc}}" aria-label="{{s.quantosIncLabel}}">+</button>
+                          </div>
+                          <button type="button" class="bs" onClick="{{s.encontrar}}">{{s.encontrarTx}}</button>
+                        </div>
+                        <sc-if value="{{s.temResultado}}" hint-placeholder-val="{{false}}"><p class="jf-resultado" role="status" id="{{s.idResultado}}">{{s.resultado}}</p></sc-if>
+                        </sc-if>
+                        <div class="jf-assentos-quadro" data-jf-slot="assentos" data-setor="{{s.id}}"></div>
+                        <sc-if value="{{s.temLugares}}" hint-placeholder-val="{{false}}">
+                          <div class="jf-lugares" role="group" aria-label="{{s.lugaresAria}}">
+                            <div class="over">{{s.lugaresTitulo}}</div>
+                            <sc-for list="{{s.lugares}}" as="l" hint-placeholder-count="2">
+                              <div class="jf-lugar">
+                                <span class="jf-lugar__t"><strong>{{l.texto}}</strong><span>{{l.papel}}</span></span>
+                                <div class="field jf-lugar__tipo">
+                                  <label for="{{l.idSelect}}">{{l.selectRotulo}}</label>
+                                  <select id="{{l.idSelect}}" value="{{l.tipo}}" onChange="{{l.muda}}">
+                                    <sc-for list="{{l.opcoes}}" as="o" hint-placeholder-count="2"><option value="{{o.v}}" disabled="{{o.off}}">{{o.label}}</option></sc-for>
+                                  </select>
+                                </div>
+                                <button type="button" class="linkbtn" onClick="{{l.remove}}" aria-label="{{l.removeAria}}">{{l.removeTx}}</button>
+                              </div>
+                            </sc-for>
+                          </div>
+                        </sc-if>
+                      </div>
+                    </sc-if>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+        <sc-if value="{{jfSemSetores}}" hint-placeholder-val="{{false}}"><p class="jf-vazio">{{jfSemSetoresTx}}</p></sc-if>
+      </section>
+
+      <!-- prd:ini -->
+<sc-if value="{{prdBloco}}" hint-placeholder-val="{{false}}">
+<section id="produtos" class="prd-bloco" data-entra="{{prdEntra}}" aria-labelledby="prd-t">
+  <div class="over" id="prd-t">{{prdTitulo}}</div>
+  <p class="prd-apoio">{{prdApoio}}</p>
+  <sc-for list="{{prdAvisos}}" as="a" hint-placeholder-count="0">
+    <div class="uui-alert uui-alert--warning" role="alert" id="{{a.id}}" tabindex="-1">
+          <span class="uui-alert__icon"><svg class="uui-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 9v4m0 4h.01M10.615 3.892 2.39 18.098c-.456.788-.684 1.182-.65 1.506a1 1 0 0 0 .406.705c.263.191.718.191 1.629.191h16.45c.91 0 1.365 0 1.628-.191a1 1 0 0 0 .407-.705c.034-.324-.195-.718-.65-1.506L13.383 3.892c-.454-.785-.681-1.178-.978-1.31a1 1 0 0 0-.813 0c-.296.132-.523.525-.978 1.31Z"/></svg></span>
+          <div class="uui-alert__body"><p class="uui-alert__text">{{a.texto}}</p></div>
+        </div>
+  </sc-for>
+  <div class="card prd-lista">
+    <sc-for list="{{prdLinhas}}" as="p" hint-placeholder-count="3">
+      <div class="prd" data-estado="{{p.estado}}" data-mais="{{p.mais}}">
+        <div class="prd__info">
+          <strong>{{p.nome}}</strong>
+          <sc-if value="{{p.hasNota}}" hint-placeholder-val="{{true}}"><span class="prd__nota">{{p.nota}}</span></sc-if>
+          <sc-if value="{{p.temSelo}}" hint-placeholder-val="{{false}}"><span class="{{p.seloClasse}}" data-sit="{{p.seloSit}}">{{p.selo}}</span></sc-if>
+        </div>
+        <strong class="prd__preco">{{p.preco}}</strong>
+        <sc-if value="{{p.isQtd}}" hint-placeholder-val="{{true}}">
+          <div class="qtd" role="group" aria-label="{{p.grupoLabel}}">
+            <button type="button" class="step" onClick="{{p.dec}}" disabled="{{p.noDec}}" aria-label="{{p.decLabel}}">−</button>
+            <span class="qtd__n" aria-live="polite" aria-label="{{p.qtyLabel}}">{{p.qty}}</span>
+            <button type="button" class="step" onClick="{{p.inc}}" disabled="{{p.noInc}}" aria-label="{{p.incLabel}}">+</button>
+          </div>
+        </sc-if>
+        <sc-if value="{{p.isDoacao}}" hint-placeholder-val="{{false}}">
+          <div class="seg prd__seg" role="group" aria-label="{{p.grupoLabel}}">
+            <sc-for list="{{p.valores}}" as="o" hint-placeholder-count="4"><button type="button" aria-pressed="{{o.on}}" onClick="{{o.pick}}">{{o.label}}</button></sc-for>
+          </div>
+        </sc-if>
+        <sc-if value="{{p.isVar}}" hint-placeholder-val="{{false}}">
+          <button type="button" class="bs bs-sm prd__var-bt" aria-expanded="{{p.aberto}}" aria-controls="{{p.idVar}}" disabled="{{p.varOff}}" onClick="{{p.alternar}}">{{p.varRot}} <svg class="ico ico-16" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
+          <div class="acd prd__var" id="{{p.idVar}}" data-aberto="{{p.aberto}}" inert="{{p.fechado}}">
+            <div class="acd__in">
+              <sc-if value="{{p.temModelo}}" hint-placeholder-val="{{false}}">
+                <div class="prd__modelos">
+                  <div class="seg" role="group" aria-label="{{p.modeloLabel}}">
+                    <sc-for list="{{p.modelos}}" as="m" hint-placeholder-count="2"><button type="button" aria-pressed="{{m.on}}" onClick="{{m.pick}}">{{m.label}}</button></sc-for>
+                  </div>
+                </div>
+              </sc-if>
+              <sc-for list="{{p.opcoes}}" as="o" hint-placeholder-count="4">
+                <div class="prd__opt" data-estado="{{o.estado}}">
+                  <div class="prd__opt-info">
+                    <span>{{o.rot}}</span>
+                    <sc-if value="{{o.temSelo}}" hint-placeholder-val="{{false}}"><span class="tag" data-sit="esgotado">{{o.selo}}</span></sc-if>
+                  </div>
+                  <div class="qtd" role="group" aria-label="{{o.grupoLabel}}">
+                    <button type="button" class="step" onClick="{{o.dec}}" disabled="{{o.noDec}}" aria-label="{{o.decLabel}}">−</button>
+                    <span class="qtd__n" aria-live="polite" aria-label="{{o.qtyLabel}}">{{o.qty}}</span>
+                    <button type="button" class="step" onClick="{{o.inc}}" disabled="{{o.noInc}}" aria-label="{{o.incLabel}}">+</button>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </sc-if>
+      </div>
+    </sc-for>
+    <sc-if value="{{prdTemMais}}" hint-placeholder-val="{{false}}">
+      <div class="prd-mais"><button type="button" class="linkbtn" onClick="{{prdMaisPick}}">{{prdMaisTxt}}</button></div>
+    </sc-if>
+  </div>
+</section>
+</sc-if>
+<!-- prd:fim -->
+    </sc-if>
+  </main>
+
+  <aside id="resumo" class="aside-sum jf-aside">
+    <div class="card jf-resumo">
+      <div class="over jf-resumo__t">{{jfResumoTitulo}}</div>
+      <sc-if value="{{holdOn}}" hint-placeholder-val="{{false}}">
+        <div class="uui-alert uui-alert--neutral hold" role="status" data-state="{{holdState}}">
+          <span class="uui-alert__icon"><svg class="uui-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6v6l4 2m6-2c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10Z"/></svg></span>
+          <div class="uui-alert__body"><p class="uui-alert__text hold-t">{{holdMsgA}} <strong>{{holdLeft}}</strong>{{holdMsgB}}</p></div>
+        </div>
+      </sc-if>
+      <sc-if value="{{hasItems}}" hint-placeholder-val="{{true}}">
+        <div class="jf-resumo__linhas">
+          <sc-for list="{{lines}}" as="l" hint-placeholder-count="2">
+            <div class="jf-resumo__linha"><span>{{l.qty}}× {{l.label}}</span><strong>{{l.total}}</strong></div>
+          </sc-for>
+        </div>
+        <div class="jf-resumo__soma">
+          <div class="sum-row"><span>{{lblSub}}</span><span>{{subtotal}}</span></div>
+          <!-- prd:resumo --><sc-if value="{{prdOn}}" hint-placeholder-val="{{false}}"><div class="sum-row"><span>Produtos</span><span>{{prdFmt}}</span></div></sc-if><!-- prd:resumo-fim -->
+          <div class="sum-row"><span>{{lblTaxa}}</span><span>{{fees}}</span></div>
+        </div>
+        <div class="jf-resumo__total">
+          <span>{{jfTotalRot}}</span>
+          <span class="total">{{total}}</span>
+        </div>
+        <p class="jf-resumo__pessoas">{{peopleLine}}</p>
+      </sc-if>
+      <sc-if value="{{noItems}}" hint-placeholder-val="{{false}}">
+        <p class="jf-resumo__vazio">{{jfVazioResumo}}</p>
+        <p class="jf-resumo__dica">{{jfDicaVazio}}</p>
+      </sc-if>
+      <button type="button" class="bp bp-lg jf-resumo__bt" onClick="{{goNext}}" aria-disabled="{{ctaDisabled}}">{{ctaLabel}}</button>
+      <ul class="trust" aria-label="{{jfGarantiasAria}}">
+        <sc-for list="{{jfGarantias}}" as="g" hint-placeholder-count="3"><li>{{g.t}}</li></sc-for>
+      </ul>
+    </div>
+  </aside>
+</div>
+
+<div class="cbar" role="region" aria-label="{{jfCbarAria}}">
+  <a href="#resumo" class="cbar-t"><small>{{cbarNote}}</small><strong>{{cbarTotal}}</strong></a>
+  <button type="button" class="bp" onClick="{{goNext}}" aria-disabled="{{ctaDisabled}}">{{ctaShort}}</button>
+</div>
+
+<div class="jf-vivo" role="status" aria-live="polite" aria-atomic="true">{{jfVivo}}</div>
+<details class="proto">
+  <summary>{{jfProtoResumo}}</summary>
+  <div class="proto-in" role="group" aria-label="{{jfProtoAria}}">
+    <div class="over">{{jfProtoTitulo}}</div>
+    <sc-for list="{{jfProtoGrupos}}" as="g" hint-placeholder-count="6">
+      <div class="over">{{g.rot}}</div>
+      <sc-for list="{{g.chips}}" as="o" hint-placeholder-count="3"><button type="button" class="chip chip-sm" aria-pressed="{{o.on}}" onClick="{{o.pick}}">{{o.label}}</button></sc-for>
+    </sc-for>
+  </div>
+</details>
+</sc-if>
+<!-- jf:ing-jf-fim -->
+<!-- jf:ing-fim -->
+<footer class="rp" aria-label="Rodapé">
+  <div class="rp-in">
+    <div class="rp-topo">
+      <a href="Main.dc.html" class="rp-marca" aria-label="Ingresse — início"><img src="./assets/8703fb5f412b57860d569f5abeea2cae.svg" alt="Ingresse"></a>
+      <div class="rp-cols">
+      <nav class="rp-col" aria-labelledby="rp-c0">
+        <h2 class="rp-col__t" id="rp-c0">A Ingresse</h2>
+        <ul class="rp-lista">
+          <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Sobre a Ingresse</a></li>
+          <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Trabalhe conosco</a></li>
+          <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Diversidade e inclusão</a></li>
+          <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Imprensa</a></li>
+        </ul>
+      </nav>
+      <nav class="rp-col" aria-labelledby="rp-c1">
+        <h2 class="rp-col__t" id="rp-c1">Ajuda</h2>
+        <ul class="rp-lista">
+          <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Central de ajuda</a></li>
+          <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Perguntas frequentes</a></li>
+          <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Pedir reembolso</a></li>
+          <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Regras de meia‑entrada</a></li>
+        </ul>
+      </nav>
+      <nav class="rp-col" aria-labelledby="rp-c2">
+        <h2 class="rp-col__t" id="rp-c2">Descubra</h2>
+        <ul class="rp-lista">
+          <li><a class="rp-link" href="Busca.dc.html?escopo=artistas">Artistas</a></li>
+          <li><a class="rp-link" href="Busca.dc.html?escopo=locais">Locais</a></li>
+          <li><a class="rp-link" href="https://revenda.ingresse.com" target="_blank" rel="noopener noreferrer" aria-label="Revenda Oficial, abre em nova aba">Revenda Oficial</a></li>
+          <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Para <span class="rp-nw">produtores<svg class="rp-ico rp-ico--sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M8 7h9v9"/></svg></span></a></li>
+        </ul>
+      </nav>
+      </div>
+    </div>
+    <div class="rp-linha">
+      <div class="rp-apps" role="group" aria-label="Baixe o app">
+        <a class="bs rp-app" href="#" data-toast="O link da App Store entra quando o app novo for publicado" aria-label="Baixar o app da Ingresse para iOS"><svg class="rp-ico" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16.37 12.83c-.02-2.3 1.88-3.4 1.97-3.46-1.07-1.57-2.74-1.78-3.33-1.8-1.42-.14-2.77.83-3.49.83-.72 0-1.83-.81-3.01-.79-1.55.02-2.98.9-3.78 2.29-1.61 2.8-.41 6.94 1.16 9.21.77 1.11 1.68 2.36 2.88 2.31 1.16-.05 1.59-.75 2.99-.75 1.4 0 1.79.75 3.01.72 1.24-.02 2.03-1.13 2.79-2.25.88-1.29 1.24-2.54 1.26-2.6-.03-.01-2.42-.93-2.45-3.71zM14.08 6.07c.64-.77 1.07-1.85.95-2.92-.92.04-2.03.61-2.69 1.38-.59.68-1.11 1.78-.97 2.83 1.02.08 2.07-.52 2.71-1.29z"/></svg><span>iOS</span></a>
+        <a class="bs rp-app" href="#" data-toast="O link do Google Play entra quando o app novo for publicado" aria-label="Baixar o app da Ingresse para Android"><svg class="rp-ico" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 18c0 .55.45 1 1 1h1v3.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5V19h2v3.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5V19h1c.55 0 1-.45 1-1V8H6v10zM3.5 8C2.67 8 2 8.67 2 9.5v7c0 .83.67 1.5 1.5 1.5S5 17.33 5 16.5v-7C5 8.67 4.33 8 3.5 8zm17 0c-.83 0-1.5.67-1.5 1.5v7c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5v-7c0-.83-.67-1.5-1.5-1.5zm-4.97-5.84l1.3-1.3c.2-.2.2-.51 0-.71-.2-.2-.51-.2-.71 0l-1.48 1.48A5.84 5.84 0 0 0 12 1c-.96 0-1.86.23-2.66.63L7.85.15c-.2-.2-.51-.2-.71 0-.2.2-.2.51 0 .71l1.31 1.31A5.98 5.98 0 0 0 6 7h12c0-1.99-.97-3.75-2.47-4.84zM10 5H9V4h1v1zm5 0h-1V4h1v1z"/></svg><span>Android</span></a>
+      </div>
+      <ul class="rp-redes" aria-label="Ingresse nas redes">
+        <li><a class="bs bs-icone rp-rede" href="https://www.instagram.com/ingresse/" target="_blank" rel="noopener noreferrer" aria-label="Ingresse no Instagram (abre em nova aba)"><svg class="rp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><path d="M17.5 6.5h.01"/></svg></a></li>
+        <li><a class="bs bs-icone rp-rede" href="https://www.tiktok.com/@ingresse" target="_blank" rel="noopener noreferrer" aria-label="Ingresse no TikTok (abre em nova aba)"><svg class="rp-ico" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16.6 5.82A4.28 4.28 0 0 1 15.54 3h-3.09v12.4a2.59 2.59 0 0 1-2.59 2.5c-1.42 0-2.6-1.16-2.6-2.6 0-1.72 1.66-3.01 3.37-2.48V9.66c-3.45-.46-6.47 2.22-6.47 5.64 0 3.33 2.76 5.7 5.69 5.7 3.14 0 5.69-2.55 5.69-5.7V9.01a7.35 7.35 0 0 0 4.3 1.38V7.3s-1.88.09-3.24-1.48z"/></svg></a></li>
+        <li><a class="bs bs-icone rp-rede" href="https://www.linkedin.com/company/ingresse/" target="_blank" rel="noopener noreferrer" aria-label="Ingresse no LinkedIn (abre em nova aba)"><svg class="rp-ico" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.45 20.45h-3.56v-5.57c0-1.33-.02-3.04-1.85-3.04-1.85 0-2.14 1.45-2.14 2.94v5.67H9.35V9h3.41v1.56h.05c.48-.9 1.64-1.85 3.37-1.85 3.6 0 4.27 2.37 4.27 5.46v6.28zM5.34 7.43a2.06 2.06 0 1 1 0-4.13 2.06 2.06 0 0 1 0 4.13zM7.12 20.45H3.56V9h3.56v11.45z"/></svg></a></li>
+      </ul>
+    </div>
+    <div class="rp-base">
+      <p class="rp-direitos">© 2026 Ingresse</p>
+      <details class="rp-idioma">
+        <summary class="rp-idioma__b" aria-haspopup="menu"><span class="sr-only">Idioma do site: </span><img class="rp-band" src="./assets/flags/br.svg" alt="" width="24" height="18" data-pv-lang-band><span data-pv-lang-nome>Português (Brasil)</span><svg class="rp-ico rp-ico--sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary>
+        <ul class="rp-idioma__lista" role="menu" aria-label="Idioma do site">
+          <li role="none"><button type="button" class="rp-idioma__op" role="menuitemradio" data-pv-lang="PT" aria-checked="true" tabindex="-1" lang="pt-BR"><img class="rp-band" src="./assets/flags/br.svg" alt="" width="24" height="18">Português (Brasil)</button></li>
+          <li role="none"><button type="button" class="rp-idioma__op" role="menuitemradio" data-pv-lang="PT-PT" aria-checked="false" tabindex="-1" lang="pt-PT"><img class="rp-band" src="./assets/flags/pt.svg" alt="" width="24" height="18">Português (Portugal)</button></li>
+          <li role="none"><button type="button" class="rp-idioma__op" role="menuitemradio" data-pv-lang="ES" aria-checked="false" tabindex="-1" lang="es"><img class="rp-band" src="./assets/flags/es.svg" alt="" width="24" height="18">Español</button></li>
+          <li role="none"><button type="button" class="rp-idioma__op" role="menuitemradio" data-pv-lang="EN" aria-checked="false" tabindex="-1" lang="en"><img class="rp-band" src="./assets/flags/us.svg" alt="" width="24" height="18">English</button></li>
+        </ul>
+      </details>
+      <ul class="rp-legais" aria-label="Termos e políticas">
+        <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Política de privacidade</a></li>
+        <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Termos de uso</a></li>
+        <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Termos de compra</a></li>
+        <li><a class="rp-link" href="#" data-toast="Esta página ainda não existe no protótipo">Configurações de cookies</a></li>
+      </ul>
+    </div>
+    <div class="rp-grupo">
+      <h2 class="rp-grupo__t" id="rp-grupo">Empresas do Grupo Ingresse</h2>
+      <ul class="rp-grupo__lista" aria-labelledby="rp-grupo">
+        <li><a class="rp-link" href="https://ingresse.com/" target="_blank" rel="noopener noreferrer" aria-label="Ingresse (ingresse.com, abre em nova aba)">Ingresse</a></li>
+        <li><a class="rp-link" href="https://ticketsports.com.br/" target="_blank" rel="noopener noreferrer" aria-label="TicketSports (ticketsports.com.br, abre em nova aba)">TicketSports</a></li>
+        <li><a class="rp-link" href="https://outgo.com.br/" target="_blank" rel="noopener noreferrer" aria-label="OutGo (outgo.com.br, abre em nova aba)">OutGo</a></li>
+        <li><a class="rp-link" href="https://ingressonacional.com.br/" target="_blank" rel="noopener noreferrer" aria-label="Ingresso Nacional (ingressonacional.com.br, abre em nova aba)">Ingresso Nacional</a></li>
+        <li><a class="rp-link" href="https://ingressolive.com/" target="_blank" rel="noopener noreferrer" aria-label="Ingresso Live (ingressolive.com, abre em nova aba)">Ingresso Live</a></li>
+        <li><a class="rp-link" href="https://blacktag.com.br/" target="_blank" rel="noopener noreferrer" aria-label="Blacktag (blacktag.com.br, abre em nova aba)">Blacktag</a></li>
+        <li><a class="rp-link" href="https://pixelticket.com.br/" target="_blank" rel="noopener noreferrer" aria-label="PixelTicket (pixelticket.com.br, abre em nova aba)">PixelTicket</a></li>
+        <li><a class="rp-link" href="https://meep.com.br/" target="_blank" rel="noopener noreferrer" aria-label="Meep (meep.com.br, abre em nova aba)">Meep</a></li>
+      </ul>
+    </div>
+  </div>
+</footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1800}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    const IX = window.IX;
+    const saved = IX ? IX.store.get('cart', null) : null;
+    this.state = { day: (saved && saved.day) || 'dom', mode: 'lista', q: (saved && saved.q) || {}, seats: (saved && saved.seats) || [], sec: 'B', want: 2,
+      coupon: (saved && saved.coupon) || '', couponDraft: '', couponErr: '', holdEnd: IX ? IX.store.get('holdEnd', 0) : 0, now: Date.now(),
+      bestMsg: 'Escolha quantos lugares e a gente encontra o melhor bloco disponível.' };
+  }
+  componentDidMount() { this.tick = setInterval(() => { if (this.state.holdEnd) this.setState({ now: Date.now() }); }, 1000); }
+  componentWillUnmount() { clearInterval(this.tick); }
+  renderVals() {
+    const st = this.state;
+    const IX = window.IX || { store: { get: (k, d) => d, set() {}, del() {} }, toast() {} };
+    const brl = v => { const n = Math.round(v * 100) / 100; return 'R$ ' + (Number.isInteger(n) ? String(n) : n.toFixed(2).replace('.', ',')).replace(/\B(?=(\d{3})+(?!\d))/g, '.'); };
+    const r2 = v => Math.round(v * 100) / 100;
+    const FEE = 0.1;
+    const allIn = p => r2(p * (1 + FEE));
+    const MAX = 6;
+    const HOLD_MS = 10 * 60 * 1000;
+
+    // Turnê com data extra: Sábado aberto como extra, Domingo é a data original.
+    const DAYS = [
+      { id: 'sab', w: 'Sáb', d: '7 nov', note: 'Data extra · últimos ingressos', off: false, hot: true },
+      { id: 'dom', w: 'Dom', d: '8 nov', note: 'a partir de R$ 99', off: false, hot: false }
+    ];
+    const dayName = id => { const d = DAYS.find(x => x.id === id) || DAYS[1]; return d.w + ' ' + d.d; };
+    const dayIdx = Math.max(0, DAYS.findIndex(x => x.id === st.day));
+
+    const SECTORS = [
+      { name: 'Pista', desc: 'Em pé, de frente para o palco', tag: 'Últimos do lote 1', hot: true, items: [
+        { id: 'pista-int', label: 'Inteira', note: 'Lote 1', price: 180 },
+        { id: 'pista-meia', label: 'Meia-entrada', note: 'Estudante, PcD, idoso ou ID Jovem · comprovante na entrada', price: 90, meia: true } ] },
+      { name: 'Pista Premium', desc: 'Perto do palco principal, bar exclusivo', tag: 'Bar exclusivo', hot: true, items: [
+        { id: 'prem-int', label: 'Inteira', note: 'Lote 1', price: 320 },
+        { id: 'prem-meia', label: 'Meia-entrada', note: 'Estudante, PcD, idoso ou ID Jovem · comprovante na entrada', price: 160, meia: true } ] },
+      { name: 'Camarote', desc: 'Open bar, open food e vista do alto', tag: 'Open bar', hot: false, items: [
+        { id: 'cam-ind', label: 'Individual', note: 'Open bar e open food · 18+', price: 590 } ] }
+    ];
+    const COMBOS = [
+      { id: 'pass2', label: 'Passaporte 2 datas · Pista', note: 'Sáb 7 e Dom 8 nov · 1 pessoa', price: 330, was: 360, people: 1, perDay: false, sector: 'Pista' },
+      { id: 'galera4', label: 'Combo Galera · 4 ingressos de Pista inteira', note: '4 ingressos na mesma compra', price: 640, was: 720, people: 4, perDay: true, sector: 'Pista' },
+      { id: 'cam4', label: 'Camarote para 4', note: 'Open bar e open food · 4 pessoas', price: 2120, was: 2360, people: 4, perDay: true, sector: 'Camarote' },
+      { id: 'pista-estac', label: 'Pista + Estacionamento', note: 'Vaga garantida no Anhembi', price: 215, was: 240, people: 1, perDay: true, sector: 'Pista' }
+    ];
+    const CAT = {};
+    SECTORS.forEach(s => s.items.forEach(t => { CAT[t.id] = { label: s.name + ' · ' + t.label, sector: s.name, price: t.price, people: 1, perDay: true, meia: !!t.meia }; }));
+    COMBOS.forEach(c => { CAT[c.id] = { label: c.label, sector: c.sector, price: c.price, people: c.people, perDay: c.perDay, meia: false }; });
+
+    const SECS = [ { id: 'A', name: 'Lateral Esquerda' }, { id: 'B', name: 'Central' }, { id: 'C', name: 'Lateral Direita' } ];
+    const ROWS = 'ABCDEFGH'.split('');
+    const COLS = 12;
+    const tier = r => r < 2 ? { k: 't1', n: 'Premium', p: 380 } : r < 5 ? { k: 't2', n: 'Superior', p: 280 } : { k: 't3', n: 'Standard', p: 220 };
+    const isSold = (si, r, c) => st.day === 'sab' ? ((r * 5 + c * 3 + si * 7) % 4 !== 0) : ((r * 7 + c * 13 + si * 5 + dayIdx * 3) % 9 < 3);
+    const seatKey = (si, r, c) => st.day + '|' + si + '|' + r + '|' + c;
+
+    const q = st.q;
+    const known = k => !!CAT[k.split('|').pop()];
+    const peopleIn = qq => Object.keys(qq).filter(known).reduce((a, k) => a + qq[k] * CAT[k.split('|').pop()].people, 0);
+    const totalPeople = peopleIn(q) + st.seats.length;
+
+    // A reserva começa no primeiro ingresso escolhido e é compartilhada com o checkout.
+    const withHold = patch => {
+      const next = { ...st, ...patch };
+      const people = peopleIn(next.q) + next.seats.length;
+      let holdEnd = st.holdEnd;
+      if (people > 0 && (!holdEnd || holdEnd < Date.now())) holdEnd = Date.now() + HOLD_MS;
+      if (people === 0) holdEnd = 0;
+      IX.store.set('holdEnd', holdEnd);
+      this.setState({ ...patch, holdEnd, now: Date.now() });
+    };
+
+    const keyFor = (id, perDay) => perDay ? st.day + '|' + id : id;
+    const setQ = (k, v) => { const n = { ...q }; if (v > 0) n[k] = v; else delete n[k]; withHold({ q: n }); };
+    const qtyRow = (id, perDay, people, aria, extra) => {
+      const k = keyFor(id, perDay);
+      const n = q[k] || 0;
+      return { ...extra, qty: n, noDec: n === 0, noInc: totalPeople + people > MAX, qtyLabel: n + (n === 1 ? ' selecionado' : ' selecionados'),
+        grupoLabel: 'Quantidade: ' + aria, decLabel: 'Remover ' + aria, incLabel: 'Adicionar ' + aria,
+        dec: () => setQ(k, Math.max(0, n - 1)), inc: () => setQ(k, n + 1) };
+    };
+
+    const sectors = SECTORS.map(s => ({
+      ...s,
+      tagClass: s.hot ? 'tag-hot' : '',
+      items: s.items.map(t => qtyRow(t.id, true, 1, t.label + ' ' + s.name, { ...t, priceFmt: brl(allIn(t.price)), feeFmt: brl(r2(t.price * FEE)) }))
+    }));
+    const combos = COMBOS.map(c => qtyRow(c.id, c.perDay, c.people, c.label,
+      { label: c.label, note: c.note, priceFmt: brl(allIn(c.price)), wasFmt: brl(allIn(c.was)), feeFmt: brl(r2(c.price * FEE)), saveFmt: 'Economize ' + brl(allIn(c.was) - allIn(c.price)) }));
+
+    const lines = [];
+    const holders = [];
+    let subtotal = 0;
+    Object.keys(q).filter(known).forEach(k => {
+      const parts = k.split('|');
+      const id = parts.pop();
+      const it = CAT[id];
+      const prefix = parts.length ? dayName(parts[0]) + ' · ' : 'Sáb + Dom · ';
+      subtotal += q[k] * it.price;
+      lines.push({ qty: q[k], label: prefix + it.label, total: brl(q[k] * allIn(it.price)) });
+      for (let i = 0; i < q[k] * it.people; i++) holders.push({ label: prefix + it.sector, meia: it.meia });
+    });
+    st.seats.forEach(s => {
+      const [d, si, r, c] = s.split('|');
+      const t = tier(Number(r));
+      subtotal += t.p;
+      const label = dayName(d) + ' · ' + SECS[si].name + ' · Fila ' + ROWS[r] + ', assento ' + (Number(c) + 1);
+      lines.push({ qty: 1, label, total: brl(allIn(t.p)) });
+      holders.push({ label, meia: false });
+    });
+    const discount = st.coupon ? r2(subtotal * 0.1) : 0;
+    const fees = r2((subtotal - discount) * FEE);
+    const total = r2(subtotal - discount + fees);
+
+    const days = DAYS.map(d => ({ ...d, checked: d.id === st.day ? 'true' : 'false', hot: d.hot ? 'true' : 'false', pick: () => this.setState({ day: d.id, bestMsg: 'Escolha quantos lugares e a gente encontra o melhor bloco disponível.' }) }));
+
+    const secIdx = SECS.findIndex(s => s.id === st.sec);
+    const secs = SECS.map((s, si) => {
+      let free = 0;
+      for (let r = 0; r < ROWS.length; r++) for (let c = 0; c < COLS; c++) if (!isSold(si, r, c)) free++;
+      return { name: s.name, meta: free + ' livres · a partir de R$ 242', on: si === secIdx ? 'true' : 'false', pick: () => this.setState({ sec: s.id }) };
+    });
+    const toggleSeat = k => {
+      const has = st.seats.includes(k);
+      if (!has && totalPeople >= MAX) { this.setState({ bestMsg: 'Limite de 6 ingressos por CPF atingido.' }); return; }
+      withHold({ seats: has ? st.seats.filter(x => x !== k) : [...st.seats, k] });
+    };
+    const rows = ROWS.map((R, r) => ({
+      label: R, tier: tier(r).k, bandStart: r === 0 || r === 2 || r === 5, bandLabel: tier(r).n + ' · ' + brl(allIn(tier(r).p)),
+      seats: Array.from({ length: COLS }, (_, c) => {
+        const sold = isSold(secIdx, r, c);
+        const k = seatKey(secIdx, r, c);
+        const sel = st.seats.includes(k);
+        const t = tier(r);
+        return { st: sold ? 'sold' : sel ? 'sel' : t.k, tier: t.k, gap: c === COLS / 2 ? 'true' : 'false', sold, sel: sel ? 'true' : 'false',
+          aria: 'Fila ' + R + ', assento ' + (c + 1) + ', ' + t.n + ' ' + brl(allIn(t.p)) + (sold ? ', ocupado' : sel ? ', selecionado' : ''),
+          toggle: () => toggleSeat(k) };
+      })
+    }));
+
+    const findBest = () => {
+      const n = st.want;
+      const others = st.seats.filter(s => !s.startsWith(st.day + '|'));
+      if (peopleIn(q) + others.length + n > MAX) { this.setState({ bestMsg: 'Esse número passa do limite de 6 ingressos por CPF. Diminua a quantidade.' }); return; }
+      let best = null;
+      SECS.forEach((s, si) => {
+        for (let r = 0; r < ROWS.length; r++) {
+          for (let c = 0; c + n <= COLS; c++) {
+            let ok = true;
+            for (let j = 0; j < n; j++) if (isSold(si, r, c + j) || (c + j === COLS / 2 && j > 0)) { ok = false; break; }
+            if (!ok) continue;
+            const mid = c + (n - 1) / 2;
+            const score = r * 10 + Math.abs(mid - (COLS - 1) / 2) + (si === 1 ? 0 : 14);
+            if (!best || score < best.score) best = { si, r, c, score };
+          }
+        }
+      });
+      if (!best) { this.setState({ bestMsg: 'Não há ' + n + ' lugares juntos nessa data. Tente menos lugares ou outra data.' }); return; }
+      const picked = Array.from({ length: n }, (_, j) => seatKey(best.si, best.r, best.c + j));
+      const t = tier(best.r);
+      withHold({ seats: [...others, ...picked], sec: SECS[best.si].id,
+        bestMsg: 'Encontramos: ' + SECS[best.si].name + ', fila ' + ROWS[best.r] + ', assentos ' + (best.c + 1) + (n > 1 ? '–' + (best.c + n) : '') + ' · ' + t.n + ' · ' + brl(allIn(t.p) * n) + '. Toque em um lugar para trocar.' });
+    };
+
+    const applyCoupon = () => {
+      const v = (st.couponDraft || '').trim().toUpperCase();
+      if (!v) { this.setState({ couponErr: 'Digite um código.' }); return; }
+      if (v === 'INGRESSE10' || v === 'AMIGO10') { this.setState({ coupon: v, couponErr: '', couponDraft: '' }); IX.toast('Cupom ' + v + ' aplicado: 10% de desconto nos ingressos.', 'ok'); }
+      else this.setState({ couponErr: 'Não encontramos esse código. Confira se digitou igual ao que recebeu.' });
+    };
+
+    // Reserva
+    const hasItems = lines.length > 0;
+    const left = st.holdEnd ? Math.max(0, st.holdEnd - st.now) : 0;
+    const expired = hasItems && st.holdEnd > 0 && left === 0;
+    const mm = Math.floor(left / 60000), ss = Math.floor((left % 60000) / 1000);
+    const holdLeft = mm + ':' + (ss < 10 ? '0' : '') + ss;
+
+    const ppl = totalPeople;
+    const cart = { day: st.day, q, seats: st.seats, coupon: st.coupon, lines, holders, subtotal: r2(subtotal), discount, fees, total };
+    const goNext = () => {
+      if (!hasItems) { IX.toast('Escolha pelo menos 1 ingresso para continuar.'); return; }
+      if (expired) { IX.toast('Sua reserva expirou. Toque em “Reservar de novo”.'); return; }
+      IX.store.set('cart', cart);
+      window.location.href = 'Checkout.dc.html';
+    };
+
+    const isList = st.mode === 'lista';
+    return {
+      days, dayLabel: dayName(st.day), sectors, combos,
+      isList: isList ? 'true' : 'false', isMap: isList ? 'false' : 'true', isListB: isList, isMapB: !isList,
+      toList: () => this.setState({ mode: 'lista' }), toMap: () => this.setState({ mode: 'mapa' }),
+      secs, rows, gridLabel: 'Assentos do setor ' + SECS[secIdx].name,
+      want: st.want, wantWord: st.want === 1 ? 'lugar' : 'lugares', wantMin: st.want <= 1, wantMax: st.want >= MAX,
+      wantDec: () => this.setState({ want: Math.max(1, st.want - 1) }), wantInc: () => this.setState({ want: Math.min(MAX, st.want + 1) }),
+      findBest, bestMsg: st.bestMsg,
+      coupon: st.coupon, hasCoupon: !!st.coupon, noCoupon: !st.coupon, couponClosed: !st.coupon && !st.couponOpen, couponOpenB: !st.coupon && !!st.couponOpen,
+      openCoupon: () => { this.setState({ couponOpen: true }); setTimeout(() => { const el = document.getElementById('cupom-in'); if (el) el.focus(); }, 50); }, couponErr: st.couponErr, hasCouponErr: !!st.couponErr, couponInvalid: st.couponErr ? 'true' : 'false',
+      couponDraft: st.couponDraft, typeCoupon: e => this.setState({ couponDraft: e.target.value, couponErr: '' }),
+      couponKey: e => { if (e.key === 'Enter') { e.preventDefault(); applyCoupon(); } }, applyCoupon,
+      removeCoupon: () => this.setState({ coupon: '' }),
+      lines, hasItems, noItems: !hasItems, atLimit: ppl >= MAX,
+      subtotal: brl(subtotal), discount: brl(discount), fees: brl(fees), total: brl(total),
+      peopleLine: ppl + (ppl === 1 ? ' pessoa' : ' pessoas'),
+      holdOn: hasItems && st.holdEnd > 0, holdExpired: expired,
+      holdState: expired ? 'expired' : left < 120000 ? 'urgent' : 'ok', holdLeft: expired ? '' : holdLeft,
+      holdMsgA: expired ? 'Sua reserva expirou e os lugares voltaram para a venda.' : 'Seus ingressos estão reservados por',
+      holdMsgB: expired ? '' : left < 120000 ? '— finalize agora para manter seus ingressos.' : 'enquanto você finaliza.',
+      renewHold: () => { const holdEnd = Date.now() + HOLD_MS; IX.store.set('holdEnd', holdEnd); this.setState({ holdEnd, now: Date.now() }); IX.toast('Pronto, reservamos de novo por 10 minutos.', 'ok'); },
+      cart, goNext, ctaDisabled: hasItems && !expired ? 'false' : 'true',
+      ctaLabel: hasItems ? 'Informar quem vai' : 'Escolha seus ingressos', ctaShort: hasItems ? 'Informar quem vai' : 'Escolher',
+      cbarNote: hasItems ? (lines.length === 1 ? lines[0].qty + '× ' + lines[0].label : ppl + ' ingressos · ver resumo') : 'Nenhum ingresso escolhido',
+      cbarTotal: hasItems ? brl(total) : ''
+    };
+  }
+}
+/* je:script */
+Component = (function (Base) {
+  // valores neutros do fluxo de shows para as variáveis que a camada esportiva acrescentou ao modelo
+  const JE_PADRAO = { espOn: false, espOff: true, espDone: false, lblSub: 'Ingressos', lblTaxa: 'Taxa de serviço (10%)', ingressosHref: 'Ingressos.dc.html',
+    txtRecusa: 'Seus ingressos continuam reservados. Você pode tentar de novo, pagar com Pix ou usar outro cartão.', txtPixSub: 'Aprovação na hora · ingressos liberados em segundos',
+    txtPixSaem: 'Os ingressos saem em segundos.', txtPixExpirou: 'O código Pix expirou e a compra não foi concluída. Gere um novo código para pagar. Sua reserva segue valendo.' };
+  return class Component extends Base {
+    constructor(props) {
+      super(props);
+      const JE = window.JornadaEsporte;
+      if (JE && JE.ativo()) this.state = Object.assign({}, this.state, JE.estado('ingressos'));
+    }
+    componentDidMount() {
+      if (super.componentDidMount) super.componentDidMount();
+      const JE = window.JornadaEsporte;
+      if (JE && JE.ativo()) { this.__jeTick = setInterval(() => { this.setState({ jeNow: Date.now() }); }, 1000); JE.montou('ingressos', this); }
+    }
+    componentWillUnmount() { clearInterval(this.__jeTick); if (super.componentWillUnmount) super.componentWillUnmount(); }
+    renderVals() {
+      const JE = window.JornadaEsporte;
+      if (JE && JE.ativo()) return JE.vals('ingressos', this);
+      const v = super.renderVals(); Object.assign(v, JE_PADRAO); return v;
+    }
+  };
+})(Component);
+/* je:script-fim */
+/* jf:script */
+Component = (function (Base) {
+  // valores neutros do fluxo de shows para as variáveis que a camada de futebol acrescentou ao modelo
+  const JF_PADRAO = { jfOn: false, jfOff: true, jfDone: false };
+  return class Component extends Base {
+    constructor(props) {
+      super(props);
+      const JF = window.IngresseJornadaFutebol;
+      if (JF && JF.ativo()) this.state = Object.assign({}, this.state, JF.estado('ingressos'));
+    }
+    componentDidMount() {
+      if (super.componentDidMount) super.componentDidMount();
+      const JF = window.IngresseJornadaFutebol;
+      if (JF && JF.ativo()) { this.__jfTick = setInterval(() => { this.setState({ jfNow: Date.now() }); }, 1000); JF.montou('ingressos', this); }
+    }
+    componentDidUpdate(a, b, c) {
+      if (super.componentDidUpdate) super.componentDidUpdate(a, b, c);
+      const JF = window.IngresseJornadaFutebol;
+      if (JF && JF.ativo() && JF.atualizou) JF.atualizou('ingressos', this);
+    }
+    componentWillUnmount() { clearInterval(this.__jfTick); if (super.componentWillUnmount) super.componentWillUnmount(); }
+    renderVals() {
+      const JF = window.IngresseJornadaFutebol;
+      if (JF && JF.ativo()) return JF.vals('ingressos', this);
+      const v = super.renderVals(); Object.assign(v, JF_PADRAO); return v;
+    }
+  };
+})(Component);
+/* jf:script-fim */
+/* prd:script */
+Component = (window.IngresseProdutos ? window.IngresseProdutos.subtipo('ingressos')(Component) : Component);
+/* prd:script-fim */
+</script>
+</body>
+</html>

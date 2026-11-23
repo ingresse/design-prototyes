@@ -39,7 +39,8 @@ export interface ProductItem {
     id: string;
     name: string;
     price: number;
-    image: string;
+    /** Sem imagem na biblioteca da organização: a linha mostra um ícone. */
+    image?: string;
 }
 
 export interface ComboComposition {
@@ -99,7 +100,7 @@ interface SessionSpec {
 const makeSession = ({ day, weekday, longDate, month, year, time, soldOut }: SessionSpec, tickets: TicketItem[]): TicketSession => ({
     id: `sessao-${day}-08-${time.replace(":", "")}`,
     label: `${longDate} às ${time}`,
-    shortDate: `${longDate} • ${time}`,
+    shortDate: `${longDate}, ${time}`,
     weekday,
     day,
     month,
@@ -126,55 +127,55 @@ const DOMINGO_16 = { day: "16", weekday: "Domingo", longDate: "16 de agosto", mo
  */
 export let sessions: TicketSession[] = [
     makeSession({ ...SEXTA_07, time: "14:00" }, [
-        ticket("07-pista-inteira", "Pista · Inteira", "Pista", "Inteira", "1º lote", "qrcode", 389.9),
-        ticket("07-pista-meia", "Pista · Meia-entrada", "Pista", "Meia-entrada", "1º lote", "facial", 194.95),
-        ticket("07-premium-inteira", "Pista Premium · Inteira", "Pista Premium", "Inteira", "1º lote", "qrcode", 589.9),
-        ticket("07-camarote-inteira", "Camarote · Inteira", "Camarote", "Inteira", "1º lote", "facial", 780.0),
+        ticket("07-pista-inteira", "Pista, Inteira", "Pista", "Inteira", "1º lote", "qrcode", 389.9),
+        ticket("07-pista-meia", "Pista, Meia-entrada", "Pista", "Meia-entrada", "1º lote", "facial", 194.95),
+        ticket("07-premium-inteira", "Pista Premium, Inteira", "Pista Premium", "Inteira", "1º lote", "qrcode", 589.9),
+        ticket("07-camarote-inteira", "Camarote, Inteira", "Camarote", "Inteira", "1º lote", "facial", 780.0),
     ]),
     makeSession({ ...SEXTA_07, time: "20:00" }, [
-        ticket("07n-pista-inteira", "Pista · Inteira", "Pista", "Inteira", "1º lote", "qrcode", 419.9),
-        ticket("07n-pista-meia", "Pista · Meia-entrada", "Pista", "Meia-entrada", "1º lote", "facial", 209.95),
-        ticket("07n-camarote-inteira", "Camarote · Inteira", "Camarote", "Inteira", "1º lote", "facial", 820.0),
+        ticket("07n-pista-inteira", "Pista, Inteira", "Pista", "Inteira", "1º lote", "qrcode", 419.9),
+        ticket("07n-pista-meia", "Pista, Meia-entrada", "Pista", "Meia-entrada", "1º lote", "facial", 209.95),
+        ticket("07n-camarote-inteira", "Camarote, Inteira", "Camarote", "Inteira", "1º lote", "facial", 820.0),
     ]),
     makeSession({ ...SABADO_08, time: "14:00" }, [
-        ticket("08-passaporte-inteira", "Passaporte 2 dias · Inteira", "Pista", "Inteira", "1º lote", "qrcode", 515.97, PASSAPORTE_DESC),
-        ticket("08-passaporte-meia", "Passaporte 2 dias · Meia-entrada", "Pista", "Meia-entrada", "1º lote", "facial", 257.98, PASSAPORTE_DESC),
-        ticket("08-premium-inteira", "Pista Premium · Inteira", "Pista Premium", "Inteira", "2º lote", "qrcode", 649.9),
-        ticket("08-camarote-inteira", "Camarote · Inteira", "Camarote", "Inteira", "2º lote", "facial", 840.0),
-        ticket("08-camarote-open", "Camarote Open Bar · Inteira", "Camarote", "Inteira", "2º lote", "facial", 1180.0),
+        ticket("08-passaporte-inteira", "Passaporte 2 dias, Inteira", "Pista", "Inteira", "1º lote", "qrcode", 515.97, PASSAPORTE_DESC),
+        ticket("08-passaporte-meia", "Passaporte 2 dias, Meia-entrada", "Pista", "Meia-entrada", "1º lote", "facial", 257.98, PASSAPORTE_DESC),
+        ticket("08-premium-inteira", "Pista Premium, Inteira", "Pista Premium", "Inteira", "2º lote", "qrcode", 649.9),
+        ticket("08-camarote-inteira", "Camarote, Inteira", "Camarote", "Inteira", "2º lote", "facial", 840.0),
+        ticket("08-camarote-open", "Camarote Open Bar, Inteira", "Camarote", "Inteira", "2º lote", "facial", 1180.0),
     ]),
     makeSession({ ...SABADO_08, time: "18:00", soldOut: true }, [
-        ticket("08t-pista-inteira", "Pista · Inteira", "Pista", "Inteira", "2º lote", "qrcode", 449.9),
-        ticket("08t-camarote-inteira", "Camarote · Inteira", "Camarote", "Inteira", "2º lote", "facial", 880.0),
+        ticket("08t-pista-inteira", "Pista, Inteira", "Pista", "Inteira", "2º lote", "qrcode", 449.9),
+        ticket("08t-camarote-inteira", "Camarote, Inteira", "Camarote", "Inteira", "2º lote", "facial", 880.0),
     ]),
     makeSession({ ...SABADO_08, time: "22:00" }, [
-        ticket("08n-pista-inteira", "Pista · Inteira", "Pista", "Inteira", "2º lote", "qrcode", 469.9),
-        ticket("08n-premium-inteira", "Pista Premium · Inteira", "Pista Premium", "Inteira", "2º lote", "qrcode", 689.9),
-        ticket("08n-camarote-open", "Camarote Open Bar · Inteira", "Camarote", "Inteira", "2º lote", "facial", 1240.0),
+        ticket("08n-pista-inteira", "Pista, Inteira", "Pista", "Inteira", "2º lote", "qrcode", 469.9),
+        ticket("08n-premium-inteira", "Pista Premium, Inteira", "Pista Premium", "Inteira", "2º lote", "qrcode", 689.9),
+        ticket("08n-camarote-open", "Camarote Open Bar, Inteira", "Camarote", "Inteira", "2º lote", "facial", 1240.0),
     ]),
     makeSession({ ...DOMINGO_09, time: "14:30" }, [
-        ticket("09-pista-inteira", "Domingo · Inteira", "Pista", "Inteira", "2º lote", "qrcode", 389.9),
-        ticket("09-pista-meia", "Domingo · Meia-entrada", "Pista", "Meia-entrada", "2º lote", "facial", 194.95),
-        ticket("09-camarote-inteira", "Domingo · Camarote", "Camarote", "Inteira", "2º lote", "facial", 780.0),
+        ticket("09-pista-inteira", "Domingo, Inteira", "Pista", "Inteira", "2º lote", "qrcode", 389.9),
+        ticket("09-pista-meia", "Domingo, Meia-entrada", "Pista", "Meia-entrada", "2º lote", "facial", 194.95),
+        ticket("09-camarote-inteira", "Domingo, Camarote", "Camarote", "Inteira", "2º lote", "facial", 780.0),
     ]),
     makeSession({ ...SEXTA_14, time: "14:00" }, [
-        ticket("14-pista-inteira", "Pista · Inteira", "Pista", "Inteira", "2º lote", "qrcode", 419.9),
-        ticket("14-premium-inteira", "Pista Premium · Inteira", "Pista Premium", "Inteira", "2º lote", "qrcode", 619.9),
-        ticket("14-camarote-inteira", "Camarote · Inteira", "Camarote", "Inteira", "2º lote", "facial", 820.0),
+        ticket("14-pista-inteira", "Pista, Inteira", "Pista", "Inteira", "2º lote", "qrcode", 419.9),
+        ticket("14-premium-inteira", "Pista Premium, Inteira", "Pista Premium", "Inteira", "2º lote", "qrcode", 619.9),
+        ticket("14-camarote-inteira", "Camarote, Inteira", "Camarote", "Inteira", "2º lote", "facial", 820.0),
     ]),
     makeSession({ ...SEXTA_14, time: "20:00" }, [
-        ticket("14n-pista-inteira", "Pista · Inteira", "Pista", "Inteira", "2º lote", "qrcode", 449.9),
-        ticket("14n-camarote-inteira", "Camarote · Inteira", "Camarote", "Inteira", "2º lote", "facial", 860.0),
+        ticket("14n-pista-inteira", "Pista, Inteira", "Pista", "Inteira", "2º lote", "qrcode", 449.9),
+        ticket("14n-camarote-inteira", "Camarote, Inteira", "Camarote", "Inteira", "2º lote", "facial", 860.0),
     ]),
     makeSession({ ...SABADO_15, time: "14:00" }, [
-        ticket("15-pista-inteira", "Pista · Inteira", "Pista", "Inteira", "3º lote", "qrcode", 449.9),
-        ticket("15-pista-meia", "Pista · Meia-entrada", "Pista", "Meia-entrada", "3º lote", "facial", 224.95),
-        ticket("15-premium-inteira", "Pista Premium · Inteira", "Pista Premium", "Inteira", "3º lote", "qrcode", 679.9),
-        ticket("15-camarote-open", "Camarote Open Bar · Inteira", "Camarote", "Inteira", "3º lote", "facial", 1240.0),
+        ticket("15-pista-inteira", "Pista, Inteira", "Pista", "Inteira", "3º lote", "qrcode", 449.9),
+        ticket("15-pista-meia", "Pista, Meia-entrada", "Pista", "Meia-entrada", "3º lote", "facial", 224.95),
+        ticket("15-premium-inteira", "Pista Premium, Inteira", "Pista Premium", "Inteira", "3º lote", "qrcode", 679.9),
+        ticket("15-camarote-open", "Camarote Open Bar, Inteira", "Camarote", "Inteira", "3º lote", "facial", 1240.0),
     ]),
     makeSession({ ...DOMINGO_16, time: "14:30", soldOut: true }, [
-        ticket("16-pista-inteira", "Encerramento · Inteira", "Pista", "Inteira", "3º lote", "qrcode", 409.9),
-        ticket("16-camarote-inteira", "Encerramento · Camarote", "Camarote", "Inteira", "3º lote", "facial", 860.0),
+        ticket("16-pista-inteira", "Encerramento, Inteira", "Pista", "Inteira", "3º lote", "qrcode", 409.9),
+        ticket("16-camarote-inteira", "Encerramento, Camarote", "Camarote", "Inteira", "3º lote", "facial", 860.0),
     ]),
 ];
 
@@ -182,7 +183,8 @@ export function definirSessoes(novas: TicketSession[]) {
     sessions = novas;
 }
 
-export const products: ProductItem[] = [
+/** Produtos à venda: começa com o exemplo e é trocado pelos produtos do evento em contexto (data/plataforma.ts). */
+export let products: ProductItem[] = [
     {
         id: "prd-copo",
         name: "Copo oficial do evento",
@@ -218,7 +220,8 @@ const combo = (
     composicao,
 });
 
-export const comboCategories: ComboCategory[] = [
+/** Combos à venda: começa com o exemplo e é trocado pelos combos do evento em contexto (data/plataforma.ts). */
+export let comboCategories: ComboCategory[] = [
     {
         id: "passaportes",
         name: "Passaportes",
@@ -229,19 +232,19 @@ export const comboCategories: ComboCategory[] = [
                 "Pista",
                 515.97,
                 [
-                    { quantity: 1, ticketName: "Sábado · Inteira", loteName: "1º lote", date: "08 de agosto • 14:00" },
-                    { quantity: 1, ticketName: "Domingo · Inteira", loteName: "2º lote", date: "09 de agosto • 14:30" },
+                    { quantity: 1, ticketName: "Sábado, Inteira", loteName: "1º lote", date: "08 de agosto • 14:00" },
+                    { quantity: 1, ticketName: "Domingo, Inteira", loteName: "2º lote", date: "09 de agosto • 14:30" },
                 ],
                 PASSAPORTE_DESC,
             ),
             combo(
                 "passaporte-camarote",
-                "Passaporte de 2 dias · Camarote",
+                "Passaporte de 2 dias, Camarote",
                 "Camarote",
                 980.0,
                 [
-                    { quantity: 1, ticketName: "Camarote · Inteira", loteName: "2º lote", date: "08 de agosto • 14:00" },
-                    { quantity: 1, ticketName: "Domingo · Camarote", loteName: "2º lote", date: "09 de agosto • 14:30" },
+                    { quantity: 1, ticketName: "Camarote, Inteira", loteName: "2º lote", date: "08 de agosto • 14:00" },
+                    { quantity: 1, ticketName: "Domingo, Camarote", loteName: "2º lote", date: "09 de agosto • 14:30" },
                 ],
                 PASSAPORTE_DESC,
             ),
@@ -251,11 +254,11 @@ export const comboCategories: ComboCategory[] = [
         id: "casal",
         name: "Casal",
         combos: [
-            combo("casal-pista", "Combo Casal · Pista", "Pista", 701.82, [
-                { quantity: 2, ticketName: "Pista · Inteira", loteName: "1º lote", date: "07 de agosto • 14:00" },
+            combo("casal-pista", "Combo Casal, Pista", "Pista", 701.82, [
+                { quantity: 2, ticketName: "Pista, Inteira", loteName: "1º lote", date: "07 de agosto • 14:00" },
             ]),
-            combo("casal-camarote", "Combo Casal · Camarote", "Camarote", 1404.0, [
-                { quantity: 2, ticketName: "Camarote · Inteira", loteName: "1º lote", date: "07 de agosto • 14:00" },
+            combo("casal-camarote", "Combo Casal, Camarote", "Camarote", 1404.0, [
+                { quantity: 2, ticketName: "Camarote, Inteira", loteName: "1º lote", date: "07 de agosto • 14:00" },
             ]),
         ],
     },
@@ -263,11 +266,11 @@ export const comboCategories: ComboCategory[] = [
         id: "turma",
         name: "Turma de 4",
         combos: [
-            combo("turma-pista", "Turma de 4 · Pista", "Pista", 1511.6, [
-                { quantity: 4, ticketName: "Pista · Inteira", loteName: "2º lote", date: "14 de agosto • 14:00" },
+            combo("turma-pista", "Turma de 4, Pista", "Pista", 1511.6, [
+                { quantity: 4, ticketName: "Pista, Inteira", loteName: "2º lote", date: "14 de agosto • 14:00" },
             ]),
-            combo("turma-premium", "Turma de 4 · Pista Premium", "Pista Premium", 2231.64, [
-                { quantity: 4, ticketName: "Pista Premium · Inteira", loteName: "2º lote", date: "14 de agosto • 14:00" },
+            combo("turma-premium", "Turma de 4, Pista Premium", "Pista Premium", 2231.64, [
+                { quantity: 4, ticketName: "Pista Premium, Inteira", loteName: "2º lote", date: "14 de agosto • 14:00" },
             ]),
         ],
     },
@@ -276,16 +279,23 @@ export const comboCategories: ComboCategory[] = [
         name: "Fim de semana de encerramento",
         soldOut: true,
         combos: [
-            combo("encerramento-pista", "Encerramento · Pista", "Pista", 769.8, [
-                { quantity: 1, ticketName: "Pista · Inteira", loteName: "3º lote", date: "15 de agosto • 14:00" },
-                { quantity: 1, ticketName: "Encerramento · Inteira", loteName: "3º lote", date: "16 de agosto • 14:30" },
+            combo("encerramento-pista", "Encerramento, Pista", "Pista", 769.8, [
+                { quantity: 1, ticketName: "Pista, Inteira", loteName: "3º lote", date: "15 de agosto • 14:00" },
+                { quantity: 1, ticketName: "Encerramento, Inteira", loteName: "3º lote", date: "16 de agosto • 14:30" },
             ]),
         ],
     },
 ];
 
 /** Todos os combos, na ordem dos agrupadores — o carrinho indexa por aqui. */
-export const combos: ComboItem[] = comboCategories.flatMap((category) => category.combos);
+export let combos: ComboItem[] = comboCategories.flatMap((category) => category.combos);
+
+/** Troca produtos e combos pelos do evento em contexto. `let` exportado: quem importa enxerga a troca. */
+export function definirProdutosECombos(novosProdutos: ProductItem[], novasCategorias: ComboCategory[]) {
+    products = novosProdutos;
+    comboCategories = novasCategorias;
+    combos = novasCategorias.flatMap((category) => category.combos);
+}
 
 /* ------------------------------------------------------------------ */
 /*  Compradores                                                        */
@@ -303,45 +313,7 @@ export interface Buyer {
     initials: string;
 }
 
-const knownBuyers: Array<Buyer & { document?: string }> = [
-    {
-        id: "acc-joao",
-        name: "João Silva",
-        phone: "(11) 98812-4477",
-        email: "joaosilva@gmail.com",
-        document: "12345678910",
-        maskedDocument: "CPF •••.•••.123-10",
-        initials: "JS",
-    },
-    {
-        id: "acc-maria",
-        name: "Maria Cunha",
-        phone: "(21) 99640-1382",
-        email: "maria.cunha@gmail.com",
-        document: "98765432100",
-        maskedDocument: "CPF •••.•••.432-00",
-        initials: "MC",
-    },
-    // Duas contas com o mesmo e-mail — o passo 1 precisa deixar escolher qual delas.
-    {
-        id: "acc-ana",
-        name: "Ana Ribeiro",
-        phone: "(31) 99125-7708",
-        email: "familia@gmail.com",
-        document: "11122233344",
-        maskedDocument: "CPF •••.•••.233-44",
-        initials: "AR",
-    },
-    {
-        id: "acc-carlos",
-        name: "Carlos Ribeiro",
-        phone: "(31) 98431-2260",
-        email: "familia@gmail.com",
-        document: "55566677788",
-        maskedDocument: "CPF •••.•••.677-88",
-        initials: "CR",
-    },
-];
+/* Compradores: os da organização, achados nos pedidos do banco (`buscarCompradores` em data/plataforma.ts). */
 
 /* ------------------------------------------------------------------ */
 /*  Configuração do evento                                             */
@@ -353,16 +325,26 @@ const knownBuyers: Array<Buyer & { document?: string }> = [
 /* ------------------------------------------------------------------ */
 
 export const EVENTO = {
-    /** Limite de ingressos por documento configurado no evento. `0` = sem limite. */
-    limitePorDocumento: 4,
     /**
-     * Liga a exigência de identificar o comprador. Fica ativo em eventos com
-     * acesso por face ou credenciamento, onde o ingresso nasce nominal.
+     * Limite de ingressos por documento do evento em contexto. `0` = sem limite. Vem de Regras de
+     * compra e acesso: "Limite por comprador na Bilheteria online" em "Aplicar limites" usa o limite
+     * por pessoa da categoria Ingresso (ITM-67). Trocado por `definirRegrasDoEvento`.
+     */
+    limitePorDocumento: 0,
+    /**
+     * Liga a exigência de identificar o comprador. Fica ativo em eventos com acesso por face
+     * (grupo com acesso facial ou serviço de acesso por face escolhido), onde o ingresso nasce nominal.
      */
     identificacaoObrigatoria: false,
     /** Dias até o link de pagamento expirar. */
     validadeLinkDias: 3,
 };
+
+/** Regras do evento em contexto, lidas do banco (data/plataforma.ts). */
+export function definirRegrasDoEvento(regras: Pick<typeof EVENTO, "limitePorDocumento" | "identificacaoObrigatoria">) {
+    EVENTO.limitePorDocumento = regras.limitePorDocumento;
+    EVENTO.identificacaoObrigatoria = regras.identificacaoObrigatoria;
+}
 
 /*
  * "1 ingresso" / "4 ingressos": o limite é configurável e chega a valer 1.
@@ -376,20 +358,14 @@ export const isEmail = (value: string) => value.includes("@");
 
 export const isValidEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(value.trim());
 
-const onlyDigits = (value: string) => value.replace(/\D/g, "");
+/** Preço em reais; redondo, sem centavos ("R$ 108"), quebrado com centavos ("R$ 194,95"). Decidido em 22/11/2026. */
+export const formatBRL = (value: number) =>
+    value.toLocaleString("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: Number.isInteger(value) ? 0 : 2, maximumFractionDigits: 2 });
 
-/** Um e-mail pode estar em mais de uma conta; documento é sempre único. */
-export function findBuyers(term: string): Buyer[] {
-    const value = term.trim().toLowerCase();
-    if (!value) return [];
+const PARTES_DA_DATA = new Intl.DateTimeFormat("pt-BR", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
 
-    if (isEmail(value)) {
-        return knownBuyers.filter((buyer) => buyer.email === value);
-    }
-
-    const digits = onlyDigits(value);
-    if (!digits) return [];
-    return knownBuyers.filter((buyer) => buyer.document === digits);
+/** Data e hora no padrão do Backstage: "2 out 2026, 23:00" (sem separador "•"). */
+export function formatarDataHora(iso: string | Date) {
+    const partes = Object.fromEntries(PARTES_DA_DATA.formatToParts(new Date(iso)).map((p) => [p.type, p.value]));
+    return `${partes.day} ${String(partes.month).replace(".", "")} ${partes.year}, ${partes.hour}:${partes.minute}`;
 }
-
-export const formatBRL = (value: number) => value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });

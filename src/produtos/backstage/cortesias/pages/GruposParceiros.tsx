@@ -2,7 +2,7 @@ import { Fragment, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import { CampoNumero } from "../../components/campo-numero";
 import { AnimatePresence, motion } from "motion/react";
-import { ArrowLeft, Calendar, CheckCircle, ChevronDown, CornerDownLeft, Plus, SearchLg, Ticket01, Users01, UsersPlus, XClose } from "@untitledui/icons";
+import { Calendar, CheckCircle, ChevronDown, CornerDownLeft, Plus, SearchLg, Ticket01, Users01, UsersPlus, XClose } from "@untitledui/icons";
 import { toast } from "sonner";
 import { Badge } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
@@ -15,10 +15,10 @@ import type { ProgressFeaturedIconType } from "@/components/application/progress
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
+import { CabecalhoDaPagina } from "../../components/cabecalho-da-pagina";
 import { addGrupo, addMembro, useGrupos, useMembros } from "../../components/membros-store";
 import { addAlocacoes, useAlocacoes, type Alocacao } from "../data/parceiros";
 import { COMBOS, PRODUCTS, SESSIONS } from "../data/cortesia-items";
-import { TITULO_PAGINA } from "@/produtos/backstage/components/titulo-pagina";
 
 type Categoria = "ingressos" | "produtos" | "combos";
 
@@ -93,15 +93,15 @@ export function GerenciarEmissores() {
     return (
         <BackstageLayout activeSection="cortesias" activeItem="emissao-cortesias">
             <div className="flex min-w-0 flex-1 flex-col gap-6">
-                <header className="relative flex items-center justify-between gap-3 max-md:flex-wrap">
-                    <Button size="sm" color="secondary" iconLeading={ArrowLeft} onClick={() => navigate("/backstage/cortesias")}>
-                        Cortesias
-                    </Button>
-                    <h1 className={cx(TITULO_PAGINA, "pointer-events-none md:absolute md:left-1/2 md:-translate-x-1/2 md:whitespace-nowrap max-md:order-last max-md:w-full")}>Emissores e cotas</h1>
-                    <Button size="md" color="primary" iconLeading={Plus} onClick={() => navigate("/backstage/cortesias/emissores/configurar")}>
-                        Configurar cotas
-                    </Button>
-                </header>
+                <CabecalhoDaPagina
+                    voltar={{ rotulo: "Cortesias", onClick: () => navigate("/backstage/cortesias") }}
+                    titulo="Emissores e cotas"
+                    acoes={
+                        <Button size="md" color="primary" iconLeading={Plus} onClick={() => navigate("/backstage/cortesias/emissores/configurar")}>
+                            Configurar cotas
+                        </Button>
+                    }
+                />
                 <main className="flex flex-1 flex-col gap-4">
                     <div className="flex items-center gap-2">
                         <UsersPlus className="size-5 text-fg-quaternary" aria-hidden="true" />
@@ -194,7 +194,7 @@ function ConfigurarCotasWizard({ onFechar }: { onFechar: () => void }) {
         const grupoId = crypto.randomUUID();
         const membroIds = emails.map((email) => {
             const id = crypto.randomUUID();
-            addMembro({ id, email, cargoIds: ["parceiro"], grupoIds: [grupoId], eventosCount: 0 });
+            addMembro({ id, email, cargoIds: ["parceiro"], grupoIds: [grupoId] });
             return id;
         });
         addGrupo({ id: grupoId, nome: nome.trim(), eventoIds: [], membroIds });
@@ -225,15 +225,15 @@ function ConfigurarCotasWizard({ onFechar }: { onFechar: () => void }) {
 
     return (
         <div className="flex flex-col gap-8">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-                <Button size="sm" color="secondary" iconLeading={ArrowLeft} onClick={voltar}>
-                    Voltar
-                </Button>
-                <h2 className="text-lg font-semibold text-primary">Configurar cotas</h2>
-                <Button size="md" color="primary" isDisabled={!podeAvancar} onClick={avancar}>
-                    {etapa === 2 ? "Criar grupo e cota" : "Avançar"}
-                </Button>
-            </div>
+            <CabecalhoDaPagina
+                voltar={{ rotulo: etapa === 0 ? "Emissores e cotas" : STEP_TITLES[etapa - 1], onClick: voltar }}
+                titulo="Configurar cotas"
+                acoes={
+                    <Button size="md" color="primary" isDisabled={!podeAvancar} onClick={avancar}>
+                        {etapa === 2 ? "Criar grupo e cota" : "Avançar"}
+                    </Button>
+                }
+            />
 
             <div className="flex flex-col items-center gap-8">
                 <Progress.IconsWithText items={steps} size="sm" type="number" orientation="horizontal" className="max-w-[720px] max-md:hidden" />

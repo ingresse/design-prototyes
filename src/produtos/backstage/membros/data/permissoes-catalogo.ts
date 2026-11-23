@@ -47,7 +47,12 @@ const CRUD: AcaoBase[] = ["view", "edit", "create", "delete"];
 const acao = (dono: string, verbo: string, nome: string, base: AcaoBase): RecursoPermissao => ({ id: `${dono}:${verbo}`, nome, base: [base], dono });
 const sub = (dono: string, verbo: string, nome: string, base: AcaoBase): RecursoPermissao => ({ ...acao(dono, verbo, nome, base), nivel: 1 });
 
-/** Todas as permissões de produção (lista de 06/10/2026), com as fusões já aprovadas. */
+/**
+ * Todas as permissões de produção (lista de 06/10/2026), com as fusões já aprovadas. As seções
+ * levam o nome de onde a pessoa encontra a funcionalidade no Backstage: a organização e o menu do
+ * evento (BKS-07); Questionário, Passkey, Cupons e Etiquetas abrem pelos atalhos de Ingressos e
+ * produtos (BKS-119). As chaves (`recurso:acao`) não mudam com o nome da seção.
+ */
 export const CATALOGO_PERMISSOES: SecaoPermissao[] = [
     {
         id: "organizacao",
@@ -68,28 +73,14 @@ export const CATALOGO_PERMISSOES: SecaoPermissao[] = [
     },
     {
         id: "evento",
-        nome: "Configurações do evento",
-        descricao: "Eventos e sua publicação, sessões, configurações gerais e termos de uso do evento.",
+        nome: "Visão geral do evento",
+        descricao: "O evento e as informações dele: publicação, sessões, configurações gerais e termos de uso.",
         recursos: [
             { id: "events", nome: "Eventos", base: CRUD },
             acao("events", "publish", "Publicar eventos", "edit"),
             { id: "events.dates", nome: "Sessões", base: CRUD },
             { id: "events.settings", nome: "Configurações gerais", base: ["view", "edit"] },
             { id: "events.terms", nome: "Termos de uso do evento", base: ["view", "edit"] },
-        ],
-    },
-    {
-        id: "equipe-operacao",
-        nome: "Equipe de operação",
-        descricao: "Operadores da organização e os grupos de cota que emitem ingressos no evento.",
-        recursos: [
-            { id: "operation.operators", nome: "Operadores", base: CRUD },
-            { id: "events.quota_groups", nome: "Grupos de cota", base: ["view", "edit", "create"] },
-            acao("events.quota_groups", "activate", "Ativar grupos de cota", "edit"),
-            { id: "events.quota_groups.issuances", nome: "Emissões dos grupos de cota", base: ["view"] },
-            { id: "events.quota_groups.issuers", nome: "Emissores dos grupos de cota", base: ["edit"], dono: "events.quota_groups" },
-            { id: "events.quota_groups.issuers:activate", nome: "Ativar emissores", base: ["edit"], dono: "events.quota_groups", nivel: 1 },
-            { id: "events.quota_groups.issuers:validate", nome: "Validar emissores", base: ["edit"], dono: "events.quota_groups", nivel: 1 },
         ],
     },
     {
@@ -115,18 +106,63 @@ export const CATALOGO_PERMISSOES: SecaoPermissao[] = [
         ],
     },
     {
+        // Antes "Coleta de dados"; abre pelo atalho Questionário de Ingressos e produtos.
+        id: "coleta-dados",
+        nome: "Questionário",
+        descricao: "As perguntas que o comprador responde na compra de cada ingresso.",
+        recursos: [{ id: "events.questions", nome: "Perguntas por ingresso", base: CRUD }, acao("events.questions", "activate", "Ativar perguntas", "edit")],
+    },
+    {
+        // Antes "Marketing". Não é Divulgação (Lista de espera e Pixel, BKS-120): abre pelos atalhos de Ingressos e produtos.
+        id: "marketing",
+        nome: "Passkey, cupons e etiquetas",
+        descricao: "Abrem pelos atalhos de Ingressos e produtos: Passkeys que liberam ingressos ocultos, cupons de desconto e etiquetas.",
+        recursos: [
+            { id: "coupons", nome: "Cupons de desconto", base: CRUD },
+            sub("coupons", "toggle", "Ativar e desativar cupons", "edit"),
+            sub("coupons", "link", "Vincular e desvincular cupons", "edit"),
+            { id: "passkeys", nome: "Passkeys", base: CRUD },
+            acao("passkeys", "export", "Exportar Passkeys", "view"),
+            { id: "labels", nome: "Etiquetas", base: CRUD },
+            acao("labels", "link", "Vincular e desvincular etiquetas", "edit"),
+        ],
+    },
+    {
+        // Até 22/11/2026 ficava em "Emissão de ingressos", com as cortesias.
+        id: "compras-em-grupo",
+        nome: "Compras em grupo",
+        descricao: "O formulário de pedidos de grupos, a fila de pedidos a aprovar e as autorizações dadas.",
+        colunas: ["view", "edit", "emit", "cancel"],
+        recursos: [
+            { id: "events.group_registrations", nome: "Formulário de compras em grupo", base: ["view", "edit"] },
+            { id: "events.group_registrations.authorizations", nome: "Autorizações de compra em grupo", base: ["view", "edit", "cancel"] },
+            { id: "events.group_registrations.requests", nome: "Pedidos de compra em grupo", base: ["view"] },
+            acao("events.group_registrations.requests", "approve", "Aprovar e reprovar pedidos", "edit"),
+        ],
+    },
+    {
+        id: "equipe-operacao",
+        nome: "Equipe e comissários",
+        descricao: "Operadores da organização e os grupos do evento, com as cotas que cada um emite.",
+        recursos: [
+            { id: "operation.operators", nome: "Operadores", base: CRUD },
+            { id: "events.quota_groups", nome: "Grupos do evento", base: ["view", "edit", "create"] },
+            acao("events.quota_groups", "activate", "Ativar grupos do evento", "edit"),
+            { id: "events.quota_groups.issuances", nome: "Emissões dos grupos", base: ["view"] },
+            { id: "events.quota_groups.issuers", nome: "Emissores dos grupos", base: ["edit"], dono: "events.quota_groups" },
+            { id: "events.quota_groups.issuers:activate", nome: "Ativar emissores", base: ["edit"], dono: "events.quota_groups", nivel: 1 },
+            { id: "events.quota_groups.issuers:validate", nome: "Validar emissores", base: ["edit"], dono: "events.quota_groups", nivel: 1 },
+        ],
+    },
+    {
         id: "emissao",
-        nome: "Emissão de ingressos",
-        descricao: "Cortesias e inscrições em grupo, com as autorizações e as solicitações a aprovar.",
+        nome: "Bilheteria e cortesias",
+        descricao: "Cortesias emitidas no evento: emitir, reenviar e cancelar.",
         // Emitir e Cancelar ocupam as trilhas de Criar e Excluir.
         colunas: ["view", "edit", "emit", "cancel"],
         recursos: [
             { id: "events.courtesies", nome: "Cortesias", base: ["view", "edit", "emit", "cancel"] },
             acao("events.courtesies", "resend", "Reenviar cortesias", "emit"),
-            { id: "events.group_registrations", nome: "Inscrições em grupo", base: ["view", "edit"] },
-            { id: "events.group_registrations.authorizations", nome: "Autorizações de inscrição em grupo", base: ["view", "edit", "cancel"] },
-            { id: "events.group_registrations.requests", nome: "Solicitações de inscrição em grupo", base: ["view"] },
-            acao("events.group_registrations.requests", "approve", "Aprovar e rejeitar solicitações", "edit"),
         ],
     },
     {
@@ -145,26 +181,6 @@ export const CATALOGO_PERMISSOES: SecaoPermissao[] = [
             { id: "reports.surveys", nome: "Respostas dos questionários", base: ["view", "export"] },
             { id: "reports.custom", nome: "Relatório personalizado com IA", base: ["view", "export"] },
         ],
-    },
-    {
-        id: "marketing",
-        nome: "Marketing",
-        descricao: "Cupons de desconto, etiquetas e as Passkeys que liberam ingressos ocultos.",
-        recursos: [
-            { id: "coupons", nome: "Cupons de desconto", base: CRUD },
-            sub("coupons", "toggle", "Ativar e desativar cupons", "edit"),
-            sub("coupons", "link", "Vincular e desvincular cupons", "edit"),
-            { id: "passkeys", nome: "Passkeys", base: CRUD },
-            acao("passkeys", "export", "Exportar Passkeys", "view"),
-            { id: "labels", nome: "Etiquetas", base: CRUD },
-            acao("labels", "link", "Vincular e desvincular etiquetas", "edit"),
-        ],
-    },
-    {
-        id: "coleta-dados",
-        nome: "Coleta de dados",
-        descricao: "As perguntas que o comprador responde na compra de cada ingresso.",
-        recursos: [{ id: "events.questions", nome: "Perguntas por ingresso", base: CRUD }, acao("events.questions", "activate", "Ativar perguntas", "edit")],
     },
     {
         id: "financas",

@@ -69,7 +69,7 @@ export function CriarCargoModal({ isOpen, onClose }: CriarCargoModalProps) {
                         <div className="space-y-4">
                             <Input
                                 label="Nome do cargo"
-                                placeholder="Ex: Gerenciador de conteúdo"
+                                placeholder="Ex.: Gerenciador de conteúdo"
                                 value={nome}
                                 onChange={setNome}
                                 isRequired

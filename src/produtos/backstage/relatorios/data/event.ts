@@ -1,3 +1,8 @@
+import { useSyncExternalStore } from "react";
+import { assinarBanco, lerBanco, type Evento as EventoBanco } from "@/plataforma";
+import { assinarEventoAtual, eventoAtualId, eventos as eventosDaOrganizacao } from "../../eventos/data/eventos";
+import { assinarEscopoDosRelatorios, escopoDosRelatorios } from "../../components/escopo-dos-relatorios";
+
 /* ------------------------------------------------------------------ */
 /*  Meta canônica do evento (compartilhada por todas as páginas de     */
 /*  relatório). Fonte única de fuso horário, moeda, janela de vendas   */
@@ -7,33 +12,101 @@
 export interface Sessao {
     /** Chave estável usada em filtros e agregações. */
     id: string;
-    /** Rótulo curto exibido em chips/filtros (ex.: "15/06"). */
+    /** Rótulo curto exibido em chips e colunas (ex.: "15/06"; em "Todos os eventos", "Nome do evento (15/06)"). */
     label: string;
-    /** Descrição completa (ex.: "Domingo · 15/06 · 18h00"). */
+    /** Descrição completa (ex.: "15 jun 2026, 18:00"; em "Todos os eventos", "Nome do evento, 15 jun 2026, 18:00"). */
     descricao: string;
+    /** Nome do evento da sessão (a origem da linha em "Todos os eventos", REL-227). */
+    evento: string;
     /** Data da sessão em formato dd/mm/aaaa. */
     data: string;
 }
 
+/* ------------------------------------------------------------------ */
+/*  Evento dos relatórios: espelho do evento em contexto ou, no escopo */
+/*  "todos os eventos" (BKS-27), da organização inteira. Nome, sessões */
+/*  e janela de vendas vêm do banco (desde 21/11/2026; antes era fixo  */
+/*  em "Botafogo x Chapecoense").                                      */
+/* ------------------------------------------------------------------ */
+
 export const EVENT = {
-    nome: "Botafogo x Chapecoense - Copa do Brasil",
+    nome: "",
     locale: "pt-BR",
     currency: "BRL",
     /** Código exibido em alguns lugares como prefixo de moeda. */
     currencyLabel: "R$",
     timeZone: "America/Sao_Paulo",
     tzLabel: "Horário de Brasília (GMT-3)",
-    /** Janela de vendas (dd/mm/aaaa). Futebol: vendas abrem 7 dias antes do jogo.
-     *  Abertura 14/06/2026; partida 21/06/2026. */
-    salesStart: "14/06/2026",
-    salesEnd: "21/06/2026",
-    sessoes: [
-        { id: "s-21-06", label: "21/06", descricao: "Sexta · 21/06 · 22h00", data: "21/06/2026" },
-        { id: "s-22-06", label: "22/06", descricao: "Sábado · 22/06 · 22h00", data: "22/06/2026" },
-        { id: "s-28-06", label: "28/06", descricao: "Sexta · 28/06 · 22h00", data: "28/06/2026" },
-        { id: "s-29-06", label: "29/06", descricao: "Sábado · 29/06 · 22h00", data: "29/06/2026" },
-    ] as Sessao[],
-} as const;
+    /** Janela de vendas (dd/mm/aaaa): do primeiro dia com venda ao dia do evento (ou hoje, se depois). */
+    salesStart: "",
+    salesEnd: "",
+    sessoes: [] as Sessao[],
+};
+
+const MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+const p2 = (n: number) => String(n).padStart(2, "0");
+const br = (d: Date) => `${p2(d.getDate())}/${p2(d.getMonth() + 1)}/${d.getFullYear()}`;
+
+let versao = 0;
+const ouvintes = new Set<() => void>();
+let chave = "";
+
+function espelhar() {
+    const { tabelas } = lerBanco();
+    const todos = escopoDosRelatorios() === "todos";
+    const ids = todos ? eventosDaOrganizacao.map((e) => e.id) : [eventoAtualId()];
+    const docs = ids.map((id) => tabelas.eventos[id]).filter((e): e is EventoBanco => !!e);
+    const novaChave = `${todos}|${docs.map((d) => `${d.id}:${d.atualizadoEm}`).join(",")}|${ids.map((id) => tabelas.historico[id]?.serie.length ?? 0).join(",")}`;
+    if (novaChave === chave) return;
+    chave = novaChave;
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+    const inicios = docs.map((e) => {
+        const dias = tabelas.historico[e.id]?.serie.length ?? 0;
+        const criado = new Date(e.criadoEm);
+        const peloHistorico = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() - dias);
+        return dias ? Math.min(peloHistorico.getTime(), criado.getTime()) : criado.getTime();
+    });
+    const fins = docs.map((e) => new Date(e.data).getTime());
+    EVENT.nome = todos ? "Todos os eventos" : (docs[0]?.nome ?? "");
+    EVENT.salesStart = br(new Date(inicios.length ? Math.min(...inicios) : hoje.getTime()));
+    EVENT.salesEnd = br(new Date(Math.max(hoje.getTime(), ...fins)));
+    EVENT.sessoes = docs.flatMap((e) =>
+        e.sessoes.map((s) => {
+            const d = new Date(s.inicio);
+            const label = `${p2(d.getDate())}/${p2(d.getMonth() + 1)}`;
+            return {
+                id: s.id,
+                label: todos ? `${e.nome} (${label})` : label,
+                descricao: todos ? `${e.nome}, ${dataEHora(d)}` : dataEHora(d),
+                evento: e.nome,
+                data: br(d),
+            };
+        }),
+    );
+    versao++;
+    ouvintes.forEach((o) => o());
+}
+
+if (typeof window !== "undefined") {
+    assinarBanco(espelhar);
+    assinarEventoAtual(espelhar);
+    assinarEscopoDosRelatorios(espelhar);
+    espelhar();
+}
+
+/** O evento dos relatórios, assinado: a tela redesenha quando o evento, o escopo ou o banco mudam. */
+export function useEventoDosRelatorios() {
+    useSyncExternalStore(
+        (fn) => {
+            ouvintes.add(fn);
+            return () => ouvintes.delete(fn);
+        },
+        () => versao,
+        () => 0,
+    );
+    return EVENT;
+}
 
 /* ------------------------------------------------------------------ */
 /*  Formatters derivados (substituem os duplicados em cada página).    */
@@ -51,6 +124,11 @@ export const percentFormatter = new Intl.NumberFormat(EVENT.locale, {
     minimumFractionDigits: 1,
     maximumFractionDigits: 1,
 });
+
+/** Data e hora num formato só, nos relatórios (T9): "26 nov 2026, 20:00". */
+export function dataEHora(d: Date) {
+    return `${d.getDate()} ${MESES[d.getMonth()]} ${d.getFullYear()}, ${p2(d.getHours())}:${p2(d.getMinutes())}`;
+}
 
 /** Formata uma data dd/mm/aaaa (ou Date) no padrão do evento. */
 export const dateFormatter = new Intl.DateTimeFormat(EVENT.locale, {

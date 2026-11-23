@@ -1,15 +1,12 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useSearchParams } from "react-router";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { ArrowLeft } from "@untitledui/icons";
 import { Progress } from "@/components/application/progress-steps/progress-steps";
 import type { ProgressIconType } from "@/components/application/progress-steps/progress-types";
 import { Dialog, Modal, ModalOverlay } from "@/components/application/modals/modal";
 import { Button } from "@/components/base/buttons/button";
-import { ButtonUtility } from "@/components/base/buttons/button-utility";
-import { cx } from "@/utils/cx";
-import { EtapaCompacta, FOCO_ESCOPO } from "../pos-compra-ui";
-import { TITULO_PAGINA } from "@/produtos/backstage/components/titulo-pagina";
+import { EtapaCompacta } from "../pos-compra-ui";
+import { CabecalhoDaPagina } from "../../../components/cabecalho-da-pagina";
 
 /**
  * A etapa no endereço, para o voltar do navegador ser uma etapa para trás.
@@ -84,12 +81,13 @@ export function WizardShell({
     infoRodape,
     trabalhoEmAndamento,
     rotuloContinuar,
+    indiceAnterior,
     children,
 }: {
     /** Sai do fluxo inteiro e volta para o pedido. */
     onClose: () => void;
     titulo: string;
-    /** Sobre quem é a alteração: "{Comprador} · Pedido {id curto}". */
+    /** Sobre quem é a alteração: "Pedido {id curto}, de {comprador}". */
     subtitulo?: string;
     etapas: string[];
     indiceAtual: number;
@@ -113,6 +111,8 @@ export function WizardShell({
     trabalhoEmAndamento?: boolean;
     /** A ação de ficar, na voz do fluxo: "Continuar trocando", "Continuar transferindo". */
     rotuloContinuar: string;
+    /** Para onde o voltar leva, quando não é a etapa imediatamente anterior (etapa pulada, PED-107). */
+    indiceAnterior?: number;
     children: ReactNode;
 }) {
     /* Direção do slide: avançar entra pela direita, voltar entra pela esquerda. O movimento
@@ -159,24 +159,23 @@ export function WizardShell({
 
     return (
         <div className="flex min-w-0 flex-1 flex-col">
-            {/* Mesmo cabeçalho da venda de ingressos: voltar à esquerda e o título centrado na
-                página por posicionamento absoluto, que volta a ser estático no mobile, onde
-                centrar ao lado do botão desalinharia os dois. */}
-            <header className="relative flex items-center justify-between gap-3 px-4 py-6 max-md:justify-start md:px-6">
-                {/* Uma etapa para trás, e para fora do fluxo quando já está na primeira: é o que
-                    `onVoltar` sempre significou nos quatro chamadores. A seta chamava `onClose`,
-                    então não havia como voltar uma etapa em lugar nenhum; o stepper do DS não é
-                    clicável e os links "Alterar" que compensavam isso saíram das etapas 2. */}
-                {/* `md` no telefone: é o único caminho de volta do fluxo e, em `sm`, o alvo é de
-                    32px no canto mais longe do polegar. */}
-                <ButtonUtility size="sm" color="tertiary" className="max-md:size-11" icon={ArrowLeft} tooltip={indiceAtual === 0 ? "Voltar para o pedido" : "Voltar uma etapa"} onClick={voltar} />
-                <div className="pointer-events-none absolute left-1/2 flex -translate-x-1/2 flex-col items-center text-center max-md:static max-md:translate-x-0 max-md:items-start max-md:text-left">
-                    <h1 className={TITULO_PAGINA}>{titulo}</h1>
-                    {subtitulo && <p className="text-sm text-tertiary">{subtitulo}</p>}
-                </div>
-            </header>
+            {/* Cabeçalho padrão do Backstage (CabecalhoDaPagina): voltar acima do título, com o nome
+                do destino. Uma etapa para trás, e para fora do fluxo quando já está na primeira: é o
+                que `onVoltar` sempre significou nos quatro chamadores. */}
+            {/* Sem recuo próprio: a shell já recua o conteúdo. O recuo a mais punha o título dos
+                fluxos 24 px à direita (x=148) e abaixo do das listas (x=124), PED-113. */}
+            <CabecalhoDaPagina
+                className="pb-6"
+                voltar={{
+                    rotulo: indiceAtual === 0 ? "Pedido" : etapas[indiceAnterior ?? indiceAtual - 1],
+                    ariaLabel: indiceAtual === 0 ? "Voltar para o pedido" : `Voltar para ${etapas[indiceAnterior ?? indiceAtual - 1]}`,
+                    onClick: voltar,
+                }}
+                titulo={titulo}
+                subtitulo={subtitulo}
+            />
 
-            <div className="flex flex-1 flex-col items-center gap-6 px-4 pb-6 md:px-6">
+            <div className="flex flex-1 flex-col items-center gap-6 pb-6">
                 {etapas.length > 1 && (
                     <>
                         <Progress.IconsWithText items={progressItems} type="number" size="md" orientation="horizontal" className="max-w-[560px] max-md:hidden" />
@@ -231,11 +230,12 @@ export function WizardShell({
                         {/* `whitespace-normal` deixa o rótulo quebrar em duas linhas em vez de estourar a
                            barra: todo botão do DS é nowrap, e quem passa o rótulo é cada fluxo. */}
                         {ultimaEtapa ? (
-                            <Button size="md" className="max-md:w-full max-md:whitespace-normal md:ml-auto" isDisabled={!podeAvancar} onClick={onConfirmar}>
+                            /* 44 px de altura no celular (PED-118): o md do DS tem 40. */
+                            <Button size="md" className="max-md:min-h-11 max-md:w-full max-md:whitespace-normal md:ml-auto" isDisabled={!podeAvancar} onClick={onConfirmar}>
                                 {rotuloConfirmar}
                             </Button>
                         ) : (
-                            <Button size="md" className="max-md:w-full max-md:whitespace-normal md:ml-auto" isDisabled={!podeAvancar} onClick={onAvancar}>
+                            <Button size="md" className="max-md:min-h-11 max-md:w-full max-md:whitespace-normal md:ml-auto" isDisabled={!podeAvancar} onClick={onAvancar}>
                                 {rotuloAvancar}
                             </Button>
                         )}
@@ -249,7 +249,7 @@ export function WizardShell({
             <ModalOverlay isOpen={confirmandoSaida} onOpenChange={(aberto) => !aberto && setConfirmandoSaida(false)} isDismissable>
                 <Modal>
                     <Dialog>
-                        <div className={cx("w-full max-w-lg rounded-xl bg-primary p-6 shadow-xl ring-1 ring-border-secondary", FOCO_ESCOPO)}>
+                        <div className="w-full max-w-lg rounded-xl bg-primary p-6 shadow-xl ring-1 ring-border-secondary">
                             <div className="min-w-0">
                                 <h2 className="text-lg font-semibold text-primary">Sair e descartar esta alteração?</h2>
                                 <p className="mt-1 text-sm text-tertiary">O que foi escolhido e digitado aqui não fica guardado. Nada foi cobrado e nada fica registrado no pedido.</p>
@@ -260,7 +260,7 @@ export function WizardShell({
                                 <Button
                                     size="md"
                                     color="secondary"
-                                    className="max-md:w-full"
+                                    className="max-md:min-h-11 max-md:w-full"
                                     onClick={() => {
                                         setConfirmandoSaida(false);
                                         onVoltar();
@@ -268,7 +268,7 @@ export function WizardShell({
                                 >
                                     Sair e descartar
                                 </Button>
-                                <Button size="md" autoFocus className="max-md:w-full" onClick={() => setConfirmandoSaida(false)}>
+                                <Button size="md" autoFocus className="max-md:min-h-11 max-md:w-full" onClick={() => setConfirmandoSaida(false)}>
                                     {rotuloContinuar}
                                 </Button>
                             </div>

@@ -1,6 +1,21 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { type ReactNode } from "react";
 import { ChevronDown, SearchLg, XClose } from "@untitledui/icons";
-import { Checkbox } from "@/components/base/checkbox/checkbox";
+import { useFilter } from "react-aria";
+import {
+    Autocomplete as AriaAutocomplete,
+    Button as AriaButton,
+    Input as AriaInput,
+    ListBox as AriaListBox,
+    Popover as AriaPopover,
+    SearchField as AriaSearchField,
+    Select as AriaSelect,
+    SelectValue as AriaSelectValue,
+} from "react-aria-components";
+import { Surgir } from "@/components/foundations/transicao";
+import { HintText } from "@/components/base/input/hint-text";
+import { Label } from "@/components/base/input/label";
+import { SelectItem } from "@/components/base/select/select-item";
+import { SelectContext } from "@/components/base/select/select-shared";
 import { cx } from "@/utils/cx";
 
 export interface CheckboxSelectOption {
@@ -15,59 +30,25 @@ interface CheckboxSelectProps {
     options: CheckboxSelectOption[];
     selected: Set<string>;
     onChange: (next: Set<string>) => void;
-    /** Marca o label com asterisco de obrigatório. */
+    /** Marca o label com asterisco de obrigatório (o mesmo do Label do DS). */
     required?: boolean;
     /** Texto de apoio abaixo do campo. */
     hint?: ReactNode;
+    /** Erro do campo: troca o texto de apoio e pinta o campo de erro. */
+    erro?: ReactNode;
     /** Renderiza chips das opções selecionadas (com × para remover). Default: true. */
     showChips?: boolean;
 }
 
-export function CheckboxSelect({ label, placeholder, options, selected, onChange, required, hint, showChips = true }: CheckboxSelectProps) {
-    const [isOpen, setIsOpen] = useState(false);
-    const [openUp, setOpenUp] = useState(false);
-    const [busca, setBusca] = useState("");
-    const rootRef = useRef<HTMLDivElement | null>(null);
-    const anchorRef = useRef<HTMLDivElement | null>(null);
-
-    // Ao abrir, decide se o painel abre para cima (quando falta espaço abaixo).
-    useEffect(() => {
-        if (!isOpen || !anchorRef.current) return;
-        const rect = anchorRef.current.getBoundingClientRect();
-        const espacoAbaixo = window.innerHeight - rect.bottom;
-        const alturaPainel = 288; // ~ max-h-64 + busca
-        setOpenUp(espacoAbaixo < alturaPainel && rect.top > espacoAbaixo);
-    }, [isOpen]);
-
-    useEffect(() => {
-        if (!isOpen) return;
-        const onMouseDown = (e: MouseEvent) => {
-            if (rootRef.current && !rootRef.current.contains(e.target as Node)) {
-                setIsOpen(false);
-            }
-        };
-        document.addEventListener("mousedown", onMouseDown);
-        return () => document.removeEventListener("mousedown", onMouseDown);
-    }, [isOpen]);
-
-    useEffect(() => {
-        if (!isOpen) setBusca("");
-    }, [isOpen]);
-
-    const summary = useMemo(() => {
-        if (selected.size === 0) return placeholder;
-        if (selected.size === 1) {
-            const only = options.find((o) => selected.has(o.id));
-            return only?.label ?? "1 selecionado";
-        }
-        return `${selected.size} selecionados`;
-    }, [selected, options, placeholder]);
-
-    const filtered = useMemo(() => {
-        const termo = busca.trim().toLowerCase();
-        if (!termo) return options;
-        return options.filter((o) => o.label.toLowerCase().includes(termo));
-    }, [options, busca]);
+/**
+ * Seleção múltipla com busca: Select do React Aria em `selectionMode="multiple"`, com a busca
+ * (Autocomplete) e a lista (ListBox) num Popover. O botão é ligado ao rótulo, abre uma lista com
+ * semântica de listbox, setas e Enter marcam as opções, e Esc fecha só a lista (não o modal).
+ * Os itens são o `SelectItem` do DS com checkbox à esquerda.
+ */
+export function CheckboxSelect({ label, placeholder, options, selected, onChange, required, hint, erro, showChips = true }: CheckboxSelectProps) {
+    const { contains } = useFilter({ sensitivity: "base" });
+    const isInvalid = Boolean(erro);
 
     const toggle = (id: string) => {
         const next = new Set(selected);
@@ -76,90 +57,106 @@ export function CheckboxSelect({ label, placeholder, options, selected, onChange
         onChange(next);
     };
 
+    const resumo = (() => {
+        if (selected.size === 0) return placeholder;
+        if (selected.size === 1) return options.find((o) => selected.has(o.id))?.label ?? "1 selecionado";
+        return `${selected.size} selecionados`;
+    })();
+
     const chips = showChips ? options.filter((o) => selected.has(o.id)) : [];
 
     return (
-        <div className="flex flex-col gap-1.5" ref={rootRef}>
-            {label && (
-                <span className="text-sm font-medium text-secondary">
-                    {label}
-                    {required && <span className="text-brand-secondary"> *</span>}
-                </span>
-            )}
-            <div className="relative" ref={anchorRef}>
-                <button
-                    type="button"
-                    onClick={() => setIsOpen((v) => !v)}
-                    aria-expanded={isOpen}
-                    className={cx(
-                        "flex w-full items-center justify-between gap-2 rounded-lg bg-primary px-3 py-2.5 text-left shadow-xs ring-1 transition duration-100 ease-linear",
-                        isOpen ? "ring-2 ring-brand" : "ring-border-primary hover:bg-primary_hover",
-                    )}
-                >
-                    <span className={cx("truncate text-sm", selected.size === 0 ? "text-placeholder" : "text-primary")}>{summary}</span>
-                    <ChevronDown className={cx("size-5 shrink-0 text-fg-quaternary transition-transform duration-150", isOpen && "rotate-180")} aria-hidden="true" />
-                </button>
+        <SelectContext.Provider value={{ size: "sm" }}>
+            <AriaSelect
+                selectionMode="multiple"
+                value={[...selected]}
+                onChange={(keys) => onChange(new Set(keys.map(String)))}
+                placeholder={placeholder}
+                isRequired={required}
+                isInvalid={isInvalid}
+                validationBehavior="aria"
+                aria-label={label ? undefined : placeholder}
+                className="flex flex-col gap-1.5"
+            >
+                {label && (
+                    <Label isRequired={required} isInvalid={isInvalid}>
+                        {label}
+                    </Label>
+                )}
 
-                {isOpen && (
-                    <div className={cx("absolute z-20 max-h-64 w-full overflow-y-auto rounded-lg bg-primary shadow-lg ring-1 ring-border-secondary_alt", openUp ? "bottom-full mb-1.5" : "top-full mt-1.5")}>
-                        <div className="sticky top-0 bg-primary p-2">
+                <AriaButton
+                    className={(state) =>
+                        cx(
+                            "flex w-full cursor-pointer items-center justify-between gap-2 rounded-lg bg-primary px-3 py-2.5 text-left shadow-xs ring-1 outline-hidden transition duration-100 ease-linear ring-inset",
+                            isInvalid ? "ring-error_subtle" : "ring-primary",
+                            !state.isFocusVisible && !state.isPressed && "hover:bg-primary_hover",
+                            (state.isFocusVisible || state.isPressed) && (isInvalid ? "ring-2 ring-error" : "ring-2 ring-brand"),
+                        )
+                    }
+                >
+                    <AriaSelectValue className={cx("truncate text-sm", selected.size === 0 ? "text-placeholder" : "text-primary")}>{resumo}</AriaSelectValue>
+                    <ChevronDown className="size-5 shrink-0 text-fg-quaternary" aria-hidden="true" />
+                </AriaButton>
+
+                <AriaPopover
+                    placement="bottom"
+                    offset={4}
+                    containerPadding={8}
+                    className={(state) =>
+                        cx(
+                            "flex w-(--trigger-width) origin-(--trigger-anchor-point) flex-col overflow-hidden rounded-lg bg-primary shadow-lg ring-1 ring-secondary_alt outline-hidden",
+                            state.isEntering && "duration-150 ease-out animate-in fade-in placement-top:slide-in-from-bottom-0.5 placement-bottom:slide-in-from-top-0.5",
+                            state.isExiting && "duration-100 ease-in animate-out fade-out",
+                        )
+                    }
+                >
+                    <AriaAutocomplete filter={contains}>
+                        <AriaSearchField aria-label={label ? `Buscar em ${label}` : "Buscar opções"} autoFocus className="shrink-0 border-b border-secondary p-2">
                             <div className="flex items-center gap-2 rounded-md bg-secondary px-2.5 py-2">
                                 <SearchLg className="size-4 shrink-0 text-fg-quaternary" aria-hidden="true" />
-                                <input
-                                    type="text"
-                                    value={busca}
-                                    onChange={(e) => setBusca(e.target.value)}
+                                <AriaInput
                                     placeholder="Buscar"
-                                    aria-label="Buscar opções"
-                                    className="min-w-0 flex-1 bg-transparent text-sm text-primary outline-none placeholder:text-placeholder"
+                                    className="min-w-0 flex-1 bg-transparent text-sm text-primary outline-hidden placeholder:text-placeholder [&::-webkit-search-cancel-button]:hidden"
                                 />
                             </div>
-                        </div>
-                        <div className="flex flex-col p-1">
-                            {filtered.length === 0 ? (
-                                <span className="px-2.5 py-3 text-sm text-tertiary">Nenhuma opção encontrada.</span>
-                            ) : (
-                                filtered.map((option) => (
-                                    <button
-                                        key={option.id}
-                                        type="button"
-                                        onClick={() => toggle(option.id)}
-                                        className="flex items-start gap-2.5 rounded-md px-2.5 py-2 text-left transition duration-100 ease-linear hover:bg-primary_hover"
-                                    >
-                                        <span className="pt-0.5">
-                                            <Checkbox isSelected={selected.has(option.id)} onChange={() => toggle(option.id)} aria-label={option.label} />
-                                        </span>
-                                        <span className="flex min-w-0 flex-1 flex-col">
-                                            <span className="truncate text-sm text-primary">{option.label}</span>
-                                            {option.sub && <span className="truncate text-sm text-tertiary">{option.sub}</span>}
-                                        </span>
-                                    </button>
-                                ))
+                        </AriaSearchField>
+                        <AriaListBox
+                            // Sem isso, a lista se rotula pelo próprio conteúdo (todas as opções) antes do rótulo do campo.
+                            aria-label="Opções"
+                            items={options}
+                            className="max-h-64 min-h-0 overflow-y-auto py-1 outline-hidden"
+                            renderEmptyState={() => <p className="px-3.5 py-3 text-sm text-tertiary">Nenhuma opção encontrada.</p>}
+                        >
+                            {(option) => (
+                                <SelectItem id={option.id} label={option.label} supportingText={option.sub} selectionIndicator="checkbox" selectionIndicatorAlign="left" />
                             )}
-                        </div>
-                    </div>
-                )}
-            </div>
+                        </AriaListBox>
+                    </AriaAutocomplete>
+                </AriaPopover>
 
-            {chips.length > 0 && (
-                <div className="flex flex-wrap gap-1.5">
-                    {chips.map((c) => (
-                        <span key={c.id} className="inline-flex items-center gap-1 rounded-md bg-secondary py-1 pr-1 pl-2 text-sm text-secondary ring-1 ring-border-secondary">
-                            {c.label}
-                            <button
-                                type="button"
-                                onClick={() => toggle(c.id)}
-                                aria-label={`Remover ${c.label}`}
-                                className="flex size-4 items-center justify-center rounded text-fg-quaternary transition duration-100 ease-linear hover:bg-tertiary hover:text-fg-secondary"
-                            >
-                                <XClose className="size-3" />
-                            </button>
-                        </span>
-                    ))}
-                </div>
-            )}
+                {/* Os chips entram e saem com a altura animada; o campo fica no lugar (MEM-75). */}
+                <Surgir visivel={chips.length > 0} gap={6}>
+                    <ul className="flex flex-wrap gap-1.5" aria-label={label ? `${label} selecionados` : "Selecionados"}>
+                        {chips.map((c) => (
+                            <li key={c.id} className="inline-flex max-w-full items-center gap-0.5 rounded-md bg-secondary py-0.5 pr-0.5 pl-2 text-sm text-secondary ring-1 ring-secondary">
+                                <span className="truncate">{c.label}</span>
+                                {/* Botão nativo: dentro do Select, um Button do React Aria viraria o gatilho. Alvo de 24 px. */}
+                                <button
+                                    type="button"
+                                    onClick={() => toggle(c.id)}
+                                    aria-label={`Remover ${c.label}`}
+                                    className="flex size-6 shrink-0 cursor-pointer items-center justify-center rounded text-fg-quaternary outline-focus-ring transition duration-100 ease-linear hover:bg-tertiary hover:text-fg-secondary focus-visible:outline-2"
+                                >
+                                    <XClose className="size-3.5" aria-hidden="true" />
+                                </button>
+                            </li>
+                        ))}
+                    </ul>
+                </Surgir>
 
-            {hint && <p className="text-sm text-tertiary">{hint}</p>}
-        </div>
+                {(erro || hint) && <HintText isInvalid={isInvalid}>{erro ?? hint}</HintText>}
+            </AriaSelect>
+        </SelectContext.Provider>
     );
 }
+
