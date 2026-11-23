@@ -6,7 +6,6 @@ import { toast } from "sonner";
 import { DateRangePicker } from "@/components/application/date-picker/date-range-picker";
 import { FilterBar } from "@/components/application/filter-bar/filter-bar";
 import { EmptyState } from "@/components/application/empty-state/empty-state";
-import { TableCard } from "@/components/application/table/table";
 import { Avatar } from "@/components/base/avatar/avatar";
 import { Badge } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
@@ -14,8 +13,8 @@ import { Input } from "@/components/base/input/input";
 import { Select } from "@/components/base/select/select";
 import { cx } from "@/utils/cx";
 import { capaDoEvento } from "../../components/financas/capa";
-import { COR_DO_NEGATIVO, Cascata, Distribuicao, NumeroGrande, PARTES_COM_DETALHE, Secao } from "../../components/financas/cascata";
-import { CONTA_DA_ORGANIZACAO, HOJE, ROTULO_DA_ENTRADA, quitado, calendario, entradasDoCalendario, eventosDoCenario, movimentos, totalizar, type Entrada, type Evento } from "../../components/financas/dados";
+import { COR_DO_NEGATIVO, Cascata, Distribuicao, PARTES_COM_DETALHE, Secao } from "../../components/financas/cascata";
+import { HOJE, ROTULO_DA_ENTRADA, quitado, entradasDoCalendario, eventosDoCenario, movimentos, totalizar, type Entrada, type Evento } from "../../components/financas/dados";
 import { Aviso, AvisoDeBloqueio, Carregando, ErroAoCarregar, TelaFinal, type AcaoFinal } from "../../components/financas/estados";
 import { dataComDia, dataCurta, dataDoEvento, reais } from "../../components/financas/formato";
 import { detalhesDaDistribuicao, fraseDeCompensacao, proximaLiberacaoDoEvento } from "../../components/financas/frases";
@@ -28,7 +27,7 @@ import { ORDENS, POR_PAGINA, SITUACOES, baixarRelatorio, filtrarEOrdenar, type O
 
 /*
  * Finanças · a fonte da verdade do produtor (ajustes v3, 17/11/2026).
- * De cima para baixo: "Resumo financeiro" (as duas contas), três cards de ação (para agir; para conferir:
+ * De cima para baixo: "Resumo financeiro" (as duas contas;
  * de onde veio o Líquido e como ele chega ao Saldo disponível), "Últimos movimentos" e "Próximos movimentos" (portas para o
  * Calendário e o Extrato) e "Saldo por evento" (as pastas, com busca, filtro, ordenação e paginação).
  */
@@ -52,21 +51,6 @@ const BASE = "/payout/financas-eventos";
  */
 const NA_ROLAGEM = 8;
 const ROLAGEM = "max-h-68 overflow-y-auto overscroll-contain";
-
-/** Card de ação do topo: um número (o único tipo de número com centavos na tela), uma linha de apoio e uma ação. */
-const CardDeAcao = ({ rotulo, selo, valor, cor, apoio, children }: { rotulo: string; selo?: ReactNode; valor: number; cor: string; apoio?: string; children?: ReactNode }) => (
-    <div className="flex min-w-0 flex-col gap-3">
-        <div className="flex flex-col gap-1">
-            <span className="flex items-center gap-2 text-sm font-medium text-secondary">
-                {rotulo}
-                {selo}
-            </span>
-            <NumeroGrande valor={valor} className={cx("text-display-xs", cor)} classeDosCentavos="text-lg" />
-            {apoio && <span className="text-sm text-tertiary">{apoio}</span>}
-        </div>
-        {children}
-    </div>
-);
 
 interface ProximoMovimento {
     data?: string;
@@ -153,8 +137,6 @@ export function FinancasEventos() {
     const compensa = fraseDeCompensacao(eventos);
     const negativos = eventos.filter((e) => e.disponivel < 0);
     const comCenario = (rota: string) => `${rota}${cenario === "normal" ? "" : `${rota.includes("?") ? "&" : "?"}cenario=${cenario}`}`;
-    const proximaAntecipavel = calendario(escopo, ["aLiberar"])[0];
-    const agendado = escopo.flatMap((e) => e.repasses.filter((r) => r.situacao === "agendado")).sort((a, b) => a.data.localeCompare(b.data))[0];
     const proximas = proximosMovimentos(eventos, NA_ROLAGEM);
     const ultimos = movimentos(eventos)
         .filter((m) => m.efeito !== 0)
@@ -185,7 +167,6 @@ export function FinancasEventos() {
     const comFiltro = situacao !== "todos" || Boolean(de || ate);
     const contagem = (n: number) => (n === 1 ? "1 evento" : `${n} eventos`);
     const totalDoResultado = resultado.reduce((soma, e) => soma + e.disponivel, 0);
-    const comDisponivel = escopo.filter((e) => e.disponivel > 0).length;
 
     const conteudo = () => {
         if (acao) return <TelaFinal acao={acao} valor={acao === "repasse" ? totais.disponivel : acao === "antecipar" ? totais.aLiberar : undefined} aoVoltar={() => setAcao(null)} />;
@@ -218,49 +199,6 @@ export function FinancasEventos() {
                         }}
                     />
                 </Secao>
-
-                {/* Cards de ação, logo abaixo do resumo: o Saldo disponível é o resultado da segunda conta, e aqui o produtor age sobre ele. */}
-                <section aria-label="O que você pode fazer agora" className="grid grid-cols-3 gap-6">
-                    <TableCard.Root className="px-6 py-5">
-                        <CardDeAcao
-                            rotulo="Saldo disponível"
-                            selo={
-                                bloqueado && (
-                                    <Badge size="sm" type="pill-color" color="warning">
-                                        Pausado
-                                    </Badge>
-                                )
-                            }
-                            valor={totais.disponivel}
-                            cor={totais.disponivel < 0 ? COR_DO_NEGATIVO : "text-primary"}
-                            apoio={comDisponivel > 0 ? `Em ${contagem(comDisponivel)}` : undefined}
-                        >
-                            {/* A conta que recebe fica à vista antes de qualquer pedido de repasse. */}
-                            <span className="flex flex-wrap items-center gap-2 text-sm text-tertiary">
-                                Conta para saque: <span className="font-medium text-secondary">{CONTA_DA_ORGANIZACAO}</span>
-                                <Badge size="sm" type="pill-color" color={bloqueado ? "warning" : "success"}>
-                                    {bloqueado ? "Em confirmação" : "Confirmada"}
-                                </Badge>
-                            </span>
-                        </CardDeAcao>
-                    </TableCard.Root>
-                    <TableCard.Root className="px-6 py-5">
-                        <CardDeAcao rotulo="Antecipável" valor={totais.aLiberar} cor="text-primary" apoio={proximaAntecipavel ? `Próxima liberação: ${reais(proximaAntecipavel.valor)} em ${dataCurta(proximaAntecipavel.data)}` : undefined}>
-                            {totais.aLiberar > 0 && (
-                                <Button size="sm" color="secondary" className="self-start" isDisabled={bloqueado} onClick={() => setAcao("antecipar")}>
-                                    Antecipar
-                                </Button>
-                            )}
-                        </CardDeAcao>
-                    </TableCard.Root>
-                    <TableCard.Root className="px-6 py-5">
-                        <CardDeAcao rotulo="Sacado" valor={totais.recebido} cor="text-primary" apoio={agendado ? `${reais(totais.agendado)} agendados para ${dataCurta(agendado.data)}` : undefined}>
-                            <Button size="sm" color="link-gray" className="self-start" href={comCenario(`${BASE}/extrato?tipo=repasse`)}>
-                                Ver saques
-                            </Button>
-                        </CardDeAcao>
-                    </TableCard.Root>
-                </section>
 
                 <div className="grid grid-cols-2 items-start gap-6">
                     <Secao

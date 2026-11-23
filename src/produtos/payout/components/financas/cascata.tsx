@@ -246,7 +246,7 @@ const Passo = ({ rotulo, dica, valor, leitura, resultado, cor, legenda, partes, 
 );
 
 /**
- * A segunda conta, que leva do Líquido ao número do card Saldo disponível:
+ * A segunda conta, que leva do Líquido ao Saldo disponível (o número que o produtor pode sacar):
  *   Líquido − Sacado − Saque agendado − A liberar = Saldo disponível
  * "A liberar" soma Antecipável, Retido e Em processamento (o Total a liberar do Calendário).
  * A barra acima mostra as mesmas partes em proporção.
@@ -303,7 +303,7 @@ export const Distribuicao = ({ totais, detalhes, destinos }: DistribuicaoProps) 
                     acao={aLiberar > 0 ? ver("Ver no calendário", destinos?.aLiberar) : undefined}
                 />
                 <Operador sinal="=" />
-                <Passo rotulo={ROTULO_DA_PARTE.disponivel} dica={DEFINICAO.disponivel} valor={totais.disponivel} leitura="igual a" resultado cor={COR_DA_PARTE.disponivel} legenda="O valor do card Saldo disponível" />
+                <Passo rotulo={ROTULO_DA_PARTE.disponivel} dica={DEFINICAO.disponivel} valor={totais.disponivel} leitura="igual a" resultado cor={COR_DA_PARTE.disponivel} legenda="Pronto para saque" />
             </dl>
         </div>
     );

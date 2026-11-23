@@ -90,10 +90,10 @@ const ListaEmEspera = ({ linhas }: { linhas: number }) => (
     </div>
 );
 
-/** `variante="lista"`: Calendário e Extrato (resumo e lista). Padrão: Finanças e página do evento (cards, conta e lista). */
+/** `variante="lista"`: Calendário e Extrato (resumo e lista). Padrão: Visão geral e página do evento (conta e lista, sem cards). */
 export const Carregando = ({ variante }: { variante?: "lista" }) => (
     <div role="status" aria-label="Carregando suas finanças" className="flex flex-col gap-6">
-        <CartoesEmEspera />
+        {variante === "lista" && <CartoesEmEspera />}
         {variante !== "lista" && (
             <div className="flex flex-col gap-5 rounded-xl bg-primary p-6 ring-1 ring-secondary">
                 <Bloco className="h-5 w-56" />
