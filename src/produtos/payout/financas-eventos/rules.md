@@ -24,8 +24,9 @@ quanto já repassou.
 
 ### A equação
 - **FEV-01** De onde veio: Vendido − Taxas e custos + Créditos − Devoluções = Líquido. Onde está: Líquido = Em processamento + Retido + Antecipável + Disponível + Agendado + Repassado. Vale para a organização e para cada evento; a soma dos 48 eventos é a conta da organização.
-- **FEV-02** Duas contas, uma embaixo da outra, com blocos alinhados (Visão geral e página do evento). Primeira: Vendido + Créditos − Taxas e custos − Devoluções = Líquido. Segunda, "Do líquido ao saldo disponível": Líquido − Sacado − Saque agendado − A liberar = Saldo disponível, e o resultado é o mesmo número do card do topo. "A liberar" soma Antecipável, Retido e Em processamento (é o "Total a liberar" do Calendário) e mostra as três partes dentro do bloco. A barra de proporção continua acima da segunda conta.
+- **FEV-02** Duas contas, uma embaixo da outra, com blocos alinhados (Visão geral e página do evento). Primeira: Vendido + Créditos − Taxas e custos − Devoluções = Líquido. Segunda, "Do líquido ao saldo disponível": Líquido − Sacado − Saque agendado − A liberar = Saldo disponível, e o resultado é o mesmo número do card Saldo disponível, logo abaixo. "A liberar" soma Antecipável, Retido e Em processamento (é o "Total a liberar" do Calendário) e mostra as três partes dentro do bloco. A barra de proporção continua acima da segunda conta.
 - **FEV-02b** Na Visão geral, os dois blocos abaixo do resumo são "Últimos movimentos" (à esquerda) e "Próximos movimentos" (à direita). Os próximos juntam as liberações e os saques agendados, em ordem de data.
+- **FEV-02c** Ordem da Visão geral: barra de filtros, Resumo financeiro (as duas contas), os três cards (Saldo disponível, Antecipável, Sacado), Últimos e Próximos movimentos e Saldo por evento.
 
 ### Finanças (tela principal) _(pages/eventos.tsx)_
 - **FEV-01** Vocabulário do produtor (23/11): "saque", "Sacado", "Saque agendado" e "Saldo disponível". Nenhum texto visível usa "repasse" nem "Disponível" sozinho. Onde as regras abaixo ainda dizem "repasse", "Repassado", "Agendado" ou "Disponível", vale o termo novo.

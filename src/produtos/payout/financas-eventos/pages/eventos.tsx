@@ -28,7 +28,7 @@ import { ORDENS, POR_PAGINA, SITUACOES, baixarRelatorio, filtrarEOrdenar, type O
 
 /*
  * Finanças · a fonte da verdade do produtor (ajustes v3, 17/11/2026).
- * De cima para baixo: três cards de ação (para agir), "Resumo financeiro" (para conferir:
+ * De cima para baixo: "Resumo financeiro" (as duas contas), três cards de ação (para agir; para conferir:
  * de onde veio o Líquido e como ele chega ao Saldo disponível), "Últimos movimentos" e "Próximos movimentos" (portas para o
  * Calendário e o Extrato) e "Saldo por evento" (as pastas, com busca, filtro, ordenação e paginação).
  */
@@ -203,7 +203,23 @@ export function FinancasEventos() {
                     </Aviso>
                 )}
 
-                {/* Cards de ação: servem para agir. Os mesmos três valores voltam na legenda da conta, para conferir. */}
+                <Secao titulo="Resumo financeiro" lateral={<span className="text-sm text-tertiary">Acumulado de {filtrado ? contagem(escopo.length) : "todos os eventos"}, até hoje</span>}>
+                    <Cascata totais={totais} aoAbrir={setDetalhe} creditoPendente={escopo.some((e) => e.creditoPendente)} />
+                    <Distribuicao
+                        totais={totais}
+                        detalhes={detalhesDaDistribuicao(escopo)}
+                        destinos={{
+                            processamento: comCenario(`${BASE}/calendario?tipo=processamento`),
+                            retido: comCenario(`${BASE}/calendario?tipo=retido`),
+                            aLiberar: comCenario(`${BASE}/calendario`),
+                            disponivel: comCenario(`${BASE}?situacao=disponivel`),
+                            agendado: comCenario(`${BASE}/extrato?tipo=repasse&periodo=90`),
+                            recebido: comCenario(`${BASE}/extrato?tipo=repasse-pago&periodo=90`),
+                        }}
+                    />
+                </Secao>
+
+                {/* Cards de ação, logo abaixo do resumo: o Saldo disponível é o resultado da segunda conta, e aqui o produtor age sobre ele. */}
                 <section aria-label="O que você pode fazer agora" className="grid grid-cols-3 gap-6">
                     <TableCard.Root className="px-6 py-5">
                         <CardDeAcao
@@ -245,22 +261,6 @@ export function FinancasEventos() {
                         </CardDeAcao>
                     </TableCard.Root>
                 </section>
-
-                <Secao titulo="Resumo financeiro" lateral={<span className="text-sm text-tertiary">Acumulado de {filtrado ? contagem(escopo.length) : "todos os eventos"}, até hoje</span>}>
-                    <Cascata totais={totais} aoAbrir={setDetalhe} creditoPendente={escopo.some((e) => e.creditoPendente)} />
-                    <Distribuicao
-                        totais={totais}
-                        detalhes={detalhesDaDistribuicao(escopo)}
-                        destinos={{
-                            processamento: comCenario(`${BASE}/calendario?tipo=processamento`),
-                            retido: comCenario(`${BASE}/calendario?tipo=retido`),
-                            aLiberar: comCenario(`${BASE}/calendario`),
-                            disponivel: comCenario(`${BASE}?situacao=disponivel`),
-                            agendado: comCenario(`${BASE}/extrato?tipo=repasse&periodo=90`),
-                            recebido: comCenario(`${BASE}/extrato?tipo=repasse-pago&periodo=90`),
-                        }}
-                    />
-                </Secao>
 
                 <div className="grid grid-cols-2 items-start gap-6">
                     <Secao
