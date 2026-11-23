@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { Fragment, type ReactNode } from "react";
 import { Link } from "react-router";
 import { ChevronRight } from "@untitledui/icons";
 import { TableCard } from "@/components/application/table/table";
@@ -88,6 +88,13 @@ export const Secao = ({ titulo, selo, lateral, children, className, id }: { titu
 
 const Operador = ({ sinal }: { sinal: string }) => (
     <span aria-hidden="true" className="flex w-4 shrink-0 items-center justify-center text-xl font-medium text-quaternary">
+        {sinal}
+    </span>
+);
+
+/** Operador da linha de apoio: menor e mais apagado que o das contas. */
+const OperadorMenor = ({ sinal }: { sinal: string }) => (
+    <span aria-hidden="true" className="flex w-4 shrink-0 items-center justify-center text-md font-medium text-quaternary">
         {sinal}
     </span>
 );
@@ -248,7 +255,9 @@ const Passo = ({ rotulo, dica, valor, leitura, resultado, cor, legenda, partes, 
 /**
  * A segunda conta, que leva do Líquido ao Saldo disponível (o número que o produtor pode sacar):
  *   Líquido − Sacado − Saque agendado − A liberar = Saldo disponível
- * "A liberar" soma Antecipável, Retido e Em processamento (o Total a liberar do Calendário).
+ * "A liberar" soma Antecipável, Retido e Em processamento (o Total a liberar do Calendário); a
+ * composição dele vem numa terceira linha, de apoio, com menos peso: Antecipável + Retido + Em
+ * processamento = A liberar.
  * A barra acima mostra as mesmas partes em proporção.
  */
 export const Distribuicao = ({ totais, detalhes, destinos }: DistribuicaoProps) => {
@@ -299,12 +308,46 @@ export const Distribuicao = ({ totais, detalhes, destinos }: DistribuicaoProps) 
                     dica="Ainda vai entrar no seu saldo disponível: o que é antecipável, o que está retido e o que está em processamento. É o Total a liberar do Calendário."
                     valor={aLiberar}
                     leitura="menos"
-                    partes={A_LIBERAR.map((parte) => ({ parte, valor: totais[parte] }))}
-                    acao={aLiberar > 0 ? ver("Ver no calendário", destinos?.aLiberar) : undefined}
+                    legenda="Composição logo abaixo"
                 />
                 <Operador sinal="=" />
                 <Passo rotulo={ROTULO_DA_PARTE.disponivel} dica={DEFINICAO.disponivel} valor={totais.disponivel} leitura="igual a" resultado cor={COR_DA_PARTE.disponivel} legenda="Pronto para saque" />
             </dl>
+
+            {/* Do que é feito o "A liberar" da conta acima. Linha de apoio: menos peso que as duas contas. */}
+            <div className="flex flex-col gap-2 border-t border-secondary pt-4">
+                <div className="flex items-center justify-between gap-4">
+                    <h3 className="text-sm font-medium text-tertiary">A liberar</h3>
+                    {aLiberar > 0 && ver("Ver no calendário", destinos?.aLiberar)}
+                </div>
+                <dl className="flex items-stretch gap-2">
+                    {A_LIBERAR.map((parte, i) => (
+                        <Fragment key={parte}>
+                            {i > 0 && <OperadorMenor sinal="+" />}
+                            <div className="flex min-w-0 flex-1 flex-col gap-0.5 px-1">
+                                <dt className="flex items-center gap-1.5 text-xs font-medium text-tertiary">
+                                    <span aria-hidden="true" className={cx("size-2 shrink-0 rounded-full", COR_DA_PARTE[parte])} />
+                                    <span>
+                                        {i > 0 && <span className="sr-only">mais </span>}
+                                        {ROTULO_DA_PARTE[parte]}
+                                    </span>
+                                    <Dica termo={ROTULO_DA_PARTE[parte]} texto={DEFINICAO[parte]} />
+                                </dt>
+                                <dd className="text-md font-semibold whitespace-nowrap text-secondary tabular-nums">{reais(totais[parte])}</dd>
+                                {detalhes[parte] && <dd className="text-xs text-tertiary">{detalhes[parte]}</dd>}
+                            </div>
+                        </Fragment>
+                    ))}
+                    <OperadorMenor sinal="=" />
+                    <div className="flex min-w-0 flex-1 flex-col gap-0.5 px-1">
+                        <dt className="text-xs font-medium text-tertiary">
+                            <span className="sr-only">igual a </span>A liberar
+                        </dt>
+                        <dd className="text-md font-semibold whitespace-nowrap text-secondary tabular-nums">{reais(aLiberar)}</dd>
+                        <dd className="text-xs text-tertiary">O mesmo valor da conta acima</dd>
+                    </div>
+                </dl>
+            </div>
         </div>
     );
 };
