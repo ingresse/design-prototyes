@@ -1,5 +1,7 @@
-import { useState } from 'react';
-import { Route, Routes } from 'react-router';
+import { Ajustes as AjustesDaOrganizacao } from '../produtos/backstage/organizacoes/pages/ajustes';
+import { useLayoutEffect, useState } from 'react';
+import { Navigate, Route, Routes, useLocation } from 'react-router';
+import { FundoDoBody } from './components/fundo-do-body';
 import { Toaster } from 'sonner';
 import { useTheme } from '../providers/theme-provider';
 import { ScenarioControls } from '../app/components/ui/ScenarioControls';
@@ -7,6 +9,8 @@ import { TicketPurchaseScreen } from '../app/components/TicketPurchaseScreen';
 import { ProductSelection } from '../app/components/ProductSelection';
 import { CymaticsShowcase } from '../app/components/CymaticsShowcase';
 import { CortesiasProvider } from '../produtos/backstage/cortesias/data/cortesias-store';
+import { SelecaoOrganizacao } from '../produtos/backstage/organizacoes/pages/SelecaoOrganizacao';
+import { RemixProvider } from '../produtos/backstage/components/remix/remix-context';
 import { EmissaoCortesias } from '../produtos/backstage/cortesias/pages/EmissaoCortesias';
 import { PermissaoEnvio } from '../produtos/backstage/permissao-envio/pages/PermissaoEnvio';
 import { NovaPermissao } from '../produtos/backstage/permissao-envio/pages/NovaPermissao';
@@ -25,21 +29,22 @@ import { Transferencias } from '../produtos/backstage/relatorios/pages/Transfere
 import { VendasPorGrupo } from '../produtos/backstage/relatorios/pages/VendasPorGrupo';
 import { Questionarios } from '../produtos/backstage/relatorios/pages/Questionarios';
 import { RelatorioPersonalizado } from '../produtos/backstage/relatorios/pages/RelatorioPersonalizado';
-import { Home as BackstageHome } from '../produtos/backstage/home/pages/Home';
 import { Eventos as BackstageEventos } from '../produtos/backstage/eventos/pages/Eventos';
+import { CriarEvento as BackstageCriarEvento } from '../produtos/backstage/eventos/pages/CriarEvento';
+import { EscolherInicio as SportsEscolherInicio } from '../produtos/backstage/sports-criar-evento/pages/escolher-inicio';
+import { SeusEventos as SportsSeusEventos } from '../produtos/backstage/sports-criar-evento/pages/seus-eventos';
+import { CriarEventoAssistente as SportsCriarEventoAssistente } from '../produtos/backstage/sports-criar-evento/pages/criar-evento-assistente';
 import { VisaoGeralEvento } from '../produtos/backstage/eventos/pages/VisaoGeralEvento';
+import { InformacoesEvento } from '../produtos/backstage/eventos/pages/InformacoesEvento';
 import { MembrosV2 } from '../produtos/backstage/membros-v2/pages/MembrosV2';
 import { NovoGrupoV2 } from '../produtos/backstage/membros-v2/pages/NovoGrupoV2';
-import { EquipeProvider } from '../produtos/backstage/equipe-de-operacao/data/equipe-store';
-import { EquipeDeOperacao } from '../produtos/backstage/equipe-de-operacao/pages/EquipeDeOperacao';
-import { CriarGrupo as CriarGrupoOperacao } from '../produtos/backstage/equipe-de-operacao/pages/CriarGrupo';
-import { DetalheGrupo as DetalheGrupoOperacao } from '../produtos/backstage/equipe-de-operacao/pages/DetalheGrupo';
-import { EditarItensCotas } from '../produtos/backstage/equipe-de-operacao/pages/EditarItensCotas';
-import { EditarOperadores } from '../produtos/backstage/equipe-de-operacao/pages/EditarOperadores';
-import { EquipeV2Provider } from '../produtos/backstage/equipe-de-operacao-v2/data/equipe-v2-store';
-import { EquipeDeOperacaoV2 } from '../produtos/backstage/equipe-de-operacao-v2/pages/EquipeDeOperacaoV2';
-import { CriarGrupoV2 } from '../produtos/backstage/equipe-de-operacao-v2/pages/CriarGrupoV2';
-import { DetalheGrupoV2 } from '../produtos/backstage/equipe-de-operacao-v2/pages/DetalheGrupoV2';
+import { Membros } from '../produtos/backstage/membros/pages/Membros';
+import { CriarCargo } from '../produtos/backstage/membros/pages/CriarCargo';
+import { EquipeEComissarios } from '../produtos/backstage/equipe-e-comissarios/pages/equipe-e-comissarios';
+import { GrupoDaEquipe } from '../produtos/backstage/equipe-e-comissarios/pages/grupo';
+import { CanalDoGrupo } from '../produtos/backstage/equipe-e-comissarios/pages/canal-do-grupo';
+import { RedirecionarComissario } from '../produtos/backstage/equipe-e-comissarios/pages/redirecionar-comissario';
+import { RelatorioComissarios } from '../produtos/backstage/comissarios/pages/relatorio-comissarios';
 import { ChaveDeAcesso } from '../produtos/backstage/chave-de-acesso/pages/ChaveDeAcesso';
 import { VenderIngressos } from '../produtos/backstage/bilheteria/pages/VenderIngressos';
 import { IngressoPdf } from '../produtos/backstage/bilheteria/pages/IngressoPdf';
@@ -70,6 +75,18 @@ import { Ingressos as CatalogoIngressos } from '../produtos/backstage/ingressos/
 import { Formulario as IngressosFormulario } from '../produtos/backstage/ingressos/pages/Formulario';
 import { EditarGrupos } from '../produtos/backstage/ingressos/pages/EditarGrupos';
 import { AberturasDeVendas } from '../produtos/backstage/aberturas-de-vendas/pages/AberturasDeVendas';
+import { Questionario } from '../produtos/backstage/questionario/pages/Questionario';
+import { PerguntaDetalhe } from '../produtos/backstage/questionario/pages/PerguntaDetalhe';
+import { Ingressos as ItensIngressos } from '../produtos/backstage/itens/pages/Ingressos';
+import { IngressoDetalhe as ItensIngressoDetalhe } from '../produtos/backstage/itens/pages/IngressoDetalhe';
+import { Produtos as ItensProdutos } from '../produtos/backstage/itens/pages/Produtos';
+import { ProdutoDetalhe as ItensProdutoDetalhe } from '../produtos/backstage/itens/pages/ProdutoDetalhe';
+import { ProdutosDaOrganizacao } from '../produtos/backstage/produtos-organizacao/pages/ProdutosDaOrganizacao';
+import { ProdutoDaOrganizacaoDetalhe } from '../produtos/backstage/produtos-organizacao/pages/ProdutoDaOrganizacaoDetalhe';
+import { LayoutDeItens } from '../produtos/backstage/itens/pages/layout-de-itens';
+import { Combos as ItensCombos } from '../produtos/backstage/itens/pages/Combos';
+import { ComboDetalhe as ItensComboDetalhe } from '../produtos/backstage/itens/pages/ComboDetalhe';
+import { Configuracoes as ItensConfiguracoes } from '../produtos/backstage/itens/pages/Configuracoes';
 import { PerguntasProvider } from '../produtos/backstage/perguntas/data/perguntas-store';
 import { Perguntas } from '../produtos/backstage/perguntas/pages/Perguntas';
 import { PerguntaForm } from '../produtos/backstage/perguntas/pages/PerguntaForm';
@@ -80,6 +97,10 @@ import { SelecaoEAtribuicao } from '../produtos/marketplace/selecao-e-atribuicao
 import { Config as MarketplaceConfig } from '../produtos/marketplace/selecao-e-atribuicao/pages/Config';
 import { Sucesso as MarketplaceSucesso } from '../produtos/marketplace/selecao-e-atribuicao/pages/Sucesso';
 import { MeiaEntrada as MarketplaceMeiaEntrada } from '../produtos/marketplace/selecao-e-atribuicao/pages/MeiaEntrada';
+import { SelecaoEAtribuicao as TotemSelecaoEAtribuicao } from '../produtos/totem/selecao-e-atribuicao/pages/SelecaoEAtribuicao';
+import { Config as TotemConfig } from '../produtos/totem/selecao-e-atribuicao/pages/Config';
+import { Sucesso as TotemSucesso } from '../produtos/totem/selecao-e-atribuicao/pages/Sucesso';
+import { MeiaEntrada as TotemMeiaEntrada } from '../produtos/totem/selecao-e-atribuicao/pages/MeiaEntrada';
 import { Home as IngresseAppHome } from '../produtos/ingresse-app/home/pages/Home';
 import { Carteira as IngresseAppCarteira } from '../produtos/ingresse-app/carteira/pages/Carteira';
 import { Ingressos as IngresseAppIngressos } from '../produtos/ingresse-app/ingressos/pages/Ingressos';
@@ -90,6 +111,7 @@ import { TrocarPagamentoPix as IngresseAppTrocarPagamentoPix } from '../produtos
 import { TrocarPagamentoCartao as IngresseAppTrocarPagamentoCartao } from '../produtos/ingresse-app/ingressos/pages/TrocarPagamentoCartao';
 import { TrocaSucesso as IngresseAppTrocaSucesso } from '../produtos/ingresse-app/ingressos/pages/TrocaSucesso';
 import { ComboDetalhe as IngresseAppComboDetalhe } from '../produtos/ingresse-app/ingressos/pages/ComboDetalhe';
+import { EditarFormulario as IngresseAppEditarFormulario } from '../produtos/ingresse-app/ingressos/pages/EditarFormulario';
 import { ProdutoDetalhe as IngresseAppProdutoDetalhe } from '../produtos/ingresse-app/ingressos/pages/ProdutoDetalhe';
 import { TransferirIngresso as IngresseAppTransferir } from '../produtos/ingresse-app/ingressos/pages/TransferirIngresso';
 import { TransferirDependente as IngresseAppTransferirDependente } from '../produtos/ingresse-app/ingressos/pages/TransferirDependente';
@@ -100,6 +122,10 @@ import { PagamentoPix as IngresseAppPagamentoPix } from '../produtos/ingresse-ap
 import { TransferenciaSucesso as IngresseAppTransferenciaSucesso } from '../produtos/ingresse-app/ingressos/pages/TransferenciaSucesso';
 import { TransferenciaProcessando as IngresseAppTransferenciaProcessando } from '../produtos/ingresse-app/ingressos/pages/TransferenciaProcessando';
 import { Perfil as IngresseAppPerfil } from '../produtos/ingresse-app/perfil/pages/Perfil';
+import { Dependentes as IngresseAppDependentes } from '../produtos/ingresse-app/perfil/pages/Dependentes';
+import { CadastrarDependente as PerfilCadastrarDependente } from '../produtos/ingresse-app/perfil/pages/CadastrarDependente';
+import { HabilitarAcesso as PerfilHabilitarAcesso } from '../produtos/ingresse-app/perfil/pages/habilitar-acesso';
+import { SelecionarPerfil as PerfilSelecionarPerfil } from '../produtos/ingresse-app/perfil/pages/selecionar-perfil';
 import { TelaBloqueadaIphone as IngresseAppTelaBloqueadaIphone } from '../produtos/ingresse-app/tela-bloqueada/pages/TelaBloqueadaIphone';
 import { MeusIngressos } from '../produtos/carteira-app/meus-ingressos/pages/MeusIngressos';
 import { MeusIngressosWeb } from '../produtos/carteira-app/meus-ingressos/pages/MeusIngressosWeb';
@@ -155,22 +181,46 @@ import { EntradaTeste } from '../produtos/usabilidade/testes/pages/EntradaTeste'
 import { LandingPagesMenu } from '../produtos/landing-pages/menu/pages/LandingPagesMenu';
 import { Inscricao as TicketSportsInscricao } from '../produtos/ticketsports/inscricao/pages/Inscricao';
 import { SaoSilvestre } from '../produtos/landing-pages/sao-silvestre/pages/SaoSilvestre';
+import { LoungePremiumBahia } from '../produtos/landing-pages/lounge-premium-bahia/pages/LoungePremiumBahia';
+import { SportsWeek } from '../produtos/landing-pages/sports-week/pages/SportsWeek';
 import { SolicitacaoVagas } from '../produtos/landing-pages/sao-silvestre/pages/SolicitacaoVagas';
 import { SolicitacaoBeneficioPcd } from '../produtos/landing-pages/sao-silvestre/pages/SolicitacaoBeneficioPcd';
 import { Carteira as CarteiraWeb } from '../produtos/carteira-web/pages/Carteira';
 import { TransferirInscricao as CarteiraWebTransferir } from '../produtos/carteira-web/pages/TransferirInscricao';
+import { TrocaOnboardingWeb as CarteiraWebTrocaOnboarding } from '../produtos/carteira-web/pages/TrocaOnboardingWeb';
+import { MeusDependentes as CarteiraWebDependentes } from '../produtos/carteira-web/pages/meus-dependentes';
+import { SelecionarPerfil as CarteiraWebSelecionarPerfil } from '../produtos/carteira-web/pages/selecionar-perfil';
+import { Home as RevendaHome } from '../produtos/novos-negocios/home/pages/Home';
+import { Evento as RevendaEvento } from '../produtos/novos-negocios/evento/pages/Evento';
+import { Inicio as RevendaInicio } from '../produtos/novos-negocios/inicio/pages/inicio';
+import { ServicosAdicionais } from '../produtos/novos-negocios/servicos-adicionais/pages/servicos-adicionais';
+import { Checklist as ServicosChecklist } from '../produtos/novos-negocios/servicos-adicionais/pages/checklist';
+import { Oferta as ServicoOferta } from '../produtos/novos-negocios/servicos-adicionais/pages/oferta';
+import { CheckoutServico } from '../produtos/novos-negocios/servicos-adicionais/pages/checkout';
+import { ConfirmacaoServico } from '../produtos/novos-negocios/servicos-adicionais/pages/confirmacao';
+import { RedirecionaRevenda } from '../produtos/novos-negocios/utils/redireciona-revenda';
 import { SolicitacoesInbox } from '../produtos/aprovacoes/solicitacoes/pages/SolicitacoesInbox';
 import { Publico } from '../produtos/backstage/publico/pages/Publico';
+import { AlterarPedido } from '../produtos/backstage/alteracoes-pos-compra/pages/AlterarPedido';
 import { FormulariosParticipacao } from '../produtos/backstage/publico/pages/FormulariosParticipacao';
 import { SolicitacoesParticipacao } from '../produtos/backstage/publico/pages/SolicitacoesParticipacao';
 import { PreVenda } from '../produtos/backstage/marketing/pages/PreVenda';
-import { DistribuicaoCortesias } from '../produtos/freepass/distribuicao-cortesias/pages/distribuicao-cortesias';
-import { CortesiasDoEvento } from '../produtos/freepass/distribuicao-cortesias/pages/cortesias-do-evento';
-import { DetalhesCortesia } from '../produtos/freepass/distribuicao-cortesias/pages/detalhes-cortesia';
-import { EnviarCortesiasFlow, ResgatarCortesiasFlow } from '../produtos/freepass/distribuicao-cortesias/pages/distribuir-cortesias';
+import { EventosFreepass, InicioFreepass } from '../produtos/backstage/freepass/pages/eventos';
+import { VendasNoEvento as FreepassVendasNoEvento } from '../produtos/backstage/freepass/pages/vendas-no-evento';
+import { Recebimentos as FreepassRecebimentos } from '../produtos/backstage/freepass/pages/recebimentos';
 import { Reanalise } from '../produtos/payin/suspensao-de-conta/pages/Reanalise';
 import { SuspenderUsuario } from '../produtos/payin/suspensao-de-conta/pages/SuspenderUsuario';
 import { HistoricoSuspensao } from '../produtos/payin/suspensao-de-conta/pages/HistoricoSuspensao';
+import { PayInMenu } from '../produtos/payin/menu/pages/PayInMenu';
+import { Checkout as PayInCheckout } from '../produtos/payin/checkout/pages/Checkout';
+import { AnaliseFeedback as PayInAnaliseFeedback } from '../produtos/payin/checkout/pages/AnaliseFeedback';
+import { AnaliseResultados as PayInAnaliseResultados } from '../produtos/payin/checkout/pages/AnaliseResultados';
+import { Pagamento as CheckoutPagamento } from '../produtos/checkout/melhorias-de-compra/pages/pagamento';
+import { Cartao as CheckoutCartao } from '../produtos/checkout/melhorias-de-compra/pages/cartao';
+import { NaoAutorizado as CheckoutNaoAutorizado } from '../produtos/checkout/melhorias-de-compra/pages/nao-autorizado';
+import { Confirmado as CheckoutConfirmado } from '../produtos/checkout/melhorias-de-compra/pages/confirmado';
+import { CompraDoEvento } from '../produtos/marketplace/selecao-e-atribuicao/pages/CompraDoEvento';
+import { Selecao as ProtecaoDeCompra } from '../produtos/checkout/protecao-de-compra/pages/selecao';
 import { Eventos as CashoutEventos } from '../produtos/payout/contrato-quick-win-finance/pages/eventos';
 import { Produtoras as CashoutProdutoras } from '../produtos/payout/contrato-quick-win-finance/pages/produtoras';
 
@@ -196,31 +246,38 @@ function HomeScreen() {
 
 export default function App() {
   const { theme } = useTheme();
+  // Backstage e Freepass usam a marca neutra; os outros produtos seguem o vermelho do tema (BKS-70).
+  const { pathname } = useLocation();
+  useLayoutEffect(() => {
+    const backstage = pathname.startsWith('/backstage') || pathname.startsWith('/freepass');
+    document.documentElement.classList.toggle('tema-backstage', backstage);
+  }, [pathname]);
   return (
+    <RemixProvider>
     <CortesiasProvider>
       <PerguntasProvider>
       <PesquisasProvider>
-      <EquipeProvider>
-      <EquipeV2Provider>
       <Routes>
         <Route path="/" element={<ProductSelection />} />
         <Route path="/loading" element={<CymaticsShowcase />} />
-        <Route path="/backstage" element={<BackstageEventos />} />
+        <Route path="/backstage" element={<SelecaoOrganizacao />} />
         <Route path="/backstage/eventos" element={<BackstageEventos />} />
+        <Route path="/backstage/eventos/novo" element={<BackstageCriarEvento />} />
+        <Route path="/backstage/sports" element={<SportsSeusEventos />} />
+        <Route path="/backstage/sports/criar-evento" element={<SportsEscolherInicio />} />
+        <Route path="/backstage/sports/criar-evento/assistente" element={<SportsCriarEventoAssistente />} />
+        {/* v0.13: a Versão B (página única) saiu; o endereço antigo leva ao assistente. */}
+        <Route path="/backstage/sports/criar-evento/pagina" element={<Navigate to="/backstage/sports/criar-evento/assistente" replace />} />
         <Route path="/backstage/evento/visao-geral" element={<VisaoGeralEvento />} />
-        <Route path="/backstage/home" element={<BackstageHome />} />
+        <Route path="/backstage/informacoes-evento" element={<InformacoesEvento />} />
+        <Route path="/backstage/pedidos/:pedidoId/transferir" element={<AlterarPedido verbo="transferir" />} />
+        <Route path="/backstage/pedidos/:pedidoId/trocar" element={<AlterarPedido verbo="trocar" />} />
+        <Route path="/backstage/pedidos/:pedidoId/formulario" element={<AlterarPedido verbo="formulario" />} />
+        <Route path="/backstage/membros" element={<Membros />} />
+        <Route path="/backstage/membros/criar-cargo" element={<CriarCargo />} />
+        <Route path="/backstage/membros/cargos/:id/editar" element={<CriarCargo />} />
         <Route path="/backstage/membros-v2" element={<MembrosV2 />} />
         <Route path="/backstage/membros-v2/grupos/novo" element={<NovoGrupoV2 />} />
-        <Route path="/backstage/equipe-de-operacao" element={<EquipeDeOperacao />} />
-        {/* v2: o grupo ganha permissões de cortesia, PDV e bilheteria, cada uma com sua cota. */}
-        <Route path="/backstage/equipe-de-operacao/v2" element={<EquipeDeOperacaoV2 />} />
-        <Route path="/backstage/equipe-de-operacao/v2/criar" element={<CriarGrupoV2 />} />
-        <Route path="/backstage/equipe-de-operacao/v2/:grupoId" element={<DetalheGrupoV2 />} />
-        <Route path="/backstage/equipe-de-operacao/v2/:grupoId/editar" element={<CriarGrupoV2 />} />
-        <Route path="/backstage/equipe-de-operacao/criar" element={<CriarGrupoOperacao />} />
-        <Route path="/backstage/equipe-de-operacao/:grupoId" element={<DetalheGrupoOperacao />} />
-        <Route path="/backstage/equipe-de-operacao/:grupoId/editar-itens" element={<EditarItensCotas />} />
-        <Route path="/backstage/equipe-de-operacao/:grupoId/editar-operadores" element={<EditarOperadores />} />
         <Route path="/backstage/pedidos" element={<PedidosOrg />} />
         <Route path="/backstage/pedidos/:id" element={<PedidoOrg />} />
         <Route path="/backstage/pedidos/:id/revisar" element={<RevisarAlteracoes />} />
@@ -234,6 +291,11 @@ export default function App() {
         <Route path="/carteira-web/inscricoes/:itemId/trocar/perguntas" element={<CarteiraPerguntas />} />
         <Route path="/carteira-web/troca/:solId/pagamento" element={<CarteiraPagamento />} />
         <Route path="/carteira-web/troca/:solId/confirmada" element={<CarteiraTrocaConfirmada />} />
+        {/* Equipe e Comissários (ECO): Equipe de operação e Comissários do evento num destino só. */}
+        <Route path="/backstage/evento/equipe" element={<EquipeEComissarios />} />
+        <Route path="/backstage/evento/equipe/:grupoId" element={<GrupoDaEquipe />} />
+        <Route path="/backstage/evento/equipe/:grupoId/canal/:canal" element={<CanalDoGrupo />} />
+        <Route path="/backstage/equipe-de-operacao/*" element={<Navigate to="/backstage/evento/equipe" replace />} />
         <Route path="/backstage/bilheteria" element={<PedidosBilheteria />} />
         <Route path="/backstage/bilheteria/vender" element={<VenderIngressos />} />
         <Route path="/backstage/bilheteria/ingresso-pdf" element={<IngressoPdf />} />
@@ -260,11 +322,30 @@ export default function App() {
         <Route path="/backstage/marketing/chave-de-acesso" element={<ChaveDeAcesso />} />
         <Route path="/backstage/marketing/chave-de-acesso/vincular-itens" element={<VincularItens />} />
         <Route path="/backstage/marketing/chave-de-acesso/lista" element={<ListaChaves />} />
-        <Route path="/backstage/catalogo/itens" element={<CatalogoItens />} />
-        <Route path="/backstage/catalogo/ingressos" element={<CatalogoIngressos />} />
-        <Route path="/backstage/catalogo/ingressos/formulario" element={<IngressosFormulario />} />
-        <Route path="/backstage/catalogo/ingressos/editar-grupos" element={<EditarGrupos />} />
+        {/* Menu Itens novo (itens/): o item é o centro. As telas anteriores ficam em /backstage/catalogo-anterior/*. */}
+        {/* Abas de Itens numa rota-pai: rail, menu, título e abas ficam montados; só o conteúdo da aba troca. */}
+        <Route element={<LayoutDeItens />}>
+            <Route path="/backstage/catalogo/ingressos" element={<ItensIngressos />} />
+            <Route path="/backstage/catalogo/produtos" element={<ItensProdutos />} />
+            <Route path="/backstage/catalogo/combos" element={<ItensCombos />} />
+        </Route>
+        <Route path="/backstage/catalogo/ingressos/:id" element={<ItensIngressoDetalhe />} />
+        <Route path="/backstage/catalogo/produtos/:id" element={<ItensProdutoDetalhe />} />
+        <Route path="/backstage/catalogo/combos/:id" element={<ItensComboDetalhe />} />
+        <Route path="/backstage/catalogo/agenda" element={<Navigate to="/backstage/catalogo/aberturas-de-vendas" replace />} />
+        <Route path="/backstage/catalogo/ingressos/editar-grupos" element={<Navigate to="/backstage/catalogo/ingressos" replace />} />
+        <Route path="/backstage/catalogo/ingressos/formulario" element={<Navigate to="/backstage/catalogo/ingressos" replace />} />
         <Route path="/backstage/catalogo/aberturas-de-vendas" element={<AberturasDeVendas />} />
+        <Route path="/backstage/catalogo/configuracoes" element={<ItensConfiguracoes />} />
+        <Route path="/backstage/catalogo" element={<Navigate to="/backstage/catalogo/ingressos" replace />} />
+        <Route path="/backstage/catalogo/questionario" element={<Questionario />} />
+        <Route path="/backstage/catalogo/questionario/:id" element={<PerguntaDetalhe />} />
+        <Route path="/backstage/catalogo/itens" element={<Navigate to="/backstage/catalogo/ingressos" replace />} />
+        <Route path="/backstage/catalogo-anterior/ingressos" element={<CatalogoIngressos />} />
+        <Route path="/backstage/catalogo-anterior/editar-grupos" element={<EditarGrupos />} />
+        <Route path="/backstage/catalogo-anterior/formulario" element={<IngressosFormulario />} />
+        <Route path="/backstage/catalogo-anterior/aberturas-de-vendas" element={<Navigate to="/backstage/catalogo/aberturas-de-vendas" replace />} />
+        <Route path="/backstage/catalogo-anterior/itens" element={<CatalogoItens />} />
         <Route path="/backstage/perguntas" element={<Perguntas />} />
         <Route path="/backstage/perguntas/nova" element={<PerguntaForm />} />
         <Route path="/backstage/perguntas/:id/editar" element={<PerguntaForm />} />
@@ -325,6 +406,10 @@ export default function App() {
         <Route path="/marketplace/event" element={<SelecaoEAtribuicao />} />
         <Route path="/marketplace/sucesso" element={<MarketplaceSucesso />} />
         <Route path="/marketplace/meia-entrada" element={<MarketplaceMeiaEntrada />} />
+        <Route path="/totem" element={<TotemConfig />} />
+        <Route path="/totem/event" element={<TotemSelecaoEAtribuicao />} />
+        <Route path="/totem/sucesso" element={<TotemSucesso />} />
+        <Route path="/totem/meia-entrada" element={<TotemMeiaEntrada />} />
         <Route path="/novo-site/home" element={<NovoSiteHome />} />
         <Route path="/novo-site/home/busca" element={<NovoSiteBusca />} />
         <Route path="/novo-site/home/event-details" element={<PasswordGate><EventDetails /></PasswordGate>} />
@@ -339,6 +424,7 @@ export default function App() {
         <Route path="/ingresse-app/ingressos/trocar/:eventId/:itemId/pagamento/cartao" element={<IngresseAppTrocarPagamentoCartao />} />
         <Route path="/ingresse-app/ingressos/trocar/:eventId/:itemId/sucesso" element={<IngresseAppTrocaSucesso />} />
         <Route path="/ingresse-app/ingressos/combo/:eventId/:comboId" element={<IngresseAppComboDetalhe />} />
+        <Route path="/ingresse-app/ingressos/formulario/:eventId/:comboId" element={<IngresseAppEditarFormulario />} />
         <Route path="/ingresse-app/ingressos/produto/:eventId/:itemId" element={<IngresseAppProdutoDetalhe />} />
         <Route path="/ingresse-app/ingressos/transferir/:eventId/:id" element={<IngresseAppTransferir />} />
         <Route path="/ingresse-app/ingressos/transferir-dependente/:eventId/:id" element={<IngresseAppTransferirDependente />} />
@@ -349,6 +435,10 @@ export default function App() {
         <Route path="/ingresse-app/ingressos/transferir-pagamento/:eventId/:id/processando" element={<IngresseAppTransferenciaProcessando />} />
         <Route path="/ingresse-app/ingressos/transferir-pagamento/:eventId/:id/sucesso" element={<IngresseAppTransferenciaSucesso />} />
         <Route path="/ingresse-app/perfil" element={<IngresseAppPerfil />} />
+        <Route path="/ingresse-app/perfil/dependentes" element={<IngresseAppDependentes />} />
+        <Route path="/ingresse-app/perfil/dependentes/cadastrar" element={<PerfilCadastrarDependente />} />
+        <Route path="/ingresse-app/perfil/dependentes/:id/habilitar" element={<PerfilHabilitarAcesso />} />
+        <Route path="/ingresse-app/perfil/selecionar" element={<PerfilSelecionarPerfil />} />
         <Route path="/ingresse-app/tela-bloqueada/iphone" element={<IngresseAppTelaBloqueadaIphone />} />
         <Route path="/testes" element={<UsabilidadeGate><TestesPainel /></UsabilidadeGate>} />
         <Route path="/testes/novo" element={<UsabilidadeGate><EditorTeste /></UsabilidadeGate>} />
@@ -356,34 +446,88 @@ export default function App() {
         <Route path="/testes/:id/resultados" element={<UsabilidadeGate><TesteResultados /></UsabilidadeGate>} />
         <Route path="/t/:id" element={<EntradaTeste />} />
         <Route path="/landing-pages" element={<LandingPagesMenu />} />
+        {/* Sub-roteador próprio: as três páginas da campanha trocam entre si com
+            transição, sem mexer no <Routes> plano do app. */}
+        <Route path="/landing-pages/sports-week/*" element={<SportsWeek />} />
         {/* Link separado — não listado na ProductSelection (home) */}
         <Route path="/ticketsports/inscricao" element={<TicketSportsInscricao />} />
+        <Route path="/landing-pages/lounge-premium-bahia" element={<LoungePremiumBahia />} />
         <Route path="/landing-pages/sao-silvestre" element={<SaoSilvestre />} />
         <Route path="/landing-pages/sao-silvestre/solicitar-vagas" element={<SolicitacaoVagas />} />
         <Route path="/landing-pages/sao-silvestre/solicitar-beneficio-pcd" element={<SolicitacaoBeneficioPcd />} />
         <Route path="/carteira-web" element={<CarteiraWeb />} />
         <Route path="/carteira-web/transferir" element={<CarteiraWebTransferir />} />
+        <Route path="/carteira-web/troca-onboarding" element={<CarteiraWebTrocaOnboarding />} />
+        <Route path="/carteira-web/dependentes/onboarding" element={<CarteiraWeb />} />
+        <Route path="/carteira-web/dependentes" element={<CarteiraWebDependentes />} />
+        <Route path="/carteira-web/selecionar" element={<CarteiraWebSelecionarPerfil />} />
+        <Route path="/novos-negocios" element={<RevendaInicio />} />
+        <Route path="/novos-negocios/marketplace" element={<RevendaHome />} />
+        <Route path="/novos-negocios/:slug" element={<RevendaEvento />} />
+        <Route path="/novos-negocios/servicos-adicionais" element={<ServicosAdicionais />} />
+        <Route path="/novos-negocios/servicos-adicionais/checklist" element={<ServicosChecklist />} />
+        <Route path="/novos-negocios/servicos-adicionais/:servico" element={<ServicoOferta />} />
+        <Route path="/novos-negocios/servicos-adicionais/:servico/checkout" element={<CheckoutServico />} />
+        <Route path="/novos-negocios/servicos-adicionais/:servico/confirmacao" element={<ConfirmacaoServico />} />
+        {/* Rotas antigas do produto (Revenda) */}
+        <Route path="/revenda/*" element={<RedirecionaRevenda />} />
         <Route path="/aprovacoes/solicitacoes" element={<SolicitacoesInbox />} />
         <Route path="/backstage/publico" element={<Publico />} />
+        <Route path="/backstage/ajustes" element={<AjustesDaOrganizacao />} />
+        <Route path="/backstage/produtos" element={<ProdutosDaOrganizacao />} />
+        {/* Não há mais cadastro de comissário na organização: o grupo é o comissário (ECO-09); o painel virou relatório (ECO-26). */}
+        <Route path="/backstage/relatorios/comissarios" element={<RelatorioComissarios />} />
+        <Route path="/backstage/comissarios/*" element={<Navigate to="/backstage/relatorios/comissarios" replace />} />
+        <Route path="/backstage/evento/comissarios" element={<Navigate to="/backstage/evento/equipe" replace />} />
+        <Route path="/backstage/evento/comissarios/:id" element={<RedirecionarComissario />} />
+        <Route path="/backstage/suas-vendas" element={<Navigate to="/freepass/eventos" replace />} />
+        <Route path="/backstage/produtos/:id" element={<ProdutoDaOrganizacaoDetalhe />} />
         <Route path="/backstage/publico/formularios" element={<FormulariosParticipacao />} />
         <Route path="/backstage/publico/solicitacoes" element={<SolicitacoesParticipacao />} />
         <Route path="/backstage/marketing/pre-venda" element={<PreVenda />} />
-        <Route path="/freepass/distribuicao-cortesias" element={<DistribuicaoCortesias />} />
-        <Route path="/freepass/distribuicao-cortesias/:eventoId" element={<CortesiasDoEvento />} />
-        <Route path="/freepass/distribuicao-cortesias/:eventoId/enviar" element={<EnviarCortesiasFlow />} />
-        <Route path="/freepass/distribuicao-cortesias/:eventoId/resgatar" element={<ResgatarCortesiasFlow />} />
-        <Route path="/freepass/distribuicao-cortesias/:eventoId/:itemId" element={<DetalhesCortesia />} />
+        {/* Freepass: o Backstage com acessos a menos. Mesma shell e mesmas telas de cortesia e bilheteria (BKS-60). */}
+        <Route path="/freepass" element={<InicioFreepass />} />
+        <Route path="/freepass/eventos" element={<EventosFreepass />} />
+        {/* Visualização por funcionalidade (FCO-85): a lista de eventos de cada funcionalidade. */}
+        <Route path="/freepass/vendas" element={<EventosFreepass funcao="vendas" />} />
+        <Route path="/freepass/cortesias/eventos" element={<EventosFreepass funcao="cortesia" />} />
+        <Route path="/freepass/bilheteria/eventos" element={<EventosFreepass funcao="bilheteria" />} />
+        <Route path="/freepass/recebimentos" element={<FreepassRecebimentos />} />
+        <Route path="/freepass/evento/vendas" element={<FreepassVendasNoEvento />} />
+        <Route path="/freepass/cortesias" element={<RelatorioPedidos />} />
+        <Route path="/freepass/itens" element={<SelecaoItens />} />
+        <Route path="/freepass/destinatarios" element={<EmissaoCortesias />} />
+        <Route path="/freepass/verificacao" element={<VerificacaoFinal />} />
+        <Route path="/freepass/bilheteria" element={<PedidosBilheteria />} />
+        <Route path="/freepass/bilheteria/vender" element={<VenderIngressos />} />
+        <Route path="/freepass/bilheteria/ingresso-pdf" element={<IngressoPdf />} />
+        {/* Endereços antigos do Freepass (cabeçalho próprio e envio de cortesia próprio). */}
+        <Route path="/freepass/distribuicao-cortesias/*" element={<Navigate to="/freepass/eventos" replace />} />
+        <Route path="/freepass/comissarios/*" element={<Navigate to="/freepass/eventos" replace />} />
+        <Route path="/payin" element={<PayInMenu />} />
+        <Route path="/payin/checkout" element={<PayInCheckout />} />
+        <Route path="/payin/checkout/analise" element={<PayInAnaliseFeedback />} />
+        <Route path="/payin/checkout/analise/resultados" element={<PayInAnaliseResultados />} />
         <Route path="/payin/suspensao-de-conta" element={<Reanalise />} />
         <Route path="/payin/suspensao-de-conta/suspender-usuario" element={<SuspenderUsuario />} />
         <Route path="/payin/suspensao-de-conta/historico/:contaId" element={<HistoricoSuspensao />} />
         <Route path="/payout/contrato-quick-win-finance" element={<CashoutEventos />} />
         <Route path="/payout/contrato-quick-win-finance/produtoras" element={<CashoutProdutoras />} />
+        <Route path="/checkout/melhorias-de-compra" element={<CheckoutPagamento />} />
+        <Route path="/checkout/melhorias-de-compra/cartao" element={<CheckoutCartao />} />
+        <Route path="/checkout/melhorias-de-compra/nao-autorizado" element={<CheckoutNaoAutorizado />} />
+        <Route path="/checkout/melhorias-de-compra/confirmado" element={<CheckoutConfirmado />} />
+        {/* Plataforma unificada: link de compra de um evento do banco (src/plataforma) */}
+        <Route path="/comprar/:eventoId" element={<CompraDoEvento />} />
+        <Route path="/e/:slug" element={<CompraDoEvento />} />
+        <Route path="/checkout/protecao-de-compra" element={<ProtecaoDeCompra />} />
       </Routes>
-      <Toaster position="bottom-right" theme={theme} />
-      </EquipeV2Provider>
-      </EquipeProvider>
+      {/* Todo toast pode ser fechado na hora (BKS-67). */}
+      <Toaster position="bottom-right" theme={theme} closeButton toastOptions={{ closeButtonAriaLabel: "Fechar aviso" }} />
+      <FundoDoBody />
       </PesquisasProvider>
       </PerguntasProvider>
     </CortesiasProvider>
+    </RemixProvider>
   );
 }

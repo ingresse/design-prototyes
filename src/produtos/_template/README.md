@@ -8,6 +8,7 @@ produtos/
     ├── components/         # componentes compartilhados ENTRE projetos do produto
     │                       # (layouts, navegação, header — coisas que todo projeto reusa)
     └── <projeto>/          # ex: cortesias, ingressos, financeiro
+        ├── rules.md        # regras da feature (obrigatório, ver abaixo)
         ├── pages/          # telas/rotas do projeto
         ├── components/     # componentes exclusivos DESTE projeto
         ├── data/           # mocks, stores e tipos do projeto
@@ -34,9 +35,24 @@ Duplique a pasta `_projeto/` dentro do produto e renomeie. Reaproveite os compon
 
 Quando um projeto novo entrar no Backstage (ex: `relatorios/`), ele será uma pasta irmã de `cortesias/` e poderá importar `../components/Backstage` para usar o mesmo layout.
 
+## rules.md: toda feature tem um
+
+Cada pasta de projeto tem um `rules.md` com as regras que a feature cumpre: rotas, de onde vêm
+os dados, comportamento, validações, estados, permissões, o que ela afeta em outros produtos e
+o que está em aberto. O modelo está em `_projeto/rules.md`. O produto também pode ter um
+`rules.md` na raiz com o que vale para todas as features (ex.: `backstage/rules.md`).
+
+- **Antes de mexer**, leia o `rules.md` da feature e o do produto.
+- **Mudou uma regra no código, mude o `rules.md` no mesmo commit.** Regra nova ganha ID novo;
+  regra removida fica riscada, e o ID não é reaproveitado.
+- **Código e `rules.md` divergem?** Registre em "Em aberto" e combine com o time antes de
+  escolher um lado.
+- **Feature nova** só entra com `rules.md`.
+
 ## Regras importantes
 
-- **Não importe** de outro produto (`src/produtos/outro-produto/...`). Cada produto é auto-contido — se dois produtos precisam do mesmo componente, **duplique** e converse com o time antes de promover para o design system.
+- **Dados de evento, ingresso, pedido e carteira vêm de `@/plataforma`** (banco unificado, ver `src/plataforma/README.md`). Não crie mock novo de evento ou de pedido: leia da plataforma por um adaptador em `data/plataforma.ts` do projeto.
+- **Não importe** de outro produto (`src/produtos/outro-produto/...`). O que for comum a vários produtos sobe para `src/plataforma/` (dados e regras) ou para o design system (componentes), combinado com o time.
 - **Não importe** de outro projeto do mesmo produto, exceto através de `<produto>/components/` (que existe justamente para isso).
 - **Não altere** `src/components/` — essa pasta é o design system, compartilhada por todos.
 - **Pode importar livremente** de:
@@ -45,6 +61,7 @@ Quando um projeto novo entrar no Backstage (ex: `relatorios/`), ele será uma pa
   - `@/components/foundations/*` — ícones e elementos visuais base
   - `@/utils/cx` — utilitário de classes
   - `@/providers/theme-provider` — tema (light/dark)
+  - `@/plataforma` — banco unificado: eventos, catálogo, pedidos, ingressos e sessão do comprador
   - bibliotecas externas (`react-aria-components`, `@untitledui/icons`, `motion/react`, `sonner`, etc.)
 
 ## Convenções

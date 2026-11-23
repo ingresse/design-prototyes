@@ -12,11 +12,39 @@ interface LandingPageItem {
 
 const PAGES: LandingPageItem[] = [
     {
+        id: "sports-week",
+        name: "Sports Week",
+        description: "Campanha de ofertas em inscrições esportivas",
+        to: "/landing-pages/sports-week",
+        gradient: "linear-gradient(135deg,#B3F300 0%,#0099FF 45%,#FF1289 100%)",
+    },
+    {
         id: "sao-silvestre",
         name: "Corrida de São Silvestre",
         description: "Landing page da São Silvestre 2026",
         to: "/landing-pages/sao-silvestre",
         gradient: "linear-gradient(135deg,#FF4D00 0%,#1d4ed8 100%)",
+    },
+    {
+        id: "lounge-premium-bahia",
+        name: "Lounge Premium Bahia",
+        description: "Cadastro de beneficiários do Lounge Premium",
+        to: "/landing-pages/lounge-premium-bahia",
+        gradient: "linear-gradient(135deg,#0a1e46 0%,#2f6bff 55%,#c23a2d 100%)",
+    },
+    {
+        id: "futebol",
+        name: "Futebol",
+        description: "Páginas de jogos dos clubes",
+        to: "/futebol/landing-pages",
+        gradient: "linear-gradient(135deg,#0d7a3e 0%,#16a34a 50%,#0a0a0a 100%)",
+    },
+    {
+        id: "meia-entrada",
+        name: "Meia-entrada",
+        description: "Informações sobre meia-entrada",
+        to: "/marketplace/meia-entrada",
+        gradient: "linear-gradient(135deg,#15BE78 0%,#2A89EF 100%)",
     },
 ];
 

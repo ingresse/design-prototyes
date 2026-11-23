@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router";
+import { useSearchParams } from "react-router";
 import { ArrowDown, ArrowUp, Calendar, ChevronRight, Eye, FilterLines, SearchLg, SlashCircle01, Tag01 } from "@untitledui/icons";
 import { toast } from "sonner";
 import { EmptyState } from "@/components/application/empty-state/empty-state";
@@ -10,6 +10,7 @@ import { ButtonUtility } from "@/components/base/buttons/button-utility";
 import { InputBase } from "@/components/base/input/input";
 import { Select } from "@/components/base/select/select";
 import { cx } from "@/utils/cx";
+import { useNavegarNoPainel } from "../../components/painel";
 import { BackstageLayout } from "../../components/Backstage";
 import { CancelPedidosModal } from "../components/CancelPedidosModal";
 import { PedidoDetailsSlideOut, type PedidoDownload, type ResendChannel } from "../components/PedidoDetailsSlideOut";
@@ -17,22 +18,26 @@ import { gerarIngressosCsv, gerarIngressosPdf } from "../utils/gerar-ingressos";
 import { formatBRL } from "../data/catalogo";
 import { PEDIDO_STATUS_META, PEDIDO_TIPO_LABEL, type Pedido } from "../data/pedidos";
 import { cancelPedidos, formatDateTime, registerResend, usePedidos } from "../data/pedidos-store";
+import { useCatalogoDoBanco } from "../data/plataforma";
+import { TituloDaEmissao } from "@/produtos/backstage/components/navegacao-de-secao";
 
 const STATUS_OPTIONS = [
     { id: "todos", label: "Todos" },
     { id: "pendente", label: "Pendente" },
     { id: "aprovado", label: "Aprovado" },
+    { id: "expirado", label: "Expirado" },
     { id: "cancelado", label: "Cancelado" },
 ];
 
 const TODOS = { id: "todos", label: "Todos" };
 
 export function PedidosBilheteria() {
-    const navigate = useNavigate();
+    const navigate = useNavegarNoPainel();
 
     const [searchParams] = useSearchParams();
     /** `?sem-itens=1` demonstra o empty state de evento sem itens cadastrados. */
-    const hasCatalog = searchParams.get("sem-itens") !== "1";
+    const { sessoes } = useCatalogoDoBanco();
+    const hasCatalog = searchParams.get("sem-itens") !== "1" && sessoes.some((s) => s.tickets.length > 0);
 
     const rows = usePedidos();
     const [term, setTerm] = useState("");
@@ -63,6 +68,7 @@ export function PedidosBilheteria() {
         () => ({
             aprovados: rows.filter((row) => row.status === "aprovado").length,
             pendentes: rows.filter((row) => row.status === "pendente").length,
+            expirados: rows.filter((row) => row.status === "expirado").length,
             cancelados: rows.filter((row) => row.status === "cancelado").length,
         }),
         [rows],
@@ -81,10 +87,14 @@ export function PedidosBilheteria() {
 
     const handleResend = (pedido: Pedido, canal: ResendChannel, destino: string) => {
         const at = formatDateTime(new Date());
-        registerResend(pedido.id, at);
-        setDetail((current) => (current && current.id === pedido.id ? { ...current, resentAt: at } : current));
-        // Saldo do produtor não tem link: o que é enviado são os próprios ingressos.
-        const assunto = pedido.tipo === "saldo" ? "Ingressos" : "Link de pagamento";
+        registerResend(pedido.id, at, canal, destino);
+        setDetail((current) =>
+            current && current.id === pedido.id
+                ? { ...current, resentAt: at, envios: [...(current.envios ?? []), { canal, destino, at }] }
+                : current,
+        );
+        // Sem link de pagamento, o que é enviado são os próprios ingressos.
+        const assunto = pedido.tipo === "link" ? "Link de pagamento" : "Ingressos";
         toast.success(canal === "email" ? `${assunto} enviado para ${destino}` : `${assunto} enviado no WhatsApp ${destino}`);
     };
 
@@ -96,11 +106,11 @@ export function PedidosBilheteria() {
 
     return (
         <BackstageLayout activeSection="bilheteria" activeItem="bilheteria-online">
-            <div className="flex min-w-0 flex-1 flex-col gap-6 px-4 py-6 md:px-6">
+            <div className="flex min-w-0 flex-1 flex-col gap-6">
                 <header className="flex flex-wrap items-center justify-between gap-3">
-                    <h1 className="text-display-xs font-bold text-primary">Bilheteria online</h1>
+                    <TituloDaEmissao>Bilheteria online</TituloDaEmissao>
                     {rows.length > 0 && (
-                        <Button size="md" color="primary" onClick={() => navigate("/backstage/bilheteria/vender")}>
+                        <Button size="md" color="primary" onClick={() => navigate("/backstage/bilheteria/vender")} className="ml-auto">
                             Vender ingressos
                         </Button>
                     )}
@@ -135,12 +145,20 @@ export function PedidosBilheteria() {
                     </div>
                 ) : (
                     <>
-                        <div className="grid gap-4 md:grid-cols-3">
+                        {/* Expirado ganha cartão próprio: é venda perdida que dá para recuperar. */}
+                        <div className="grid gap-4 md:grid-cols-4">
                             <MetricCard label="Pedidos aprovados" value={resumo.aprovados} />
                             <MetricCard label="Pedidos pendentes" value={resumo.pendentes} />
+                            <MetricCard label="Links expirados" value={resumo.expirados} />
                             <MetricCard label="Pedidos cancelados" value={resumo.cancelados} />
                         </div>
 
+                        {/*
+                          A tabela é a exceção do bg-primary: um grid denso quer chão
+                          escuro e quieto, para o texto e os divisores carregarem a estrutura.
+                          Em neutral-800 o fundo competia com o conteúdo. Containers sobem,
+                          superfícies de dado recuam.
+                        */}
                         <section className="flex flex-col rounded-xl bg-primary ring-1 ring-border-secondary">
                             {/* Filtros */}
                             <div className="flex flex-col gap-3 p-4 md:flex-row md:items-end md:gap-4">
@@ -323,7 +341,13 @@ export function PedidosBilheteria() {
                 )}
             </div>
 
-            <PedidoDetailsSlideOut pedido={detail} onClose={() => setDetail(null)} onResend={handleResend} onDownload={handleDownload} />
+            <PedidoDetailsSlideOut
+                pedido={detail}
+                onClose={() => setDetail(null)}
+                onResend={handleResend}
+                onDownload={handleDownload}
+                onNovaVenda={() => navigate("/backstage/bilheteria/vender")}
+            />
 
             <CancelPedidosModal
                 pedidos={pendingCancel}

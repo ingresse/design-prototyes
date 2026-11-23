@@ -661,7 +661,7 @@ export function Transacoes2() {
         <BackstageLayout activeSection="relatorios" activeItem="transacoes">
             <RelatorioFiltersProvider fields={FILTER_FIELDS} initialDateRange={PERIODO_PADRAO}>
                 <div className="flex min-w-0 flex-1 flex-col">
-                    <main className="flex flex-1 flex-col gap-6 py-6 md:px-6">
+                    <main className="flex flex-1 flex-col gap-6">
                         <RelatorioPageHeader title="Transações" />
                         <TransacoesBody />
                     </main>
@@ -1140,7 +1140,7 @@ const TooltipFundoEscuro = ({ title, description, children }: { title: ReactNode
                         isExiting && "duration-150 ease-in animate-out fade-out zoom-out-95",
                     )}
                 >
-                    <span className="text-xs font-semibold text-white">{title}</span>
+                    <span className="text-xs font-semibold text-base-white">{title}</span>
                     {description && <span className="text-xs font-medium text-tooltip-supporting-text">{description}</span>}
                 </div>
             )}

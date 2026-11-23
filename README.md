@@ -8,6 +8,28 @@ Além dos protótipos, o repositório traz duas ferramentas internas:
 1. **Plugin “Importar tela”** — leva uma tela do protótipo para o Figma já montada com os componentes reais do DS.
 2. **Testes de usabilidade** — roda testes moderados/não-moderados por cima dos próprios protótipos.
 
+## Plataforma unificada (gêmeo da Ingresse)
+
+Backstage, novo site, link de compra, checkout e carteiras usam **um banco só**
+([`src/plataforma/`](src/plataforma/README.md)). O caminho completo:
+
+1. **Backstage** › Eventos › Criar evento → Ingressos › Criar ingresso → status **Publicado**
+   (ou **Privado**, que vende só pelo link).
+2. **Site** (`/novo-site/home`) lista o evento; o detalhe leva para a compra. O **link de compra**
+   fica em Informações do evento (`/e/<slug>`).
+3. **Seleção e atribuição** → **checkout** (Pix simulado ou cartão) → **compra confirmada**.
+4. **Carteira web** (`/carteira-web`) e **carteira do app** (`/ingresse-app/ingressos`) mostram os
+   ingressos do e-mail que fez login.
+
+Na Vercel o banco é compartilhado (Upstash Redis); no `npm run dev` ele fica no navegador.
+
+## Regras de cada feature
+
+Cada feature tem um `rules.md` na própria pasta: rotas, de onde vêm os dados, regras com ID,
+estados, o que afeta em outros produtos e o que está em aberto. Comece por
+[`src/produtos/backstage/rules.md`](src/produtos/backstage/rules.md), que vale para todo o
+Backstage e lista as features. Mudou a regra, muda o arquivo no mesmo commit.
+
 ## Rodando
 
 ```bash

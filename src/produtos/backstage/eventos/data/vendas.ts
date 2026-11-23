@@ -1,29 +1,34 @@
-import { eventos, type Evento } from "./eventos";
+import { useMemo } from "react";
+import { lerColecao, useBanco, type HistoricoVendas, type Pedido, type Evento as EventoBanco } from "@/plataforma";
+import { eventos, semEventosNaOrganizacao, useEventosVersao, type Evento } from "./eventos";
 
 /**
- * Métricas de venda por evento.
+ * Métricas de venda por evento, lidas do banco unificado (src/plataforma).
  *
- * Mock determinístico (mesma seed → mesma série), para que a listagem da
- * organização, o painel do evento e o comparativo contem a mesma história.
+ * Soma duas fontes: as vendas anteriores ao gêmeo (coleção `historico`, só nos eventos da seed)
+ * e os pedidos pagos de verdade (site, link, bilheteria, cortesia). A listagem da organização, o
+ * painel do evento e o Remix leem daqui, então contam a mesma história.
  */
 
-/** Hoje fixo, para o protótipo não mudar de comportamento com o passar dos dias. */
-export const HOJE = new Date("2026-08-24T12:00:00");
+/** Meio-dia de hoje: evita que fuso horário empurre a data para o dia vizinho. */
+const agora = new Date();
+export const HOJE = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate(), 12);
 
-export type Canal = "ingresse" | "parceiro" | "cortesia";
+export type Canal = "ingresse" | "bilheteria" | "cortesia";
 
 export const CANAL_LABEL: Record<Canal, string> = {
     ingresse: "Ingresse",
-    parceiro: "Parceiro",
+    bilheteria: "Bilheteria",
     cortesia: "Cortesias",
 };
 
 export const CANAL_COR: Record<Canal, string> = {
     ingresse: "var(--color-utility-blue-500)",
-    parceiro: "var(--color-utility-orange-500)",
+    bilheteria: "var(--color-utility-orange-500)",
     cortesia: "var(--color-utility-gray-400)",
 };
 
+/** Um setor (grupo) de uma sessão, com estoque e vendidos por canal. */
 export interface Sessao {
     id: string;
     nome: string;
@@ -38,6 +43,8 @@ export interface DiaVenda {
     dia: number;
     dataISO: string;
     ingressos: number;
+    /** Produtos e combos vendidos no dia — camiseta, copo, consumação. */
+    produtos: number;
     faturamento: number;
 }
 
@@ -51,196 +58,126 @@ export interface VendasEvento {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Geração determinística                                             */
+/*  Leitura do banco                                                   */
 /* ------------------------------------------------------------------ */
 
-function mulberry32(seed: number) {
-    return () => {
-        seed |= 0;
-        seed = (seed + 0x6d2b79f5) | 0;
-        let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
-        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-    };
-}
-
 const diasEntre = (a: Date, b: Date) => Math.round((b.getTime() - a.getTime()) / 86_400_000);
-
 const addDias = (date: Date, dias: number) => new Date(date.getTime() + dias * 86_400_000);
+const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
-interface Spec {
-    eventoId: string;
-    /** Dias de venda até a data do evento. */
-    janelaDias: number;
-    capacidadePorSessao: number;
-    sessoes: Array<{ nome: string; ambiente: string; peso: number }>;
-    ticketBase: number;
-    /** Fração da capacidade já vendida hoje. */
-    ocupacaoAlvo: number;
-    metaFaturamento: number;
-    /** Multiplicador do ritmo da última semana — abaixo de 1 significa desaceleração. */
-    ritmoRecente: number;
-    parceiroPct: number;
-    cortesias: number;
-    seed: number;
+const CANAL_DO_PEDIDO: Record<Pedido["canal"], Canal> = { site: "ingresse", link: "ingresse", app: "ingresse", bilheteria: "bilheteria", cortesia: "cortesia" };
+const METODO_LABEL: Record<NonNullable<Pedido["pagamento"]>["metodo"], string> = {
+    credito: "Cartão de crédito",
+    pix: "Pix",
+    debito: "Cartão de débito",
+    dinheiro: "Dinheiro",
+    saldo: "Saldo do produtor",
+    cortesia: "Cortesia",
+};
+
+const dataCurta = (inicio: string) => {
+    const d = new Date(inicio);
+    return Number.isNaN(d.getTime()) ? inicio : d.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" }).replace(".", "");
+};
+
+interface Fontes {
+    evento?: EventoBanco;
+    historico?: HistoricoVendas;
+    pedidos: Pedido[];
 }
 
-const SPECS: Spec[] = [
-    {
-        eventoId: "6704",
-        janelaDias: 300,
-        capacidadePorSessao: 3200,
-        sessoes: [
-            { nome: "AURA", ambiente: "Night Celebrations", peso: 1 },
-            { nome: "LUAU", ambiente: "Night Celebrations", peso: 0.96 },
-            { nome: "AQUA", ambiente: "Night Celebrations", peso: 0.92 },
-            { nome: "Réveillon", ambiente: "Night Celebrations", peso: 1.08 },
-            { nome: "FLORA", ambiente: "Night Celebrations", peso: 0.74 },
-            { nome: "Beach Day 30/12", ambiente: "Mouton Beach Club", peso: 0.61 },
-            { nome: "Beach Day 02/01", ambiente: "Mouton Beach Club", peso: 0.48 },
-        ],
-        ticketBase: 780,
-        ocupacaoAlvo: 0.63,
-        metaFaturamento: 15_000_000,
-        ritmoRecente: 1.18,
-        parceiroPct: 0.14,
-        cortesias: 210,
-        seed: 41,
-    },
-    {
-        eventoId: "2871",
-        janelaDias: 60,
-        capacidadePorSessao: 55_000,
-        sessoes: [{ nome: "Gre-Nal 445", ambiente: "Arena do Grêmio", peso: 1 }],
-        ticketBase: 180,
-        ocupacaoAlvo: 0.71,
-        metaFaturamento: 12_000_000,
-        ritmoRecente: 1.45,
-        parceiroPct: 0.05,
-        cortesias: 1400,
-        seed: 7,
-    },
-    {
-        eventoId: "3390",
-        janelaDias: 90,
-        capacidadePorSessao: 420,
-        sessoes: [{ nome: "Tour + Museu", ambiente: "Arena do Grêmio", peso: 1 }],
-        ticketBase: 95,
-        ocupacaoAlvo: 0.28,
-        metaFaturamento: 42_000,
-        ritmoRecente: 0.42,
-        parceiroPct: 0.22,
-        cortesias: 12,
-        seed: 19,
-    },
-    {
-        eventoId: "5518",
-        janelaDias: 70,
-        capacidadePorSessao: 90,
-        sessoes: [{ nome: "Book no gramado", ambiente: "Arena do Grêmio", peso: 1 }],
-        ticketBase: 640,
-        ocupacaoAlvo: 0.44,
-        metaFaturamento: 60_000,
-        ritmoRecente: 0.88,
-        parceiroPct: 0,
-        cortesias: 4,
-        seed: 63,
-    },
-    {
-        eventoId: "1234",
-        janelaDias: 45,
-        capacidadePorSessao: 31_000,
-        sessoes: [{ nome: "América x Laguna", ambiente: "Arena das Dunas", peso: 1 }],
-        ticketBase: 70,
-        ocupacaoAlvo: 0.93,
-        metaFaturamento: 1_900_000,
-        ritmoRecente: 1,
-        parceiroPct: 0.03,
-        cortesias: 900,
-        seed: 88,
-    },
-];
+function montar(eventoId: string, { evento, historico, pedidos }: Fontes): VendasEvento | null {
+    const pagos = pedidos.filter((p) => p.eventoId === eventoId && p.status === "pago");
+    if (!evento || (!historico && pagos.length === 0)) return null;
 
-function build(spec: Spec, evento: Evento): VendasEvento {
-    const rand = mulberry32(spec.seed);
-    const dataEvento = new Date(evento.data);
-    const abertura = addDias(dataEvento, -spec.janelaDias);
-    // Eventos já realizados têm a série completa; os ativos param em hoje.
-    const diasCorridos = Math.min(spec.janelaDias, Math.max(1, diasEntre(abertura, HOJE)));
-
-    const capacidadeTotal = spec.sessoes.reduce((total, s) => total + Math.round(spec.capacidadePorSessao * s.peso), 0);
-    const ingressosVendidos = Math.round(capacidadeTotal * spec.ocupacaoAlvo);
-
-    // Curva em S: devagar no começo, acelera perto do evento.
-    const pesos: number[] = [];
-    for (let dia = 0; dia < diasCorridos; dia++) {
-        const t = dia / Math.max(1, spec.janelaDias - 1);
-        const base = 0.25 + Math.pow(t, 2.4) * 3.4;
-        const ruido = 0.65 + rand() * 0.7;
-        const recente = dia >= diasCorridos - 7 ? spec.ritmoRecente : 1;
-        pesos.push(base * ruido * recente);
+    // Vendidos por lote e por canal: histórico + pedidos pagos.
+    const porLote = new Map<string, Record<Canal, number>>();
+    const somar = (lote: string, canal: Canal, qtd: number) => {
+        const atual = porLote.get(lote) ?? { ingresse: 0, bilheteria: 0, cortesia: 0 };
+        atual[canal] += qtd;
+        porLote.set(lote, atual);
+    };
+    if (historico) {
+        const total = Object.values(historico.porLote).reduce((t, v) => t + v, 0) || 1;
+        const fracao: Record<Canal, number> = {
+            ingresse: historico.porCanal.online / total,
+            bilheteria: historico.porCanal.bilheteria / total,
+            cortesia: historico.porCanal.cortesia / total,
+        };
+        for (const [lote, qtd] of Object.entries(historico.porLote)) {
+            const bilheteria = Math.round(qtd * fracao.bilheteria);
+            const cortesia = Math.round(qtd * fracao.cortesia);
+            somar(lote, "bilheteria", bilheteria);
+            somar(lote, "cortesia", cortesia);
+            somar(lote, "ingresse", qtd - bilheteria - cortesia);
+        }
     }
-    const somaPesos = pesos.reduce((a, b) => a + b, 0);
+    for (const p of pagos) for (const item of p.itens) if (item.tipo === "ingresso" && item.loteId) somar(item.loteId, CANAL_DO_PEDIDO[p.canal], item.quantidade);
 
-    let acumulado = 0;
-    const serie: DiaVenda[] = pesos.map((peso, dia) => {
-        const ingressos = Math.round((peso / somaPesos) * ingressosVendidos);
-        acumulado += ingressos;
-        const ticket = spec.ticketBase * (0.85 + (dia / Math.max(1, diasCorridos)) * 0.45);
-        return {
-            dia,
-            dataISO: addDias(abertura, dia).toISOString().slice(0, 10),
-            ingressos,
-            faturamento: Math.round(ingressos * ticket),
-        };
-    });
+    const sessoes: Sessao[] = evento.sessoes.flatMap((s) =>
+        s.grupos.map((g) => {
+            const vendas: Record<Canal, number> = { ingresse: 0, bilheteria: 0, cortesia: 0 };
+            let capacidade = 0;
+            for (const t of g.ingressos)
+                for (const l of t.lotes) {
+                    capacidade += l.quantidade;
+                    const v = porLote.get(l.id);
+                    if (v) (Object.keys(vendas) as Canal[]).forEach((c) => (vendas[c] += v[c]));
+                }
+            // Evento de uma sessão agrupa pelo local; com várias, cada sessão vira um bloco pela data.
+            const ambiente = evento.sessoes.length > 1 ? `Sessão de ${dataCurta(s.inicio)}` : evento.local;
+            return { id: g.id, nome: g.nome, ambiente, dataLabel: dataCurta(s.inicio), capacidade, vendas };
+        }),
+    );
 
-    // Ajusta o último dia para bater exatamente com o total.
-    if (serie.length) serie[serie.length - 1].ingressos += ingressosVendidos - acumulado;
+    // Série diária, de ponta a ponta até hoje: histórico termina ontem, pedidos entram no dia em que foram pagos.
+    const porDia = new Map<string, { ingressos: number; produtos: number; faturamento: number }>();
+    const somarDia = (data: string, ingressos: number, produtos: number, faturamento: number) => {
+        const atual = porDia.get(data) ?? { ingressos: 0, produtos: 0, faturamento: 0 };
+        atual.ingressos += ingressos;
+        atual.produtos += produtos;
+        atual.faturamento += faturamento;
+        porDia.set(data, atual);
+    };
+    historico?.serie.forEach(([ingressos, produtos, faturamento], i, todos) => somarDia(iso(addDias(HOJE, i - todos.length)), ingressos, produtos, faturamento));
+    for (const p of pagos) {
+        const data = iso(new Date(p.pagamento?.pagoEm ?? p.atualizadoEm));
+        const ingressos = p.itens.filter((i) => i.tipo === "ingresso").reduce((t, i) => t + i.quantidade, 0);
+        const produtos = p.itens.filter((i) => i.tipo === "produto").reduce((t, i) => t + i.quantidade, 0);
+        somarDia(data, ingressos, produtos, p.subtotal);
+    }
+    const datas = [...porDia.keys()].sort();
+    const abertura = new Date(`${datas[0] ?? iso(HOJE)}T12:00`);
+    const serie: DiaVenda[] = [];
+    for (let dia = 0, d = abertura; d <= HOJE; dia++, d = addDias(d, 1)) {
+        const valores = porDia.get(iso(d)) ?? { ingressos: 0, produtos: 0, faturamento: 0 };
+        serie.push({ dia, dataISO: iso(d), ...valores });
+    }
 
-    const sessoes: Sessao[] = spec.sessoes.map((s, index) => {
-        const capacidade = Math.round(spec.capacidadePorSessao * s.peso);
-        const vendidos = Math.round(capacidade * spec.ocupacaoAlvo * (0.82 + rand() * 0.36));
-        const parceiro = Math.round(vendidos * spec.parceiroPct);
-        const cortesia = Math.round(spec.cortesias / spec.sessoes.length);
-        return {
-            id: `${spec.eventoId}-s${index}`,
-            nome: s.nome,
-            ambiente: s.ambiente,
-            dataLabel: evento.dataLabel,
-            capacidade,
-            vendas: {
-                ingresse: Math.max(0, Math.min(capacidade - parceiro - cortesia, vendidos - parceiro)),
-                parceiro,
-                cortesia,
-            },
-        };
-    });
+    const pagamentos = new Map<string, number>((historico?.pagamentos ?? []).map((p) => [p.tipo, p.qtd]));
+    for (const p of pagos) if (p.pagamento) pagamentos.set(METODO_LABEL[p.pagamento.metodo], (pagamentos.get(METODO_LABEL[p.pagamento.metodo]) ?? 0) + 1);
 
-    const totalPagamentos = Math.round(ingressosVendidos * 0.62);
     return {
-        eventoId: spec.eventoId,
-        aberturaISO: abertura.toISOString().slice(0, 10),
-        metaFaturamento: spec.metaFaturamento,
+        eventoId,
+        aberturaISO: iso(abertura),
+        metaFaturamento: historico?.meta ?? 0,
         sessoes,
         serie,
-        pagamentos: [
-            { tipo: "Cartão de crédito", qtd: Math.round(totalPagamentos * 0.64) },
-            { tipo: "Pix", qtd: Math.round(totalPagamentos * 0.24) },
-            { tipo: "Boleto", qtd: Math.round(totalPagamentos * 0.07) },
-            { tipo: "Saldo do produtor", qtd: Math.round(totalPagamentos * 0.05) },
-        ],
+        pagamentos: [...pagamentos.entries()].map(([tipo, qtd]) => ({ tipo, qtd })).filter((p) => p.qtd > 0),
     };
 }
 
-const VENDAS = new Map<string, VendasEvento>(
-    SPECS.map((spec) => {
-        const evento = eventos.find((e) => e.id === spec.eventoId)!;
-        return [spec.eventoId, build(spec, evento)];
-    }),
-);
+const fontesAtuais = () => ({
+    eventos: new Map(lerColecao("eventos").map((e) => [e.id, e])),
+    historicos: new Map(lerColecao("historico").map((h) => [h.eventoId, h])),
+    pedidos: lerColecao("pedidos"),
+});
 
-export const vendasDoEvento = (eventoId: string) => VENDAS.get(eventoId) ?? null;
+/** Vendas do evento no estado atual do banco (sem assinar mudanças; nas telas, use os hooks). */
+export const vendasDoEvento = (eventoId: string) => {
+    const f = fontesAtuais();
+    return montar(eventoId, { evento: f.eventos.get(eventoId), historico: f.historicos.get(eventoId), pedidos: f.pedidos });
+};
 
 /* ------------------------------------------------------------------ */
 /*  Métricas derivadas                                                 */
@@ -270,10 +207,10 @@ const somaCanais = (sessoes: Sessao[]): Record<Canal, number> =>
     sessoes.reduce(
         (acc, s) => ({
             ingresse: acc.ingresse + s.vendas.ingresse,
-            parceiro: acc.parceiro + s.vendas.parceiro,
+            bilheteria: acc.bilheteria + s.vendas.bilheteria,
             cortesia: acc.cortesia + s.vendas.cortesia,
         }),
-        { ingresse: 0, parceiro: 0, cortesia: 0 },
+        { ingresse: 0, bilheteria: 0, cortesia: 0 },
     );
 
 export function resumoDoEvento(evento: Evento): ResumoEvento {
@@ -286,7 +223,7 @@ export function resumoDoEvento(evento: Evento): ResumoEvento {
             vendas: null,
             capacidade: 0,
             vendidos: 0,
-            porCanal: { ingresse: 0, parceiro: 0, cortesia: 0 },
+            porCanal: { ingresse: 0, bilheteria: 0, cortesia: 0 },
             ocupacao: 0,
             faturamento: 0,
             meta: 0,
@@ -301,7 +238,7 @@ export function resumoDoEvento(evento: Evento): ResumoEvento {
 
     const capacidade = vendas.sessoes.reduce((total, s) => total + s.capacidade, 0);
     const porCanal = somaCanais(vendas.sessoes);
-    const vendidos = porCanal.ingresse + porCanal.parceiro + porCanal.cortesia;
+    const vendidos = porCanal.ingresse + porCanal.bilheteria + porCanal.cortesia;
     const faturamento = vendas.serie.reduce((total, d) => total + d.faturamento, 0);
 
     const ultimos7 = vendas.serie.slice(-7);
@@ -334,7 +271,21 @@ export function resumoDoEvento(evento: Evento): ResumoEvento {
     };
 }
 
-export const resumos = () => eventos.map(resumoDoEvento);
+export const resumos = () => (semEventosNaOrganizacao() ? [] : eventos.map(resumoDoEvento));
+
+/** Resumos de todos os eventos, atualizados quando o banco muda. */
+export function useResumos(): ResumoEvento[] {
+    const { tabelas } = useBanco();
+    // A lista de eventos muda com a organização em contexto, sem o banco mudar.
+    const versaoEventos = useEventosVersao();
+    return useMemo(() => resumos(), [tabelas, versaoEventos]);
+}
+
+/** Resumo de um evento, atualizado quando o banco muda. */
+export function useResumoDoEvento(evento: Evento): ResumoEvento {
+    const { tabelas } = useBanco();
+    return useMemo(() => resumoDoEvento(evento), [evento, tabelas]);
+}
 
 /* ------------------------------------------------------------------ */
 /*  Alertas — o que precisa de atenção hoje                            */
@@ -369,10 +320,10 @@ export function alertas(): Alerta[] {
                 evento,
                 tom: "error",
                 titulo: "Ainda em rascunho",
-                detalhe: `Faltam ${diasParaEvento} dias e o evento não está publicado — nenhum ingresso pode ser vendido.`,
-                acao: "Publicar evento",
-                href: "/backstage/catalogo/ingressos",
-                pergunta: "O que falta para publicar este evento?",
+                detalhe: `Faltam ${diasParaEvento} dias e as vendas ainda não estão ligadas. Nenhum ingresso pode ser vendido.`,
+                acao: "Alterar status",
+                href: "/backstage/informacoes-evento",
+                pergunta: "O que falta para ligar as vendas deste evento?",
             });
             continue;
         }
@@ -404,7 +355,7 @@ export function alertas(): Alerta[] {
         }
 
         const sessoesFracas = (resumo.vendas?.sessoes ?? []).filter(
-            (s) => (s.vendas.ingresse + s.vendas.parceiro + s.vendas.cortesia) / s.capacidade < 0.35,
+            (s) => s.capacidade > 0 && (s.vendas.ingresse + s.vendas.bilheteria + s.vendas.cortesia) / s.capacidade < 0.35,
         );
         if (sessoesFracas.length && diasParaEvento <= 150) {
             lista.push({
@@ -465,3 +416,87 @@ export const brlCompacto = (valor: number) =>
           : brl(valor);
 
 export const numero = (valor: number) => Math.round(valor).toLocaleString("pt-BR");
+
+/* ------------------------------------------------------------------ */
+/*  Ritmo da organização                                               */
+/*                                                                     */
+/*  Ritmo é a média por dia dos últimos 7 dias, comparada com os 7     */
+/*  anteriores. Total responde "quanto já vendi"; ritmo responde "como */
+/*  estou vendendo agora", que é a pergunta que muda decisão.          */
+/* ------------------------------------------------------------------ */
+
+export interface Ritmo {
+    /** Média por dia nos últimos 7 dias. */
+    porDia: number;
+    /** Variação contra os 7 dias anteriores. `null` quando não há base de comparação. */
+    variacao: number | null;
+    /** Últimos 7 dias, para o gráfico. */
+    serie: number[];
+    /** Data ISO de cada ponto de `serie`, para o eixo x. */
+    datas: string[];
+    /** Soma dos últimos 7 dias, o período analisado no cartão. */
+    total: number;
+    /** Datas dos 7 dias anteriores, a base da comparação. */
+    datasAnteriores: string[];
+}
+
+export interface RitmoOrganizacao {
+    gmv: Ritmo;
+    produtos: Ritmo;
+    ingressos: Ritmo;
+    ticket: Ritmo;
+}
+
+const JANELA = 7;
+
+const media = (valores: number[]) => (valores.length ? valores.reduce((t, v) => t + v, 0) / valores.length : 0);
+
+const montaRitmo = (serie: number[], datas: string[]): Ritmo => {
+    const recentes = serie.slice(-JANELA);
+    const anteriores = serie.slice(-JANELA * 2, -JANELA);
+    const porDia = media(recentes);
+    const base = media(anteriores);
+    return {
+        porDia,
+        variacao: base > 0 ? porDia / base - 1 : null,
+        serie: recentes,
+        datas: datas.slice(-JANELA),
+        total: recentes.reduce((t, v) => t + v, 0),
+        datasAnteriores: datas.slice(-JANELA * 2, -JANELA),
+    };
+};
+
+/**
+ * Soma o dia a dia de todos os eventos numa linha só. Eventos abrem vendas em
+ * datas diferentes, então a chave é a data do calendário, não o dia de venda.
+ */
+export function ritmoDaOrganizacao(lista: ResumoEvento[]): RitmoOrganizacao {
+    const porData = new Map<string, { gmv: number; ingressos: number; produtos: number }>();
+
+    for (const resumo of lista) {
+        for (const dia of resumo.vendas?.serie ?? []) {
+            const atual = porData.get(dia.dataISO) ?? { gmv: 0, ingressos: 0, produtos: 0 };
+            atual.gmv += dia.faturamento;
+            atual.ingressos += dia.ingressos;
+            atual.produtos += dia.produtos;
+            porData.set(dia.dataISO, atual);
+        }
+    }
+
+    // Só dias fechados: o dia de hoje ainda não acabou e puxaria a curva para baixo,
+    // sugerindo uma queda que não aconteceu (EVT-03).
+    const hoje = iso(HOJE);
+    const ordenados = [...porData.entries()].filter(([data]) => data < hoje).sort(([a], [b]) => a.localeCompare(b));
+    const datas = ordenados.map(([data]) => data);
+    const dias = ordenados.map(([, valores]) => valores);
+
+    /* Ticket médio do dia, não média dos tickets: dia sem venda distorceria. */
+    const serieTicket = dias.map((d) => (d.ingressos ? d.gmv / d.ingressos : 0));
+
+    return {
+        gmv: montaRitmo(dias.map((d) => d.gmv), datas),
+        produtos: montaRitmo(dias.map((d) => d.produtos), datas),
+        ingressos: montaRitmo(dias.map((d) => d.ingressos), datas),
+        ticket: montaRitmo(serieTicket, datas),
+    };
+}

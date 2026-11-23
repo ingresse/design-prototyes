@@ -1,0 +1,446 @@
+import { useState, type FC, type ReactNode } from "react";
+import { toast } from "sonner";
+import { AlertTriangle, ArrowRight, Check, CheckCircle, ChevronDown, Clock, Copy01, RefreshCcw01, Send01, XCircle } from "@untitledui/icons";
+import { Button } from "@/components/base/buttons/button";
+import { Dropdown } from "@/components/base/dropdown/dropdown";
+import { Input } from "@/components/base/input/input";
+import { RadioGroupRadioButton } from "@/components/base/radio-groups/radio-group-radio-button";
+import { TextArea } from "@/components/base/textarea/textarea";
+import { Dialog, Modal, ModalOverlay } from "@/components/application/modals/modal";
+import { useBreakpoint } from "@/hooks/use-breakpoint";
+import { useClipboard } from "@/hooks/use-clipboard";
+import { cx } from "@/utils/cx";
+import { FOCO, Regra, ResumoFinanceiro, TIPO_OPERACAO_ICONE, mascararDestino, useContagem } from "./pos-compra-ui";
+import { isEmailValido } from "./wizard/EtapaEnvio";
+import {
+    TIPO_OPERACAO_CURTO,
+    canalLabel,
+    cancelarSolicitacao,
+    descreverMotivo,
+    expirarSolicitacao,
+    formatarMoeda,
+    getConta,
+    getItem,
+    reenviarLink,
+    registrarPagamento,
+    titularDaLinha,
+    type CanalEnvio,
+    type Conta,
+    type Pedido,
+    type Solicitacao,
+} from "../data/pos-compra-store";
+
+/** Quem recebe o link e paga: o novo titular numa transferência, o comprador nas demais. */
+const quemPaga = (pedido: Pedido, solicitacao: Solicitacao): Conta | undefined => {
+    if (solicitacao.tipo === "troca-titularidade") return getConta(Object.values(solicitacao.aplicar.titularPorLinha ?? {})[0] ?? "");
+    return getConta(pedido.compradorId);
+};
+
+const unicos = (valores: Array<string | undefined>) => [...new Set(valores.filter(Boolean))] as string[];
+
+/** O quê, numa frase: "Transferência de Camiseta extra do evento" e, abaixo, de quem para quem. */
+const resumoDoCartao = (pedido: Pedido, solicitacao: Solicitacao) => {
+    const linhas = pedido.itens.filter((l) => solicitacao.linhasAfetadas.includes(l.id));
+    const itens = unicos(linhas.map((l) => getItem(l.itemId)?.nome));
+    const oQue = itens.length === 1 ? `${linhas.length > 1 ? `${linhas.length}x ` : ""}${itens[0]}` : `${linhas.length} unidades`;
+    const titulares = unicos(linhas.map((l) => titularDaLinha(pedido, l)?.nome)).join(", ");
+
+    if (solicitacao.tipo === "troca-titularidade") {
+        const destino = getConta(Object.values(solicitacao.aplicar.titularPorLinha ?? {})[0] ?? "")?.nome ?? "novo titular";
+        return { titulo: `Transferência de ${oQue}`, de: titulares, para: destino };
+    }
+    if (solicitacao.tipo === "troca-item") {
+        const novos = unicos((solicitacao.aplicar.trocas ?? []).map((t) => getItem(t.novoItemId)?.nome));
+        return { titulo: `Troca de ${oQue}`, de: titulares, para: novos.length === 1 ? novos[0] : `${novos.length} itens novos` };
+    }
+    return { titulo: `Edição do formulário de ${oQue}`, de: titulares };
+};
+
+const tempoRestante = (ms: number) => {
+    const segundos = Math.max(0, Math.ceil(ms / 1000));
+    if (segundos >= 3600) return `${Math.floor(segundos / 3600)} h`;
+    if (segundos >= 60) return `${Math.floor(segundos / 60)} min`;
+    return `${segundos} s`;
+};
+
+const horaDe = (instante: number) => new Date(instante).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+
+export const idDoCartao = (solicitacaoId: string) => `alteracao-${solicitacaoId}`;
+
+/**
+ * Uma alteração aberta, em quatro níveis e nada além:
+ * 1. o quê (tipo, item, de quem para quem) e quanto;
+ * 2. o estado, numa faixa com a cor dele: é o que muda e o que o operador precisa ver primeiro;
+ * 3. o que fazer agora: a ação frequente à vista, as de exceção juntas em "Mais ações";
+ * 4. o detalhe da cobrança, recolhido.
+ * Quem enviou e quando já está no histórico; o cartão mostra só o destino do link, que é o que
+ * importa para reenviar.
+ */
+export function CartaoOperacao({ pedido, solicitacao }: { pedido: Pedido; solicitacao: Solicitacao }) {
+    const aguardando = solicitacao.estado === "aguardando";
+    const processando = solicitacao.estado === "processando";
+    const falha = solicitacao.estado === "falha";
+    const reprovada = solicitacao.estado === "reprovada";
+
+    const restante = useContagem(aguardando ? solicitacao.expiraEm : undefined, () => expirarSolicitacao(pedido.id, solicitacao.id));
+    /* Reta final do prazo (os últimos 10 minutos de 1 hora): o tempo ganha peso. */
+    const urgente = aguardando && restante < (solicitacao.expiraEm - solicitacao.criadoEm) / 6;
+    const [reenviarAberto, setReenviarAberto] = useState(false);
+    const [pagamentoAberto, setPagamentoAberto] = useState(false);
+    const [cancelarAberto, setCancelarAberto] = useState(false);
+    const [maisAcoesAberto, setMaisAcoesAberto] = useState(false);
+    const { copied, copy } = useClipboard();
+    const isDesktop = useBreakpoint("md");
+
+    const escolherNaFolha = (acao: "registrar" | "cancelar") => {
+        setMaisAcoesAberto(false);
+        /* Espera a folha terminar de sair antes de abrir o modal. Dois overlays do React Aria
+           vivos ao mesmo tempo disputam o bloqueio de rolagem, e quem perde deixa a página
+           presa quando o segundo fecha. */
+        window.setTimeout(() => (acao === "registrar" ? setPagamentoAberto(true) : setCancelarAberto(true)), 200);
+    };
+
+    const pagante = quemPaga(pedido, solicitacao);
+    const resumo = resumoDoCartao(pedido, solicitacao);
+    const Icone = TIPO_OPERACAO_ICONE[solicitacao.tipo];
+
+    return (
+        <section
+            id={idDoCartao(solicitacao.id)}
+            tabIndex={-1}
+            aria-labelledby={`${idDoCartao(solicitacao.id)}-titulo`}
+            className={cx("flex scroll-mt-24 flex-col gap-4 rounded-2xl bg-primary p-5 ring-1", falha ? "ring-error_subtle" : "ring-border-secondary", FOCO)}
+        >
+            {/* 1. O quê e quanto */}
+            <div className="flex items-start gap-3">
+                <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-secondary ring-1 ring-border-secondary">
+                    <Icone className="size-5 text-fg-secondary" aria-hidden="true" />
+                </span>
+                <div className="min-w-0 flex-1">
+                    <h3 id={`${idDoCartao(solicitacao.id)}-titulo`} className="text-md font-semibold text-primary">
+                        {resumo.titulo}
+                    </h3>
+                    <p className="flex flex-wrap items-center gap-x-1.5 text-sm text-tertiary">
+                        <span>{resumo.de}</span>
+                        {resumo.para && (
+                            <>
+                                <ArrowRight className="size-4 shrink-0 text-fg-quaternary" aria-label="para" />
+                                <span className="font-medium text-secondary">{resumo.para}</span>
+                            </>
+                        )}
+                    </p>
+                </div>
+                <p className="shrink-0 text-lg font-semibold text-primary tabular-nums">{formatarMoeda(solicitacao.total)}</p>
+            </div>
+
+            {/* 2. Estado */}
+            {aguardando && (
+                <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 rounded-lg bg-warning-primary px-3 py-2.5 ring-1 ring-border-secondary">
+                    <p className="flex items-center gap-2 text-sm font-semibold text-warning-primary">
+                        <span className="size-2 shrink-0 rounded-full bg-fg-warning-secondary" aria-hidden="true" />
+                        Aguardando pagamento{pagante ? ` de ${pagante.nome}` : ""}
+                    </p>
+                    <p className={cx("flex items-center gap-1.5 text-sm tabular-nums", urgente ? "font-semibold text-warning-primary" : "text-secondary")}>
+                        <Clock className="size-4 shrink-0 text-fg-warning-secondary" aria-hidden="true" />
+                        Expira em {tempoRestante(restante)}, às {horaDe(solicitacao.expiraEm)}
+                    </p>
+                </div>
+            )}
+
+            {processando && (
+                <div className="flex items-center gap-2 rounded-lg bg-secondary px-3 py-2.5 ring-1 ring-border-secondary">
+                    <RefreshCcw01 className="size-4 shrink-0 animate-spin text-fg-secondary" aria-hidden="true" />
+                    <p className="text-sm font-semibold text-secondary">Pagamento registrado. Aplicando a {TIPO_OPERACAO_CURTO[solicitacao.tipo].toLowerCase()}.</p>
+                </div>
+            )}
+
+            {falha && (
+                <div role="alert" className="flex items-start gap-3 rounded-lg bg-error-primary px-3 py-2.5 ring-1 ring-error_subtle">
+                    <AlertTriangle className="mt-0.5 size-5 shrink-0 text-fg-error-secondary" aria-hidden="true" />
+                    <div className="min-w-0">
+                        <p className="text-sm font-semibold text-error-primary">Paga, mas não aplicada</p>
+                        <p className="text-sm text-secondary">{solicitacao.motivoFalha ?? "As regras de negócio não valem mais para essa alteração."} Nada foi revertido.</p>
+                    </div>
+                </div>
+            )}
+
+            {/* H-06: reprovada é estado final com estorno automático. Nada ficou pendente, então
+                a faixa informa e não pede ação. */}
+            {reprovada && (
+                <div className="flex items-start gap-3 rounded-lg bg-secondary px-3 py-2.5 ring-1 ring-border-secondary">
+                    <AlertTriangle className="mt-0.5 size-5 shrink-0 text-fg-quaternary" aria-hidden="true" />
+                    <div className="min-w-0">
+                        <p className="text-sm font-semibold text-primary">Reprovada na revalidação após o pagamento</p>
+                        <p className="text-sm text-secondary">{solicitacao.motivoFalha} O valor foi estornado integralmente e nada mudou no pedido.</p>
+                    </div>
+                </div>
+            )}
+
+            {/* 3. O que fazer agora */}
+            {aguardando && (
+                <div className="flex flex-wrap items-center justify-between gap-3 max-md:flex-col max-md:items-stretch">
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-2 max-md:flex-col max-md:items-stretch">
+                        {/* Abaixo de md os dois botões dividem uma linha de 44px. Em fileira única
+                            eles cabiam, mas a frase do destino tomava a linha seguinte e empurrava
+                            o menu para uma terceira. */}
+                        <div className="flex gap-3 max-md:gap-2">
+                            <Button
+                                size={isDesktop ? "sm" : "lg"}
+                                color="secondary"
+                                className="max-md:flex-1"
+                                iconLeading={copied ? Check : Copy01}
+                                onClick={() => copy(`https://${solicitacao.linkPagamento}`)}
+                            >
+                                {copied ? "Link copiado" : "Copiar link"}
+                            </Button>
+                            <Button size={isDesktop ? "sm" : "lg"} color="secondary" className="max-md:flex-1" iconLeading={Send01} onClick={() => setReenviarAberto(true)}>
+                                Reenviar
+                            </Button>
+                        </div>
+                        <span className="text-sm text-tertiary">
+                            Enviado por {canalLabel(solicitacao.canalEnvio)} para {mascararDestino(solicitacao.destinatarioEnvio)}
+                        </span>
+                    </div>
+                    {/* As duas saídas de exceção ficam juntas e longe do caminho comum: registrar
+                        pagamento não volta, e não pode estar a um clique errado do "Copiar link". */}
+                    {isDesktop ? (
+                        <Dropdown.Root>
+                            <Button size="sm" color="tertiary" iconTrailing={ChevronDown}>
+                                Mais ações
+                            </Button>
+                            <Dropdown.Popover placement="bottom end" className="w-auto min-w-64">
+                                <Dropdown.Menu
+                                    onAction={(chave) => {
+                                        if (chave === "registrar") setPagamentoAberto(true);
+                                        if (chave === "cancelar") setCancelarAberto(true);
+                                    }}
+                                >
+                                    <Dropdown.Item id="registrar" icon={CheckCircle} label="Registrar pagamento recebido" />
+                                    <Dropdown.Item id="cancelar" icon={XCircle} label="Cancelar alteração" />
+                                </Dropdown.Menu>
+                            </Dropdown.Popover>
+                        </Dropdown.Root>
+                    ) : (
+                        /* A 390px o menu suspenso quebrava para uma terceira linha e, sozinho num
+                           justify-between, encostava à esquerda, a um polegar do "Copiar link": a
+                           distância que protege as duas saídas só existia no desktop. A folha
+                           inferior devolve a distância e dá 48px a cada opção. */
+                        <Button size="lg" color="tertiary" iconTrailing={ChevronDown} onClick={() => setMaisAcoesAberto(true)}>
+                            Mais ações
+                        </Button>
+                    )}
+                </div>
+            )}
+
+            {/* Falha é erro técnico com o pagamento aprovado: a EF manda reprocessar, sem nova
+                cobrança, e restringe a ação ao Admin Ingresse (§17). O protótipo não tem perfis,
+                então só diz o que vai acontecer. */}
+            {falha && <p className="text-sm text-secondary">Pagamento aprovado e aplicação interrompida por erro técnico. Será reprocessada, sem nova cobrança.</p>}
+
+            {/* 4. Detalhe, sob demanda */}
+            <details className="group border-t border-secondary pt-3">
+                {/* Abaixo de md o gatilho ocupa a linha toda e ganha 44px: `w-fit` deixava um
+                    alvo da altura do texto para abrir a quebra da cobrança. */}
+                <summary className="flex w-fit cursor-pointer list-none items-center gap-1 rounded-md text-sm font-semibold text-tertiary transition duration-100 ease-linear hover:text-tertiary_hover max-md:min-h-11 max-md:w-full max-md:justify-between [&::-webkit-details-marker]:hidden">
+                    Detalhes da cobrança
+                    <ChevronDown className="size-4 text-fg-quaternary transition-transform duration-100 ease-linear group-open:rotate-180" aria-hidden="true" />
+                </summary>
+                {/* Sem moldura própria: isto abre dentro de um cartão que já tem a sua, e um anel
+                    dentro do outro só dava mais uma borda para o olho resolver. O `p-0` tira o
+                    recuo que o resumo carrega para quando ele mora num container de verdade. */}
+                <div className="mt-3 flex flex-col gap-2 [&_dl]:p-0">
+                    <ResumoFinanceiro linhas={solicitacao.linhas} semMoldura />
+                    {solicitacao.motivo && (
+                        <p className="text-sm text-tertiary">
+                            Motivo: {descreverMotivo(solicitacao.motivo)} · aberta por {solicitacao.operador}
+                        </p>
+                    )}
+                </div>
+            </details>
+
+            <FolhaMaisAcoes isOpen={maisAcoesAberto} onClose={() => setMaisAcoesAberto(false)} onEscolher={escolherNaFolha} />
+            <ModalReenviarLink isOpen={reenviarAberto} onClose={() => setReenviarAberto(false)} pedidoId={pedido.id} solicitacao={solicitacao} pagante={pagante} />
+            <ModalRegistrarPagamento isOpen={pagamentoAberto} onClose={() => setPagamentoAberto(false)} pedidoId={pedido.id} solicitacao={solicitacao} />
+            <ModalCancelarAlteracao isOpen={cancelarAberto} onClose={() => setCancelarAberto(false)} pedidoId={pedido.id} solicitacaoId={solicitacao.id} />
+        </section>
+    );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Mais ações no telefone: folha inferior no lugar do menu suspenso   */
+/* ------------------------------------------------------------------ */
+
+/** Linha da folha: 48px, ícone e rótulo, como um item de menu que coube no polegar. */
+const LinhaDaFolha = ({ icone: Icone, destrutiva = false, onClick, children }: { icone: FC<{ className?: string }>; destrutiva?: boolean; onClick: () => void; children: ReactNode }) => (
+    <button
+        type="button"
+        onClick={onClick}
+        className={cx(
+            "flex min-h-12 items-center gap-3 rounded-xl px-3 text-left text-sm font-medium transition duration-100 ease-linear",
+            destrutiva ? "text-error-primary hover:bg-error-primary" : "text-primary hover:bg-primary_hover",
+        )}
+    >
+        <Icone className={cx("size-5 shrink-0", destrutiva ? "text-fg-error-secondary" : "text-fg-quaternary")} aria-hidden="true" />
+        {children}
+    </button>
+);
+
+/** As duas saídas de exceção fora da fileira de ações, com o cancelamento separado por divisor:
+ *  no telefone elas não têm como ficar na ponta oposta da linha, então ficam atrás de um toque. */
+function FolhaMaisAcoes({ isOpen, onClose, onEscolher }: { isOpen: boolean; onClose: () => void; onEscolher: (acao: "registrar" | "cancelar") => void }) {
+    return (
+        <ModalOverlay isOpen={isOpen} onOpenChange={(open) => !open && onClose()} isDismissable>
+            <Modal className="sm:max-w-md">
+                <Dialog aria-label="Mais ações desta alteração">
+                    <div className="flex w-full flex-col rounded-2xl bg-primary p-2 shadow-xl ring-1 ring-border-secondary">
+                        <LinhaDaFolha icone={CheckCircle} onClick={() => onEscolher("registrar")}>
+                            Registrar pagamento recebido
+                        </LinhaDaFolha>
+                        <div className="my-2 border-t border-secondary" />
+                        <LinhaDaFolha icone={XCircle} destrutiva onClick={() => onEscolher("cancelar")}>
+                            Cancelar alteração
+                        </LinhaDaFolha>
+                    </div>
+                </Dialog>
+            </Modal>
+        </ModalOverlay>
+    );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Reenviar: o destino aparece e pode ser corrigido antes de enviar   */
+/* ------------------------------------------------------------------ */
+
+function ModalReenviarLink({ isOpen, onClose, pedidoId, solicitacao, pagante }: { isOpen: boolean; onClose: () => void; pedidoId: string; solicitacao: Solicitacao; pagante?: Conta }) {
+    /* Começa no último destino usado, não no cadastro: se o cliente disse "mudei de número" e o
+       operador corrigiu, o próximo reenvio não volta para o número velho. */
+    const canal: CanalEnvio = "email";
+    const [destino, setDestino] = useState(solicitacao.destinatarioEnvio || (pagante?.email ?? ""));
+    const valido = isEmailValido(destino);
+
+    const enviar = () => {
+        reenviarLink(pedidoId, solicitacao.id, canal, destino.trim());
+        toast.success(`Link reenviado por ${canalLabel(canal)} para ${destino.trim()}.`);
+        onClose();
+    };
+
+    return (
+        <ModalOverlay isOpen={isOpen} onOpenChange={(open) => !open && onClose()} isDismissable>
+            <Modal className="sm:max-w-md">
+                <Dialog aria-label="Reenviar link de pagamento">
+                    <div className="flex w-full flex-col gap-4 rounded-2xl bg-primary p-6 shadow-xl ring-1 ring-border-secondary">
+                        <div>
+                            <h2 className="text-lg font-semibold text-primary">Reenviar link de pagamento</h2>
+                            <p className="mt-1 text-sm text-tertiary">O link é o mesmo e o prazo não reinicia. Confira o contato com o cliente antes de enviar.</p>
+                        </div>
+                        <Input
+                            label="E-mail"
+                            value={destino}
+                            onChange={setDestino}
+                            isInvalid={destino.length > 0 && !valido}
+                            hint={destino.length > 0 && !valido ? "Confira o e-mail." : undefined}
+                        />
+                        <div className="mt-2 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                            <Button size="md" color="secondary" onClick={onClose}>
+                                Voltar
+                            </Button>
+                            <Button size="md" color="primary" isDisabled={!valido} onClick={enviar}>
+                                Reenviar por {canalLabel(canal)}
+                            </Button>
+                        </div>
+                    </div>
+                </Dialog>
+            </Modal>
+        </ModalOverlay>
+    );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Registrar pagamento: a ação mais arriscada, com evidência           */
+/* ------------------------------------------------------------------ */
+
+function ModalRegistrarPagamento({ isOpen, onClose, pedidoId, solicitacao }: { isOpen: boolean; onClose: () => void; pedidoId: string; solicitacao: Solicitacao }) {
+    const [referencia, setReferencia] = useState("");
+    const valida = referencia.trim().length >= 4;
+
+    return (
+        <ModalOverlay isOpen={isOpen} onOpenChange={(open) => !open && onClose()} isDismissable>
+            <Modal className="sm:max-w-md">
+                <Dialog aria-label="Registrar pagamento recebido">
+                    <div className="flex w-full flex-col gap-4 rounded-2xl bg-primary p-6 shadow-xl ring-1 ring-border-secondary">
+                        <div>
+                            <h2 className="text-lg font-semibold text-primary">Registrar pagamento recebido</h2>
+                            <p className="mt-1 text-sm text-tertiary">
+                                Use só quando o pagamento de {formatarMoeda(solicitacao.total)} foi feito fora do link e você conferiu o comprovante. O Backstage não confirma isso sozinho.
+                            </p>
+                        </div>
+                        <Input
+                            label="Referência do comprovante"
+                            placeholder="Horário e últimos dígitos da transação"
+                            value={referencia}
+                            onChange={setReferencia}
+                            isRequired
+                            hint="Fica no histórico, com o seu nome."
+                        />
+                        <Regra>A alteração é aplicada logo em seguida e não pode ser desfeita pelo Backstage.</Regra>
+                        <div className="mt-2 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                            <Button size="md" color="secondary" onClick={onClose}>
+                                Voltar
+                            </Button>
+                            <Button
+                                size="md"
+                                color="primary"
+                                isDisabled={!valida}
+                                onClick={() => {
+                                    registrarPagamento(pedidoId, solicitacao.id, referencia.trim());
+                                    toast.success("Pagamento registrado. Aplicando a alteração.");
+                                    onClose();
+                                }}
+                            >
+                                Registrar pagamento de {formatarMoeda(solicitacao.total)}
+                            </Button>
+                        </div>
+                    </div>
+                </Dialog>
+            </Modal>
+        </ModalOverlay>
+    );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Cancelar alteração                                                 */
+/* ------------------------------------------------------------------ */
+
+function ModalCancelarAlteracao({ isOpen, onClose, pedidoId, solicitacaoId }: { isOpen: boolean; onClose: () => void; pedidoId: string; solicitacaoId: string }) {
+    return (
+        <ModalOverlay isOpen={isOpen} onOpenChange={(open) => !open && onClose()} isDismissable>
+            <Modal className="sm:max-w-md">
+                <Dialog aria-label="Cancelar esta alteração">
+                    <div className="flex w-full flex-col gap-4 rounded-2xl bg-primary p-6 shadow-xl ring-1 ring-border-secondary">
+                        <div>
+                            <h2 className="text-lg font-semibold text-primary">Cancelar esta alteração?</h2>
+                            <p className="mt-1 text-sm text-tertiary">O link para de funcionar, a reserva é liberada e nada é cobrado. As unidades voltam a ficar livres.</p>
+                        </div>
+                        <div className="mt-2 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                            <Button size="md" color="secondary" onClick={onClose}>
+                                Manter alteração
+                            </Button>
+                            <Button
+                                size="md"
+                                color="primary-destructive"
+                                onClick={() => {
+                                    cancelarSolicitacao(pedidoId, solicitacaoId);
+                                    toast.success("Alteração cancelada. Nada foi cobrado.");
+                                    onClose();
+                                }}
+                            >
+                                Cancelar alteração
+                            </Button>
+                        </div>
+                    </div>
+                </Dialog>
+            </Modal>
+        </ModalOverlay>
+    );
+}
+

@@ -1,7 +1,8 @@
+import ingresseLogo from "@/assets/Company logo_white.svg";
 import { cx } from "@/utils/cx";
 
-/** Logo oficial da Ingresse (mesmo asset usado no marketplace). */
-export const INGRESSE_LOGO = "https://auth.prod.ingresse.com/resources/2ibrw/login/custom/img/ingresse-light.svg";
+/** Logo da Ingresse em branco, para a barra escura. Asset local: a URL externa do login deixou de responder. */
+const INGRESSE_LOGO = ingresseLogo;
 
 /**
  * Barra de marca no topo: logo da Ingresse + logo parceira opcional ao lado
@@ -9,7 +10,7 @@ export const INGRESSE_LOGO = "https://auth.prod.ingresse.com/resources/2ibrw/log
  */
 export function LogoTopo({ logoParceira, fixo = true }: { logoParceira?: string; fixo?: boolean }) {
     return (
-        <div className={cx("flex justify-center bg-primary-solid py-3", fixo && "fixed inset-x-0 top-0 z-[10000]")}>
+        <div className={cx("flex justify-center bg-primary-solid py-3 dark:bg-primary", fixo && "fixed inset-x-0 top-0 z-[10000]")}>
             <div className="flex items-center gap-4">
                 <img src={INGRESSE_LOGO} alt="Ingresse" className="h-6 w-auto" />
                 {logoParceira && (

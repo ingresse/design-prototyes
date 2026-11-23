@@ -4,8 +4,11 @@ import { ArrowLeft, CheckCircle, ShoppingCart01, Users01 } from "@untitledui/ico
 import { Button } from "@/components/base/buttons/button";
 import { Progress } from "@/components/application/progress-steps/progress-steps";
 import type { ProgressFeaturedIconType } from "@/components/application/progress-steps/progress-types";
+import { useRotaDoPainel } from "../../components/painel";
 import { BackstageLayout } from "../../components/Backstage";
 import { EmailListManager, type EmailListValidity } from "../components/EmailListManager";
+import { TITULO_PAGINA } from "@/produtos/backstage/components/titulo-pagina";
+import { cx } from "@/utils/cx";
 
 const steps: ProgressFeaturedIconType[] = [
     {
@@ -35,6 +38,7 @@ interface RouteState {
 export function EmissaoCortesias() {
     const navigate = useNavigate();
     const location = useLocation();
+    const rota = useRotaDoPainel();
     const incomingItemIds = (location.state as RouteState | null)?.itemIds ?? [];
 
     const [validity, setValidity] = useState<EmailListValidity>({
@@ -48,28 +52,28 @@ export function EmissaoCortesias() {
     }, []);
 
     const handleBack = useCallback(() => {
-        navigate("/backstage/itens", { state: { itemIds: incomingItemIds } });
-    }, [navigate, incomingItemIds]);
+        navigate(rota("/backstage/itens"), { state: { itemIds: incomingItemIds } });
+    }, [navigate, incomingItemIds, rota]);
 
     const handleAdvance = useCallback(() => {
         if (!validity.canAdvance) return;
-        navigate("/backstage/verificacao", {
+        navigate(rota("/backstage/verificacao"), {
             state: {
                 itemIds: incomingItemIds,
                 emails: validity.validEmails,
             },
         });
-    }, [navigate, incomingItemIds, validity]);
+    }, [navigate, incomingItemIds, validity, rota]);
 
     return (
         <BackstageLayout activeSection="cortesias" activeItem="emissao-cortesias">
-            <div className="flex min-w-0 flex-1 flex-col">
+            <div className="flex min-w-0 flex-1 flex-col gap-6">
                 <PageHeader
                     canAdvance={validity.canAdvance}
                     onAdvance={handleAdvance}
                     onBack={handleBack}
                 />
-                <main className="flex flex-1 flex-col items-center gap-8 px-6 py-6">
+                <main className="flex flex-1 flex-col items-center gap-8">
                     <Progress.IconsWithText
                         items={steps}
                         size="sm"
@@ -100,11 +104,11 @@ interface PageHeaderProps {
 }
 
 const PageHeader = ({ canAdvance, onAdvance, onBack }: PageHeaderProps) => (
-    <header className="relative flex items-center justify-between gap-3 px-6 py-6">
+    <header className="relative flex items-center justify-between gap-3 max-md:flex-wrap">
         <Button size="sm" color="secondary" iconLeading={ArrowLeft} onClick={onBack}>
             Itens
         </Button>
-        <h1 className="pointer-events-none absolute left-1/2 -translate-x-1/2 text-display-xs font-bold text-primary">
+        <h1 className={cx(TITULO_PAGINA, "pointer-events-none md:absolute md:left-1/2 md:-translate-x-1/2 md:whitespace-nowrap max-md:order-last max-md:w-full")}>
             Enviar cortesias
         </h1>
         <Button size="md" color="primary" isDisabled={!canAdvance} onClick={onAdvance}>
