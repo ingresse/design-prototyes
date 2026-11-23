@@ -29,7 +29,7 @@ import { ORDENS, POR_PAGINA, SITUACOES, baixarRelatorio, filtrarEOrdenar, type O
 /*
  * Finanças · a fonte da verdade do produtor (ajustes v3, 17/11/2026).
  * De cima para baixo: três cards de ação (para agir), "Resumo financeiro" (para conferir:
- * de onde veio e onde está o Líquido), "Próximas liberações" e "Últimos movimentos" (portas para o
+ * de onde veio o Líquido e como ele chega ao Saldo disponível), "Últimos movimentos" e "Próximos movimentos" (portas para o
  * Calendário e o Extrato) e "Saldo por evento" (as pastas, com busca, filtro, ordenação e paginação).
  */
 
@@ -47,7 +47,7 @@ const PERIODOS = {
 const BASE = "/payout/financas-eventos";
 
 /**
- * "Próximas liberações" e "Últimos movimentos" mostram três linhas e um pedaço da quarta, com rolagem
+ * "Últimos movimentos" e "Próximos movimentos" mostram três linhas e um pedaço da quarta, com rolagem
  * dentro do bloco: dá para ver mais sem sair da Visão geral, e a linha cortada avisa que há mais.
  */
 const NA_ROLAGEM = 8;
@@ -68,10 +68,22 @@ const CardDeAcao = ({ rotulo, selo, valor, cor, apoio, children }: { rotulo: str
     </div>
 );
 
-/** Próximas liberações: uma linha por data e tipo. Vários eventos na mesma data e tipo viram uma linha só. */
-function proximasLiberacoes(entradas: Entrada[], quantas: number) {
-    const grupos: Array<{ data?: string; tipo: Entrada["tipo"]; valor: number; itens: Entrada[] }> = [];
-    for (const e of entradas) {
+interface ProximoMovimento {
+    data?: string;
+    tipo: Entrada["tipo"];
+    valor: number;
+    itens: Entrada[];
+    /** Saque já solicitado, com pagamento marcado: o valor cai na conta bancária nesta data. */
+    saque?: { evento: Evento; conta: string };
+}
+
+/**
+ * Próximos movimentos: as liberações (uma linha por data e tipo; vários eventos na mesma data e tipo
+ * viram uma linha só) e os saques agendados, em ordem de data.
+ */
+function proximosMovimentos(eventos: Evento[], quantos: number): ProximoMovimento[] {
+    const grupos: ProximoMovimento[] = [];
+    for (const e of entradasDoCalendario(eventos)) {
         if (!e.data) continue;
         const grupo = grupos.find((g) => g.data === e.data && g.tipo === e.tipo);
         if (grupo) {
@@ -79,7 +91,10 @@ function proximasLiberacoes(entradas: Entrada[], quantas: number) {
             grupo.itens.push(e);
         } else grupos.push({ data: e.data, tipo: e.tipo, valor: e.valor, itens: [e] });
     }
-    return grupos.slice(0, quantas);
+    for (const evento of eventos) {
+        for (const r of evento.repasses) if (r.situacao === "agendado") grupos.push({ data: r.data, tipo: "processamento", valor: r.valor, itens: [], saque: { evento, conta: r.conta } });
+    }
+    return grupos.sort((a, b) => a.data!.localeCompare(b.data!)).slice(0, quantos);
 }
 
 const TIPO_NO_CALENDARIO: Record<Entrada["tipo"], string> = { processamento: "processamento", retidoEvento: "retido-evento", retidoSeguranca: "retido-seguranca", aLiberar: "antecipavel" };
@@ -140,7 +155,7 @@ export function FinancasEventos() {
     const comCenario = (rota: string) => `${rota}${cenario === "normal" ? "" : `${rota.includes("?") ? "&" : "?"}cenario=${cenario}`}`;
     const proximaAntecipavel = calendario(escopo, ["aLiberar"])[0];
     const agendado = escopo.flatMap((e) => e.repasses.filter((r) => r.situacao === "agendado")).sort((a, b) => a.data.localeCompare(b.data))[0];
-    const proximas = proximasLiberacoes(entradasDoCalendario(eventos), NA_ROLAGEM);
+    const proximas = proximosMovimentos(eventos, NA_ROLAGEM);
     const ultimos = movimentos(eventos)
         .filter((m) => m.efeito !== 0)
         .slice(-NA_ROLAGEM)
@@ -239,7 +254,7 @@ export function FinancasEventos() {
                         destinos={{
                             processamento: comCenario(`${BASE}/calendario?tipo=processamento`),
                             retido: comCenario(`${BASE}/calendario?tipo=retido`),
-                            aLiberar: comCenario(`${BASE}/calendario?tipo=antecipavel`),
+                            aLiberar: comCenario(`${BASE}/calendario`),
                             disponivel: comCenario(`${BASE}?situacao=disponivel`),
                             agendado: comCenario(`${BASE}/extrato?tipo=repasse&periodo=90`),
                             recebido: comCenario(`${BASE}/extrato?tipo=repasse-pago&periodo=90`),
@@ -248,33 +263,6 @@ export function FinancasEventos() {
                 </Secao>
 
                 <div className="grid grid-cols-2 items-start gap-6">
-                    <Secao
-                        titulo="Próximas liberações"
-                        lateral={
-                            <Button size="sm" color="link-gray" href={comCenario(`${BASE}/calendario`)}>
-                                Ver calendário
-                            </Button>
-                        }
-                    >
-                        {proximas.length === 0 ? (
-                            <Vazio>Nenhuma liberação prevista. Quando um evento começar a vender, as próximas datas aparecem aqui.</Vazio>
-                        ) : (
-                            <div className={ROLAGEM}>
-                            <Lista>
-                                {proximas.map((g) => (
-                                    <Linha
-                                        key={`${g.data}-${g.tipo}`}
-                                        quando={g.data === HOJE ? "Hoje" : dataComDia(g.data!)}
-                                        titulo={ROTULO_DA_ENTRADA[g.tipo]}
-                                        detalhe={g.itens.length === 1 ? g.itens[0].evento.nome : `${g.itens.length} eventos`}
-                                        valor={reais(g.valor)}
-                                        para={g.itens.length === 1 ? comCenario(`${BASE}/${g.itens[0].evento.id}`) : comCenario(`${BASE}/calendario?tipo=${TIPO_NO_CALENDARIO[g.tipo]}`)}
-                                    />
-                                ))}
-                            </Lista>
-                            </div>
-                        )}
-                    </Secao>
                     <Secao
                         titulo="Últimos movimentos"
                         lateral={
@@ -299,6 +287,45 @@ export function FinancasEventos() {
                                         para={comCenario(`${BASE}/extrato?periodo=90&movimento=${m.id}`)}
                                     />
                                 ))}
+                            </Lista>
+                            </div>
+                        )}
+                    </Secao>
+                    <Secao
+                        titulo="Próximos movimentos"
+                        lateral={
+                            <Button size="sm" color="link-gray" href={comCenario(`${BASE}/calendario`)}>
+                                Ver calendário
+                            </Button>
+                        }
+                    >
+                        {proximas.length === 0 ? (
+                            <Vazio>Nenhum movimento previsto. Liberações e saques agendados aparecem aqui.</Vazio>
+                        ) : (
+                            <div className={ROLAGEM}>
+                            <Lista>
+                                {proximas.map((g) =>
+                                    g.saque ? (
+                                        <Linha
+                                            key={`saque-${g.data}-${g.saque.evento.id}`}
+                                            quando={dataComDia(g.data!)}
+                                            titulo="Saque agendado"
+                                            detalhe={`${g.saque.evento.nome} · cai na conta ${g.saque.conta.replace("Conta de terceiro · ", "")}`}
+                                            valor={reais(g.valor)}
+                                            para={comCenario(`${BASE}/extrato?tipo=repasse&periodo=90`)}
+                                        />
+                                    ) : (
+                                        <Linha
+                                            key={`${g.data}-${g.tipo}`}
+                                            quando={g.data === HOJE ? "Hoje" : dataComDia(g.data!)}
+                                            titulo={`${ROTULO_DA_ENTRADA[g.tipo]} libera`}
+                                            detalhe={g.itens.length === 1 ? g.itens[0].evento.nome : `${g.itens.length} eventos`}
+                                            valor={`+ ${reais(g.valor)}`}
+                                            corDoValor="text-success-primary"
+                                            para={g.itens.length === 1 ? comCenario(`${BASE}/${g.itens[0].evento.id}`) : comCenario(`${BASE}/calendario?tipo=${TIPO_NO_CALENDARIO[g.tipo]}`)}
+                                        />
+                                    ),
+                                )}
                             </Lista>
                             </div>
                         )}

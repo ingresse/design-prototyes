@@ -12,7 +12,8 @@ import { reais, reaisComCentavos } from "./formato";
 /*
  * A equação que a tela inteira conta (ajustes v3):
  *   De onde veio:  Vendido + Créditos − Taxas e custos − Devoluções = Líquido (somas de um lado, subtrações do outro)
- *   Onde está:     Líquido = Saldo disponível + Antecipável + Saque agendado + Retido + Em processamento + Sacado
+ *   Até o saldo:   Líquido − Sacado − Saque agendado − A liberar = Saldo disponível
+ *                  (A liberar = Antecipável + Retido + Em processamento)
  * A mesma conta, com os mesmos nomes e a mesma ordem, na organização e em cada evento.
  * Os nomes internos (ajustes, seuDinheiro, aLiberar, recebido) vêm da v2; o que o produtor lê está
  * em ROTULO_DA_PARTE.
@@ -190,61 +191,120 @@ interface DistribuicaoProps {
     totais: Pick<Totais, ParteDaDistribuicao | "seuDinheiro">;
     /** Legenda de cada parte, só quando há dado novo (data, prazo). */
     detalhes: Partial<Record<ParteDaDistribuicao, string>>;
-    /** Para onde cada item leva (Calendário, Extrato ou lista de eventos filtrada). Sem destino, o item não é clicável. */
+    /** Para onde cada bloco leva (Calendário ou Extrato). Sem destino, o bloco não tem link. */
     destinos?: Partial<Record<ParteDaDistribuicao, string>>;
 }
 
-export const Distribuicao = ({ totais, detalhes, destinos }: DistribuicaoProps) => (
-    <div className="flex flex-col gap-4 px-6 pb-5">
-        <div className="flex flex-col gap-1 border-t border-secondary pt-4">
-            <h3 className="text-sm font-semibold text-primary">Líquido por situação</h3>
-            {/* Barra de proporção. Cada parte mostra, ao passar o mouse ou focar pelo teclado, o que é e
-                quanto vale. A área de toque é mais alta que a barra, para a parte fina não escapar do cursor. */}
-            <div role="group" aria-label="Proporção de cada situação no líquido" className="flex w-full items-center gap-0.5">
-                {ORDEM_DAS_PARTES.filter((p) => totais[p] > 0).map((p) => (
-                    <Tooltip key={p} title={tituloDeTooltip(ROTULO_DA_PARTE[p])} description={`${reais(totais[p])} · ${porcentagem(totais[p], totais.seuDinheiro)} do Líquido`} delay={0} closeDelay={0} arrow>
-                        <TooltipTrigger
-                            aria-label={`${ROTULO_DA_PARTE[p]}: ${reais(totais[p])}`}
-                            className={cx("group flex h-6 min-w-2 cursor-default items-center rounded-full outline-focus-ring focus-visible:outline-2", p === JA_SAIU && "ml-2")}
-                            style={{ flexGrow: totais[p], flexBasis: 0 }}
-                        >
-                            <span className={cx("h-2 w-full rounded-full transition duration-100 ease-linear group-hover:h-3 group-focus-visible:h-3", COR_DA_PARTE[p])} />
-                        </TooltipTrigger>
-                    </Tooltip>
-                ))}
-            </div>
-        </div>
-        {/* Legenda: serve para conferir que as seis partes somam o Líquido. Degrau menor da escala de tipo. */}
-        <dl className="-mx-2 grid grid-cols-6">
-            {ORDEM_DAS_PARTES.map((parte) => {
-                const valor = totais[parte];
-                const conteudo = (
-                    <>
-                        <dt className="flex items-center gap-1.5 text-sm font-medium whitespace-nowrap text-secondary">
-                            <span aria-hidden="true" className={cx("size-2 shrink-0 rounded-full", valor < 0 ? "bg-utility-red-500" : COR_DA_PARTE[parte])} />
-                            {ROTULO_DA_PARTE[parte]}
-                        </dt>
-                        <dd className={cx("text-md font-semibold whitespace-nowrap tabular-nums", valor < 0 ? COR_DO_NEGATIVO : "text-primary")}>{reais(valor)}</dd>
-                        {detalhes[parte] && <dd className="text-xs text-tertiary">{detalhes[parte]}</dd>}
-                    </>
-                );
-                const destino = destinos?.[parte];
-                return (
-                    <div key={parte} className={cx("min-w-0 px-2", parte === JA_SAIU ? "ml-3 border-l-2 border-primary pl-5" : parte !== ORDEM_DAS_PARTES[0] && "border-l border-secondary")}>
-                        {destino ? (
-                            <Link
-                                to={destino}
-                                title={DEFINICAO[parte]}
-                                className="flex h-full flex-col gap-1 rounded-lg p-2 outline-focus-ring transition duration-100 ease-linear hover:bg-primary_hover focus-visible:outline-2 focus-visible:outline-offset-2"
-                            >
-                                {conteudo}
-                            </Link>
-                        ) : (
-                            <div className="flex flex-col gap-1 p-2">{conteudo}</div>
-                        )}
-                    </div>
-                );
-            })}
-        </dl>
+/** O que ainda vai entrar no saldo disponível: é o "Total a liberar" do Calendário. */
+const A_LIBERAR: ParteDaDistribuicao[] = ["aLiberar", "retido", "processamento"];
+
+interface PassoProps {
+    rotulo: string;
+    dica: string;
+    valor: number;
+    /** Como ler o bloco em voz alta: "menos", "igual a". */
+    leitura?: string;
+    resultado?: boolean;
+    /** Cor do ponto, a mesma da barra. */
+    cor?: string;
+    legenda?: string;
+    /** Do que o bloco é feito, quando soma mais de uma parte. */
+    partes?: Array<{ parte: ParteDaDistribuicao; valor: number }>;
+    acao?: ReactNode;
+}
+
+/** Um bloco da segunda conta (do Líquido ao Saldo disponível), com o mesmo desenho dos blocos da primeira. */
+const Passo = ({ rotulo, dica, valor, leitura, resultado, cor, legenda, partes, acao }: PassoProps) => (
+    <div className={cx("flex min-w-0 flex-1 flex-col gap-1 rounded-xl p-3 ring-1 ring-inset @6xl:p-4", resultado ? "bg-secondary ring-primary" : "bg-primary ring-secondary")}>
+        <dt className="flex items-center gap-1.5 text-sm font-medium text-secondary">
+            {cor && <span aria-hidden="true" className={cx("size-2 shrink-0 rounded-full", cor)} />}
+            <span>
+                {leitura && <span className="sr-only">{leitura} </span>}
+                {rotulo}
+            </span>
+            <Dica termo={rotulo} texto={dica} />
+        </dt>
+        <dd className={cx("font-semibold whitespace-nowrap tabular-nums", resultado ? "text-xl @6xl:text-display-xs" : "text-lg @6xl:text-xl", valor < 0 ? COR_DO_NEGATIVO : "text-primary")}>{reais(valor)}</dd>
+        {legenda && <dd className="text-xs text-tertiary">{legenda}</dd>}
+        {partes && (
+            <dd>
+                <ul className="flex flex-col gap-1 border-t border-secondary pt-2">
+                    {partes.map((p) => (
+                        <li key={p.parte} className="flex items-center justify-between gap-2 text-xs text-tertiary">
+                            <span className="flex min-w-0 items-center gap-1.5">
+                                <span aria-hidden="true" className={cx("size-2 shrink-0 rounded-full", COR_DA_PARTE[p.parte])} />
+                                <span className="truncate">{ROTULO_DA_PARTE[p.parte]}</span>
+                            </span>
+                            <span className="whitespace-nowrap tabular-nums">{reais(p.valor)}</span>
+                        </li>
+                    ))}
+                </ul>
+            </dd>
+        )}
+        {acao && <dd className="mt-auto pt-1">{acao}</dd>}
     </div>
 );
+
+/**
+ * A segunda conta, que leva do Líquido ao número do card do topo:
+ *   Líquido − Sacado − Saque agendado − A liberar = Saldo disponível
+ * "A liberar" soma Antecipável, Retido e Em processamento (o Total a liberar do Calendário).
+ * A barra acima mostra as mesmas partes em proporção.
+ */
+export const Distribuicao = ({ totais, detalhes, destinos }: DistribuicaoProps) => {
+    const aLiberar = A_LIBERAR.reduce((s, p) => s + totais[p], 0);
+    const ver = (rotulo: string, destino?: string) =>
+        destino ? (
+            <Button size="sm" color="link-gray" iconTrailing={ChevronRight} href={destino}>
+                {rotulo}
+            </Button>
+        ) : undefined;
+    return (
+        <div className="flex flex-col gap-4 px-6 pb-5">
+            <div className="flex flex-col gap-1 border-t border-secondary pt-4">
+                <h3 className="text-sm font-semibold text-primary">Do líquido ao saldo disponível</h3>
+                {/* Barra de proporção. Cada parte mostra, ao passar o mouse ou focar pelo teclado, o que é e
+                    quanto vale. A área de toque é mais alta que a barra, para a parte fina não escapar do cursor. */}
+                <div role="group" aria-label="Proporção de cada parte do líquido" className="flex w-full items-center gap-0.5">
+                    {ORDEM_DAS_PARTES.filter((p) => totais[p] > 0).map((p) => (
+                        <Tooltip key={p} title={tituloDeTooltip(ROTULO_DA_PARTE[p])} description={`${reais(totais[p])} · ${porcentagem(totais[p], totais.seuDinheiro)} do Líquido`} delay={0} closeDelay={0} arrow>
+                            <TooltipTrigger
+                                aria-label={`${ROTULO_DA_PARTE[p]}: ${reais(totais[p])}`}
+                                className={cx("group flex h-6 min-w-2 cursor-default items-center rounded-full outline-focus-ring focus-visible:outline-2", p === JA_SAIU && "ml-2")}
+                                style={{ flexGrow: totais[p], flexBasis: 0 }}
+                            >
+                                <span className={cx("h-2 w-full rounded-full transition duration-100 ease-linear group-hover:h-3 group-focus-visible:h-3", COR_DA_PARTE[p])} />
+                            </TooltipTrigger>
+                        </Tooltip>
+                    ))}
+                </div>
+            </div>
+            <dl className="flex items-stretch gap-2">
+                <Passo rotulo={ROTULO_DA_PARTE.seuDinheiro} dica={DEFINICAO.seuDinheiro} valor={totais.seuDinheiro} legenda="O resultado da conta acima" />
+                <Operador sinal="−" />
+                <Passo rotulo={ROTULO_DA_PARTE.recebido} dica={DEFINICAO.recebido} valor={totais.recebido} leitura="menos" cor={COR_DA_PARTE.recebido} acao={totais.recebido > 0 ? ver("Ver saques", destinos?.recebido) : undefined} />
+                <Operador sinal="−" />
+                <Passo
+                    rotulo={ROTULO_DA_PARTE.agendado}
+                    dica={DEFINICAO.agendado}
+                    valor={totais.agendado}
+                    leitura="menos"
+                    cor={COR_DA_PARTE.agendado}
+                    legenda={detalhes.agendado}
+                    acao={totais.agendado > 0 ? ver("Ver no extrato", destinos?.agendado) : undefined}
+                />
+                <Operador sinal="−" />
+                <Passo
+                    rotulo="A liberar"
+                    dica="Ainda vai entrar no seu saldo disponível: o que é antecipável, o que está retido e o que está em processamento. É o Total a liberar do Calendário."
+                    valor={aLiberar}
+                    leitura="menos"
+                    partes={A_LIBERAR.map((parte) => ({ parte, valor: totais[parte] }))}
+                    acao={aLiberar > 0 ? ver("Ver no calendário", destinos?.aLiberar) : undefined}
+                />
+                <Operador sinal="=" />
+                <Passo rotulo={ROTULO_DA_PARTE.disponivel} dica={DEFINICAO.disponivel} valor={totais.disponivel} leitura="igual a" resultado cor={COR_DA_PARTE.disponivel} legenda="O mesmo valor do topo" />
+            </dl>
+        </div>
+    );
+};

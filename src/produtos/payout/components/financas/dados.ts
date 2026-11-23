@@ -1277,6 +1277,11 @@ export function conferirContas(): string[] {
             if (repasses("agendado") !== e.agendado) erros.push(`${onde}: repasses agendados não somam Agendado`);
             if (e.repasses.some((r) => r.situacao === "pago" && r.data > HOJE)) erros.push(`${onde}: repasse pago com data no futuro`);
         }
+        // A segunda conta da tela: Líquido − Sacado − Saque agendado − A liberar = Saldo disponível, em cada evento.
+        for (const e of eventos) {
+            const aLiberar = e.aLiberar + e.retidoEvento + e.retidoSeguranca + e.processamento;
+            if (seuDinheiro(e) - e.recebido - e.agendado - aLiberar !== e.disponivel) erros.push(`${cenario}/${e.id}: Líquido − Sacado − Saque agendado − A liberar não dá o Saldo disponível`);
+        }
         // O topo (total da organização) contra a soma evento a evento.
         const t = totalizar(eventos);
         const liquidoDosEventos = soma(eventos, seuDinheiro);
@@ -1291,6 +1296,7 @@ export function conferirContas(): string[] {
         // Calendário da organização e o resumo em três faixas.
         const entradas = entradasDoCalendario(eventos);
         const aEntrar = t.processamento + t.retido + t.aLiberar;
+        if (t.seuDinheiro - t.recebido - t.agendado - aEntrar !== t.disponivel) erros.push(`${cenario}: Líquido − Sacado − Saque agendado − A liberar (${aEntrar}) não dá o Saldo disponível do topo`);
         if (soma(entradas, (x) => x.valor) !== aEntrar) erros.push(`${cenario}: o Calendário soma ${soma(entradas, (x) => x.valor)}, eram ${aEntrar}`);
         const resumo = resumoDoCalendario(entradas);
         if (resumo.em7 + resumo.em30 + resumo.depois !== aEntrar) erros.push(`${cenario}: as três faixas do Calendário não somam o total`);
