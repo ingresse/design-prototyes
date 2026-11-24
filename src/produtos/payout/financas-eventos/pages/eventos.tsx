@@ -14,13 +14,14 @@ import { Select } from "@/components/base/select/select";
 import { cx } from "@/utils/cx";
 import { capaDoEvento } from "../../components/financas/capa";
 import { COR_DO_NEGATIVO, Cascata, Distribuicao, PARTES_COM_DETALHE, Secao } from "../../components/financas/cascata";
-import { HOJE, ROTULO_DA_ENTRADA, quitado, entradasDoCalendario, eventosDoCenario, movimentos, totalizar, type Entrada, type Evento } from "../../components/financas/dados";
+import { HOJE, ROTULO_DA_ENTRADA, quitado, entradasDoCalendario, eventosDoCenario, motivoDoNegativo, movimentos, totalizar, type Entrada, type Evento } from "../../components/financas/dados";
 import { Aviso, AvisoDeBloqueio, Carregando, ErroAoCarregar, TelaFinal, type AcaoFinal } from "../../components/financas/estados";
 import { dataComDia, dataCurta, dataDoEvento, reais } from "../../components/financas/formato";
 import { detalhesDaDistribuicao, fraseDeCompensacao, proximaLiberacaoDoEvento } from "../../components/financas/frases";
 import { Linha, Lista, Vazio } from "../../components/financas/linha";
 import { PainelDoDetalhe } from "../../components/financas/painel-do-detalhe";
-import { CabecalhoDaPagina, FinancasShell, useCenario, useEventosEscolhidos, useParametro } from "../../components/financas/shell";
+import { ContaDeRelance } from "../../components/financas/relance";
+import { CabecalhoDaPagina, FinancasShell, useCenario, useEventosEscolhidos, useParametro, usePeriodo } from "../../components/financas/shell";
 import { Paginacao } from "../components/paginacao";
 import { SelosDoEvento } from "../components/selos-do-evento";
 import { ORDENS, POR_PAGINA, SITUACOES, baixarRelatorio, filtrarEOrdenar, type Ordem, type Situacao } from "../utils/lista";
@@ -92,8 +93,10 @@ const COLUNA_DE_SALDO = "w-44 shrink-0 text-right";
  */
 const PastaDoEvento = ({ evento, sufixo, lista }: { evento: Evento; sufixo: string; lista: string }) => {
     const encerrado = quitado(evento);
+    // R01-05: a linha diz por que o saldo está negativo, em vez de só mostrar o número em vermelho.
+    const motivo = motivoDoNegativo(evento);
     return (
-        <li>
+        <li className={cx(evento.disponivel < 0 && "bg-error-primary")}>
             <Link
                 to={`/payout/financas-eventos/${evento.id}${sufixo}`}
                 state={{ lista }}
@@ -106,6 +109,11 @@ const PastaDoEvento = ({ evento, sufixo, lista }: { evento: Evento; sufixo: stri
                         <span className="text-sm text-tertiary">{dataDoEvento(evento.data)}</span>
                         <SelosDoEvento evento={evento} />
                     </div>
+                    {motivo && (
+                        <span className="text-sm font-medium text-error-primary">
+                            Saldo negativo por {motivo.causa === "devolucao-recente" ? "devolução recente" : "devolução"}: {reais(motivo.valor)} devolvidos{motivo.causa === "devolucao-recente" ? ` até ${dataCurta(motivo.data)}` : ""}, depois do último saque.
+                        </span>
+                    )}
                     <span className="truncate text-sm text-tertiary">{proximaLiberacaoDoEvento(evento)}</span>
                 </div>
                 <span className={cx(COLUNA_DE_SALDO, "flex flex-col")}>
@@ -137,9 +145,15 @@ export function FinancasEventos() {
     const compensa = fraseDeCompensacao(eventos);
     const negativos = eventos.filter((e) => e.disponivel < 0);
     const comCenario = (rota: string) => `${rota}${cenario === "normal" ? "" : `${rota.includes("?") ? "&" : "?"}cenario=${cenario}`}`;
-    const proximas = proximosMovimentos(eventos, NA_ROLAGEM);
+    // O período do topo vale para os movimentos; os totais do Resumo são sempre acumulados até hoje (R01-02).
+    const periodo = usePeriodo();
+    const noPeriodo = (data?: string) => !periodo.ativo || (data !== undefined && data >= periodo.de! && data <= periodo.ate!);
+    const doPeriodo = periodo.ativo ? ` de ${dataCurta(periodo.de!)} a ${dataCurta(periodo.ate!)}` : "";
+    const proximas = proximosMovimentos(eventos, periodo.ativo ? 999 : NA_ROLAGEM)
+        .filter((g) => noPeriodo(g.data))
+        .slice(0, NA_ROLAGEM);
     const ultimos = movimentos(eventos)
-        .filter((m) => m.efeito !== 0)
+        .filter((m) => m.efeito !== 0 && noPeriodo(m.data))
         .slice(-NA_ROLAGEM)
         .reverse();
 
@@ -147,8 +161,9 @@ export function FinancasEventos() {
     const busca = params.get("busca") ?? "";
     const situacao = SITUACOES.find((s) => s.id === params.get("situacao"))?.id ?? "todos";
     const ordem = ORDENS.find((o) => o.id === params.get("ordem"))?.id ?? ORDENS[0].id;
-    const de = params.get("de") ?? undefined;
-    const ate = params.get("ate") ?? undefined;
+    // A data do evento usa parâmetros próprios: `de`/`ate` são do período do topo (R01-02).
+    const de = params.get("evde") ?? undefined;
+    const ate = params.get("evate") ?? undefined;
     const mudarLista = (mudancas: Record<string, string | null>) => {
         const novo = new URLSearchParams(params);
         // Qualquer mudança de busca, filtro ou ordem volta para a primeira página.
@@ -158,7 +173,7 @@ export function FinancasEventos() {
         }
         setParams(novo, { replace: true });
     };
-    const limpar = () => mudarLista({ busca: null, situacao: null, de: null, ate: null });
+    const limpar = () => mudarLista({ busca: null, situacao: null, evde: null, evate: null });
 
     const resultado = filtrarEOrdenar(eventos, { busca, situacao, ordem, de, ate });
     const paginas = Math.max(1, Math.ceil(resultado.length / POR_PAGINA));
@@ -183,6 +198,13 @@ export function FinancasEventos() {
                         <p>Você não precisa pagar nada. {compensa}</p>
                     </Aviso>
                 )}
+
+                <ContaDeRelance
+                    eventos={escopo}
+                    titulo="Confira a conta"
+                    lateral={<span className="text-sm text-tertiary">Acumulado de {filtrado ? contagem(escopo.length) : "todos os eventos"}, até hoje</span>}
+                    calendario={comCenario(`${BASE}/calendario`)}
+                />
 
                 <Secao titulo="Resumo financeiro" lateral={<span className="text-sm text-tertiary">Acumulado de {filtrado ? contagem(escopo.length) : "todos os eventos"}, até hoje</span>}>
                     <Cascata totais={totais} aoAbrir={setDetalhe} creditoPendente={escopo.some((e) => e.creditoPendente)} />
@@ -210,7 +232,7 @@ export function FinancasEventos() {
                         }
                     >
                         {ultimos.length === 0 ? (
-                            <Vazio>Nenhum movimento ainda. Liberações, saques e devoluções aparecem aqui.</Vazio>
+                            <Vazio>{periodo.ativo ? `Nenhum movimento${doPeriodo}.` : "Nenhum movimento ainda. Liberações, saques e devoluções aparecem aqui."}</Vazio>
                         ) : (
                             <div className={ROLAGEM}>
                             <Lista>
@@ -238,7 +260,7 @@ export function FinancasEventos() {
                         }
                     >
                         {proximas.length === 0 ? (
-                            <Vazio>Nenhum movimento previsto. Liberações e saques agendados aparecem aqui.</Vazio>
+                            <Vazio>{periodo.ativo ? `Nenhum movimento previsto${doPeriodo}.` : "Nenhum movimento previsto. Liberações e saques agendados aparecem aqui."}</Vazio>
                         ) : (
                             <div className={ROLAGEM}>
                             <Lista>
@@ -327,7 +349,7 @@ export function FinancasEventos() {
                                     aria-labelledby="rotulo-data"
                                     presets={PERIODOS}
                                     value={de && ate ? { start: parseDate(de), end: parseDate(ate) } : null}
-                                    onChange={(periodo) => mudarLista({ de: periodo?.start.toString() ?? null, ate: periodo?.end.toString() ?? null })}
+                                    onChange={(periodo) => mudarLista({ evde: periodo?.start.toString() ?? null, evate: periodo?.end.toString() ?? null })}
                                 />
                                 {(busca || comFiltro) && (
                                     <Button size="sm" color="link-gray" onClick={limpar}>

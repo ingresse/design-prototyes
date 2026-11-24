@@ -3,11 +3,11 @@ import { parseDate } from "@internationalized/date";
 import { Link, useSearchParams } from "react-router";
 import { ChevronDown, ChevronRight, Download01, SearchLg } from "@untitledui/icons";
 import { toast } from "sonner";
-import { DateRangePicker } from "@/components/application/date-picker/date-range-picker";
 import { EmptyState } from "@/components/application/empty-state/empty-state";
 import { FilterBar } from "@/components/application/filter-bar/filter-bar";
 import { TableCard } from "@/components/application/table/table";
 import { Badge } from "@/components/base/badges/badges";
+import { ButtonGroup, ButtonGroupItem } from "@/components/base/button-group/button-group";
 import { Button } from "@/components/base/buttons/button";
 import { Select } from "@/components/base/select/select";
 import { Tooltip, TooltipTrigger } from "@/components/base/tooltip/tooltip";
@@ -17,7 +17,10 @@ import {
     GRUPO_DA_ENTRADA,
     HOJE,
     ROTULO_DA_ENTRADA,
+    diasDoCalendario,
     entradasDoCalendario,
+    mesesDoCalendario,
+    repassesAgendados,
     recorteDoCalendario,
     eventosDoCenario,
     resumoDoCalendario,
@@ -101,16 +104,24 @@ interface BarraProps {
     /** A barra é o próprio período filtrado (uma barra só): escolher de novo tira o filtro. */
     selecionada: boolean;
     aoEscolher: () => void;
+    /** Segunda linha do rótulo: o período exato da barra ("17/11 a 30/11") ou o dia da semana. */
+    apoio: string;
+    /** O que acontece ao escolher a barra, para o leitor de tela. */
+    acao: string;
+    /** Visão por dia: muitas barras, o valor fica na dica e na lista. */
+    compacta?: boolean;
+    /** Há saque agendado neste dia. */
+    saque?: boolean;
 }
 
 /** Uma semana do gráfico: barra empilhada por tipo. Lacuna do DS: não há gráfico de barras pronto (só a base do Recharts). */
-const Barra = ({ periodo, rotulo, maior, selecionada, aoEscolher }: BarraProps) => {
+const Barra = ({ periodo, rotulo, maior, selecionada, aoEscolher, apoio, acao, compacta, saque }: BarraProps) => {
     const partes = GRUPOS.filter((g) => periodo.porGrupo[g.id] > 0);
     const descricao = partes.length ? partes.map((g) => `${g.rotulo}: ${reais(periodo.porGrupo[g.id])}`).join(" · ") : "Nenhuma liberação prevista";
     return (
         <Tooltip title={tituloDeTooltip(`${rotulo} · ${reais(periodo.total)}`)} description={descricao} delay={0} closeDelay={0} arrow>
             <TooltipTrigger
-                aria-label={`${rotulo}: ${reais(periodo.total)}. ${descricao}. ${selecionada ? "Mostrando só este período. Escolha de novo para ver todo o período" : "Ver só este período no gráfico e na lista"}`}
+                aria-label={`${rotulo}, ${apoio}: ${reais(periodo.total)}. ${descricao}.${saque ? " Há saque agendado neste dia." : ""} ${acao}`}
                 aria-pressed={selecionada}
                 isDisabled={periodo.total === 0}
                 onPress={aoEscolher}
@@ -119,14 +130,18 @@ const Barra = ({ periodo, rotulo, maior, selecionada, aoEscolher }: BarraProps) 
                     selecionada && "bg-secondary",
                 )}
             >
-                <span className={cx("text-xs font-semibold whitespace-nowrap tabular-nums", periodo.total ? "text-primary" : "text-quaternary")}>{periodo.total ? reais(periodo.total) : "—"}</span>
+                {!compacta && <span className={cx("text-xs font-semibold whitespace-nowrap tabular-nums", periodo.total ? "text-primary" : "text-quaternary")}>{periodo.total ? reais(periodo.total) : "R$ 0"}</span>}
                 <span className="flex h-28 w-full max-w-16 flex-col-reverse gap-0.5">
                     {partes.map((g) => (
                         <span key={g.id} className={cx("min-h-1 w-full rounded-xs", COR_DA_PARTE[g.id])} style={{ height: `${(periodo.porGrupo[g.id] / maior) * 100}%` }} />
                     ))}
                     {partes.length === 0 && <span className="h-px w-full bg-quaternary" />}
                 </span>
-                <span className="text-xs whitespace-nowrap text-tertiary">{rotulo}</span>
+                <span className="flex flex-col items-center">
+                    <span className="text-xs font-medium whitespace-nowrap text-secondary">{rotulo}</span>
+                    <span className="text-xs whitespace-nowrap text-tertiary">{apoio}</span>
+                </span>
+                {compacta && <span aria-hidden="true" className={cx("size-2 shrink-0 rounded-full", saque ? COR_DA_PARTE.agendado : "bg-transparent")} />}
             </TooltipTrigger>
         </Tooltip>
     );
@@ -222,26 +237,23 @@ export function FinancasCalendario() {
         }
         setParams(novo, { replace: true });
     };
-    const limpar = () => mudar({ evento: null, tipo: null, de: null, ate: null });
-    const comFiltro = eventoId !== "todos" || filtro.id !== "todos" || Boolean(de || ate);
-    // O gráfico segue o filtro de data da lista: sem filtro, as próximas semanas; com filtro, o período
-    // escolhido, por dia, por semana ou por mês conforme o tamanho. Evento e tipo mudam só a lista.
-    const recorte = de && ate ? recorteDoCalendario(entradas, de, ate) : null;
-    const periodos = recorte ? recorte.periodos : [...grafico.semanas, ...(grafico.depois.total > 0 ? [grafico.depois] : [])];
-    const passo = recorte?.passo ?? "semana";
+    // O período é do filtro do topo (R01-02): aqui "limpar" tira só evento e tipo.
+    const limpar = () => mudar({ evento: null, tipo: null });
+    const comFiltro = eventoId !== "todos" || filtro.id !== "todos";
+    // R01-06: o gráfico é por mês corrido ou por dia dentro de um mês. Nenhuma barra cobre dois meses e
+    // os períodos sem liberação aparecem zerados. O período do topo recorta os dois. Evento e tipo mudam só a lista.
+    const visao: "mes" | "dia" = params.get("visao") === "dia" ? "dia" : "mes";
+    const barrasPorMes = mesesDoCalendario(entradas, de, ate);
+    const mesEscolhido = barrasPorMes.find((m) => m.de.slice(0, 7) === params.get("mes"))?.de.slice(0, 7) ?? barrasPorMes[0]?.de.slice(0, 7) ?? HOJE.slice(0, 7);
+    const periodos = visao === "dia" ? diasDoCalendario(entradas, mesEscolhido, de, ate) : barrasPorMes;
     const maior = Math.max(1, ...periodos.map((p) => p.total));
-    const rotuloDaBarra = (p: PeriodoDoCalendario) =>
-        !p.ate
-            ? `Depois de ${SEM_ANO(somarDias(p.de, -1))}`
-            : passo === "dia"
-              ? p.de === HOJE
-                  ? "Hoje"
-                  : dataComDia(p.de)
-              : passo === "mes"
-                ? `${MESES[Number(p.de.slice(5, 7)) - 1].slice(0, 3)}/${p.de.slice(0, 4)}`
-                : p.de === p.ate
-                  ? SEM_ANO(p.de)
-                  : `${SEM_ANO(p.de)} a ${SEM_ANO(p.ate)}`;
+    const totalDoGrafico = periodos.reduce((s, p) => s + p.total, 0);
+    const DIA_DA_SEMANA = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
+    const rotuloDaBarra = (p: PeriodoDoCalendario) => (visao === "dia" ? (p.de === HOJE ? "Hoje" : p.de.slice(8, 10)) : `${MESES[Number(p.de.slice(5, 7)) - 1]}${p.de.slice(0, 4) === HOJE.slice(0, 4) ? "" : ` ${p.de.slice(0, 4)}`}`);
+    const apoioDaBarra = (p: PeriodoDoCalendario) => (visao === "dia" ? DIA_DA_SEMANA[new Date(`${p.de}T12:00:00`).getDay()] : p.de === p.ate ? SEM_ANO(p.de) : `${SEM_ANO(p.de)} a ${SEM_ANO(p.ate!)}`);
+    // Saque agendado não é liberação, mas o produtor procura a data dele aqui: aparece marcado no dia.
+    const saquesDoMes = visao === "dia" ? repassesAgendados(eventos).filter((a) => periodos.some((p) => p.de === a.repasse.data)) : [];
+    const mesesDoSeletor = barrasPorMes.map((m) => ({ id: m.de.slice(0, 7), label: nomeDoMes(m.de) }));
     const eventosDoCalendario = [...new Map(entradas.map((e) => [e.evento.id, e.evento.nome])).entries()].sort((a, b) => a[1].localeCompare(b[1])).map(([id, label]) => ({ id, label }));
 
     const lista = entradas.filter(
@@ -317,13 +329,11 @@ export function FinancasCalendario() {
 
                 {entradas.length > 0 && (
                     <Secao
-                        titulo={`Liberações por ${{ dia: "dia", semana: "semana", mes: "mês" }[passo]}`}
+                        titulo={visao === "dia" ? `Liberações por dia · ${nomeDoMes(`${mesEscolhido}-01`)}` : "Liberações por mês"}
                         selo={
-                            recorte && (
-                                <Badge size="sm" type="modern" color="gray">
-                                    {de === ate ? dataCurta(de!) : `${dataCurta(de!)} a ${ate! >= MUITO_DEPOIS ? "o fim" : dataCurta(ate!)}`} · {reais(recorte.total)}
-                                </Badge>
-                            )
+                            <Badge size="sm" type="modern" color="gray">
+                                {reais(totalDoGrafico)}
+                            </Badge>
                         }
                         lateral={
                             <div className="flex items-center gap-4">
@@ -334,26 +344,65 @@ export function FinancasCalendario() {
                                             {g.rotulo}
                                         </li>
                                     ))}
+                                    {saquesDoMes.length > 0 && (
+                                        <li className="flex items-center gap-1.5">
+                                            <span aria-hidden="true" className={cx("size-2 shrink-0 rounded-full", COR_DA_PARTE.agendado)} />
+                                            Saque agendado
+                                        </li>
+                                    )}
                                 </ul>
-                                {recorte && (
-                                    <Button size="sm" color="link-gray" onClick={() => mudar({ de: null, ate: null })}>
-                                        Ver todas as semanas
-                                    </Button>
+                                {visao === "dia" && mesesDoSeletor.length > 1 && (
+                                    <div className="w-48">
+                                        <Select size="sm" aria-label="Mês do gráfico" selectedKey={mesEscolhido} onSelectionChange={(chave) => mudar({ mes: String(chave) })} items={mesesDoSeletor}>
+                                            {(item) => <Select.Item id={item.id}>{item.label}</Select.Item>}
+                                        </Select>
+                                    </div>
                                 )}
+                                <ButtonGroup
+                                    size="sm"
+                                    aria-label="Ver as liberações por mês ou por dia"
+                                    selectedKeys={new Set([visao])}
+                                    disallowEmptySelection
+                                    onSelectionChange={(chaves) => {
+                                        const escolhida = [...chaves][0];
+                                        if (escolhida) mudar({ visao: escolhida === "dia" ? "dia" : null });
+                                    }}
+                                >
+                                    <ButtonGroupItem id="mes">Por mês</ButtonGroupItem>
+                                    <ButtonGroupItem id="dia">Por dia</ButtonGroupItem>
+                                </ButtonGroup>
                             </div>
                         }
                     >
-                        <div
-                            role="group"
-                            aria-label={`Total de cada ${{ dia: "dia", semana: "semana", mes: "mês" }[passo]}${recorte ? " do período escolhido" : ""}. Escolha uma barra para ver só aquele período`}
-                            className="flex items-stretch gap-1 px-5 py-4"
-                        >
-                            {periodos.map((p) => {
-                                const fim = p.ate ?? MUITO_DEPOIS;
-                                const selecionada = de === p.de && ate === fim;
-                                return <Barra key={p.de} periodo={p} rotulo={rotuloDaBarra(p)} maior={maior} selecionada={selecionada} aoEscolher={() => mudar(selecionada ? { de: null, ate: null } : { de: p.de, ate: fim })} />;
-                            })}
-                        </div>
+                        {periodos.length === 0 ? (
+                            <p className="px-6 py-5 text-sm text-tertiary">Nenhuma liberação no período escolhido. O Calendário mostra de hoje em diante; o que já liberou está no Extrato.</p>
+                        ) : (
+                            <div role="group" aria-label={visao === "dia" ? `Total de cada dia de ${nomeDoMes(`${mesEscolhido}-01`)}` : "Total de cada mês, de hoje em diante"} className="flex items-stretch gap-1 px-5 py-4">
+                                {periodos.map((p) => (
+                                    <Barra
+                                        key={p.de}
+                                        periodo={p}
+                                        rotulo={rotuloDaBarra(p)}
+                                        apoio={apoioDaBarra(p)}
+                                        maior={maior}
+                                        selecionada={false}
+                                        compacta={visao === "dia"}
+                                        saque={saquesDoMes.some((a) => a.repasse.data === p.de)}
+                                        acao={visao === "dia" ? "Abrir este dia na lista" : "Ver este mês por dia"}
+                                        aoEscolher={() => (visao === "dia" ? setAbertos((atual) => new Set(atual).add(p.de)) : mudar({ visao: "dia", mes: p.de.slice(0, 7) }))}
+                                    />
+                                ))}
+                            </div>
+                        )}
+                        {saquesDoMes.map((a) => (
+                            <p key={`${a.evento.id}-${a.repasse.data}`} className="flex items-center gap-2 border-t border-secondary px-6 py-3 text-sm text-tertiary">
+                                <span aria-hidden="true" className={cx("size-2 shrink-0 rounded-full", COR_DA_PARTE.agendado)} />
+                                <span>
+                                    <span className="font-medium text-secondary">{dataComDia(a.repasse.data)}</span> · Saque agendado de <span className="font-semibold text-primary tabular-nums">{reais(a.repasse.valor)}</span> cai na conta{" "}
+                                    {a.repasse.conta.replace("Conta de terceiro · ", "")}. Não é uma liberação: o valor já saiu do seu saldo disponível.
+                                </span>
+                            </p>
+                        ))}
                     </Secao>
                 )}
 
@@ -403,16 +452,6 @@ export function FinancasCalendario() {
                                         {(item) => <Select.Item id={item.id}>{item.label}</Select.Item>}
                                     </Select>
                                 </div>
-                                <span id="rotulo-data-da-liberacao" className="text-sm text-tertiary">
-                                    Data da liberação
-                                </span>
-                                <DateRangePicker
-                                    size="sm"
-                                    aria-labelledby="rotulo-data-da-liberacao"
-                                    presets={PERIODOS}
-                                    value={de && ate ? { start: parseDate(de), end: parseDate(ate) } : null}
-                                    onChange={(periodo) => mudar({ de: periodo?.start.toString() ?? null, ate: periodo?.end.toString() ?? null })}
-                                />
                                 {comFiltro && (
                                     <Button size="sm" color="link-gray" onClick={limpar}>
                                         Limpar filtros

@@ -1,4 +1,5 @@
 import { useLayoutEffect, type ComponentType, type ReactNode } from "react";
+import { endOfMonth, parseDate } from "@internationalized/date";
 import { useLocation, useNavigate, useSearchParams } from "react-router";
 import { Calendar, ChevronDown, FilterLines, InfoCircle } from "@untitledui/icons";
 import calendario from "@/assets/iconly/calendar.json";
@@ -10,6 +11,8 @@ import sacola from "@/assets/iconly/bag.json";
 import grupo from "@/assets/iconly/users-group.json";
 import engrenagem from "@/assets/iconly/setting.json";
 import { Avatar } from "@/components/base/avatar/avatar";
+import { Badge } from "@/components/base/badges/badges";
+import { DateRangePicker } from "@/components/application/date-picker/date-range-picker";
 import { FilterBar } from "@/components/application/filter-bar/filter-bar";
 import { Tabs } from "@/components/application/tabs/tabs";
 import { Button } from "@/components/base/buttons/button";
@@ -17,7 +20,7 @@ import { ButtonGroup, ButtonGroupItem } from "@/components/base/button-group/but
 import { iconeAnimado } from "@/components/foundations/icone-animado";
 import { cx } from "@/utils/cx";
 import { MultiSelect } from "./multi-select-pt";
-import { ATUALIZADO_EM, CENARIOS, ORGANIZACAO, eventosDoCenario, type Cenario, type Evento } from "./dados";
+import { ATUALIZADO_EM, CENARIOS, HOJE, ORGANIZACAO, eventosDoCenario, type Cenario, type Evento } from "./dados";
 
 /*
  * Shell dos protótipos de Finanças do produtor.
@@ -225,63 +228,111 @@ export function useEventosEscolhidos(): { todos: Evento[]; escolhidos: Evento[];
     return { todos, escolhidos: filtrado ? escolhidos : todos, filtrado };
 }
 
-const FiltroDeEventos = () => {
+/**
+ * Período escolhido no filtro do topo, em `?de=&ate=` (rodada 01, R01-02). Vale nas três abas: filtra
+ * os movimentos (Extrato, Últimos movimentos) e as liberações (Calendário, Próximos movimentos).
+ * Os totais acumulados (Vendido, Sacado, saldos) não mudam com o período: é por isso que fecham entre as abas.
+ */
+export function usePeriodo(): { de?: string; ate?: string; ativo: boolean } {
+    const [params] = useSearchParams();
+    const de = params.get("de") ?? undefined;
+    const ate = params.get("ate") ?? undefined;
+    return de && ate ? { de, ate, ativo: true } : { ativo: false };
+}
+
+const hojeDoFiltro = parseDate(HOJE);
+const PERIODOS_DO_TOPO = {
+    mes: { label: "Este mês", value: { start: hojeDoFiltro.set({ day: 1 }), end: endOfMonth(hojeDoFiltro) } },
+    ultimos30: { label: "Últimos 30 dias", value: { start: hojeDoFiltro.subtract({ days: 30 }), end: hojeDoFiltro } },
+    proximos30: { label: "Próximos 30 dias", value: { start: hojeDoFiltro, end: hojeDoFiltro.add({ days: 30 }) } },
+    ultimos90: { label: "Últimos 90 dias", value: { start: hojeDoFiltro.subtract({ days: 90 }), end: hojeDoFiltro } },
+};
+
+/**
+ * Filtros de Finanças: eventos e período. Ficam no topo das três abas e a troca de aba mantém os dois
+ * (R01-02). Com filtro ativo a barra ganha contorno da marca e diz quantos eventos estão escolhidos (R01-04).
+ */
+const FiltrosDeFinancas = () => {
     const { todos, escolhidos, filtrado } = useEventosEscolhidos();
-    const [, mudar] = useParametro("eventos");
+    const periodo = usePeriodo();
+    const [eventosNaUrl, mudar] = useParametro("eventos");
     if (todos.length === 0) return null;
     const itens = todos.map((e) => ({ id: e.id, label: e.nome }));
     const valor = !filtrado ? "Todos os eventos" : escolhidos.length === 1 ? escolhidos[0].nome : `${escolhidos.length} eventos`;
+    const ativo = filtrado || periodo.ativo;
+    // Trocar um filtro fecha painel aberto e volta para a primeira página das listas.
+    const AO_TROCAR = { detalhe: null, movimento: null, pagina: null };
     return (
-        // Barra de filtros da página, abaixo das abas: `FilterBar` do DS dentro de um cartão.
-        <FilterBar.Root role="group" aria-label="Filtros de Finanças" className="mt-4 items-center gap-4 rounded-xl bg-primary px-4 py-3 shadow-xs ring-1 ring-secondary ring-inset">
-            <FilterBar.Content className="items-center gap-4">
-                <span className="flex items-center gap-2 pl-2 text-sm font-semibold text-secondary">
-                    <FilterLines aria-hidden="true" className="size-5 text-fg-quaternary" />
-                    Filtros
-                </span>
-                <span aria-hidden="true" className="h-6 w-px bg-border-secondary" />
-                <span id="rotulo-filtro-de-evento" className="text-sm font-medium text-tertiary">
-                    Evento
-                </span>
-                <MultiSelect
-                    size="sm"
-                    className="w-96"
-                    popoverClassName="w-96"
-                    icon={Calendar}
-                    aria-label={`Evento: ${valor}`}
-                    placeholder="Todos os eventos"
-                    placeholderComoValor
-                    items={itens}
-                    selectedKeys={new Set(filtrado ? escolhidos.map((e) => e.id) : [])}
-                    onSelectionChange={(chaves) => {
-                        const ids = chaves === "all" ? [] : [...chaves].map(String);
-                        // Tudo marcado é o mesmo que nenhum filtro. Trocar a seleção fecha painel aberto.
-                        mudar(ids.length === 0 || ids.length === todos.length ? null : ids.join(","), { detalhe: null, movimento: null, pagina: null });
-                    }}
-                    onReset={() => mudar(null)}
-                    onSelectAll={() => mudar(null)}
-                    emptyStateTitle="Nenhum evento encontrado"
-                    emptyStateDescription="Confira o nome do evento."
-                    selectedCountFormatter={() => valor}
-                >
-                    {(item) => (
-                        <MultiSelect.Item id={item.id} selectionIndicator="checkbox" selectionIndicatorAlign="left">
-                            {item.label}
-                        </MultiSelect.Item>
+        <div className="mt-4 flex flex-col gap-2">
+            <FilterBar.Root
+                role="group"
+                aria-label="Filtros de Finanças"
+                className={cx("items-center gap-4 rounded-xl bg-primary px-4 py-4 shadow-xs ring-inset", ativo ? "ring-2 ring-brand" : "ring-1 ring-primary")}
+            >
+                <FilterBar.Content className="flex-wrap items-center gap-x-4 gap-y-3">
+                    <span className="flex items-center gap-2 pl-2 text-md font-semibold text-primary">
+                        <FilterLines aria-hidden="true" className="size-5 text-fg-tertiary" />
+                        Filtros
+                    </span>
+                    <span aria-hidden="true" className="h-8 w-px bg-border-secondary" />
+                    <span id="rotulo-filtro-de-evento" className="text-sm font-semibold text-secondary">
+                        Eventos
+                    </span>
+                    <MultiSelect
+                        size="md"
+                        className="w-80"
+                        popoverClassName="w-96"
+                        icon={Calendar}
+                        aria-label={`Eventos: ${valor}. Escolha um ou vários`}
+                        placeholder="Todos os eventos"
+                        placeholderComoValor
+                        items={itens}
+                        selectedKeys={new Set(filtrado ? escolhidos.map((e) => e.id) : [])}
+                        onSelectionChange={(chaves) => {
+                            const ids = chaves === "all" ? [] : [...chaves].map(String);
+                            // Tudo marcado é o mesmo que nenhum filtro.
+                            mudar(ids.length === 0 || ids.length === todos.length ? null : ids.join(","), AO_TROCAR);
+                        }}
+                        onReset={() => mudar(null, AO_TROCAR)}
+                        onSelectAll={() => mudar(null, AO_TROCAR)}
+                        emptyStateTitle="Nenhum evento encontrado"
+                        emptyStateDescription="Confira o nome do evento."
+                        selectedCountFormatter={() => valor}
+                    >
+                        {(item) => (
+                            <MultiSelect.Item id={item.id} selectionIndicator="checkbox" selectionIndicatorAlign="left">
+                                {item.label}
+                            </MultiSelect.Item>
+                        )}
+                    </MultiSelect>
+                    {filtrado && (
+                        <Badge size="md" type="pill-color" color="brand">
+                            {escolhidos.length === 1 ? "1 evento selecionado" : `${escolhidos.length} eventos selecionados`}
+                        </Badge>
                     )}
-                </MultiSelect>
-                {/* Com filtro, um clique volta para a organização inteira, sem abrir a lista. */}
-                {filtrado && (
-                    <Button size="sm" color="link-gray" onClick={() => mudar(null)}>
-                        Limpar filtros
-                    </Button>
-                )}
-            </FilterBar.Content>
-            <FilterBar.Actions className="gap-2 pr-2 text-sm text-tertiary">
-                <InfoCircle aria-hidden="true" className="size-4 shrink-0 text-fg-quaternary" />
-                Aplica-se a todos os dados da página
-            </FilterBar.Actions>
-        </FilterBar.Root>
+                    <span id="rotulo-filtro-de-periodo" className="text-sm font-semibold text-secondary">
+                        Período
+                    </span>
+                    <DateRangePicker
+                        size="md"
+                        aria-labelledby="rotulo-filtro-de-periodo"
+                        presets={PERIODOS_DO_TOPO}
+                        value={periodo.ativo ? { start: parseDate(periodo.de!), end: parseDate(periodo.ate!) } : null}
+                        onChange={(p) => mudar(eventosNaUrl, { ...AO_TROCAR, de: p?.start.toString() ?? null, ate: p?.end.toString() ?? null, periodo: null })}
+                    />
+                    {/* Um clique volta para a organização inteira e para o período padrão de cada aba. */}
+                    {ativo && (
+                        <Button size="sm" color="link-gray" onClick={() => mudar(null, { ...AO_TROCAR, de: null, ate: null })}>
+                            Limpar filtros
+                        </Button>
+                    )}
+                </FilterBar.Content>
+            </FilterBar.Root>
+            <p className="flex items-center gap-1.5 px-2 text-xs text-tertiary">
+                <InfoCircle aria-hidden="true" className="size-3.5 shrink-0 text-fg-quaternary" />
+                Os filtros valem nas três abas. Os totais são acumulados até hoje; o período muda os movimentos e as liberações.
+            </p>
+        </div>
     );
 };
 
@@ -305,10 +356,10 @@ const AbasDeFinancas = ({ ativa }: { ativa: AbaDeFinancas }) => {
             onSelectionChange={(chave) => {
                 const aba = ABAS.find((a) => a.id === chave);
                 if (!aba || aba.id === ativa) return;
-                // A troca de aba mantém o cenário do protótipo e os eventos escolhidos no filtro do topo.
+                // A troca de aba mantém o cenário do protótipo, os eventos e o período escolhidos no filtro do topo (R01-02).
                 const destino = new URLSearchParams();
                 if (cenario !== "normal") destino.set("cenario", cenario);
-                if (params.get("eventos")) destino.set("eventos", params.get("eventos")!);
+                for (const chave of ["eventos", "de", "ate"]) if (params.get(chave)) destino.set(chave, params.get(chave)!);
                 navigate(`${aba.rota}${destino.size ? `?${destino}` : ""}`);
             }}
         >
@@ -337,6 +388,6 @@ export const CabecalhoDaPagina = ({ titulo, acima, abaixo, acoes, aba }: { titul
         </div>
         {abaixo}
         {aba && <AbasDeFinancas ativa={aba} />}
-        {aba && <FiltroDeEventos />}
+        {aba && <FiltrosDeFinancas />}
     </header>
 );

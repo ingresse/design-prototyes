@@ -1,8 +1,8 @@
+import { useState } from "react";
 import { parseDate } from "@internationalized/date";
 import { useSearchParams } from "react-router";
 import { ArrowDownLeft, ArrowUpRight, ChevronDown, ChevronRight, Download01, File06, Minus, SearchLg, Table as IconeDePlanilha } from "@untitledui/icons";
 import { toast } from "sonner";
-import { DateRangePicker } from "@/components/application/date-picker/date-range-picker";
 import { EmptyState } from "@/components/application/empty-state/empty-state";
 import { FilterBar } from "@/components/application/filter-bar/filter-bar";
 import { Badge } from "@/components/base/badges/badges";
@@ -19,20 +19,25 @@ import {
     DIAS_DO_EXTRATO,
     HOJE,
     ROTULO_DO_MOVIMENTO,
+    contaGeral,
     eventosDoCenario,
     extrato,
     fechamentos,
+    saquesDoPeriodo,
     somarDias,
     totalizar,
     type Extrato,
     type LinhaDoExtrato,
+    type SaquesDoPeriodo,
     type TipoDeMovimento,
 } from "../../components/financas/dados";
 import { Aviso, AvisoDeBloqueio, Carregando, ErroAoCarregar } from "../../components/financas/estados";
 import { dataComDia, dataCurta, reais } from "../../components/financas/formato";
 import { fraseDeCompensacao } from "../../components/financas/frases";
+import { ContaDeRelance } from "../../components/financas/relance";
 import { CabecalhoDaPagina, FinancasShell, useCenario, useEventosEscolhidos } from "../../components/financas/shell";
 import { Paginacao } from "../components/paginacao";
+import { COLUNAS_DA_EXPORTACAO, PainelDeExportacao, situacaoDoSaque, type FormatoDeExportacao } from "../components/painel-de-exportacao";
 import { PainelDoMovimento } from "../components/painel-do-movimento";
 
 /*
@@ -104,7 +109,7 @@ interface ParteDoResumoProps {
     valor: number;
     cor?: string;
     resultado?: boolean;
-    porTipo?: Array<{ tipo: TipoDeMovimento; valor: number }>;
+    porTipo?: Array<{ tipo: TipoDeMovimento; valor: number; rotulo?: string }>;
     vazio?: string;
     rotuloDoTipo?: (tipo: TipoDeMovimento) => string;
 }
@@ -120,8 +125,8 @@ const ParteDoResumo = ({ rotulo, valor, cor = "text-primary", resultado, porTipo
                 (porTipo.length ? (
                     <ul className="flex flex-col gap-1 border-t border-secondary pt-2">
                         {porTipo.map((t) => (
-                            <li key={t.tipo} className="flex items-baseline justify-between gap-3 text-xs text-tertiary">
-                                <span>{rotuloDoTipo(t.tipo)}</span>
+                            <li key={`${t.tipo}-${t.rotulo ?? ""}`} className="flex items-baseline justify-between gap-3 text-xs text-tertiary">
+                                <span>{t.rotulo ?? rotuloDoTipo(t.tipo)}</span>
                                 <span className="whitespace-nowrap tabular-nums">{reais(t.valor)}</span>
                             </li>
                         ))}
@@ -133,23 +138,48 @@ const ParteDoResumo = ({ rotulo, valor, cor = "text-primary", resultado, porTipo
     </div>
 );
 
-const ResumoDoPeriodo = ({ x }: { x: Extrato }) => (
-    <Secao titulo={`Resumo de ${dataCurta(x.de)} a ${x.ate === HOJE ? "hoje" : dataCurta(x.ate)}`}>
-        {/* Três números, sem operadores: sem o Disponível do início, "entradas − saídas" não dá o Disponível de hoje. */}
-        <dl className="flex items-stretch gap-4 px-6 py-5">
-            <ParteDoResumo
-                rotulo="Entradas"
-                valor={x.entradas}
-                cor="text-success-primary"
-                porTipo={x.porTipo.entradas}
-                vazio="Nada entrou no período"
-                rotuloDoTipo={(t) => (t === "repasse" ? "Saques não concluídos" : NO_RESUMO[t])}
-            />
-            <ParteDoResumo rotulo="Saídas" valor={-x.saidas || 0} porTipo={x.porTipo.saidas} vazio="Nada saiu no período" />
-            <ParteDoResumo rotulo={x.ate === HOJE ? "Saldo disponível hoje" : `Saldo disponível em ${dataCurta(x.ate)}`} valor={x.saldoFinal} resultado />
-        </dl>
-    </Secao>
-);
+const ResumoDoPeriodo = ({ x, saques }: { x: Extrato; saques: SaquesDoPeriodo }) => {
+    // R01-01-b: os saques do período aparecem separados em pagos e agendado, para a conta com o Total sacado fechar.
+    const saidas = x.porTipo.saidas.flatMap((t) =>
+        t.tipo === "repasse" && saques.pagos + saques.agendados === t.valor
+            ? [
+                  ...(saques.pagos ? [{ ...t, valor: saques.pagos, rotulo: "Saques pagos" }] : []),
+                  ...(saques.agendados ? [{ ...t, valor: saques.agendados, rotulo: "Saque agendado" }] : []),
+              ]
+            : [t],
+    );
+    const ateHoje = x.ate === HOJE;
+    return (
+        <Secao titulo={`Resumo de ${dataCurta(x.de)} a ${ateHoje ? "hoje" : dataCurta(x.ate)}`}>
+            {/* Três números, sem operadores: sem o Disponível do início, "entradas − saídas" não dá o Disponível de hoje. */}
+            <dl className="flex items-stretch gap-4 px-6 py-5">
+                <ParteDoResumo
+                    rotulo="Entradas"
+                    valor={x.entradas}
+                    cor="text-success-primary"
+                    porTipo={x.porTipo.entradas}
+                    vazio="Nada entrou no período"
+                    rotuloDoTipo={(t) => (t === "repasse" ? "Saques não concluídos" : NO_RESUMO[t])}
+                />
+                <ParteDoResumo rotulo="Saídas" valor={-x.saidas || 0} porTipo={saidas} vazio="Nada saiu no período" />
+                <ParteDoResumo rotulo={ateHoje ? "Saldo disponível hoje" : `Saldo disponível em ${dataCurta(x.ate)}`} valor={x.saldoFinal} resultado />
+            </dl>
+            {saques.total > 0 && (
+                <p className="border-t border-secondary px-6 py-3 text-sm text-tertiary">
+                    Como este período chega ao Total sacado: <span className="font-medium text-secondary tabular-nums">{reais(saques.antes)}</span> sacados antes de {dataCurta(x.de)} +{" "}
+                    <span className="font-medium text-secondary tabular-nums">{reais(saques.pagos)}</span> pagos no período
+                    {saques.depois > 0 && (
+                        <>
+                            {" "}
+                            + <span className="font-medium text-secondary tabular-nums">{reais(saques.depois)}</span> pagos depois de {dataCurta(x.ate)}
+                        </>
+                    )}{" "}
+                    = <span className="font-semibold text-primary tabular-nums">{reais(saques.total)}</span>.{saques.agendados > 0 && " O saque agendado já saiu do saldo disponível, mas só conta como sacado quando for pago."}
+                </p>
+            )}
+        </Secao>
+    );
+};
 
 /* ---------------- movimentos por dia ---------------- */
 
@@ -210,6 +240,8 @@ export function FinancasExtrato() {
     const limite = somarDias(HOJE, -DIAS_DO_EXTRATO);
     const de = [params.get("de") ?? (params.get("periodo") === "90" ? limite : INICIO_DO_MES), limite].sort()[1];
     const ate = [params.get("ate") ?? HOJE, HOJE].sort()[0];
+    // Período do topo inteiro no futuro: o Extrato só tem o que já aconteceu.
+    const futuro = de > ate;
     const busca = params.get("busca") ?? "";
     const filtro = TIPOS.find((t) => t.id === params.get("tipo"))?.id ?? "todos";
     const sentido = SENTIDOS.find((t) => t.id === params.get("sentido"))?.id ?? "tudo";
@@ -225,7 +257,10 @@ export function FinancasExtrato() {
     const limpar = () => mudar({ busca: null, tipo: null, evento: null, sentido: null });
     const comFiltro = Boolean(busca) || filtro !== "todos" || eventoId !== "todos" || sentido !== "tudo";
 
-    const x = extrato(eventos, de, ate);
+    const x = extrato(eventos, futuro ? ate : de, ate);
+    const conta = contaGeral(eventos);
+    const saques = saquesDoPeriodo(eventos, x);
+    const [exportando, setExportando] = useState<FormatoDeExportacao | null>(null);
     const termo = simples(busca);
     const doFiltro = x.linhas.filter(
         (m) =>
@@ -255,19 +290,39 @@ export function FinancasExtrato() {
     const meses = fechamentos(eventos);
     const quantos = (n: number) => (n === 1 ? "1 movimento" : `${n} movimentos`);
 
-    const baixar = (formato: "csv" | "pdf") => {
+    // R01-07: o arquivo leva as colunas e os totais da tela, e para quem, quando e quanto foi pago em cada saque.
+    const exportar = (formato: FormatoDeExportacao) => {
+        setExportando(null);
         if (formato === "pdf") {
-            toast(`Aqui baixaria o extrato em PDF, com o resumo do período e ${quantos(visiveis.length)}.`);
+            toast(`Aqui baixaria o extrato em PDF, com os totais do período e ${quantos(visiveis.length)}.`);
             return;
         }
         const emOrdem = visiveis.slice().reverse();
+        const total = (rotulo: string, valor: number) => ["", rotulo, "", "", valor, "", "", "", ""];
         baixarCsv("financas-extrato.csv", [
-            ["Data", "Movimento", "Tipo", "Evento", "Valor", "Saldo disponível após"],
-            [dataDoCsv(de), `Saldo disponível em ${dataCurta(de)}`, "", "", "", x.saldoInicial],
-            ...emOrdem.map((m) => [dataDoCsv(m.data), m.titulo, ROTULO_DO_MOVIMENTO[m.tipo], m.evento.nome, m.valor, m.efeito === 0 ? (m.semEfeito ?? "") : m.apos]),
-            [dataDoCsv(ate), `Saldo disponível em ${dataCurta(ate)}`, "", "", "", x.saldoFinal],
+            COLUNAS_DA_EXPORTACAO,
+            [dataDoCsv(x.de), `Saldo disponível em ${dataCurta(x.de)}`, "", "", "", x.saldoInicial, "", "", ""],
+            ...emOrdem.map((m) => [
+                dataDoCsv(m.data),
+                m.titulo,
+                ROTULO_DO_MOVIMENTO[m.tipo],
+                m.evento.nome,
+                m.valor,
+                m.efeito === 0 ? (m.semEfeito ?? "") : m.apos,
+                m.repasse?.conta ?? "",
+                situacaoDoSaque(m),
+                m.repasse?.pedidoEm ? dataDoCsv(m.repasse.pedidoEm) : "",
+            ]),
+            [dataDoCsv(x.ate), `Saldo disponível em ${dataCurta(x.ate)}`, "", "", "", x.saldoFinal, "", "", ""],
+            total("Entradas do período", x.entradas),
+            total("Saídas do período", -x.saidas || 0),
+            total("Saques pagos no período", saques.pagos),
+            total("Total vendido (até hoje)", conta.vendido),
+            total("Total sacado (até hoje)", conta.sacado),
+            total("Saldo disponível (hoje)", conta.disponivel),
+            total("A liberar (até hoje)", conta.aLiberar),
         ]);
-        toast.success(`Extrato baixado com ${quantos(visiveis.length)}.`);
+        toast.success(`Extrato exportado com ${quantos(visiveis.length)}.`);
     };
 
     const conteudo = () => {
@@ -283,8 +338,23 @@ export function FinancasExtrato() {
                     </Aviso>
                 )}
 
-                <ResumoDoPeriodo x={x} />
+                <ContaDeRelance
+                    eventos={eventos}
+                    variante="extrato"
+                    titulo="Confira a conta"
+                    lateral={<span className="text-sm text-tertiary">Acumulado até hoje. Os mesmos números da Visão geral</span>}
+                    calendario={comCenario("/payout/financas-eventos/calendario")}
+                />
 
+                {futuro ? (
+                    <Secao titulo="Movimentos">
+                        <p className="px-6 py-5 text-sm text-tertiary">O período escolhido ainda não aconteceu. O Extrato mostra só o que já entrou ou saiu do seu saldo. As próximas liberações estão no Calendário.</p>
+                    </Secao>
+                ) : (
+                    <ResumoDoPeriodo x={x} saques={saques} />
+                )}
+
+                {!futuro && (
                 <Secao
                     titulo="Movimentos"
                     selo={
@@ -316,15 +386,6 @@ export function FinancasExtrato() {
                             <div className="w-44">
                                 <Input size="sm" icon={SearchLg} aria-label="Buscar movimento" placeholder="Buscar movimento" value={busca} onChange={(valor) => mudar({ busca: valor })} />
                             </div>
-                            <DateRangePicker
-                                size="sm"
-                                aria-label="Período do extrato"
-                                presets={PERIODOS}
-                                minValue={parseDate(limite)}
-                                maxValue={hoje}
-                                value={{ start: parseDate(de), end: parseDate(ate) }}
-                                onChange={(periodo) => periodo && mudar({ de: periodo.start.toString(), ate: periodo.end.toString(), periodo: null })}
-                            />
                             {/* Campo com busca: uma organização pode ter dezenas de eventos. Vazio = todos os eventos. */}
                             <div className="w-52">
                                 <Select.ComboBox
@@ -421,6 +482,7 @@ export function FinancasExtrato() {
                     )}
                     {paginas > 1 && <Paginacao pagina={pagina} total={paginas} aoMudar={(p) => mudar({ pagina: p === 1 ? null : String(p) })} />}
                 </Secao>
+                )}
 
                 {/* Conciliação por mês: cada linha fecha (início + entradas − saídas = fim) e o fim de um mês é o início do seguinte. */}
                 {meses.length > 0 && (
@@ -484,12 +546,12 @@ export function FinancasExtrato() {
                     temDados && (
                         <Dropdown.Root>
                             <Button size="md" color="secondary" iconLeading={Download01} iconTrailing={ChevronDown}>
-                                Baixar extrato
+                                Exportar extrato
                             </Button>
                             <Dropdown.Popover className="w-56" isNonModal>
-                                <Dropdown.Menu aria-label="Formato do extrato" onAction={(chave) => baixar(chave as "csv" | "pdf")}>
+                                <Dropdown.Menu aria-label="Formato do extrato" onAction={(chave) => setExportando(chave as FormatoDeExportacao)}>
+                                    <Dropdown.Item id="excel" label="Excel" icon={IconeDePlanilha} />
                                     <Dropdown.Item id="pdf" label="PDF" icon={File06} />
-                                    <Dropdown.Item id="csv" label="Planilha (CSV)" icon={IconeDePlanilha} />
                                 </Dropdown.Menu>
                             </Dropdown.Popover>
                         </Dropdown.Root>
@@ -497,6 +559,19 @@ export function FinancasExtrato() {
                 }
             />
             {conteudo()}
+            {temDados && (
+                <PainelDeExportacao
+                    key={exportando ?? "fechado"}
+                    formato={exportando}
+                    x={x}
+                    linhas={visiveis.slice().reverse()}
+                    conta={conta}
+                    saques={saques}
+                    escopo={eventos.length === 1 ? eventos[0].nome : `${eventos.length} eventos`}
+                    aoExportar={exportar}
+                    aoFechar={() => setExportando(null)}
+                />
+            )}
             {temDados && <PainelDoMovimento movimento={aberto} aoFechar={() => mudar({ movimento: null, pagina: pagina === 1 ? null : String(pagina) })} />}
         </FinancasShell>
     );

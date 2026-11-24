@@ -306,17 +306,18 @@ export const Distribuicao = ({ totais, detalhes, destinos }: DistribuicaoProps) 
                     acao={totais.agendado > 0 ? ver("Ver no extrato", destinos?.agendado) : undefined}
                 />
                 <Operador sinal="=" />
-                <Passo rotulo={SALDO_TOTAL} dica={DICA_DO_SALDO_TOTAL} valor={saldoTotal} leitura="igual a" resultado legenda="Disponível e a liberar" />
+                {/* O produtor pediu o saldo total "em letra menor" e o disponível em destaque (rodada 01, E36): aqui o total é um bloco comum. */}
+                <Passo rotulo={SALDO_TOTAL} dica={DICA_DO_SALDO_TOTAL} valor={saldoTotal} leitura="igual a" legenda="Disponível e a liberar" />
             </dl>
 
-            {/* Terceira linha, de apoio: tira do saldo total o que ainda vai liberar e chega ao Saldo disponível.
-                Menos peso que as duas contas, menos o resultado, que é o número que o produtor pode sacar. */}
+            {/* Terceira linha: tira do saldo total o que ainda vai liberar e chega ao Saldo disponível.
+                As parcelas têm menos peso; o resultado é o número mais forte do Resumo, porque é o que o produtor pode sacar. */}
             <div className="flex flex-col gap-2 border-t border-secondary pt-4">
                 <div className="flex items-center justify-between gap-4">
                     <h3 className="text-sm font-medium text-tertiary">Do saldo total ao saldo disponível</h3>
                     {aLiberar > 0 && ver("Ver no calendário", destinos?.aLiberar)}
                 </div>
-                <dl className="flex items-stretch gap-2">
+                <dl className="flex items-center gap-2">
                     <div className="flex min-w-0 flex-1 flex-col gap-0.5 px-1">
                         <dt className="text-xs font-medium text-tertiary">{SALDO_TOTAL}</dt>
                         <dd className="text-md font-semibold whitespace-nowrap text-secondary tabular-nums">{reais(saldoTotal)}</dd>
@@ -340,8 +341,8 @@ export const Distribuicao = ({ totais, detalhes, destinos }: DistribuicaoProps) 
                         </Fragment>
                     ))}
                     <OperadorMenor sinal="=" />
-                    <div className="flex min-w-0 flex-1 flex-col gap-0.5 px-1">
-                        <dt className="flex items-center gap-1.5 text-xs font-medium text-secondary">
+                    <div className="flex min-w-0 flex-1 flex-col gap-1 rounded-xl bg-secondary p-3 ring-1 ring-primary ring-inset @6xl:p-4">
+                        <dt className="flex items-center gap-1.5 text-sm font-medium text-secondary">
                             <span aria-hidden="true" className={cx("size-2 shrink-0 rounded-full", totais.disponivel < 0 ? "bg-utility-red-500" : COR_DA_PARTE.disponivel)} />
                             <span>
                                 <span className="sr-only">igual a </span>
@@ -349,7 +350,7 @@ export const Distribuicao = ({ totais, detalhes, destinos }: DistribuicaoProps) 
                             </span>
                             <Dica termo={ROTULO_DA_PARTE.disponivel} texto={DEFINICAO.disponivel} />
                         </dt>
-                        <dd className={cx("text-lg font-semibold whitespace-nowrap tabular-nums", totais.disponivel < 0 ? COR_DO_NEGATIVO : "text-primary")}>{reais(totais.disponivel)}</dd>
+                        <dd className={cx("text-xl font-semibold whitespace-nowrap tabular-nums @6xl:text-display-xs", totais.disponivel < 0 ? COR_DO_NEGATIVO : "text-primary")}>{reais(totais.disponivel)}</dd>
                         <dd className="text-xs text-tertiary">Pronto para saque</dd>
                     </div>
                 </dl>

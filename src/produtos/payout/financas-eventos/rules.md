@@ -94,5 +94,18 @@ quanto já repassou.
 ### Contas
 - **FEV-80** `node src/produtos/payout/financas-eventos/utils/conferir-contas.ts` confere a equação em cada evento e no total, o Calendário, o Extrato e os painéis.
 
+### Rodada 01 de validação com produtor (v.2, 24/11/2026)
+- **FEV-81** (R01-01) A Visão geral e o Extrato abrem com o mesmo bloco "Confira a conta" (`components/financas/relance.tsx`), lido de `contaGeral`: Total vendido − Taxas, devoluções e créditos − Total sacado − Saque agendado = Saldo total; Saldo total = Saldo disponível + A liberar. Termina no mesmo "Saldo total" do Resumo financeiro. Os valores são idênticos nas duas abas, com e sem filtro.
+- **FEV-82** (R01-01-b) No resumo do período do Extrato, os saques aparecem separados em "Saques pagos" e "Saque agendado", e uma linha fecha a conta: sacados antes do período + pagos no período (+ pagos depois) = Total sacado. Saque agendado não conta como sacado.
+- **FEV-83** (R01-02) O filtro do topo tem Eventos e Período (`?eventos=`, `?de=&ate=`). A troca de aba mantém os dois e a barra aparece nas três abas. O período filtra movimentos (Extrato, Últimos movimentos) e liberações (Calendário, Próximos movimentos); os totais acumulados não mudam com ele. A data do evento da lista "Saldo por evento" usa `?evde=&evate=`.
+- **FEV-84** (R01-03) O Saldo disponível é sempre o número de maior destaque e o Saldo total fica menor (fala do P01, evidência E36): na primeira dobra da Visão geral e também no Resumo financeiro, onde o Saldo total é um bloco comum e o Saldo disponível é o resultado em relevo. Vale para a organização e para a página do evento.
+- **FEV-85** (R01-04) Com filtro ativo, a barra ganha contorno da marca e um selo com a contagem ("3 eventos selecionados"). Sem filtro, o campo diz "Todos os eventos".
+- **FEV-86** (R01-05) A linha de evento com saldo negativo tem fundo de erro e diz o motivo ("Saldo negativo por devolução recente: R$ X devolvidos até dd/mm, depois do último saque."), vindo de `motivoDoNegativo`.
+- **FEV-87** (R01-06) O gráfico do Calendário é por mês corrido ou por dia dentro de um mês (`?visao=dia&mes=AAAA-MM`). Nenhuma barra cobre dois meses; período sem liberação aparece com R$ 0; cada barra traz o período exato. Na visão por dia, o saque agendado aparece marcado no dia e descrito abaixo do gráfico. Sem visão acumulada nem meses passados (R01-12, a validar).
+- **FEV-88** (R01-07) "Exportar extrato" oferece Excel e PDF e abre um painel com as colunas e os totais do arquivo e a lista de saques (para quem, quando, quanto). O Excel baixa uma planilha .csv; o PDF é simulado.
+- **FEV-89** `conferirContas` também confere a conta geral, a chegada dos saques ao Total sacado e os meses do Calendário, na organização e por evento.
+
 ## Em aberto
+- A estrutura de "Do líquido ao saldo total" e da linha até o Saldo disponível não mudou na rodada 01 (R01-17); mudou só o destaque (FEV-84). O roteiro descreve a versão com o bloco "A liberar".
+- Itens R01-08 a R01-16 aguardam validação e não foram implementados.
 - Ver "Regras a validar" em `../NOTAS.md`.

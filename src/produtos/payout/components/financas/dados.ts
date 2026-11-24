@@ -1340,8 +1340,149 @@ export function conferirContas(): string[] {
         }
         // Cards do topo = itens da legenda: os dois leem o mesmo total; o que pode divergir é o Retido.
         if (t.retido !== t.retidoEvento + t.retidoSeguranca) erros.push(`${cenario}: Retido da legenda ≠ retido até o evento + retido por segurança`);
+        // Rodada 01: a conta geral fecha e é a mesma na Visão geral e no Extrato, com e sem filtro de evento.
+        for (const escopo of [eventos, ...eventos.slice(0, 6).map((e) => [e])]) {
+            const c = contaGeral(escopo);
+            const onde = `${cenario}/${escopo.length === 1 ? escopo[0].id : "todos"}`;
+            if (c.vendido - c.descontos - c.sacado !== c.aReceber) erros.push(`${onde}: Vendido − descontos − Sacado ≠ A receber`);
+            if (c.vendido - c.descontos - c.sacado - c.agendado !== c.saldoTotal || c.disponivel + c.aLiberar !== c.saldoTotal) erros.push(`${onde}: a conta de relance não chega ao Saldo total (${c.saldoTotal})`);
+            if (c.disponivel + c.agendado + c.aLiberar !== c.aReceber) erros.push(`${onde}: Saldo disponível + Saque agendado + A liberar = ${c.disponivel + c.agendado + c.aLiberar}, A receber é ${c.aReceber}`);
+            for (const de of [somarDias(HOJE, -DIAS_DO_EXTRATO), `${HOJE.slice(0, 8)}01`]) {
+                const sq = saquesDoPeriodo(escopo, { de, ate: HOJE });
+                if (sq.antes < 0) erros.push(`${onde}: saques pagos desde ${de} (${sq.pagos}) passam do Total sacado (${sq.total})`);
+                if (sq.antes + sq.pagos + sq.depois !== c.sacado) erros.push(`${onde}: os saques do período não chegam ao Total sacado`);
+            }
+            const ent = entradasDoCalendario(escopo);
+            const meses = mesesDoCalendario(ent);
+            const semData = ent.filter((e) => !e.data).reduce((s, e) => s + e.valor, 0);
+            if (meses.reduce((s, m) => s + m.total, 0) + semData !== c.aLiberar) erros.push(`${onde}: os meses do Calendário não somam o A liberar`);
+            if (meses.some((m) => m.de.slice(0, 7) !== m.ate!.slice(0, 7))) erros.push(`${onde}: há barra do Calendário cobrindo dois meses`);
+        }
     }
     return erros;
+}
+
+/* ---------------- rodada 01 (validação com produtor): conta geral, saques do período, calendário por mês e por dia ---------------- */
+
+/**
+ * A conta que o produtor faz de cabeça ("vendido menos pago") com o que falta para ela fechar.
+ * Vendido − descontos − Sacado − Saque agendado = Saldo total, e Saldo total = Saldo disponível + A liberar.
+ * A Visão geral e o Extrato leem daqui: os totais não têm como divergir entre as abas (R01-01).
+ */
+export interface ContaGeral {
+    vendido: number;
+    /** Taxas e custos + Devoluções − Créditos: o que separa o Vendido do Líquido. */
+    descontos: number;
+    liquido: number;
+    sacado: number;
+    /** Líquido − Sacado: o que ainda vai para o produtor (inclui o saque agendado). */
+    aReceber: number;
+    /** Líquido − Sacado − Saque agendado = Saldo disponível + A liberar. O mesmo "Saldo total" do Resumo financeiro. */
+    saldoTotal: number;
+    disponivel: number;
+    agendado: number;
+    /** Em processamento + Retido + Antecipável. */
+    aLiberar: number;
+    proximaLiberacao: { data: string; valor: number } | null;
+    proximoSaque: { data: string; valor: number } | null;
+}
+
+export function contaGeral(eventos: Evento[]): ContaGeral {
+    const t = totalizar(eventos);
+    const comData = entradasDoCalendario(eventos).filter((e) => e.data);
+    const primeira = comData[0]?.data;
+    const agendados = repassesAgendados(eventos);
+    const diaDoSaque = agendados[0]?.repasse.data;
+    return {
+        vendido: t.vendido,
+        descontos: t.taxas + t.ajustes - t.creditos,
+        liquido: t.seuDinheiro,
+        sacado: t.recebido,
+        aReceber: t.seuDinheiro - t.recebido,
+        saldoTotal: t.seuDinheiro - t.recebido - t.agendado,
+        disponivel: t.disponivel,
+        agendado: t.agendado,
+        aLiberar: t.processamento + t.retido + t.aLiberar,
+        proximaLiberacao: primeira ? { data: primeira, valor: comData.filter((e) => e.data === primeira).reduce((s, e) => s + e.valor, 0) } : null,
+        proximoSaque: diaDoSaque ? { data: diaDoSaque, valor: agendados.filter((a) => a.repasse.data === diaDoSaque).reduce((s, a) => s + a.repasse.valor, 0) } : null,
+    };
+}
+
+/**
+ * Como os saques do período do Extrato chegam ao Total sacado da Visão geral (R01-01-b):
+ * sacado antes do período + pagos no período + pagos depois do período = Total sacado.
+ * O saque agendado já saiu do Saldo disponível, mas ainda não conta como Sacado.
+ */
+export interface SaquesDoPeriodo {
+    antes: number;
+    pagos: number;
+    depois: number;
+    agendados: number;
+    total: number;
+}
+
+export function saquesDoPeriodo(eventos: Evento[], x: Pick<Extrato, "de" | "ate">): SaquesDoPeriodo {
+    const pagos = movimentos(eventos).filter((m) => m.tipo === "repasse" && m.situacao === "pago" && m.efeito < 0);
+    const soma = (itens: Movimento[]) => itens.reduce((s, m) => s - m.efeito, 0);
+    const noPeriodo = soma(pagos.filter((m) => m.data >= x.de && m.data <= x.ate));
+    const depois = soma(pagos.filter((m) => m.data > x.ate));
+    const total = totalizar(eventos).recebido;
+    const agendados = movimentos(eventos)
+        .filter((m) => m.tipo === "repasse" && m.situacao === "agendado" && m.data >= x.de && m.data <= x.ate)
+        .reduce((s, m) => s - m.efeito, 0);
+    return { antes: total - noPeriodo - depois, pagos: noPeriodo, depois, agendados, total };
+}
+
+const fimDoMes = (iso: string) => new Date(Date.UTC(Number(iso.slice(0, 4)), Number(iso.slice(5, 7)), 0)).toISOString().slice(0, 10);
+const periodoVazio = (de: string, ate: string): PeriodoDoCalendario => ({ de, ate, porGrupo: { processamento: 0, retido: 0, aLiberar: 0 }, total: 0 });
+function preencher(periodos: PeriodoDoCalendario[], entradas: Entrada[]) {
+    for (const e of entradas) {
+        if (!e.data) continue;
+        const periodo = periodos.find((p) => e.data! >= p.de && e.data! <= p.ate!);
+        if (!periodo) continue;
+        periodo.porGrupo[GRUPO_DA_ENTRADA[e.tipo]] += e.valor;
+        periodo.total += e.valor;
+    }
+    return periodos;
+}
+
+/**
+ * Gráfico do Calendário por mês corrido (R01-06): uma barra por mês, de hoje até a última liberação
+ * (ou o período do filtro). Nenhuma barra cobre dois meses; mês sem liberação aparece zerado.
+ * O primeiro mês começa hoje: o que já liberou está no Extrato.
+ */
+export function mesesDoCalendario(entradas: Entrada[], de?: string, ate?: string): PeriodoDoCalendario[] {
+    const inicio = de && de > HOJE ? de : HOJE;
+    const comData = entradas.filter((e) => e.data && e.data >= inicio && (!ate || e.data <= ate));
+    const fim = ate ?? comData.reduce((maior, e) => (e.data! > maior ? e.data! : maior), inicio);
+    if (fim < inicio) return [];
+    const periodos: PeriodoDoCalendario[] = [];
+    // No máximo 24 barras: um período muito longo não cabe no gráfico.
+    for (let dia = inicio; dia <= fim && periodos.length < 24; dia = somarDias(fimDoMes(dia), 1)) periodos.push(periodoVazio(dia, fimDoMes(dia) > fim ? fim : fimDoMes(dia)));
+    return preencher(periodos, comData);
+}
+
+/** Gráfico do Calendário por dia, dentro de um mês só (`mes` = "2026-11"): do primeiro dia válido ao último, com os dias zerados. */
+export function diasDoCalendario(entradas: Entrada[], mes: string, de?: string, ate?: string): PeriodoDoCalendario[] {
+    const primeiro = [`${mes}-01`, HOJE, de ?? HOJE].sort().pop()!;
+    const ultimo = [fimDoMes(`${mes}-01`), ate ?? "9999-12-31"].sort()[0];
+    const periodos: PeriodoDoCalendario[] = [];
+    for (let dia = primeiro; dia <= ultimo; dia = somarDias(dia, 1)) periodos.push(periodoVazio(dia, dia));
+    return preencher(periodos, entradas);
+}
+
+/** Por que o saldo disponível de um evento está negativo (R01-05). Hoje a única causa nos dados é devolução. */
+export interface MotivoDoNegativo {
+    causa: "devolucao-recente" | "devolucao";
+    valor: number;
+    data: string;
+}
+
+export function motivoDoNegativo(e: Evento): MotivoDoNegativo | null {
+    if (e.disponivel >= 0 || e.ajustesLista.length === 0) return null;
+    const recentes = e.ajustesLista.filter((a) => a.data >= somarDias(HOJE, -30));
+    const base = recentes.length ? recentes : e.ajustesLista;
+    return { causa: recentes.length ? "devolucao-recente" : "devolucao", valor: base.reduce((s, a) => s + a.valor, 0), data: base.reduce((maior, a) => (a.data > maior ? a.data : maior), base[0].data) };
 }
 
 // `import.meta.env` só existe dentro do Vite; no Node (script de verificação) fica indefinido.

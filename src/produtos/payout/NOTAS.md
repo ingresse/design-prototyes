@@ -120,6 +120,32 @@ Decisões de interface
 10. **Código, solicitante e horário de repasse e antecipação são inventados** (gerados a partir do evento, da data e do valor; nomes fictícios: Marina Duarte, Rafael Antunes, Camila Prado). Repasse pago: o pedido é dois dias antes do pagamento.
 11. **Conta de repasse "Confirmada" / "Em confirmação" e o prazo de 2 dias úteis** de análise são ilustrativos.
 
+## Rodada 01 de validação com produtor (v.2, 24/11/2026)
+
+Entrevista P01 (23/11/2026). Critério da rodada: os mesmos totais aparecem e fecham em todas as abas, e a pessoa consegue refazer a conta sozinha. A v.1 está documentada no Figma (section "Novo Finanças AWA v.1").
+
+Decisões tomadas ao implementar, para a designer revisar:
+- **Conta de relance ("Confira a conta").** "Vendido menos sacado" não dá o saldo, porque há taxas, devoluções, créditos e o saque agendado no meio. A conta mostra esses termos e termina em "Saldo total", o mesmo número e o mesmo nome do Resumo financeiro. A primeira versão terminava em "A receber" (rótulo novo); foi trocada depois da leitura dos achados, para não contaminar o teste de "a liberar" contra "a receber" e para a tela não ter dois resultados parecidos.
+- **Sem "Líquido" na legenda.** O P01 lê líquido como "valor com desconto de ingresso". A legenda do termo de descontos diz "O que foi descontado e creditado".
+- **Verbo do job no título.** "Confira a conta", porque "bater" e "conferir" são o que ele vem fazer.
+- **Destaque invertido no Resumo financeiro.** O P01 pediu o saldo total "em letra menor" e o disponível em destaque (E36). O Saldo total virou bloco comum e o Saldo disponível virou o resultado em relevo. Isso muda o que tinha sido pedido antes (linha de apoio com menor visibilidade); a estrutura e a ordem das contas não mudaram.
+- **Período único no topo.** Antes, cada tela tinha o seu, com significados diferentes. Agora o período do topo filtra movimentos e liberações; os totais ficam acumulados até hoje para fecharem entre as abas. Sem período, cada aba usa o padrão dela (Extrato: mês corrente; Calendário: de hoje em diante).
+- **Total sacado no Extrato.** O Extrato cobre 90 dias e o Total sacado é de sempre: a linha "Como este período chega ao Total sacado" fecha a diferença.
+- **Motivo do saldo negativo.** Só devolução existe nos dados; advance não foi criado (R01-15 aguarda validação).
+- **Excel.** O arquivo é .csv, que o Excel abre; gerar .xlsx pediria uma biblioteca nova.
+
+Copy nova (revisada com os princípios de `/design:ux-copy`: clara, curta, mesmos termos da tela):
+
+| Onde | Texto |
+|---|---|
+| Bloco de relance | "Confira a conta" · "Total vendido" · "Taxas, devoluções e créditos" · "O que foi descontado e creditado" · "Total sacado" · "Saque agendado" · "Saldo total" · "Saldo disponível + A liberar" |
+| Partes | "Pronto para saque" · "Cai na conta em 24/11" · "Próxima: R$ 143.400 hoje" |
+| Filtro | "Eventos" · "Período" · "3 eventos selecionados" · "Os filtros valem nas três abas. Os totais são acumulados até hoje; o período muda os movimentos e as liberações." |
+| Linha do evento | "Saldo negativo por devolução recente: R$ 14.000 devolvidos até 03/11, depois do último saque." |
+| Extrato | "Saques pagos" · "Saque agendado" · "Como este período chega ao Total sacado: … O saque agendado já saiu do saldo disponível, mas só conta como sacado quando for pago." |
+| Calendário | "Liberações por mês" · "Liberações por dia · Novembro de 2026" · "Por mês" · "Por dia" · "Saque agendado de R$ 600.000 cai na conta Itaú ···4521. Não é uma liberação: o valor já saiu do seu saldo disponível." |
+| Exportação | "Exportar extrato" · "Colunas do arquivo" · "Totais que vão no arquivo" · "Saques do período: para quem, quando e quanto" · "Exportar em Excel" |
+
 ## Regras a validar
 
 1. **Prazo de contestação conta da data do evento?** (Fraude.) A tela afirma 120 dias depois do evento.
