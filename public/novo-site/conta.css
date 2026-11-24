@@ -16,7 +16,8 @@ html[data-area="conta"] body { background: var(--color-bg-page); }
 .ct-nav a[aria-current="page"] { background: var(--color-bg-inverse); border-color: var(--color-bg-inverse); color: var(--color-text-inverse); }
 .ct-nav svg { width: var(--size-icon-sm); height: var(--size-icon-sm); flex: 0 0 auto; }
 
-/* blocos */
+/* blocos: o corpo da página empilha os blocos com espaço entre eles */
+.ct-corpo { display: flex; flex-direction: column; gap: var(--space-5); }
 .ct-bloco { display: flex; flex-direction: column; gap: var(--space-5); padding: var(--space-6); border: var(--border-width-hairline) solid var(--color-border-subtle); border-radius: var(--radius-base); background: var(--color-bg-surface); }
 .ct-bloco + .ct-bloco { margin-top: 0; }
 .ct-bloco__topo { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-4); flex-wrap: wrap; }
@@ -82,10 +83,28 @@ html[data-area="conta"] body { background: var(--color-bg-page); }
 .ct-banner h2 { margin: 0 0 var(--space-2); font-size: var(--font-size-title-2, 1.75rem); line-height: 1.1; color: inherit; }
 .ct-banner p { margin: 0 0 var(--space-5); max-width: 32rem; color: inherit; opacity: 0.8; font-size: var(--font-size-body); line-height: 1.45; }
 .ct-banner .bp { width: auto; }
-.ct-banner__arte { width: 9rem; height: 6rem; border-radius: var(--radius-base); background: linear-gradient(135deg, var(--color-fg-brand), var(--color-button-primary-bg-hover)); position: relative; }
-.ct-banner__arte::after { content: ""; position: absolute; left: var(--space-4); right: var(--space-4); bottom: var(--space-4); height: var(--space-2); border-radius: var(--radius-pill, 999px); background: color-mix(in srgb, var(--color-text-inverse) 55%, transparent); }
+/* ilustração animada (Iconly Motion "Card wallet"): traço na cor do texto do banner, o miolo branco do desenho vira o fundo do banner */
+.ct-banner__arte { display: block; width: 8rem; height: 8rem; color: var(--color-text-inverse); }
+.ct-banner__arte svg { width: 100%; height: 100%; display: block; }
+.ct-banner__arte [stroke]:not([stroke="none"]) { stroke: currentColor; }
+.ct-banner__arte [fill="rgb(255,255,255)"] { fill: var(--color-bg-inverse); }
 .ct-cartao { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; gap: var(--space-4); align-items: center; padding: var(--space-5); border: var(--border-width-hairline) solid var(--color-border-subtle); border-radius: var(--radius-base); background: var(--color-bg-surface); }
-.ct-bandeira { display: inline-grid; place-items: center; width: 3.25rem; height: 2.25rem; border-radius: var(--radius-inner, 6px); background: var(--color-bg-subtle); border: var(--border-width-hairline) solid var(--color-border-subtle); font-size: var(--font-size-small); font-weight: 600; letter-spacing: 0.02em; text-transform: uppercase; }
+/* cartão de crédito do Untitled UI (shared-assets/credit-card): desenhado em 316 x 190 e reduzido pela escala --e */
+.ct-cc { --e: 0.4; position: relative; display: block; flex: none; width: calc(316px * var(--e)); height: calc(190px * var(--e)); }
+.ct-cc__face { position: absolute; top: 0; left: 0; width: 316px; height: 190px; transform: scale(var(--e)); transform-origin: top left; display: flex; flex-direction: column; justify-content: space-between; padding: 16px; border-radius: 16px; overflow: hidden; color: var(--color-primitive-neutral-0); font-weight: 600; line-height: normal; }
+.ct-cc__face::before { content: ""; position: absolute; inset: 0; z-index: 1; border-radius: inherit; pointer-events: none; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-primitive-neutral-0) 30%, transparent); -webkit-mask-image: linear-gradient(135deg, #000, rgb(0 0 0 / 0.2)); mask-image: linear-gradient(135deg, #000, rgb(0 0 0 / 0.2)); }
+.ct-cc--cinza .ct-cc__face { background: linear-gradient(to top right, var(--color-primitive-neutral-900), var(--color-primitive-neutral-700)); }
+.ct-cc--marca .ct-cc__face { background: linear-gradient(to top right, var(--color-primitive-brand-700), var(--color-primitive-brand-500)); }
+.ct-cc--azul .ct-cc__face { background: linear-gradient(to top right, var(--color-primitive-alert-info-950), var(--color-primitive-alert-info-700)); }
+.ct-cc__topo, .ct-cc__base { position: relative; display: flex; justify-content: space-between; }
+.ct-cc__topo { align-items: flex-start; padding: 4px 4px 0; }
+.ct-cc__emissor { font-size: 16px; }
+.ct-cc__base { align-items: flex-end; gap: 12px; }
+.ct-cc__dados { display: flex; flex-direction: column; gap: 8px; min-width: 0; flex: 1; }
+.ct-cc__linha { display: flex; justify-content: space-between; gap: 4px; font-size: 12px; letter-spacing: 0.6px; text-transform: uppercase; font-variant-numeric: tabular-nums; }
+.ct-cc__num { font-size: 16px; letter-spacing: 1px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ct-cc__tipo { display: flex; align-items: center; justify-content: center; flex: none; width: 46px; height: 32px; border-radius: 4px; background: color-mix(in srgb, var(--color-primitive-neutral-0) 10%, transparent); }
+.ct-cc__marca { font-size: 13px; font-style: italic; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; }
 .ct-cartao__num { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; }
 .ct-cartao__meta { margin: var(--space-1) 0 0; color: var(--color-text-secondary); font-size: var(--font-size-small); }
 .ct-menu { position: relative; }

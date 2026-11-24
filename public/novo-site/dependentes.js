@@ -4,10 +4,10 @@
    Nada aqui grava imagem nem envia dado: dependentes e rostos são ESTADO em `jfConta` (IX.store; memória se não houver). Nada jurídico na interface.
 
    API:
-     IngresseDependentes.listar(ref?)                                  [{ id, nome, nascimento, vinculo, idade, rosto }] (idade na data do jogo)
+     IngresseDependentes.listar(ref?)                                  [{ id, nome, email, nascimento, vinculo, idade, rosto }] (idade na data do jogo)
      IngresseDependentes.elegiveis(regras, jogo, ctx?)                 [{ id, nome, idade, rosto, ok, motivo, motivoId }] ctx: { atribuidos:{depId:n}, atual:n, jaTem:[depId] }
      IngresseDependentes.adicionar(dep) / .remover(id)                 persistem em jfConta e emitem `jf:dependentes`
-     IngresseDependentes.abrirCadastro({ gatilho, regras, jogo, aoSalvar(dep), aoFechar() })   modal de cadastro rápido (nome, nascimento, vínculo), sem sair da compra
+     IngresseDependentes.abrirCadastro({ gatilho, regras, jogo, aoSalvar(dep), aoFechar() })   modal de cadastro rápido (nome, e-mail, nascimento, vínculo), sem sair da compra
      IngresseDependentes.abrirGerenciar({ gatilho, regras, jogo, emUso(id)→bool, aoMudar() })  «Seus dependentes»: lista, remover, adicionar
      IngresseDependentes.cartaoHtml(pessoa, { modo:'radio'|'estatico', selecionado, desabilitado, motivo, facial })   marcação do cartão 72 (string)
      IngresseDependentes.montar(el, opcoes) → { atualizar({ingressos}), titulares(), resumo(), cadastrarPendentes(), abrirIngresso(n), destruir() }
@@ -126,13 +126,13 @@
   function listar(ref) {
     var c = R.conta(), r = ref || referencia();
     return (c.dependentes || []).map(function (d) {
-      return { id: d.id, nome: d.nome, nascimento: d.nascimento, vinculo: d.vinculo, idade: idadeEm(d.nascimento, r), rosto: R.estado(d.id) };
+      return { id: d.id, nome: d.nome, email: d.email || '', nascimento: d.nascimento, vinculo: d.vinculo, idade: idadeEm(d.nascimento, r), rosto: R.estado(d.id) };
     });
   }
   function adicionar(dep) {
     var c = R.conta();
     dep = Object.assign({ id: 'dep-' + slug(dep.nome) + '-' + Date.now().toString(36) }, dep);
-    c.dependentes.push({ id: dep.id, nome: dep.nome, nascimento: dep.nascimento, vinculo: dep.vinculo });
+    c.dependentes.push({ id: dep.id, nome: dep.nome, email: dep.email || '', nascimento: dep.nascimento, vinculo: dep.vinculo });
     c.rostos[dep.id] = { estado: 'pendente' };
     R._guardar(c);
     emitirDeps();
@@ -195,6 +195,7 @@
         c.corpo.innerHTML =
           '<form class="jf-form" id="jf-dep-form" novalidate>' +
           campo('nome', t('JF-2-22a'), '<input id="jf-dep-nome" name="nome" type="text" autocomplete="off" aria-describedby="jf-dep-nome-e">') +
+          campo('email', 'E-mail', '<input id="jf-dep-email" name="email" type="email" inputmode="email" autocomplete="off" placeholder="nome@exemplo.com" aria-describedby="jf-dep-email-e">') +
           campo('nasc', t('JF-2-22b'), '<input id="jf-dep-nasc" name="nasc" type="text" inputmode="numeric" autocomplete="off" placeholder="dd/mm/aaaa" maxlength="10" aria-describedby="jf-dep-nasc-e">') +
           campo('vinc', t('JF-N-vinculo'), '<select id="jf-dep-vinc" name="vinc" aria-describedby="jf-dep-vinc-e"><option value="">' + esc(t('JF-N-vinculo-ph')) + '</option>' + VINCULOS.map(function (v) { return '<option>' + esc(v) + '</option>'; }).join('') + '</select>') +
           '<div class="jf-form__geral err" id="jf-dep-geral" aria-live="polite" hidden></div></form>';
@@ -221,9 +222,10 @@
       if (txt) i.setAttribute('aria-invalid', 'true'); else i.removeAttribute('aria-invalid');
     }
     function enviar() {
-      var nome = form.nome.value.trim().replace(/\s+/g, ' '), nascTxt = form.nasc.value, vinc = form.vinc.value, e = {};
+      var nome = form.nome.value.trim().replace(/\s+/g, ' '), email = form.email.value.trim().toLowerCase(), nascTxt = form.nasc.value, vinc = form.vinc.value, e = {};
       var palavras = nome.split(' ').filter(function (p) { return p.length > 1; });
       if (palavras.length < 2) e.nome = t('JF-2-26');
+      if (!email) e.email = 'O e-mail é obrigatório.'; else if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) e.email = 'E-mail inválido.';
       var nascISO = deBR(nascTxt);
       if (!nascISO || nascISO > ref) e.nasc = t('JF-2-27');
       else if (idadeEm(nascISO, ref) >= regras.idadeMax) e.nasc = t('JF-2-29', { idade: regras.idadeMax });
@@ -231,12 +233,12 @@
       var geral = '';
       if (!e.nome && !e.nasc && listar(ref).some(function (d) { return slug(d.nome) === slug(nome) && d.nascimento === nascISO; })) e.nome = t('JF-N-dep-dup');
       if (!Object.keys(e).length && regras.maxDependentes != null && listar(ref).length >= regras.maxDependentes) geral = t('JF-N-dep-max', { n: regras.maxDependentes });
-      ['nome', 'nasc', 'vinc'].forEach(function (k) { marcarErro(k, e[k] || ''); });
+      ['nome', 'email', 'nasc', 'vinc'].forEach(function (k) { marcarErro(k, e[k] || ''); });
       var g = form.querySelector('#jf-dep-geral'); g.hidden = !geral; g.textContent = geral;
-      var primeiro = ['nome', 'nasc', 'vinc'].filter(function (k) { return e[k]; })[0];
+      var primeiro = ['nome', 'email', 'nasc', 'vinc'].filter(function (k) { return e[k]; })[0];
       if (primeiro) { form.querySelector('[data-campo="' + primeiro + '"] input, [data-campo="' + primeiro + '"] select').focus(); return; }
       if (geral) return;
-      var dep = adicionar({ nome: nome, nascimento: nascISO, vinculo: vinc });
+      var dep = adicionar({ nome: nome, email: email, nascimento: nascISO, vinculo: vinc });
       toast(t('JF-2-25', { Nome: nome.split(' ')[0] }), 'ok');
       modal.fechar(false);
       if (o.aoSalvar) o.aoSalvar(Object.assign({ idade: idadeEm(nascISO, ref), rosto: 'pendente' }, dep));

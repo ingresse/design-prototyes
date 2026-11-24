@@ -301,14 +301,14 @@
       else html += '<div class="ct-cartoes">' + lista.map(function (p) {
         return '<div class="ct-disp"><div class="ct-disp__topo"><span class="ct-disp__ico">' + ICO.rosto + '</span>' +
           (p.rosto === 'ok' || p.rosto === true ? '<span class="ct-selo ct-selo--ok">Facial cadastrada</span>' : '<span class="ct-selo">Sem facial</span>') + '</div>' +
-          '<div><p class="ct-disp__nome">' + esc(p.nome) + '</p><p class="ct-disp__meta">' + esc([p.vinculo, p.idade != null ? p.idade + ' anos' : ''].filter(Boolean).join(', ')) + '</p></div>' +
+          '<div><p class="ct-disp__nome">' + esc(p.nome) + '</p><p class="ct-disp__meta">' + esc([p.vinculo, p.idade != null ? p.idade + ' anos' : ''].filter(Boolean).join(', ')) + '</p>' + (p.email ? '<p class="ct-disp__meta">' + esc(p.email) + '</p>' : '') + '</div>' +
           '<div class="ct-acoes"><button type="button" class="bs" data-remover="' + esc(p.id) + '">Remover</button></div></div>';
       }).join('') + '</div>';
       corpo.innerHTML = html + '</section>';
     }
     corpo.addEventListener('click', function (e) {
       var add = e.target.closest('[data-add]'), rem = e.target.closest('[data-remover]');
-      if (add && D && D.abrirCadastro) D.abrirCadastro({ gatilho: add, aoSalvar: function (dep) { if (D.adicionar) D.adicionar(dep); desenhar(); avisar('Dependente adicionado.'); }, aoFechar: function () {} });
+      if (add && D && D.abrirCadastro) D.abrirCadastro({ gatilho: add, aoSalvar: function () { desenhar(); } /* o cadastro já grava e avisa; gravar aqui duplicava o dependente */, aoFechar: function () {} });
       if (rem) {
         var nome = (rem.closest('.ct-disp').querySelector('.ct-disp__nome') || {}).textContent;
         confirmar({ titulo: 'Remover dependente', texto: ['Remover ' + nome + ' da sua conta? Os ingressos que já estão no nome dessa pessoa continuam valendo.'], sim: 'Remover', nao: 'Cancelar' }).then(function (ok) {
@@ -330,20 +330,49 @@
   }
   var NOME_BANDEIRA = { visa: 'Visa', master: 'Mastercard', amex: 'Amex', elo: 'Elo', hipercard: 'Hipercard', diners: 'Diners', 'cartão': 'Cartão' };
   function cartoes() { return ler('cartoes', [{ id: 'c1', bandeira: 'visa', final: '4242', titular: 'PESSOA EXEMPLO', validade: '08/29', principal: true }, { id: 'c2', bandeira: 'master', final: '5454', titular: 'PESSOA EXEMPLO', validade: '03/28', principal: false }]); }
+  /* Cartão de crédito do Untitled UI (shared-assets/credit-card, estilos "brand-dark" e "gray-dark"), portado para HTML.
+     Desenhado no tamanho original (316 x 190) e reduzido por escala, como o componente faz com a prop width. É ilustração:
+     o número, o titular e a validade que valem para leitura estão no texto ao lado. */
+  var LOGO_MASTER = '<svg width="30" height="19" viewBox="0 0 30 19" fill="none"><path fill-rule="evenodd" d="M14.9053 16.4393C13.3266 17.77 11.2787 18.5733 9.04092 18.5733C4.04776 18.5733 0 14.5737 0 9.64C0 4.70625 4.04776 0.706665 9.04092 0.706665C11.2787 0.706665 13.3266 1.51 14.9053 2.84072C16.484 1.51 18.5319 0.706665 20.7697 0.706665C25.7629 0.706665 29.8106 4.70625 29.8106 9.64C29.8106 14.5737 25.7629 18.5733 20.7697 18.5733C18.5319 18.5733 16.484 17.77 14.9053 16.4393Z" fill="#ED0006"/><path fill-rule="evenodd" d="M14.9053 16.4393C16.8492 14.8007 18.0818 12.3626 18.0818 9.64C18.0818 6.91739 16.8492 4.47925 14.9053 2.84072C16.484 1.50999 18.5319 0.706665 20.7697 0.706665C25.7628 0.706665 29.8106 4.70625 29.8106 9.64C29.8106 14.5737 25.7628 18.5733 20.7697 18.5733C18.5319 18.5733 16.484 17.77 14.9053 16.4393Z" fill="#F9A000"/><path fill-rule="evenodd" d="M14.9053 16.4393C16.8492 14.8008 18.0818 12.3627 18.0818 9.64007C18.0818 6.91748 16.8492 4.47936 14.9053 2.84082C12.9614 4.47936 11.7288 6.91748 11.7288 9.64007C11.7288 12.3627 12.9614 14.8008 14.9053 16.4393Z" fill="#FF5E00"/></svg>';
+  var PAYPASS = '<svg width="20" height="24" viewBox="0 0 20 24" fill="none"><path d="M15.1429 1.28571C17.0236 4.54326 18.0138 8.23849 18.0138 12C18.0138 15.7615 17.0236 19.4567 15.1429 22.7143M10.4286 3.64285C11.8956 6.18374 12.6679 9.06602 12.6679 12C12.6679 14.934 11.8956 17.8162 10.4286 20.3571M5.92859 5.80713C6.98933 7.66394 7.54777 9.77022 7.54777 11.9143C7.54777 14.0583 6.98933 16.1646 5.92859 18.0214M1.42859 8.14285C2.19306 9.29983 2.59834 10.6362 2.59834 12C2.59834 13.3638 2.19306 14.7002 1.42859 15.8571" stroke="currentColor" stroke-width="2.57143" stroke-linecap="round"/></svg>';
+  function cartaoVisual(c) {
+    var nome = NOME_BANDEIRA[c.bandeira] || 'Cartão';
+    var logo = c.bandeira === 'master' ? LOGO_MASTER : '<span class="ct-cc__marca">' + esc(nome) + '</span>';
+    return '<span class="ct-cc ct-cc--' + (c.bandeira === 'master' ? 'cinza' : c.bandeira === 'visa' ? 'azul' : 'marca') + '" aria-hidden="true"><span class="ct-cc__face">' +
+      '<span class="ct-cc__topo"><span class="ct-cc__emissor">' + esc(nome) + '</span>' + PAYPASS + '</span>' +
+      '<span class="ct-cc__base"><span class="ct-cc__dados"><span class="ct-cc__linha"><span>' + esc(c.titular) + '</span><span>' + esc(c.validade) + '</span></span>' +
+      '<span class="ct-cc__num">\u2022\u2022\u2022\u2022 \u2022\u2022\u2022\u2022 \u2022\u2022\u2022\u2022 ' + esc(c.final) + '</span></span>' +
+      '<span class="ct-cc__tipo">' + logo + '</span></span></span></span>';
+  }
+  /* Ilustração animada do banner (Iconly Motion "Card wallet", Lottie). Toca em laço; em movimento reduzido fica parada num quadro. */
+  var cacheArte = {};
+  function animarArte(el, tentativa) {
+    if (!el) return;
+    if (!window.lottie) { if ((tentativa || 0) < 50) setTimeout(function () { animarArte(el, (tentativa || 0) + 1); }, 100); return; }
+    var url = el.getAttribute('data-lottie-auto');
+    if (!cacheArte[url]) cacheArte[url] = fetch(url).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; });
+    cacheArte[url].then(function (dados) {
+      if (!dados || !document.contains(el)) return;
+      var parado = (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) || document.documentElement.getAttribute('data-motion') === 'reduce';
+      var anim = window.lottie.loadAnimation({ container: el, renderer: 'svg', loop: !parado, autoplay: !parado, animationData: JSON.parse(JSON.stringify(dados)), rendererSettings: { preserveAspectRatio: 'xMidYMid meet' } });
+      if (parado) anim.addEventListener('DOMLoaded', function () { anim.goToAndStop(45, true); });
+    });
+  }
   function telaPagamentos() {
     var corpo = casca('Formas de pagamento', 'Cartões salvos para comprar mais rápido. Nenhuma informação sensível fica guardada.');
     function desenhar() {
       var cs = cartoes(), cheio = cs.length >= MAX_CARTOES;
       corpo.innerHTML = '<div class="ct-banner"><div><h2>Compre com 1 clique</h2><p>Com cartões salvos, a compra fica ainda mais rápida. Nenhuma informação sensível é armazenada.</p>' +
-        '<button type="button" class="bp" data-add' + (cheio ? ' disabled aria-describedby="ct-max"' : '') + '>Adicionar cartão</button></div><span class="ct-banner__arte" aria-hidden="true"></span></div>' +
+        '<button type="button" class="bp" data-add' + (cheio ? ' disabled aria-describedby="ct-max"' : '') + '>Adicionar cartão</button></div><span class="ct-banner__arte" aria-hidden="true" data-lottie-auto="./assets/icones/cartao-carteira.json"></span></div>' +
         '<div class="ct-aviso" id="ct-max">' + ICO.info + '<span>Você pode cadastrar até três cartões. Para adicionar outro, remova um dos cadastrados.</span></div>' +
         '<div class="ct-lista">' + (cs.length ? cs.map(function (c) {
-          return '<div class="ct-cartao"><span class="ct-bandeira" aria-hidden="true">' + esc(NOME_BANDEIRA[c.bandeira] || c.bandeira) + '</span>' +
+          return '<div class="ct-cartao">' + cartaoVisual(c) +
             '<div><p class="ct-cartao__num">' + esc(NOME_BANDEIRA[c.bandeira] || 'Cartão') + ' final ' + esc(c.final) + '</p><p class="ct-cartao__meta">' + esc(c.titular) + '. Validade ' + esc(c.validade) + '</p></div>' +
             (c.principal ? '<span class="ct-selo ct-selo--ok">Principal</span>' : '<span></span>') +
             '<div class="ct-menu"><button type="button" class="ct-menu__bt" aria-haspopup="menu" aria-expanded="false" aria-label="Opções do cartão final ' + esc(c.final) + '" data-menu="' + c.id + '">' + ICO.mais + '</button>' +
             '<div class="ct-menu__lista" role="menu" hidden>' + (c.principal ? '' : '<button type="button" role="menuitem" data-principal="' + c.id + '">Tornar principal</button>') + '<button type="button" role="menuitem" data-perigo data-excluir="' + c.id + '">Excluir cartão</button></div></div></div>';
         }).join('') : '<div class="ct-vazio"><strong>Nenhum cartão salvo.</strong><span>Adicione um cartão para comprar com 1 clique.</span></div>') + '</div>';
+      animarArte(corpo.querySelector('[data-lottie-auto]'));
     }
     function fecharMenus() { corpo.querySelectorAll('.ct-menu__lista').forEach(function (m) { m.hidden = true; }); corpo.querySelectorAll('[data-menu]').forEach(function (b) { b.setAttribute('aria-expanded', 'false'); }); }
     document.addEventListener('click', function (e) { if (!e.target.closest('.ct-menu')) fecharMenus(); });
