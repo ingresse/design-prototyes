@@ -94,7 +94,7 @@ export function LinkPagamento() {
     else {
         const g = grupoDe(s);
         const p = ped(s.pedido)!;
-        const f = g.reduce((a, x) => ({ dif: a.dif + x.val.dif, dt: a.dt + x.val.dt, tt: a.tt + x.val.tt, total: a.total + x.val.total, down: a.down || x.val.down }), { dif: 0, dt: 0, tt: 0, total: 0, down: false });
+        const f = g.reduce((a, x) => ({ dif: a.dif + x.val.dif, dt: a.dt + x.val.dt, total: a.total + x.val.total }), { dif: 0, dt: 0, total: 0 });
         corpo = (
             <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
                 <header className="flex flex-col gap-1">
@@ -144,12 +144,10 @@ export function LinkPagamento() {
                     <aside className="flex flex-col gap-4 rounded-xl bg-primary p-5 ring-1 ring-border-secondary lg:sticky lg:top-6">
                         <h2 className="text-lg font-semibold text-primary">Resumo</h2>
                         <div>
-                            <Linha rotulo="Diferença da inscrição" valor={f.dif < 0 ? `menos ${brl(-f.dif)} (não devolvida)` : brl(f.dif)} />
+                            <Linha rotulo="Diferença da inscrição" valor={brl(f.dif)} />
                             <Linha rotulo="Diferença da taxa de serviço" valor={brl(f.dt)} />
-                            <Linha rotulo="Taxa de troca" valor={brl(f.tt)} />
                             <Linha rotulo="Total a pagar" valor={brl(f.total)} total />
                         </div>
-                        {f.down && <p className="text-sm text-tertiary">A nova modalidade custa menos que o valor pago. A diferença não é devolvida, conforme o aceite registrado no atendimento.</p>}
                         <div role="timer" className="flex gap-2 rounded-lg bg-warning-primary p-3 text-sm text-warning-primary">
                             <Clock className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
                             <span>

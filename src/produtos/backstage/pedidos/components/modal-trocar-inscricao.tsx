@@ -9,6 +9,7 @@ import { ButtonUtility } from "@/components/base/buttons/button-utility";
 import { InputBase } from "@/components/base/input/input";
 import { RadioButtonBase } from "@/components/base/radio-buttons/radio-buttons";
 import { cx } from "@/utils/cx";
+import { Aviso } from "./aviso";
 import { EVENTO, brl, mod, nomeItem, nomes, norm, opcoes, r2, TAXA, vagas, type Item, type Opcao } from "../data/troca-store";
 
 interface ModalTrocarInscricaoProps {
@@ -36,6 +37,10 @@ export function ModalTrocarInscricao({ item, selecionado, onClose, onEscolher }:
     const vis = ops.filter((o) => !nq || norm(o.m.nome).includes(nq));
     const grupos = [...new Set(vis.map((o) => o.m.grupo))];
     const atual = item ? mod(item.mod) : undefined;
+    // Nenhuma opção pode ser escolhida (todas bloqueadas ou esgotadas): o modal diz por quê e oferece a saída.
+    const semOpcao = ops.length > 0 && ops.every((o) => o.off);
+    const livres = ops.filter((o) => !o.off);
+    const todasMenores = semOpcao && ops.every((o) => o.motivo || o.e?.some((x) => x.menor));
 
     return (
         <ModalOverlay isOpen={!!item} onOpenChange={(open) => !open && onClose()} isDismissable>
@@ -48,7 +53,7 @@ export function ModalTrocarInscricao({ item, selecionado, onClose, onEscolher }:
                                     <h2 id="trocar-h" className="text-lg font-semibold text-primary">
                                         Trocar inscrição
                                     </h2>
-                                    <p className="mt-1 text-sm text-tertiary">Cada opção mostra o preço do lote atual com a taxa de serviço e quanto será cobrado na troca.</p>
+                                    <p className="mt-1 text-sm text-tertiary">Cada opção mostra o preço do lote atual com a taxa de serviço e quanto será cobrado na troca. Inscrições com valor menor que o já pago não podem ser escolhidas.</p>
                                 </div>
                                 <ButtonUtility size="xs" color="tertiary" icon={XClose} tooltip="Fechar" onClick={onClose} />
                             </div>
@@ -82,7 +87,20 @@ export function ModalTrocarInscricao({ item, selecionado, onClose, onEscolher }:
 
                                 {atual.n && <p className="text-sm text-tertiary">Combo trocado por inteiro. Só aparecem combos com {atual.n} inscrições, e as regras valem para todos os atletas.</p>}
 
-                                <p className="text-sm text-tertiary">Só o lote ativo de cada inscrição pode ser escolhido. Lotes esgotados aparecem para consulta.</p>
+                                {semOpcao && item && (
+                                    <Aviso cor="warning" titulo="Nenhuma inscrição disponível para troca">
+                                        {todasMenores
+                                            ? `Todas as inscrições com vaga custam menos que o valor já pago (${brl(item.pago)}). Por enquanto, só é possível trocar por uma de valor igual ou maior.`
+                                            : "Nenhuma inscrição deste evento atende às regras para este atleta. O motivo de cada uma aparece na lista."}
+                                    </Aviso>
+                                )}
+
+                                {/* Poucas opções válidas no meio de muitas bloqueadas: diz logo quais são. */}
+                                {!semOpcao && livres.length > 0 && livres.length <= 3 && livres.length < ops.length / 2 && (
+                                    <p className="text-sm text-tertiary">
+                                        {livres.length > 1 ? "Disponíveis para troca" : "Disponível para troca"}: <b className="font-semibold text-secondary">{livres.map((o) => o.m.nome).join(", ")}</b>.
+                                    </p>
+                                )}
                                 <AriaRadioGroup aria-label="Nova inscrição" value={sel} onChange={setSel} className="flex flex-col overflow-hidden rounded-xl ring-1 ring-border-secondary">
                                     <div className="flex items-center justify-between gap-3 bg-secondary px-4 py-3">
                                         <span className="text-sm font-semibold text-primary">{EVENTO.sessao}</span>
@@ -96,6 +114,8 @@ export function ModalTrocarInscricao({ item, selecionado, onClose, onEscolher }:
                                             </div>
                                             {vis
                                                 .filter((o) => o.m.grupo === g)
+                                                // Dentro do grupo, o que pode ser escolhido vem antes do que está bloqueado.
+                                                .sort((a, b) => Number(!!a.off) - Number(!!b.off))
                                                 .map((o) => (
                                                     <Inscricao key={o.m.id} o={o} item={item} />
                                                 ))}
@@ -114,12 +134,20 @@ export function ModalTrocarInscricao({ item, selecionado, onClose, onEscolher }:
                             </div>
 
                             <div className="flex justify-end gap-3 border-t border-secondary p-4 px-6">
-                                <Button size="md" color="secondary" onClick={onClose}>
-                                    Cancelar
-                                </Button>
-                                <Button size="md" color="primary" isDisabled={!sel} onClick={() => sel && onEscolher(sel)}>
-                                    Usar esta inscrição
-                                </Button>
+                                {semOpcao ? (
+                                    <Button size="md" color="secondary" onClick={onClose}>
+                                        Fechar
+                                    </Button>
+                                ) : (
+                                    <>
+                                        <Button size="md" color="secondary" onClick={onClose}>
+                                            Cancelar
+                                        </Button>
+                                        <Button size="md" color="primary" isDisabled={!sel} onClick={() => sel && onEscolher(sel)}>
+                                            Usar esta inscrição
+                                        </Button>
+                                    </>
+                                )}
                             </div>
                         </div>
                     )}
@@ -131,8 +159,10 @@ export function ModalTrocarInscricao({ item, selecionado, onClose, onEscolher }:
 
 /** Inscrição na árvore: nome, tags e motivo do bloqueio; abaixo, todos os lotes. */
 function Inscricao({ o, item }: { o: Opcao; item: Item }) {
-    const seg = o.e?.find((x) => x.seg);
-    const outros = (o.e ?? []).filter((x) => !x.seg).map((x) => x.curto);
+    // Segmentação e valor menor explicam o bloqueio por extenso; os demais aparecem em forma curta.
+    // Um motivo em destaque: canal de origem, depois valor menor, depois segmentação.
+    const seg = o.e?.find((x) => x.canal) ?? o.e?.find((x) => x.menor) ?? o.e?.find((x) => x.seg);
+    const outros = (o.e ?? []).filter((x) => x !== seg && !x.seg && !x.menor && !x.canal).map((x) => x.curto);
     const esgotada = !!o.motivo;
     const preco = o.l.valor > item.pago ? "Mais caro" : o.l.valor < item.pago ? "Mais barato" : "Mesmo valor";
     const avisar = () => o.off && toast.error(esgotada ? "Inscrição esgotada" : "Troca não permitida", { description: esgotada ? `${o.m.nome} não tem mais vagas.` : (o.e ?? []).map((x) => x.msg).join(" ") });
@@ -169,7 +199,7 @@ function Inscricao({ o, item }: { o: Opcao; item: Item }) {
                         <span className="flex gap-1.5 text-sm text-error-primary">
                             <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
                             <span>
-                                <b className="font-semibold">Troca não permitida.</b> {seg.msg}
+                                <b className="font-semibold">Troca não permitida.</b> {seg.menor || seg.canal ? seg.curto : seg.msg}
                             </span>
                         </span>
                     )}

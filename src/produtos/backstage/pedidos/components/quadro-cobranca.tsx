@@ -11,14 +11,13 @@ interface QuadroCobrancaProps {
     rotuloTotal?: string;
 }
 
-/** Detalhe do dinheiro da troca: já pago, novo valor, diferenças, taxa de troca e total. */
+/** Detalhe do dinheiro da troca: já pago, novo valor, diferenças e total. */
 export function QuadroCobranca({ nomeAtual, pago, taxa, lote, f, titulo, rotuloTotal = "Total a cobrar na troca" }: QuadroCobrancaProps) {
     const linhas: [string, string][] = [
         [`Valor já pago, ${nomeAtual}`, `${brl(pago)} e taxa de ${brl(taxa)}`],
         [`Valor da nova inscrição, ${lote.nome}`, `${brl(lote.valor)} e taxa de ${brl(r2(lote.valor * TAXA))}`],
-        ["Diferença da inscrição", f.dif < 0 ? `menos ${brl(-f.dif)} (não devolvida)` : brl(f.dif)],
+        ["Diferença da inscrição", brl(f.dif)],
         ["Diferença da taxa de serviço", brl(f.dt)],
-        ["Taxa de troca", brl(f.tt)],
     ];
     return (
         <div className="flex motion-safe:animate-in flex-col rounded-lg bg-secondary p-4 duration-200 motion-safe:fade-in" aria-label={titulo ?? "Detalhes da cobrança"}>

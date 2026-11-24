@@ -178,7 +178,7 @@ export function Pedido() {
                 <Historico p={p} />
 
                 {ed && (
-                    <div className="sticky bottom-16 z-30 rounded-xl bg-primary px-4 py-3 shadow-lg ring-1 ring-border-secondary">
+                    <div className="sticky bottom-0 z-30 -mx-4 -mb-6 border-t border-secondary bg-primary px-4 py-3 shadow-lg md:-mx-6 md:px-6">
                         <BarraAcoes p={p} onDescartar={() => descartarRascunho(p.id)} onRevisar={revisar} />
                     </div>
                 )}
@@ -336,7 +336,7 @@ function BarraAcoes({ p, onDescartar, onRevisar }: { p: TPedido; onDescartar: ()
                         </b>
                         {tr.length ? (
                             <>
-                                , {tr.length} {tr.length > 1 ? "trocas" : "troca"} e <b className="font-semibold text-primary">{brl(total)}</b> a cobrar
+                                , {tr.length} {tr.length > 1 ? "trocas" : "troca"} e {total ? <><b className="font-semibold text-primary">{brl(total)}</b> a cobrar</> : "nada a cobrar"}
                             </>
                         ) : (
                             ", só respostas"

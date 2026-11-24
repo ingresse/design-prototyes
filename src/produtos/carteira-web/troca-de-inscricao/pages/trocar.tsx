@@ -1,17 +1,17 @@
 import { useState } from "react";
 import { Navigate, useNavigate, useParams } from "react-router";
-import { ChevronDown, File06, HelpCircle, InfoCircle } from "@untitledui/icons";
+import { BankNote01, Calendar, ChevronDown, InfoCircle, SearchLg } from "@untitledui/icons";
 import { Radio as AriaRadio, RadioGroup as AriaRadioGroup } from "react-aria-components";
 import { toast } from "sonner";
 import { Badge } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
-import { ButtonUtility } from "@/components/base/buttons/button-utility";
-import { Checkbox } from "@/components/base/checkbox/checkbox";
+import { InputBase } from "@/components/base/input/input";
 import { RadioButtonBase } from "@/components/base/radio-buttons/radio-buttons";
 import { cx } from "@/utils/cx";
-import { BarraVoltar, ControlesCarteira, Etapas, Recolhivel, TopoCompra, brlc, useTopoAoEntrar } from "../components/carteira-ui";
-import { ResumoTroca } from "../components/resumo-troca";
-import { EVENTO, W, calc, escolherNaCarteira, itemPorId, mod, nomeItem, opcoes, periodo, podeTrocar, prepararPerguntas, tocar, ultimoLote, useTroca, vagas, type Opcao } from "../data/troca-store";
+import { Aviso } from "../components/aviso";
+import { BarraVoltar, ControlesCarteira, Recolhivel, TopoCompra, brlc, useTopoAoEntrar } from "../components/carteira-ui";
+import { CartaoResumoTroca } from "../components/resumo-troca";
+import { EVENTO, W, calc, escolherNaCarteira, itemPorId, mod, nomeItem, nomes, norm, opcoes, periodo, podeTrocar, prepararPerguntas, tocar, ultimoLote, useTroca, type Opcao } from "../data/troca-store";
 
 /**
  * Escolha da nova inscrição no modelo da seleção de itens do fluxo de compra: data e horário,
@@ -24,48 +24,80 @@ export function Trocar() {
     const navigate = useNavigate();
     const x = itemPorId(itemId);
     const [fechados, setFechados] = useState<Set<string>>(new Set());
+    const [busca, setBusca] = useState("");
 
     if (!x || !podeTrocar(x.p, x.it).ok) return <Navigate to="/carteira-web/inscricoes" replace />;
     if (W.item !== itemId) {
         W.item = itemId;
         W.dest = null;
-        W.aceite = false;
     }
     const { it } = x;
     const ops = opcoes(it, "carteira");
-    const grupos = [...new Set(ops.map((o) => o.m.grupo))];
+    // Evento com muitas modalidades: busca pelo nome, como no Backstage.
+    const nq = norm(busca);
+    const vis = ops.filter((o) => !nq || norm(o.m.nome).includes(nq));
+    const grupos = [...new Set(vis.map((o) => o.m.grupo))];
     const l = W.dest ? ultimoLote(mod(W.dest)) : null;
     const f = l ? calc(it.pago, it.taxa, l.valor) : null;
     const pr = periodo();
-    const podeContinuar = !!f && !(f.down && !W.aceite);
+    const podeContinuar = !!f;
+    // Nenhuma opção pode ser escolhida: a tela diz por quê e leva de volta, em vez de deixar o Continuar travado.
+    const semOpcao = ops.length > 0 && ops.every((o) => o.off);
+    const todasMenores = semOpcao && ops.every((o) => o.motivo || o.e?.some((x) => x.menor));
     const continuar = () => {
         prepararPerguntas();
         navigate(`/carteira-web/inscricoes/${it.id}/trocar/perguntas`);
     };
-    const ajuda = (
-        <>
-            <Button size="md" color="secondary" iconTrailing={HelpCircle} onClick={() => toast.error("Fora do protótipo")} className="max-md:hidden">
-                Preciso de ajuda
-            </Button>
-            <ButtonUtility size="sm" color="secondary" icon={HelpCircle} tooltip="Preciso de ajuda" onClick={() => toast.error("Fora do protótipo")} className="md:hidden" />
-        </>
-    );
+    // Data da sessão no formato da tela de troca do AWA: dia da semana em cima, data por extenso embaixo.
+    const dia = new Date(EVENTO.ultima);
+    const semana = dia.toLocaleDateString("pt-BR", { weekday: "long" });
+    const dataLonga = `${dia.toLocaleDateString("pt-BR", { day: "numeric", month: "long", year: "numeric" })} às ${dia.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`;
+    const dataCurta = dia.toLocaleDateString("pt-BR", { day: "numeric", month: "short", year: "numeric" }).replace(".", "").replace(/ de /g, " ");
+    const destino = W.dest ? mod(W.dest) : null;
+    const voltar = () => navigate(`/carteira-web/inscricoes?item=${it.id}`);
 
     return (
         <div className="min-h-dvh bg-secondary text-primary">
             <TopoCompra />
-            <BarraVoltar grande titulo={EVENTO.nome.toUpperCase()} onVoltar={() => navigate(`/carteira-web/inscricoes?item=${it.id}`)} extra={ajuda} />
-            <div className="px-4 pt-6 pb-36 md:px-5 min-[1000px]:pb-16">
-                <div className="mx-auto grid max-w-7xl gap-6 min-[1000px]:grid-cols-[1fr_420px]">
-                    <div className="flex flex-col gap-5">
-                        <Etapas atual={1} />
+            <BarraVoltar grande titulo="Trocar inscrição" onVoltar={voltar} />
+            <div className="px-4 pt-6 pb-36 md:px-12 min-[1000px]:pb-16">
+                <div className="mx-auto grid max-w-7xl gap-6 min-[1000px]:grid-cols-[1fr_380px]">
+                    <div className="flex flex-col gap-4">
+                        {/* Mesmo cabeçalho da troca de ingresso do AWA: só a data da sessão, sem título nem etapas. */}
                         <div>
-                            <h1 className="text-display-xs font-bold">Escolha a nova inscrição</h1>
-                            {/* Uma sessão só: data e horário são informação, não escolha. */}
-                            <p className="mt-1 text-md text-tertiary">{EVENTO.sessao.replace("às 06:00", "às 06h00")}</p>
+                            <p className="text-sm text-primary first-letter:uppercase">{semana}</p>
+                            <p className="text-lg font-bold text-primary">{dataLonga}</p>
                         </div>
 
-                        <AriaRadioGroup aria-label="Nova inscrição" value={W.dest ?? null} onChange={escolherNaCarteira} className="flex flex-col gap-3">
+                        {semOpcao && (
+                            <Aviso
+                                cor="warning"
+                                titulo="Nenhuma inscrição disponível para troca"
+                                acoes={
+                                    <Button size="md" color="secondary" onClick={voltar}>
+                                        Voltar para a inscrição
+                                    </Button>
+                                }
+                            >
+                                {todasMenores
+                                    ? `Todas as inscrições com vaga custam menos que o valor pago na sua inscrição (${brlc(it.pago)}). Por enquanto, só é possível trocar por uma de valor igual ou maior.`
+                                    : "Nenhuma inscrição deste evento está disponível para você agora. O motivo de cada uma aparece na lista."}
+                            </Aviso>
+                        )}
+
+                        {ops.length > 8 && (
+                            <InputBase size="md" icon={SearchLg} aria-label="Buscar modalidade" placeholder="Buscar modalidade" value={busca} onChange={(e) => setBusca(e.target.value)} />
+                        )}
+                        {nq && !vis.length && (
+                            <div className="flex flex-col items-center gap-3 rounded-2xl border border-secondary bg-primary py-6 text-center">
+                                <p className="text-md font-semibold text-primary">Nenhuma modalidade com esse nome</p>
+                                <Button size="md" color="secondary" onClick={() => setBusca("")}>
+                                    Limpar busca
+                                </Button>
+                            </div>
+                        )}
+
+                        <AriaRadioGroup aria-label="Nova inscrição" value={W.dest ?? null} onChange={escolherNaCarteira} className="flex flex-col gap-4">
                             {grupos.map((g) => {
                                 const aberto = !fechados.has(g);
                                 return (
@@ -79,17 +111,18 @@ export function Trocar() {
                                                 else n.delete(g);
                                                 setFechados(n);
                                             }}
-                                            className="flex min-h-14 w-full items-center gap-3 px-5 py-4 text-left hover:bg-primary_hover"
+                                            className="flex min-h-16 w-full items-center gap-3 px-4 py-4 text-left hover:bg-primary_hover"
                                         >
-                                            <QrIcone />
-                                            <span className="flex-1 text-lg font-semibold">{g}</span>
-                                            <ChevronDown className={cx("size-6 text-fg-brand-secondary transition-transform duration-200", aberto && "rotate-180")} aria-hidden="true" />
+                                            <span className="flex-1 text-lg font-bold">{g}</span>
+                                            <ChevronDown className={cx("size-5 text-fg-secondary transition-transform duration-200", aberto && "rotate-180")} aria-hidden="true" />
                                         </button>
                                         <Recolhivel aberto={aberto} className="divide-y divide-secondary border-t border-secondary">
-                                            {ops
+                                            {vis
                                                 .filter((o) => o.m.grupo === g)
+                                                // Dentro do grupo, o que pode ser escolhido vem antes do que está bloqueado.
+                                                .sort((a, b) => Number(!!a.off) - Number(!!b.off))
                                                 .map((o) => (
-                                                    <LinhaOpcao key={o.m.id} o={o} pago={it.pago} taxa={it.taxa} />
+                                                    <LinhaOpcao key={o.m.id} o={o} />
                                                 ))}
                                         </Recolhivel>
                                     </section>
@@ -99,175 +132,134 @@ export function Trocar() {
                     </div>
 
                     <aside className="flex flex-col gap-4 min-[1000px]:sticky min-[1000px]:top-6 min-[1000px]:self-start">
-                        <Button size="lg" color="secondary" iconLeading={File06} onClick={() => toast.error("Fora do protótipo")}>
-                            Adicionar código ou cupom
-                        </Button>
-                        <section id="resumo-troca" className="overflow-hidden rounded-2xl border border-secondary bg-primary">
-                            <div className="border-b border-secondary px-5 py-4 font-semibold">Resumo da troca</div>
-                            <div className="flex flex-col gap-3 px-5 py-4">
-                                {f && l && W.dest ? (
-                                    <>
-                                        <p className="font-semibold">
-                                            De {nomeItem(it)} para {mod(W.dest)!.nome}
-                                        </p>
-                                        <ResumoTroca pago={it.pago} taxa={it.taxa} lote={l} f={f} />
-                                        {f.down && (
-                                            <div className="flex flex-col gap-2 rounded-xl border border-utility-yellow-200 bg-warning-primary p-3.5 text-sm text-warning-primary">
-                                                <span>
-                                                    A nova inscrição é mais barata. <b className="font-semibold">A diferença não é devolvida.</b>
-                                                </span>
-                                                <Checkbox
-                                                    isSelected={W.aceite}
-                                                    onChange={(v) => {
-                                                        W.aceite = v;
-                                                        tocar();
-                                                    }}
-                                                    label="Estou ciente e quero continuar."
-                                                />
-                                            </div>
-                                        )}
-                                        <Button size="lg" color="primary" className="w-full max-[999px]:hidden" isDisabled={!podeContinuar} onClick={continuar}>
-                                            Continuar
-                                        </Button>
-                                        <p className="text-center text-xs text-tertiary">A troca só acontece depois do pagamento.</p>
-                                    </>
-                                ) : (
-                                    <>
-                                        <div className="flex items-center justify-between gap-3 text-sm">
-                                            <span className="text-tertiary">Sua inscrição atual</span>
-                                            <span className="font-semibold">
-                                                {nomeItem(it)}, {brlc(it.pago)}
-                                            </span>
-                                        </div>
-                                        <p className="text-sm text-tertiary">Escolha a nova inscrição para ver quanto será cobrado.</p>
-                                    </>
-                                )}
-                                {pr.st === "aberto" && <p className="text-xs text-tertiary">Trocas disponíveis até {pr.fim}.</p>}
+                        <section className="overflow-hidden rounded-2xl border border-secondary bg-primary">
+                            <p className="border-b border-secondary px-4 py-4 text-sm font-semibold">Detalhes da sua inscrição atual</p>
+                            <div className="flex items-center gap-3 border-b border-secondary px-4 py-4">
+                                <div className="size-16 shrink-0 rounded-lg" style={{ background: "linear-gradient(135deg,#0ea5e9,#78350f 60%,#b45309)" }} role="img" aria-label={`Imagem do evento ${EVENTO.nome}`} />
+                                <div className="flex min-w-0 flex-col">
+                                    <span className="truncate text-md font-semibold">{EVENTO.nome}</span>
+                                    <span className="text-sm text-secondary">{nomeItem(it)}</span>
+                                    <span className="text-sm text-tertiary">{nomes(it)}</span>
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-3 px-4 py-4">
+                                <div className="flex flex-col gap-1">
+                                    <span className="text-xs text-tertiary">Data do evento</span>
+                                    <span className="flex items-center gap-1.5 text-sm font-semibold">
+                                        <Calendar className="size-4" aria-hidden="true" />
+                                        {dataCurta}
+                                    </span>
+                                </div>
+                                <div className="flex flex-col gap-1">
+                                    <span className="text-xs text-tertiary">Valor da inscrição</span>
+                                    <span className="flex items-center gap-1.5 text-sm font-semibold">
+                                        <BankNote01 className="size-4" aria-hidden="true" />
+                                        {brlc(it.pago)}
+                                    </span>
+                                </div>
                             </div>
                         </section>
-                        <div className="aspect-video w-full rounded-2xl max-[999px]:hidden" style={{ background: "linear-gradient(135deg,#0ea5e9,#78350f 60%,#b45309)" }} role="img" aria-label={`Banner do evento ${EVENTO.nome}`} />
+
+                        {f && l && destino ? (
+                            <CartaoResumoTroca
+                                pago={it.pago}
+                                nomeDestino={destino.nome}
+                                lote={l}
+                                f={f}
+                                onRemover={() => {
+                                    W.dest = null;
+                                    tocar();
+                                }}
+                                acao={
+                                    <Button size="lg" color="primary" className="max-[999px]:hidden" isDisabled={!podeContinuar} onClick={continuar}>
+                                        Continuar
+                                    </Button>
+                                }
+                                nota={f.total ? "A troca só acontece depois do pagamento." : "Sem valor a pagar: você confirma a troca depois das perguntas."}
+                                rodape={pr.st === "aberto" && <p className="border-t border-secondary px-4 py-3 text-xs text-tertiary">Trocas disponíveis até {pr.fim}.</p>}
+                            />
+                        ) : (
+                            <section className="overflow-hidden rounded-2xl border border-secondary bg-primary">
+                                <p className="border-b border-secondary px-4 py-4 text-sm font-semibold">Resumo da troca</p>
+                                <p className="px-4 py-4 text-sm text-tertiary">Escolha a nova inscrição ao lado para ver os valores.</p>
+                                {pr.st === "aberto" && <p className="border-t border-secondary px-4 py-3 text-xs text-tertiary">Trocas disponíveis até {pr.fim}.</p>}
+                            </section>
+                        )}
                     </aside>
                 </div>
             </div>
 
-            {/* Celular: total e Continuar ao alcance do polegar, como no fluxo de compra */}
-            <div className="fixed inset-x-0 bottom-0 z-40 flex items-center gap-3 border-t border-secondary bg-primary px-4 py-3 min-[1000px]:hidden">
-                <div className="min-w-0 flex-1">
-                    {f ? (
-                        <>
-                            <b className="block text-lg font-semibold">{brlc(f.total)}</b>
-                            <button type="button" className="text-sm text-tertiary underline" onClick={() => document.getElementById("resumo-troca")?.scrollIntoView({ behavior: "smooth", block: "start" })}>
-                                Ver detalhes da cobrança
-                            </button>
-                        </>
-                    ) : (
-                        <span className="text-sm text-tertiary">Escolha a nova inscrição</span>
-                    )}
+            {/* Celular: total e Continuar ao alcance do polegar, como no fluxo de compra. Sem opção válida, a saída fica no aviso. */}
+            {!semOpcao && (
+                <div className="fixed inset-x-0 bottom-0 z-40 flex items-center gap-3 border-t border-secondary bg-primary px-4 py-3 min-[1000px]:hidden">
+                    <div className="min-w-0 flex-1">
+                        {f ? (
+                            <>
+                                <b className="block text-lg font-semibold">{brlc(f.total)}</b>
+                                <button type="button" className="text-sm text-tertiary underline" onClick={() => document.getElementById("resumo-troca")?.scrollIntoView({ behavior: "smooth", block: "start" })}>
+                                    Ver detalhes da cobrança
+                                </button>
+                            </>
+                        ) : (
+                            <span className="text-sm text-tertiary">Escolha a nova inscrição</span>
+                        )}
+                    </div>
+                    <Button size="lg" color="primary" isDisabled={!podeContinuar} onClick={continuar}>
+                        Continuar
+                    </Button>
                 </div>
-                <Button size="lg" color="primary" isDisabled={!podeContinuar} onClick={continuar}>
-                    Continuar
-                </Button>
-            </div>
+            )}
             <ControlesCarteira />
         </div>
     );
 }
 
-/** Uma inscrição dentro do grupo: nome, lote ativo, preço, valor a cobrar e seleção; Detalhes mostra os lotes. */
-function LinhaOpcao({ o, pago, taxa }: { o: Opcao; pago: number; taxa: number }) {
-    const [detalhes, setDetalhes] = useState(false);
+/** Uma inscrição dentro do grupo, como na troca de ingresso do AWA: nome, lote e preço, com a seleção à direita. */
+function LinhaOpcao({ o }: { o: Opcao }) {
     const esgotada = !!o.motivo;
-    const motivo = esgotada ? "" : (o.e ?? []).map((x) => x.msg).join(" ");
-    const preco = o.l.valor > pago ? "Mais caro" : o.l.valor < pago ? "Mais barato" : "Mesmo valor";
-    const f = calc(pago, taxa, o.l.valor);
+    // Um motivo por opção: valor menor primeiro, depois segmentação e os demais. O toast traz o texto completo.
+    const principal = o.e?.find((x) => x.menor) ?? o.e?.find((x) => x.seg) ?? o.e?.[0];
+    const motivo = esgotada || !principal ? "" : principal.menor ? principal.curto : principal.msg;
+    const motivoCompleto = esgotada || !principal ? "" : principal.msg;
 
     return (
-        <div>
-            <div onClick={() => o.off && toast.error(esgotada ? "Inscrição esgotada" : "Troca não permitida", { description: esgotada ? `${o.m.nome} não tem mais vagas.` : motivo })}>
-                <AriaRadio
-                    value={o.m.id}
-                    isDisabled={o.off}
-                    className={({ isSelected, isDisabled, isFocusVisible }) =>
-                        cx(
-                            "relative flex cursor-pointer items-center gap-4 px-5 py-4 transition duration-100 ease-linear hover:bg-primary_hover",
-                            isSelected && "bg-brand-primary_alt hover:bg-brand-primary_alt",
-                            isFocusVisible && "outline-2 -outline-offset-2 outline-focus-ring",
-                            isDisabled && "cursor-not-allowed hover:bg-transparent",
-                        )
-                    }
-                >
-                    {({ isSelected, isDisabled, isFocusVisible }) => (
-                        <>
-                            <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                                <span className={cx("flex flex-wrap items-center gap-1.5 text-lg font-semibold", isDisabled && "text-tertiary")}>
-                                    {o.m.nome}
-                                    {esgotada ? (
-                                        <Badge size="sm" type="color" color="gray">
-                                            Esgotado
-                                        </Badge>
-                                    ) : (
-                                        !o.off && (
-                                            <Badge size="sm" type="color" color={preco === "Mais caro" ? "warning" : preco === "Mais barato" ? "success" : "gray"}>
-                                                {preco}
-                                            </Badge>
-                                        )
-                                    )}
-                                </span>
-                                <span className="text-md text-tertiary">{esgotada ? "Todos os lotes esgotados" : o.l.nome}</span>
-                                <span className={cx("text-md", isDisabled ? "text-tertiary" : "text-primary")}>
-                                    <b className="font-semibold">{brlc(o.l.valor)}</b>
-                                    {!o.off && <span className="text-tertiary">{f.total ? `, ${brlc(f.total)} a cobrar na troca` : ", sem cobrança na troca"}</span>}
-                                </span>
-                                {motivo && (
-                                    <span className="mt-1 flex gap-1.5 text-sm text-tertiary">
-                                        <InfoCircle className="mt-0.5 size-4 shrink-0 text-fg-quaternary" aria-hidden="true" />
-                                        {motivo}
-                                    </span>
+        <div onClick={() => o.off && toast.error(esgotada ? "Inscrição esgotada" : "Troca não permitida", { description: esgotada ? `${o.m.nome} não tem mais vagas.` : motivoCompleto })}>
+            <AriaRadio
+                value={o.m.id}
+                isDisabled={o.off}
+                className={({ isSelected, isDisabled, isFocusVisible }) =>
+                    cx(
+                        "relative flex cursor-pointer items-center gap-4 px-4 py-4 transition duration-100 ease-linear hover:bg-primary_hover",
+                        isSelected && "bg-secondary hover:bg-secondary",
+                        isFocusVisible && "outline-2 -outline-offset-2 outline-focus-ring",
+                        isDisabled && "cursor-not-allowed hover:bg-transparent",
+                    )
+                }
+            >
+                {({ isSelected, isDisabled, isFocusVisible }) => (
+                    <>
+                        <span className="flex min-w-0 flex-1 flex-col gap-1">
+                            <span className={cx("flex flex-wrap items-center gap-1.5 text-md font-bold", isDisabled && "text-tertiary")}>
+                                {o.m.nome}
+                                {esgotada && (
+                                    <Badge size="sm" type="color" color="gray">
+                                        Esgotado
+                                    </Badge>
                                 )}
                             </span>
-                            <RadioButtonBase size="md" isSelected={isSelected} isDisabled={isDisabled} isFocusVisible={isFocusVisible} />
-                        </>
-                    )}
-                </AriaRadio>
-            </div>
-            <button
-                type="button"
-                aria-expanded={detalhes}
-                onClick={() => setDetalhes((d) => !d)}
-                className="flex min-h-11 w-full items-center justify-between px-5 py-2 text-sm text-secondary hover:bg-primary_hover"
-            >
-                Detalhes
-                <ChevronDown className={cx("size-5 text-fg-brand-secondary transition-transform duration-200", detalhes && "rotate-180")} aria-hidden="true" />
-            </button>
-            <Recolhivel aberto={detalhes} className="px-5 pb-3">
-                <ul>
-                    {o.m.lotes.map((l) => {
-                        const ativo = !esgotada && l.id === o.l.id;
-                        const estado = ativo ? "Lote ativo" : vagas(l) <= 0 ? "Esgotado" : !l.ativo ? "Encerrado" : "Indisponível para troca";
-                        return (
-                            <li key={l.id} className="flex items-center justify-between gap-3 py-1.5 text-sm">
-                                <span className={cx("flex items-center gap-1.5", ativo ? "text-primary" : "text-tertiary")}>
-                                    {l.nome}
-                                    <Badge size="sm" type="color" color={ativo ? "success" : "gray"}>
-                                        {estado}
-                                    </Badge>
+                            <span className="text-xs text-tertiary">{esgotada ? "Todos os lotes esgotados" : o.l.nome}</span>
+                            <span className={cx("text-sm font-bold", isDisabled ? "text-tertiary" : "text-primary")}>{brlc(o.l.valor)}</span>
+                            {motivo && (
+                                <span className="flex gap-1.5 text-sm text-tertiary">
+                                    <InfoCircle className="mt-0.5 size-4 shrink-0 text-fg-quaternary" aria-hidden="true" />
+                                    {motivo}
                                 </span>
-                                <span className={ativo ? "font-semibold text-primary" : "text-tertiary"}>{brlc(l.valor)}</span>
-                            </li>
-                        );
-                    })}
-                    <li className="pt-1.5 text-xs text-tertiary">Só o lote ativo pode ser escolhido na troca.</li>
-                </ul>
-            </Recolhivel>
+                            )}
+                        </span>
+                        <RadioButtonBase size="md" isSelected={isSelected} isDisabled={isDisabled} isFocusVisible={isFocusVisible} />
+                    </>
+                )}
+            </AriaRadio>
         </div>
     );
 }
-
-const QrIcone = () => (
-    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true" className="shrink-0 text-fg-brand-secondary">
-        <rect x="3" y="3" width="7" height="7" rx="1" />
-        <rect x="14" y="3" width="7" height="7" rx="1" />
-        <rect x="3" y="14" width="7" height="7" rx="1" />
-        <path d="M14 14h3v3h-3zM20 14v.01M14 20h.01M17 20h4v-3" />
-    </svg>
-);

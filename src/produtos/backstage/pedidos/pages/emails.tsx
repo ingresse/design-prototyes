@@ -248,11 +248,9 @@ function Email({ tipo, s, para, item: it }: { tipo: string; s: Solicitacao; para
                 {atual}
                 {nova}
                 <div style={h2}>Valores</div>
-                <Linha a="Diferença da inscrição" b={f.dif < 0 ? `menos ${brl(-f.dif)} (não devolvida)` : brl(f.dif)} />
+                <Linha a="Diferença da inscrição" b={brl(f.dif)} />
                 <Linha a="Diferença da taxa de serviço" b={brl(f.dt)} />
-                <Linha a="Taxa de troca" b={brl(f.tt)} />
                 <Linha a="Total a pagar" b={brl(f.total)} forte />
-                {f.down && <p style={{ ...pTxt, marginTop: 12 }}>A nova inscrição custa menos que a atual. A diferença não é devolvida, como combinado no atendimento.</p>}
                 <Botao>Pagar {brl(f.total)}</Botao>
                 <p style={{ ...pTxt, fontSize: 14, textAlign: "center", color: C.claro }}>
                     O link vale até {ate(s.expira)}. Quando você abrir, a vaga na {pa.nome} fica reservada por 15 minutos para concluir o pagamento.
@@ -286,7 +284,7 @@ function Email({ tipo, s, para, item: it }: { tipo: string; s: Solicitacao; para
                 {respostas}
                 <div style={h2}>Pagamento da troca</div>
                 <Linha a="Valor pago na troca" b={brl(f.total)} forte />
-                {!f.total && f.nd > 0 && <p style={{ ...pTxt, marginTop: 12 }}>Esta troca não teve cobrança. A diferença de {brl(f.nd)} não é devolvida, como combinado.</p>}
+                {!f.total && <p style={{ ...pTxt, marginTop: 12 }}>Esta troca não teve cobrança: a nova inscrição tem o mesmo valor da anterior.</p>}
                 <p style={{ ...pTxt, marginTop: 16 }}>O QR Code da inscrição anterior não vale mais. Use o novo, que já está na carteira.</p>
             </>,
         ],

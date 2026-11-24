@@ -19,8 +19,6 @@ import { useState, useSyncExternalStore } from "react";
 
 /** Taxa de serviço sobre o valor da inscrição. */
 export const TAXA = 0.1;
-/** Taxa de troca: R$ 15 do produtor e R$ 5 da Ingresse. */
-export const TAXA_TROCA = { total: 20, produtor: 15, ingresse: 5 };
 /** Sessão de pagamento: a vaga fica reservada por 15 minutos depois que o link é aberto. */
 export const SESSAO_MIN = 15;
 /** Validade do link, limitada à última sessão do evento. */
@@ -170,7 +168,18 @@ export interface Modalidade {
     facial?: boolean;
     /** Combo: número de inscrições. */
     n?: number;
+    /**
+     * Canais de venda em que a modalidade está numa abertura de vendas: "aberta" (vigente agora) ou
+     * "encerrada". Canal ausente = não vendida nele. Sem o campo, vale CANAIS_PADRAO.
+     */
+    canais?: Partial<Record<CanalVenda, "aberta" | "encerrada">>;
 }
+
+/** Canais de venda do AWA (Abertura de vendas). A origem do pedido é um deles. */
+export type CanalVenda = "site" | "pdv" | "totem" | "grupo" | "bilheteria";
+export const NOME_CANAL: Record<CanalVenda, string> = { site: "Site", pdv: "PDV", totem: "Totem", grupo: "Vendas em grupo", bilheteria: "Bilheteria Online" };
+const CANAIS_PADRAO: Partial<Record<CanalVenda, "aberta" | "encerrada">> = { site: "aberta", pdv: "aberta", totem: "aberta", bilheteria: "aberta" };
+export const canaisDe = (m: Modalidade) => m.canais ?? CANAIS_PADRAO;
 export type Respostas = Record<string, string>;
 export interface Item {
     id: string;
@@ -196,7 +205,7 @@ export interface Pedido {
     pagamento: string;
     itens: Item[];
     org: "pedras" | "outra";
-    origem: "site" | "grupo" | "bilheteria" | "cortesia";
+    origem: CanalVenda | "cortesia";
     canal: string;
     grupo?: string;
     cupom?: string;
@@ -206,11 +215,7 @@ export interface Pedido {
 export interface Valores {
     dif: number;
     dt: number;
-    tt: number;
     total: number;
-    down: boolean;
-    /** Diferença não devolvida quando a nova inscrição é mais barata. */
-    nd: number;
 }
 export type SolStatus = "AGUARDANDO" | "PROCESSANDO" | "FALHA" | "CONCLUIDA" | "EXPIRADA" | "CANCELADA" | "REPROVADA";
 export type MotivoTipo = "expirou" | "vagas" | "pergunta" | "atendimento" | "comprador" | "reprovada";
@@ -307,18 +312,19 @@ function seed(): Estado {
     const Q8 = ["camiseta", "contatoNome", "emergencia", "categoria", "cidade", "equipe", "saude", "comoSoube"];
     const mods: Modalidade[] = [
         { id: "m5", ativo: true, nome: "5 km", grupo: "Corrida", perguntas: Q8, lotes: [L("l1", "Lote 1", 100, 300, 300, false), L("l2", "Lote 2", 110, 400, 212, true)] },
-        { id: "m10", ativo: true, nome: "10 km", grupo: "Corrida", sync: true, perguntas: Q8, lotes: [L("l1", "Lote 1", 140, 300, 180, true)] },
+        { id: "m10", ativo: true, nome: "10 km", grupo: "Corrida", sync: true, canais: { site: "aberta", pdv: "aberta", totem: "aberta", bilheteria: "aberta", grupo: "aberta" }, perguntas: Q8, lotes: [L("l1", "Lote 1", 140, 300, 180, true)] },
         {
             id: "m21",
             ativo: true,
             nome: "21 km",
             grupo: "Corrida",
+            canais: { site: "aberta", pdv: "aberta", totem: "aberta", bilheteria: "aberta", grupo: "aberta" },
             sync: true,
             perguntas: ["camiseta", "contatoNome", "emergencia", "categoria", "cidade", "equipe", "saude", "tempo"],
             lotes: [L("l1", "Lote 1", 160, 200, 200, false), L("l2", "Lote 2", 170, 250, 250, false), L("l3", "Lote 3", 180, 300, 12, true)],
         },
         { id: "mpet", ativo: true, nome: "Corrida com Pet 5 km", grupo: "Corrida", perguntas: Q8, lotes: [L("l1", "Lote 1", 90, 150, 150, false), L("l2", "Lote 2", 100, 100, 100, true)] },
-        { id: "m60", ativo: true, nome: "5 km 60+", grupo: "Corrida", seg: { tipo: "idade", min: 60 }, perguntas: Q8, lotes: [L("l1", "Lote 1", 55, 100, 31, true)] },
+        { id: "m60", ativo: true, nome: "5 km 60+", grupo: "Corrida", seg: { tipo: "idade", min: 60 }, perguntas: Q8, lotes: [L("l1", "Lote 1", 110, 100, 31, true)] },
         {
             id: "mcol",
             ativo: true,
@@ -326,7 +332,7 @@ function seed(): Estado {
             grupo: "Corrida",
             seg: { tipo: "cpf", lista: "Colaboradores Pedras", cpfs: ["296.***.***-83", "418.***.***-05"] },
             perguntas: Q8,
-            lotes: [L("l1", "Lote 1", 60, 80, 12, true)],
+            lotes: [L("l1", "Lote 1", 110, 80, 12, true)],
         },
         {
             id: "m42",
@@ -338,7 +344,7 @@ function seed(): Estado {
             perguntas: ["camiseta", "contatoNome", "emergencia", "categoria", "cidade", "saude", "tempo", "pelotao"],
             lotes: [L("l1", "Lote 1", 300, 50, 41, true)],
         },
-        { id: "m3", ativo: true, nome: "Caminhada 3 km", grupo: "Corrida", perguntas: ["contatoNome", "emergencia", "categoria", "cidade", "saude", "comoSoube"], lotes: [L("l1", "Lote 1", 80, 300, 90, true)] },
+        { id: "m3", ativo: true, nome: "Caminhada 3 km", grupo: "Corrida", canais: { site: "encerrada", pdv: "aberta", totem: "aberta", bilheteria: "aberta" }, perguntas: ["contatoNome", "emergencia", "categoria", "cidade", "saude", "comoSoube"], lotes: [L("l1", "Lote 1", 80, 300, 90, true)] },
         { id: "kids", ativo: false, nome: "Corrida Kids", grupo: "Corrida", perguntas: ["contatoNome", "emergencia"], lotes: [L("l1", "Lote 1", 60, 200, 15, true)] },
         { id: "cd5", ativo: true, nome: "Combo Dupla 5 km", grupo: "Combos", n: 2, perguntas: ["camiseta", "contatoNome", "emergencia", "categoria", "cidade", "saude"], lotes: [L("l1", "Lote 1", 200, 100, 40, true)] },
         { id: "cd10", ativo: true, nome: "Combo Dupla 10 km", grupo: "Combos", n: 2, perguntas: ["camiseta", "contatoNome", "emergencia", "categoria", "cidade", "saude"], lotes: [L("l1", "Lote 1", 260, 100, 22, true)] },
@@ -501,11 +507,11 @@ function seed(): Estado {
             ],
             "48285": [
                 ["22/10/2026 19:02", "Pedido pago via Pix, no site."],
-                [fmt(now - 36e5), "Troca TR-0999 criada por Atendimento: de 5 km para 10 km, total de R$ 64. Link enviado para Rui Tavares."],
+                [fmt(now - 36e5), "Troca TR-0999 criada por Atendimento: de 5 km para 10 km, total de R$ 44. Link enviado para Rui Tavares."],
             ],
             "48213": [
                 ["12/09/2026 14:32", "Pedido pago via Pix, no site."],
-                [fmt(now - 2 * 864e5), "Troca TR-0997 criada por Atendimento: de 5 km para 10 km, total de R$ 64. Link enviado para Ana Souza."],
+                [fmt(now - 2 * 864e5), "Troca TR-0997 criada por Atendimento: de 5 km para 10 km, total de R$ 44. Link enviado para Ana Souza."],
                 [fmt(now - 864e5), "Troca TR-0997 expirou sem pagamento. Nada foi alterado."],
             ],
             "48335": [["06/11/2026 07:55", "Pedido pago via Pix. A 42 km Elite foi liberada pelo código de passkey ELITE-7Q4K."]],
@@ -517,7 +523,7 @@ function seed(): Estado {
 /*  Persistência e assinatura                                          */
 /* ------------------------------------------------------------------ */
 
-const STORAGE_KEY = "backstage-troca-de-inscricao.v2";
+const STORAGE_KEY = "backstage-troca-de-inscricao.v5";
 let S: Estado = load();
 let versao = 0;
 const listeners = new Set<() => void>();
@@ -624,12 +630,14 @@ export const valorPed = (p: Pedido) => p.itens.filter((i) => !i.veioDe).reduce((
 export const taxaPed = (p: Pedido) => p.itens.filter((i) => !i.veioDe).reduce((a, i) => a + i.taxa, 0);
 export const camisetaOk = (v: string | undefined) => !!v && (S.camiseta[v] ?? 0) > 0;
 
-/** Valores da troca: diferença da inscrição, diferença da taxa de serviço e taxa de troca. */
+/**
+ * Valores da troca: diferença da inscrição e diferença da taxa de serviço.
+ * No MVP não há taxa de troca, e o destino nunca custa menos que o valor pago (RN-23).
+ */
 export function calc(pago: number, taxa: number, novo: number): Valores {
     const dif = r2(novo - pago);
     const dt = Math.max(0, r2(novo * TAXA - taxa));
-    const bruto = r2(dif + dt + TAXA_TROCA.total);
-    return { dif, dt, tt: TAXA_TROCA.total, total: Math.max(0, bruto), down: dif < 0, nd: bruto < 0 ? -bruto : 0 };
+    return { dif, dt, total: Math.max(0, r2(dif + dt)) };
 }
 
 const ABERTAS: SolStatus[] = ["AGUARDANDO", "PROCESSANDO", "FALHA"];
@@ -665,6 +673,10 @@ export interface Bloqueio {
     curto: string;
     seg?: boolean;
     facial?: boolean;
+    /** Valor do destino menor que o valor pago no item atual. */
+    menor?: boolean;
+    /** Destino não vendido no canal de origem do pedido. */
+    canal?: boolean;
 }
 /** RN-11: regras do destino validadas em cada atleta inscrito, com a configuração vigente. */
 export function elegib(it: Item, m: Modalidade): Bloqueio[] {
@@ -704,12 +716,35 @@ export interface Opcao {
 export function opcoes(it: Item, canal: "backstage" | "carteira" = "backstage"): Opcao[] {
     const atual = mod(it.mod)!;
     const n = atual.n ?? 1;
+    // RN-42: só troca por item do mesmo canal de origem do pedido. Na carteira, com abertura vigente nesse canal;
+    // no Backstage, basta a modalidade estar configurada no canal (mesmo com a abertura encerrada).
+    const origem = S.pedidos.find((p) => p.itens.some((x) => x.id === it.id))?.origem;
+    const noCanal = (m: Modalidade) => (origem && origem !== "cortesia" ? canaisDe(m)[origem] : "aberta");
     return S.mods
         .filter((m) => m.ativo && m.id !== atual.id && (m.n ?? 1) === n && !(canal === "carteira" && m.passkey))
+        .filter((m) => canal !== "carteira" || noCanal(m) === "aberta")
         .map((m) => {
             const l = ultimoLote(m);
             if (!l) return { m, l: m.lotes[m.lotes.length - 1], off: true, motivo: canal === "carteira" ? "Esgotado" : "Esgotada" };
             const e = elegib(it, m);
+            if (!noCanal(m) && origem && origem !== "cortesia")
+                e.unshift({
+                    cod: "RN-42",
+                    canal: true,
+                    curto: `Não vendida no canal ${NOME_CANAL[origem]}`,
+                    msg: `Esta inscrição não é vendida no canal ${NOME_CANAL[origem]}, de onde veio o pedido. Só é possível trocar por uma inscrição do mesmo canal.`,
+                });
+            // RN-23: no MVP, a troca não pode ir para uma inscrição que custa menos que o valor pago.
+            if (l.valor < it.pago)
+                e.unshift({
+                    cod: "V-38",
+                    menor: true,
+                    curto: `Custa menos que o valor pago (${brl(it.pago)})`,
+                    msg:
+                        canal === "carteira"
+                            ? `Não disponível para troca. Custa menos que o valor pago na sua inscrição (${brl(it.pago)}). Escolha uma inscrição de valor igual ou maior.`
+                            : `Esta inscrição custa ${brl(l.valor)}, menos que o valor já pago (${brl(it.pago)}). Por enquanto, só é possível trocar por uma de valor igual ou maior.`,
+                });
             return { m, l, f: calc(it.pago, it.taxa, l.valor), e, off: e.length > 0 };
         });
 }
@@ -1072,7 +1107,6 @@ export function confirmar(p: Pedido): { tipo: "link" | "concluida" | "salvo" | "
             resp: d.itens[it.id].resp.map((r) => ({ ...r })),
             val: f,
             chamado: d.chamado.trim(),
-            aceite: f.down,
             canal: "Backstage",
             autor: perfil().nome,
             criada: Date.now(),
@@ -1083,7 +1117,7 @@ export function confirmar(p: Pedido): { tipo: "link" | "concluida" | "salvo" | "
         S.sols.push(s);
         hist(
             p.id,
-            `Troca ${s.id} criada por ${s.autor}: de ${nomeItem(it)} para ${m.dest!.nome} (${l.nome}), total de ${brl(f.total)}${s.chamado ? `, chamado ${s.chamado}` : ""}${f.down ? ", aceite de não devolução registrado" : ""}.`,
+            `Troca ${s.id} criada por ${s.autor}: de ${nomeItem(it)} para ${m.dest!.nome} (${l.nome}), total de ${brl(f.total)}${s.chamado ? `, chamado ${s.chamado}` : ""}.`,
         );
         if (!f.total) {
             efetivar(s);
@@ -1302,7 +1336,6 @@ export function criarTrocaNaCarteira(): Solicitacao {
         lote: l.id,
         resp: W.resp.map((r) => ({ ...r })),
         val: f,
-        aceite: f.down,
         canal: "Carteira",
         autor: pessoa(usuario()).nome,
         criada: Date.now(),

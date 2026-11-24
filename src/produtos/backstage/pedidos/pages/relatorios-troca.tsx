@@ -200,8 +200,8 @@ export function BorderoTroca() {
                 <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                     <Kpi rotulo="Itens vigentes" valor={String(vig.length)} apoio="Depois das trocas" />
                     <Kpi rotulo="Faturado pelos lotes atuais" valor={brl(vig.reduce((a, l) => a + l.it.pago, 0))} />
-                    <Kpi rotulo="Trocas" valor={String(tc.length)} apoio={`Diferenças de ${brl(soma((s) => Math.max(0, s.val.dif)))} e taxa de serviço de ${brl(soma((s) => s.val.dt))}`} />
-                    <Kpi rotulo="Taxa de troca" valor={brl(soma((s) => s.val.tt))} apoio={`Não devolvido, para a Ingresse: ${brl(soma((s) => s.val.nd ?? 0))}`} />
+                    <Kpi rotulo="Trocas" valor={String(tc.length)} apoio="Trocas concluídas" />
+                    <Kpi rotulo="Cobrado nas trocas" valor={brl(soma((s) => s.val.total))} apoio={`Diferença da inscrição de ${brl(soma((s) => s.val.dif))} e taxa de serviço de ${brl(soma((s) => s.val.dt))}`} />
                 </div>
                 <section className="overflow-x-auto rounded-xl bg-primary ring-1 ring-border-secondary">
                     <table className="w-full border-collapse whitespace-nowrap">

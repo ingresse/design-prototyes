@@ -5,7 +5,6 @@ import { toast } from "sonner";
 import { Badge, BadgeWithDot } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
-import { Checkbox } from "@/components/base/checkbox/checkbox";
 import { Input } from "@/components/base/input/input";
 import { BackstageLayout } from "../../components/Backstage";
 import { Aviso } from "../components/aviso";
@@ -34,18 +33,11 @@ export function RevisarAlteracoes() {
             return { it, l, f: calc(it.pago, it.taxa, l.valor) };
         });
     const total = vals.reduce((a, v) => a + v.f.total, 0);
-    const maisBarata = vals.some((v) => v.f.down);
     const soResp = alt.some((a) => !a.m.dest);
     const c = pessoa(p.comprador);
     const botao = total ? "Gerar link de pagamento" : vals.length ? "Confirmar troca" : "Salvar alterações";
 
     const onConfirmar = () => {
-        if (maisBarata && !D.aceite) {
-            D.erroAceite = true;
-            tocar();
-            document.getElementById("aceite")?.scrollIntoView({ block: "center", behavior: "smooth" });
-            return;
-        }
         const r = confirmar(p);
         if (r.tipo === "esgotou") {
             toast.error("Acabaram as vagas", { description: `${r.destino} esgotou agora. Escolha outra.` });
@@ -65,7 +57,7 @@ export function RevisarAlteracoes() {
                     <ButtonUtility size="sm" color="secondary" icon={ArrowLeft} tooltip="Voltar e editar" onClick={() => navigate(`/backstage/pedidos/${p.id}`)} />
                     <div className="flex flex-col gap-1">
                         <h1 className="text-display-xs font-bold text-primary">Revisar alterações</h1>
-                        <p className="text-md text-tertiary">Confira antes de confirmar. Nada muda até o pagamento.</p>
+                        <p className="text-md text-tertiary">{total ? "Confira antes de confirmar. Nada muda até o pagamento." : "Confira antes de confirmar."}</p>
                     </div>
                 </header>
 
@@ -129,27 +121,11 @@ export function RevisarAlteracoes() {
 
                 <section className="flex flex-col gap-5 rounded-xl bg-primary p-5 ring-1 ring-border-secondary md:p-6">
                     <h2 className="text-lg font-semibold text-primary">{total ? "Pagamento" : "Confirmação"}</h2>
-                    {vals.length ? (
-                        <Linha rotulo={`Total a cobrar${vals.length > 1 ? ` (${vals.length} trocas)` : ""}`} valor={brl(total)} total />
-                    ) : (
-                        <p className="text-sm text-tertiary">Só respostas foram alteradas. Não há nada a cobrar, e elas são salvas na hora.</p>
-                    )}
+                    {/* Total zero: o quadro de valores da troca já mostra R$ 0; aqui fica só o que acontece ao confirmar. */}
+                    {vals.length > 0 && total > 0 && <Linha rotulo={`Total a cobrar${vals.length > 1 ? ` (${vals.length} trocas)` : ""}`} valor={brl(total)} total />}
+                    {!vals.length && <p className="text-sm text-tertiary">Só respostas foram alteradas. Não há nada a cobrar, e elas são salvas na hora.</p>}
                     {total > 0 && vals.some((v) => v.f.total === 0) && <p className="text-sm text-tertiary">A troca sem custo é feita assim que você confirmar. As outras esperam o pagamento.</p>}
-                    {maisBarata && (
-                        <div id="aceite" className="flex flex-col gap-1.5">
-                            <Checkbox
-                                isSelected={D.aceite}
-                                isInvalid={D.erroAceite}
-                                onChange={(v) => {
-                                    D.aceite = v;
-                                    D.erroAceite = false;
-                                    tocar();
-                                }}
-                                label={`${c.nome} está ciente de que a diferença da inscrição mais barata não é devolvida.`}
-                            />
-                            {D.erroAceite && <p className="text-sm text-error-primary">Confirme para continuar.</p>}
-                        </div>
-                    )}
+                    {!total && vals.length > 0 && <p className="text-sm text-tertiary">Sem valor a pagar: a troca é concluída assim que você confirmar.</p>}
                     {total > 0 && (
                         <Aviso titulo={`Um link de pagamento para ${c.nome}`}>
                             {c.email}. O link vale 24 horas, com Pix ou cartão. Ao abrir o link, a vaga fica reservada por 15 minutos para o pagamento. As trocas só acontecem depois do pagamento.
