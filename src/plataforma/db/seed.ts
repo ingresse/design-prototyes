@@ -1,5 +1,6 @@
 import { EVENTOS_SITE_LEGADO as EVENTOS_SITE } from "./eventos-site";
 import { EVENTOS_INGRESSE, HISTORICO_INGRESSE } from "./eventos-ingresse";
+import { PESSOA_DO_SITE, pedidosDeExemplo } from "./pedidos-exemplo";
 import { CATEGORIAS } from "../categorias-catalogo";
 import type { Evento, EventoStatus, Grupo, HistoricoVendas, Organizacao, Sessao, Usuario } from "../modelo";
 import { idDaOrganizacao, siglaDe, slugificar } from "../regras";
@@ -13,7 +14,7 @@ import { idDaOrganizacao, siglaDe, slugificar } from "../regras";
 /*  existem, então nada criado por alguém é sobrescrito.               */
 /* ------------------------------------------------------------------ */
 
-export const SEED_VERSAO = "2026-11-24.3";
+export const SEED_VERSAO = "2026-11-24.5";
 
 const CRIADO = "2026-11-07T12:00:00.000Z";
 
@@ -256,7 +257,10 @@ function historicoDe(ev: Evento, p: PerfilVendas): HistoricoVendas {
 
 const historico: HistoricoVendas[] = [...eventosBackstage.filter((e) => PERFIS[e.id]).map((e) => historicoDe(e, PERFIS[e.id])), ...HISTORICO_INGRESSE];
 
-const usuarios: Usuario[] = [{ id: "u_demo", nome: "Victor Pires da Costa", email: "victor.demo@exemplo.com" }];
+const usuarios: Usuario[] = [{ id: "u_demo", nome: "Victor Pires da Costa", email: "victor.demo@exemplo.com" }, PESSOA_DO_SITE];
+
+/** Compras da pessoa do novo site (pedidos-exemplo.ts): área logada do site e carteiras. */
+const exemplo = pedidosDeExemplo(EVENTOS_INGRESSE);
 
 /** Uma organização por produtora dos eventos da seed (o primeiro nome visto vence). */
 const organizacoes: Organizacao[] = [
@@ -271,8 +275,8 @@ export const SEED = {
     organizacoes,
     // Desde 24/11/2026: eventos reais do ingresse.com com datas e condições de compra variadas (eventos-ingresse.ts).
     eventos: [...eventosBackstage, ...eventosSite, ...EVENTOS_INGRESSE],
-    pedidos: [],
-    ingressos: [],
+    pedidos: exemplo.pedidos,
+    ingressos: exemplo.ingressos,
     usuarios,
     historico,
     // As 10 categorias do mapa do Grupo (categorias-catalogo.ts). Ids novos: não colidem com a lista anterior.

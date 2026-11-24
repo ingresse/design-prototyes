@@ -40,14 +40,14 @@
         if (!r.ok || (r.headers.get('content-type') || '').indexOf('json') < 0) throw new Error('sem api');
         return r.json();
       })
-      .then(function (r) { var c = r.colecoes || {}; return { eventos: c.eventos || [], ingressos: c.ingressos || [], historico: c.historico || [] }; })
+      .then(function (r) { var c = r.colecoes || {}; return { eventos: c.eventos || [], ingressos: c.ingressos || [], historico: c.historico || [], pedidos: c.pedidos || [] }; })
       .catch(function () {
         try {
           var p = JSON.parse(localStorage.getItem(LOCAL_KEY) || 'null');
           var t = p && p.tabelas;
           if (!t) return null;
           var vals = function (o) { return Object.keys(o || {}).map(function (k) { return o[k]; }); };
-          return { eventos: vals(t.eventos), ingressos: vals(t.ingressos), historico: vals(t.historico) };
+          return { eventos: vals(t.eventos), ingressos: vals(t.ingressos), historico: vals(t.historico), pedidos: vals(t.pedidos) };
         } catch (e) { return null; }
       })
       // completa com a seed (_api/seed-backstage.json, gerada por `npm run seed:site`): o que o banco já tem vence, como no
@@ -55,8 +55,8 @@
       .then(function (b) {
         return f0(BASE + '_api/seed-backstage.json').then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (seed) {
           if (!seed) return b;
-          b = b || { eventos: [], ingressos: [], historico: [] };
-          ['eventos', 'historico'].forEach(function (col) {
+          b = b || { eventos: [], ingressos: [], historico: [], pedidos: [] };
+          ['eventos', 'historico', 'pedidos', 'ingressos'].forEach(function (col) {
             var tem = {}; (b[col] || []).forEach(function (d) { tem[d.id] = true; });
             b[col] = (b[col] || []).concat((seed[col] || []).filter(function (d) { return !tem[d.id]; }));
           });
@@ -131,11 +131,16 @@
     eletronica: 'musica-eletronica', sertanejo: 'shows', rock: 'shows', rap: 'shows', teatro: 'teatro', standup: 'stand-up', festival: 'festivais',
   };
   var NOME_CATEGORIA = {};
+  // categorias que só o site tem (sem par na coleção da plataforma) saem das tags e do tipo do evento
+  var POR_TAG = { eletronica: 'musica-eletronica', gastronomia: 'gastronomia', museu: 'museus', turismo: 'turismo', corrida: 'corridas' };
   function categoriasDoEvento(e) {
     var c = CATEGORIA[e.categoria] || CATEGORIA[(e.vitrine || {}).categoria];
     if (!c && e.tipo === 'futebol') c = 'futebol';
-    if (!c && e.tipo === 'esportivo') c = e.modalidade === 'corrida' ? 'corridas' : 'esportes';
-    return [c || 'shows'];
+    if (!c && e.tipo === 'esportivo') c = 'esportes';
+    var out = [c || 'shows'];
+    if (e.tipo === 'esportivo' && e.modalidade === 'corrida') out.push('corridas');
+    tagsDoEvento(e).forEach(function (t) { var x = POR_TAG[t]; if (x && out.indexOf(x) < 0) out.push(x); });
+    return out;
   }
   function norm(t) { return String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim(); }
   function slug(t) { return norm(t).replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''); }
@@ -174,11 +179,69 @@
   function tagsDoEvento(e) { return (e.tags && e.tags.length ? e.tags : (e.vitrine || {}).tags || []).map(slug).filter(Boolean); }
   function esc(t) { return String(t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
 
+  /* ---------- várias datas: resumo e situação de cada sessão ---------- */
+  var SEM_LONGO = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
+  var MES_LONGO = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+  function partesLocal(iso) { var m = /^(\d{4})-(\d\d)-(\d\d)T(\d\d):(\d\d)/.exec(iso || ''); if (!m) return null; var d = new Date(+m[1], +m[2] - 1, +m[3]); return { ano: +m[1], mes: +m[2] - 1, dia: +m[3], sem: d.getDay(), h: +m[4], min: +m[5], dia0: m[1] + '-' + m[2] + '-' + m[3], t: d.getTime() }; }
+  function hora(p) { return p.h + 'h' + (p.min ? String(p.min).padStart(2, '0') : ''); }
+  function diaMes(p) { return p.dia + ' ' + MES[p.mes]; }
+  /** Sessões que ainda não acabaram, em ordem (se todas passaram, todas). */
+  function sessoesFuturas(e) {
+    var agora = Date.now(), todas = (e.sessoes || []).slice().sort(function (a, z) { return a.inicio < z.inicio ? -1 : 1; });
+    var fut = todas.filter(function (s) { return Date.parse(comFuso(s.fim || s.inicio)) >= agora; });
+    return fut.length ? fut : todas;
+  }
+  /** { curto, longo }: «Sáb 5 dez · 21h» numa sessão; «5 e 6 dez», «26 dez a 3 jan», «Toda quinta, 26 nov a 17 dez» em várias. */
+  function resumoDasDatas(e) {
+    var ss = sessoesFuturas(e), ps = ss.map(function (s) { return partesLocal(s.inicio); }).filter(Boolean);
+    if (!ps.length) return { curto: dataCurta(e.data), longo: '' , n: 0 };
+    var dias = []; ps.forEach(function (p) { if (dias.indexOf(p.dia0) < 0) dias.push(p.dia0); });
+    var a = ps[0], z = ps[ps.length - 1], n = ss.length;
+    if (dias.length === 1) {
+      if (n === 1) return { curto: dataCurta(ss[0].inicio), longo: '', n: 1 };
+      var hs = ps.map(hora); var hTxt = hs.length > 3 ? hs.length + ' horários' : hs.slice(0, -1).join(', ') + ' e ' + hs[hs.length - 1];
+      return { curto: SEM[a.sem] + ' ' + diaMes(a) + ', ' + hTxt, longo: SEM_LONGO[a.sem] + ', ' + diaMes(a) + ' de ' + a.ano + ', às ' + hTxt, n: n };
+    }
+    var porDia = dias.map(function (d) { return partesLocal(d + 'T12:00'); });
+    var semanal = porDia.length >= 3 && porDia.every(function (p, i) { return !i || Math.round((p.t - porDia[i - 1].t) / 864e5) === 7; });
+    var mesmoMes = a.mes === z.mes && a.ano === z.ano;
+    var intervalo = (mesmoMes ? a.dia : diaMes(a)) + ' a ' + diaMes(z);
+    var mesmaHora = ps.every(function (p) { return p.h === a.h && p.min === a.min; });
+    if (semanal) {
+      var ini = mesmoMes ? a.dia : diaMes(a);
+      return { curto: 'Toda ' + SEM_LONGO[a.sem] + ', ' + ini + ' a ' + diaMes(z), longo: 'Toda ' + SEM_LONGO[a.sem] + ', de ' + diaMes(a) + ' a ' + diaMes(z) + ' de ' + z.ano + (mesmaHora ? ', às ' + hora(a) : '') + ' (' + dias.length + ' datas)', n: n };
+    }
+    var curto = dias.length === 2 && Math.round((porDia[1].t - porDia[0].t) / 864e5) === 1 ? (mesmoMes ? a.dia : diaMes(a)) + ' e ' + diaMes(z) : intervalo;
+    var longo = 'De ' + SEM_LONGO[a.sem] + ', ' + diaMes(a) + (a.ano !== z.ano ? ' de ' + a.ano : '') + ' a ' + SEM_LONGO[z.sem] + ', ' + diaMes(z) + ' de ' + z.ano +
+      ' (' + (n === dias.length ? dias.length + ' datas' : n + ' sessões em ' + dias.length + ' dias') + ')';
+    return { curto: curto, longo: longo, n: n };
+  }
+  /** Cada sessão por acontecer: horário, situação (venda, esgotado, nao-aberto) e o menor preço à venda. */
+  function sessoesDoEvento(e, vendidos) {
+    var agora = Date.now();
+    return sessoesFuturas(e).map(function (s) {
+      var min = null, abre = null;
+      (s.grupos || []).forEach(function (g) { (g.ingressos || []).forEach(function (t) {
+        if (!t.ativo) return;
+        var j = janela(t, agora);
+        if (j === 'antes') { var ab = (t.vendas || {}).inicio; if (!abre || ab < abre) abre = ab; return; }
+        if (j !== 'aberta') return;
+        var l = (t.lotes || []).filter(function (x) { return !x.pausado && (vendidos[x.id] || 0) < x.quantidade; })[0];
+        if (l && (min === null || l.preco < min)) min = l.preco;
+      }); });
+      var p = partesLocal(s.inicio), f = partesLocal(s.fim || '');
+      return { id: s.id, inicio: comFuso(s.inicio), fim: s.fim ? comFuso(s.fim) : null,
+        sem: p ? SEM[p.sem] : '', dia: p ? p.dia : '', mes: p ? MES[p.mes] : '', mesLongo: p ? MES_LONGO[p.mes] : '', ano: p ? p.ano : '', horario: p ? hora(p) + (f ? ' às ' + hora(f) : '') : '',
+        situacao: min !== null ? 'venda' : abre ? 'nao-aberto' : 'esgotado', fromCents: min === null ? null : Math.round(min * 100),
+        abre: abre ? (function (q) { return q ? diaMes(q) + ', ' + hora(q) : ''; })(partesLocal(abre)) : '' };
+    });
+  }
+
   function paraCatalogo(e, vendidos, ls) {
     var min = precoMinimo(e, vendidos), sit = situacao(e, min), onde = lugarDe(e.cidade, ls);
     var cidade = e.cidade ? e.cidade + (onde && onde.sigla ? ', ' + onde.sigla : '') : '';
     return {
-      id: idDoSite(e.id), name: e.nome, iso: comFuso(e.data), date: dataCurta(e.data),
+      id: idDoSite(e.id), name: e.nome, iso: comFuso((sessoesFuturas(e)[0] || {}).inicio || e.data), date: resumoDasDatas(e).curto,
       venue: [e.local, cidade].filter(Boolean).join(' · '), state: onde ? onde.sigla : '',
       img: e.capa || BASE + 'assets/brand/venue-pista.avif', url: '#', flag: '',
       cats: categoriasDoEvento(e), situacao: sit, situacaoRotulo: ROTULO[sit],
@@ -271,6 +334,9 @@
           artists: v.artista ? [{ name: v.artista }] : [],
           description: descricao,
           sessionsCount: sessoes.length,
+          // várias datas: o resumo (cartões, «Quando», barras) e cada sessão por acontecer (seção «Datas e horários»)
+          datas: resumoDasDatas(e),
+          sessoes: sessoesDoEvento(e, x.vendidos),
           endsAt: sessoes[0] && sessoes[0].fim ? comFuso(sessoes[0].fim) : null,
           // classificação é obrigatória: o que o Backstage gravou; sem o dado (eventos antigos), 18 anos
           ageRating: (function (i) { i = i == null ? 18 : Number(i); return i > 0 ? i + ' anos. Menores de ' + i + ' não entram.' : 'Livre para todos os públicos.'; })(e.idadeMinima),
@@ -346,6 +412,36 @@
           else if (k === 'Meia-entrada') row.hidden = !d.detalhe.temMeia;
         });
       }
+      // seção «Datas e horários» (várias datas): cada sessão por acontecer com horário, situação e preço, antes do «Sobre o evento»
+      function datasMvp() {
+        var ss = d.detalhe.sessoes || [], sobre = document.querySelector('.mvp-sobre');
+        if (ss.length < 2 || !sobre) return;
+        var ex = document.querySelector('.ev-datas');
+        if (ex && ex.getAttribute('data-ponte') === bff[1] && ex.nextElementSibling === sobre) return;
+        if (ex) ex.remove();
+        var sec = document.createElement('section'); sec.className = 'mvp-so ev-datas'; sec.setAttribute('data-ponte', bff[1]); sec.setAttribute('aria-labelledby', 'ev-datas-h');
+        var h = document.createElement('h2'); h.className = 'over'; h.id = 'ev-datas-h'; h.textContent = 'Datas e horários'; sec.appendChild(h);
+        var res = document.createElement('p'); res.className = 'ev-datas__resumo'; res.textContent = d.detalhe.datas.longo || ''; sec.appendChild(res);
+        var lista = document.createElement('ul'); lista.className = 'ev-datas__lista';
+        var mesAtual = '';
+        ss.forEach(function (x) {
+          var mes = x.mes + ' ' + x.ano;
+          if (mes !== mesAtual) { mesAtual = mes; var lm = document.createElement('li'); lm.className = 'ev-datas__mes'; lm.textContent = x.mesLongo + ' de ' + x.ano; lista.appendChild(lm); }
+          var li = document.createElement('li'); li.className = 'ev-datas__item'; li.setAttribute('data-sit', x.situacao);
+          var data = document.createElement('span'); data.className = 'ev-datas__dia';
+          data.innerHTML = '<small></small><b></b>'; data.querySelector('small').textContent = x.sem; data.querySelector('b').textContent = x.dia;
+          var info = document.createElement('span'); info.className = 'ev-datas__info';
+          var hr = document.createElement('span'); hr.className = 'ev-datas__hora'; hr.textContent = x.dia + ' ' + x.mes + ', ' + x.horario;
+          var st = document.createElement('span'); st.className = 'ev-datas__sit';
+          st.textContent = x.situacao === 'venda' ? 'a partir de R$ ' + (x.fromCents / 100).toLocaleString('pt-BR', { minimumFractionDigits: x.fromCents % 100 ? 2 : 0 }) : x.situacao === 'nao-aberto' ? 'Vendas abrem em ' + x.abre : 'Esgotado';
+          info.appendChild(hr); info.appendChild(st);
+          li.appendChild(data); li.appendChild(info);
+          if (x.situacao === 'venda') { var a = document.createElement('a'); a.className = 'bs ev-datas__bt'; a.href = alvo; a.textContent = 'Escolher'; a.setAttribute('aria-label', 'Escolher ingressos para ' + hr.textContent); li.appendChild(a); }
+          lista.appendChild(li);
+        });
+        sec.appendChild(lista);
+        sobre.parentNode.insertBefore(sec, sobre);
+      }
       function trocar() {
         document.querySelectorAll('a[href*="Ingressos.dc.html"]').forEach(function (a) { if (a.getAttribute('href') !== alvo) a.setAttribute('href', alvo); });
         // pôster do card de compra do MVP
@@ -353,6 +449,7 @@
           if (img.getAttribute('src') !== d.evento.img) { img.setAttribute('src', d.evento.img); img.removeAttribute('srcset'); img.setAttribute('alt', 'Pôster de ' + d.evento.name); }
         });
         sobreMvp();
+        datasMvp();
       }
       document.addEventListener('click', function (ev) {
         var a = ev.target && ev.target.closest && ev.target.closest('a[href*="Ingressos.dc.html"], a[href="' + alvo + '"]');

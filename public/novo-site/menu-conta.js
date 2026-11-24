@@ -24,9 +24,10 @@
     entrar: 'Entrar ou criar conta', dev: 'Opções de desenvolvedor', saiu: 'Você saiu da conta.'
   };
   var ITENS = [
-    ['Carteira.dc.html', 'Carteira', 'carteira'], ['#', 'Minhas compras'], ['#', 'Meus dados'],
-    ['#', 'Dependentes'], ['#', 'Privacidade e segurança']
-  ]; // «Meios de pagamento» e «Dispositivos» saíram do menu de vez (pedido do Wander, 15/11/2026)
+    ['Carteira.dc.html', 'Carteira', 'carteira'], ['Compras.dc.html', 'Minhas compras'], ['Conta.dc.html', 'Meus dados'],
+    ['Dependentes.dc.html', 'Dependentes'], ['Seguranca.dc.html', 'Privacidade e segurança']
+  ]; // «Meios de pagamento» e «Dispositivos» saíram do menu de vez (pedido do Wander, 15/11/2026); seguem no menu da área logada (conta.js).
+  // design-prototypes (24/11/2026): os itens levam às páginas da área logada recriadas do site_next (scripts/paginas-da-conta.py).
   function mvp() { return document.documentElement.getAttribute('data-modo') === 'mvp'; } // MODO MVP: sem notificações no menu nem bolinha no avatar (pedido do Wander, 15/11/2026)
 
   /* ---------- estado ---------- */

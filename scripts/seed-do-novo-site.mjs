@@ -17,5 +17,5 @@ await build({ entryPoints: [resolve(raiz, "src/plataforma/db/seed.ts")], bundle:
 const { SEED, SEED_VERSAO } = await import(pathToFileURL(tmp).href + "?t=" + Date.now());
 rmSync(tmp, { force: true });
 const saida = resolve(raiz, "public/novo-site/_api/seed-backstage.json");
-writeFileSync(saida, JSON.stringify({ versao: SEED_VERSAO, eventos: SEED.eventos, historico: SEED.historico }));
-console.log(`seed do site: ${SEED.eventos.length} eventos, ${SEED.historico.length} históricos (versão ${SEED_VERSAO}) -> ${saida}`);
+writeFileSync(saida, JSON.stringify({ versao: SEED_VERSAO, eventos: SEED.eventos, historico: SEED.historico, pedidos: SEED.pedidos, ingressos: SEED.ingressos }));
+console.log(`seed do site: ${SEED.eventos.length} eventos, ${SEED.historico.length} históricos, ${SEED.pedidos.length} pedidos, ${SEED.ingressos.length} ingressos (versão ${SEED_VERSAO}) -> ${saida}`);

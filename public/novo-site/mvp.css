@@ -421,6 +421,24 @@ html[data-modo="mvp"][data-pagina="evento"] .ev-hero > .mvp-particulas-guia { -w
 /* detalhe do evento: o preço do cartão («a partir de R$ …») 16 px menor que o token de preço */
 html[data-modo="mvp"][data-pagina="evento"] aside.buy .card > div[style*="font-size: 26px"] { font-size: calc(var(--font-size-price-xl) - 16px) !important; line-height: 1.1 !important; }
 
+/* detalhe do evento: «Datas e horários» para eventos com várias sessões (ponte-backstage.js), antes do «Sobre o evento» */
+.ev-datas { display: flex; flex-direction: column; gap: var(--space-3); }
+.ev-datas__resumo { margin: 0; font-size: var(--font-size-body); font-weight: 600; color: var(--color-text-primary); }
+.ev-datas__lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; border: var(--border-width-hairline) solid var(--color-border-subtle); border-radius: var(--radius-base); background: var(--color-bg-surface); overflow: hidden; }
+.ev-datas__mes { padding: var(--space-3) var(--space-5); background: var(--color-bg-subtle); font-size: var(--font-size-small); font-weight: 600; color: var(--color-text-secondary); }
+.ev-datas__item { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: var(--space-4); align-items: center; padding: var(--space-4) var(--space-5); border-top: var(--border-width-hairline) solid var(--color-border-subtle); }
+.ev-datas__mes + .ev-datas__item { border-top: 0; }
+.ev-datas__dia { display: flex; flex-direction: column; align-items: center; justify-content: center; width: var(--size-control-lg); height: var(--size-control-lg); border-radius: var(--radius-base); background: var(--color-bg-subtle); line-height: 1; }
+.ev-datas__dia small { font-size: var(--font-size-small); color: var(--color-text-secondary); }
+.ev-datas__dia b { font-size: var(--font-size-title-3, 1.25rem); }
+.ev-datas__info { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
+.ev-datas__hora { font-weight: 600; }
+.ev-datas__sit { font-size: var(--font-size-small); color: var(--color-text-secondary); }
+.ev-datas__item[data-sit="esgotado"] .ev-datas__hora { color: var(--color-text-tertiary); text-decoration: line-through; }
+.ev-datas__item[data-sit="esgotado"] .ev-datas__sit { color: var(--color-alert-error-fg); font-weight: 600; }
+.ev-datas__item[data-sit="nao-aberto"] .ev-datas__sit { color: var(--color-alert-warning-fg); font-weight: 600; }
+.ev-datas__bt { width: auto !important; min-height: var(--size-control-sm) !important; }
+
 /* data, local e descrição: depois do nome */
 .mvp-hero__bloco .mvp-hero__meta { animation: mvp-hero-sobe 480ms var(--motion-ease-enter) 520ms backwards; }
 .mvp-hero__bloco .mvp-hero__desc { animation: mvp-hero-sobe 480ms var(--motion-ease-enter) 600ms backwards; }

@@ -3,6 +3,7 @@ import { idDaOrganizacao } from "../regras";
 
 /* ------------------------------------------------------------------ */
 /*  Eventos reais do ingresse.com (raspagem leve de 24/11/2026)        */
+/*  e, no fim, eventos para as categorias que estavam vazias no site.  */
 /*                                                                     */
 /*  Nome, capa, local, cidade, datas e o começo da descrição vêm da    */
 /*  página pública de cada evento. Ingressos, preços, lotes e o que já */
@@ -634,6 +635,330 @@ const DEFS: DefEvento[] = [
             { nome: "Camarote", acesso: "Rua das Pedras", ingressos: [{ nome: "Camarote open bar", lotes: si === 4 ? [["Virada", 1800, 200, 200]] : [["1º lote", 600, 200, 60]] }] },
         ],
         listaDeEsperaAoEsgotar: true,
+    },
+
+    /* ---------- Categorias que estavam vazias no site (desde 24/11/2026) ----------
+       Reais do ingresse.com quando havia (Arena Kids, corrida social, mototour, réveillon no MAM); os demais são fictícios do
+       protótipo, com a arte gerada do site como capa (/novo-site/cymatics). */
+    // Kids e Família (reais): área kids nos jogos, com ingresso de criança e de acompanhante.
+    {
+        id: "ig-110564",
+        nome: "Botafogo x Bahia: Star Arena Kids",
+        produtora: "Star Hospitality",
+        capa: `${K}/110564/xLarge/1794718173.3820722.jpg`,
+        local: "Estádio Nilton Santos",
+        cidade: "Rio de Janeiro",
+        categoria: "kids-e-familia",
+        tags: ["kids", "pra-familia", "futebol"],
+        descricao: ["Espaço kids no Nilton Santos para assistir a Botafogo x Bahia em família: recreação, monitores e lanche para as crianças."],
+        sessoes: [["2026-11-28T19:00", "2026-11-28T23:30"]],
+        grupos: [
+            {
+                nome: "Arena Kids",
+                acesso: "Portão Leste",
+                ingressos: [
+                    { nome: "Criança (3 a 12 anos)", descricao: "Com recreação e lanche.", lotes: [["Lote único", 120, 150, 60]], vendas: { limitePorPedido: 4 } },
+                    { nome: "Acompanhante adulto", lotes: [["Lote único", 180, 150, 70]], vendas: { limitePorPedido: 2 } },
+                ],
+            },
+        ],
+    },
+    {
+        id: "ig-110569",
+        nome: "Esquadrão Arena Kids: Bahia x Atlético-MG",
+        produtora: "Esporte Clube Bahia",
+        capa: `${K}/110569/xLarge/1794774723.6446073.jpg`,
+        local: "Arena Fonte Nova",
+        cidade: "Salvador",
+        categoria: "kids-e-familia",
+        tags: ["kids", "pra-familia", "futebol"],
+        descricao: ["A área kids do Esquadrão na Fonte Nova: monitores, brincadeiras e visão do campo para a criançada torcer com segurança."],
+        sessoes: [["2026-12-02T20:30", "2026-12-03T00:00"]],
+        grupos: [
+            {
+                nome: "Arena Kids",
+                acesso: "Portão 2",
+                ingressos: [
+                    { nome: "Criança (3 a 12 anos)", lotes: [["Lote único", 90, 120, 120]] },
+                    { nome: "Acompanhante adulto", lotes: [["Lote único", 140, 120, 120]] },
+                ],
+            },
+        ],
+        listaDeEsperaAoEsgotar: true,
+    },
+    // Kids e Família (fictício): teatro infantil com várias sessões no fim de semana.
+    {
+        id: "pt-kids-1",
+        nome: "O Pequeno Príncipe: o musical",
+        produtora: "Cia. Estrela Guia",
+        capa: "/novo-site/cymatics/evt-150.png",
+        local: "Teatro Bradesco",
+        cidade: "São Paulo",
+        categoria: "kids-e-familia",
+        tags: ["kids", "pra-familia", "musical", "teatro"],
+        descricao: ["Um musical para toda a família sobre amizade, cuidado e as coisas que só se vê com o coração.", "Duração de 70 minutos. Recomendado a partir de 4 anos."],
+        sessoes: ["2026-11-28", "2026-11-29", "2026-12-05", "2026-12-06"].flatMap((d): [string, string][] => [[`${d}T11:00`, `${d}T12:10`], [`${d}T16:00`, `${d}T17:10`]]),
+        grupos: [
+            {
+                nome: "Plateia",
+                acesso: "Entrada principal",
+                ingressos: [
+                    { nome: "Inteira", lotes: [["Lote único", 120, 300, 110]] },
+                    { nome: "Meia-entrada", beneficio: "meia-entrada", lotes: [["Lote único", 60, 150, 60]] },
+                ],
+            },
+            { nome: "Frisas", acesso: "Entrada principal", ingressos: [{ nome: "Frisa para 4", lotes: [["Lote único", 400, 10, 4]] }] },
+        ],
+    },
+    // Esportes (real): corrida social semanal.
+    {
+        id: "ig-110631",
+        nome: "On Gop Run no Luci Bar",
+        produtora: "On Running",
+        capa: `${K}/110631/xLarge/1795041732.979483.jpg`,
+        local: "Luci Bar",
+        cidade: "São Paulo",
+        categoria: "esportes",
+        tags: ["corrida", "role-em-grupo"],
+        descricao: ["Corrida social de 5 km com saída e chegada no Luci Bar, toda terça. Depois da corrida, música e drinks para quem correu."],
+        sessoes: ["2026-11-24", "2026-12-01", "2026-12-08", "2026-12-15"].map((d): [string, string] => [`${d}T20:00`, `${d}T22:30`]),
+        grupos: [{ nome: "Largada", acesso: "Luci Bar", ingressos: [{ nome: "Inscrição", descricao: "Gratuita, com kit de boas-vindas para os 100 primeiros.", lotes: [["Lote único", 0, 150, 90]], vendas: { limitePorPedido: 1 } }] }],
+        tipo: "esportivo",
+    },
+    // Esportes (fictício): corrida de rua com kit e categorias de distância.
+    {
+        id: "pt-esporte-1",
+        nome: "Corrida Noturna do Ibirapuera",
+        produtora: "Circuito Pé na Pista",
+        capa: "/novo-site/cymatics/evt-2016.png",
+        local: "Parque Ibirapuera",
+        cidade: "São Paulo",
+        categoria: "esportes",
+        tags: ["corrida", "ao-ar-livre"],
+        descricao: ["5 e 10 km pelas alamedas do Ibirapuera iluminadas à noite. Retirada do kit no dia anterior, no portão 3."],
+        sessoes: [["2026-12-12T19:30", "2026-12-12T22:00"]],
+        grupos: [
+            {
+                nome: "5 km",
+                acesso: "Portão 3",
+                ingressos: [
+                    { nome: "Inscrição", lotes: [["1º lote", 99, 800, 800], ["2º lote", 119, 800, 220]] },
+                    { nome: "60+", beneficio: "meia-entrada", descricao: "Pessoas com 60 anos ou mais.", lotes: [["Lote único", 50, 200, 40]] },
+                ],
+            },
+            { nome: "10 km", acesso: "Portão 3", ingressos: [{ nome: "Inscrição", lotes: [["1º lote", 129, 600, 600], ["2º lote", 149, 600, 180]] }] },
+        ],
+        tipo: "esportivo",
+    },
+    // Teatro (fictício): temporada com sessões de quinta a domingo.
+    {
+        id: "pt-teatro-1",
+        nome: "Antes que a Luz se Apague",
+        produtora: "Cia. Paralelo",
+        capa: "/novo-site/cymatics/evt-160.png",
+        local: "Teatro Faap",
+        cidade: "São Paulo",
+        categoria: "artes-cenicas",
+        tags: ["teatro", "cultura", "bom-pra-date"],
+        descricao: ["Drama sobre duas irmãs que se reencontram na última noite da casa da família. Temporada de dezembro, de quinta a domingo.", "Duração de 90 minutos. Não recomendado para menores de 14 anos."],
+        sessoes: ["2026-12-03", "2026-12-04", "2026-12-05", "2026-12-06", "2026-12-10", "2026-12-11", "2026-12-12", "2026-12-13"].map((d): [string, string] => {
+            const dom = new Date(`${d}T12:00`).getDay() === 0;
+            return dom ? [`${d}T18:00`, `${d}T19:30`] : [`${d}T21:00`, `${d}T22:30`];
+        }),
+        grupos: [
+            {
+                nome: "Plateia",
+                acesso: "Rua Alagoas, 903",
+                ingressos: [
+                    { nome: "Inteira", lotes: [["Lote único", 110, 280, 120]] },
+                    { nome: "Meia-entrada", beneficio: "meia-entrada", lotes: [["Lote único", 55, 120, 50]] },
+                ],
+            },
+            { nome: "Balcão", acesso: "Rua Alagoas, 903", ingressos: [{ nome: "Inteira", lotes: [["Lote único", 70, 100, 30]] }] },
+        ],
+    },
+    {
+        id: "pt-teatro-2",
+        nome: "Hamlet em Concreto",
+        produtora: "Grupo Galpão Sul",
+        capa: "/novo-site/cymatics/evt-161.png",
+        local: "Sesc Pompeia",
+        cidade: "São Paulo",
+        categoria: "artes-cenicas",
+        tags: ["teatro", "cultura", "alternativo"],
+        descricao: ["Uma montagem de Hamlet entre as estruturas de concreto do Sesc Pompeia, com o público em pé e a cena em movimento."],
+        sessoes: [["2026-12-18T20:00", "2026-12-18T22:00"], ["2026-12-19T20:00", "2026-12-19T22:00"]],
+        grupos: [
+            {
+                nome: "Galpão",
+                acesso: "Rua Clélia, 93",
+                ingressos: [
+                    { nome: "Inteira", lotes: [["Lote único", 60, 200]], vendas: { inicio: "2026-12-01T17:00" } },
+                    { nome: "Meia-entrada", beneficio: "meia-entrada", lotes: [["Lote único", 30, 100]], vendas: { inicio: "2026-12-01T17:00" } },
+                ],
+            },
+        ],
+    },
+    // Stand-up (fictício): noite de comédia, temporada semanal e solo esgotado.
+    {
+        id: "pt-humor-1",
+        nome: "Comédia na Laje: noite de stand-up",
+        produtora: "Laje Comedy",
+        capa: "/novo-site/cymatics/evt-170.png",
+        local: "Laje Comedy Club",
+        cidade: "São Paulo",
+        categoria: "humor",
+        tags: ["stand-up", "comedia", "role-em-grupo"],
+        descricao: ["Quatro comediantes, uma hora e meia de stand-up e mesas pertinho do palco. Toda sexta, às 21h."],
+        sessoes: ["2026-11-27", "2026-12-04", "2026-12-11", "2026-12-18"].map((d): [string, string] => [`${d}T21:00`, `${d}T22:30`]),
+        grupos: [
+            {
+                nome: "Mesas",
+                acesso: "Rua Augusta, 1200",
+                ingressos: [
+                    { nome: "Inteira", lotes: [["Lote único", 80, 120, 70]] },
+                    { nome: "Meia-entrada", beneficio: "meia-entrada", lotes: [["Lote único", 40, 40, 20]] },
+                ],
+            },
+        ],
+    },
+    {
+        id: "pt-humor-2",
+        nome: "Tudo Errado: o solo",
+        produtora: "Riso Produções",
+        capa: "/novo-site/cymatics/evt-171.png",
+        local: "Teatro Gazeta",
+        cidade: "São Paulo",
+        categoria: "humor",
+        tags: ["stand-up", "comedia"],
+        descricao: ["Solo de stand-up sobre dar tudo errado com estilo. Última apresentação do ano em São Paulo."],
+        sessoes: [["2026-12-09T21:00", "2026-12-09T22:20"]],
+        grupos: [
+            {
+                nome: "Plateia",
+                acesso: "Av. Paulista, 900",
+                ingressos: [
+                    { nome: "Inteira", lotes: [["Lote único", 120, 400, 400]] },
+                    { nome: "Meia-entrada", beneficio: "meia-entrada", lotes: [["Lote único", 60, 150, 150]] },
+                ],
+            },
+        ],
+        listaDeEsperaAoEsgotar: true,
+    },
+    {
+        id: "pt-humor-3",
+        nome: "Stand-up no Rio: Humor de Esquina",
+        produtora: "Humor de Esquina",
+        capa: "/novo-site/cymatics/evt-172.png",
+        local: "Teatro Clara Nunes",
+        cidade: "Rio de Janeiro",
+        categoria: "humor",
+        tags: ["stand-up", "comedia"],
+        descricao: ["Seis comediantes cariocas numa noite só, com o melhor do humor de esquina."],
+        sessoes: [["2026-12-05T20:00", "2026-12-05T22:00"], ["2026-12-05T22:30", "2026-12-06T00:30"]],
+        grupos: [{ nome: "Plateia", acesso: "Shopping da Gávea, 3º piso", ingressos: [{ nome: "Inteira", lotes: [["1º lote", 70, 300, 300], ["2º lote", 90, 300, 80]] }, { nome: "Meia-entrada", beneficio: "meia-entrada", lotes: [["Lote único", 45, 100, 30]] }] }],
+    },
+    // Universitário (fictício): intercursos e calourada com open bar.
+    {
+        id: "pt-uni-1",
+        nome: "Intermed Sudeste 2026: festa de encerramento",
+        produtora: "Liga Universitária Sudeste",
+        capa: "/novo-site/cymatics/evt-180.png",
+        local: "Espaço das Américas",
+        cidade: "São Paulo",
+        categoria: "universitario",
+        tags: ["universitario", "open-bar", "funk", "na-pista"],
+        descricao: ["A festa de encerramento dos jogos: open bar, três atrações e a premiação das atléticas. Apresente a carteirinha na entrada."],
+        sessoes: [["2026-12-12T22:00", "2026-12-13T06:00"]],
+        grupos: [
+            {
+                nome: "Pista Open Bar",
+                acesso: "Portão 1",
+                ingressos: [
+                    { nome: "Atleta (com pulseira)", descricao: "Para atletas inscritos nos jogos.", lotes: [["Lote único", 90, 1500, 1100]] },
+                    { nome: "Universitário", lotes: [["2º lote", 160, 2000, 1200], ["3º lote", 190, 1500]] },
+                ],
+            },
+            { nome: "Camarote das Atléticas", acesso: "Portão 3", ingressos: [{ nome: "Camarote open bar", lotes: [["Lote único", 320, 300, 210]] }] },
+        ],
+    },
+    {
+        id: "pt-uni-2",
+        nome: "Calourada Federal Rio",
+        produtora: "DCE Federal Rio",
+        capa: "/novo-site/cymatics/evt-181.png",
+        local: "Marina da Glória",
+        cidade: "Rio de Janeiro",
+        categoria: "universitario",
+        tags: ["universitario", "na-pista", "role-em-grupo"],
+        descricao: ["A calourada que abre o semestre na Marina da Glória: pista ao ar livre, pagode no fim de tarde e funk até de manhã."],
+        sessoes: [["2026-12-06T18:00", "2026-12-07T04:00"]],
+        grupos: [{ nome: "Pista", acesso: "Av. Infante Dom Henrique, s/n", ingressos: [{ nome: "Inteira", lotes: [["1º lote", 60, 1000, 1000], ["2º lote", 80, 1000, 400]] }, { nome: "Meia-entrada", beneficio: "meia-entrada", lotes: [["Lote único", 40, 500, 200]] }] }],
+    },
+    // Feiras e Exposições (fictício): feira de dois dias e exposição com horário marcado.
+    {
+        id: "pt-feira-1",
+        nome: "Feira Mão na Massa: design e gastronomia autoral",
+        produtora: "Mão na Massa",
+        capa: "/novo-site/cymatics/evt-190.png",
+        local: "Pavilhão da Bienal",
+        cidade: "São Paulo",
+        categoria: "feiras-e-exposicoes",
+        tags: ["feira", "gastronomia", "pra-familia"],
+        descricao: ["Dois dias com 200 expositores de design, moda e comida autoral, oficinas para crianças e música ao vivo."],
+        sessoes: [["2026-12-12T10:00", "2026-12-12T20:00"], ["2026-12-13T10:00", "2026-12-13T19:00"]],
+        grupos: [
+            {
+                nome: "Entrada",
+                acesso: "Portão 3 do parque",
+                ingressos: [
+                    { nome: "Inteira", lotes: [["Lote único", 30, 3000, 900]] },
+                    { nome: "Meia-entrada", beneficio: "meia-entrada", lotes: [["Lote único", 15, 1500, 300]] },
+                    { nome: "Criança até 10 anos", descricao: "Gratuito, com um adulto.", lotes: [["Lote único", 0, 800, 200]], vendas: { limitePorPedido: 3 } },
+                ],
+            },
+        ],
+    },
+    {
+        id: "pt-feira-2",
+        nome: "Exposição Mundo Pixel: a história dos videogames",
+        produtora: "Mundo Pixel",
+        capa: "/novo-site/cymatics/evt-191.png",
+        local: "Centro de Eventos Fiergs",
+        cidade: "Porto Alegre",
+        categoria: "feiras-e-exposicoes",
+        tags: ["exposicao", "kids", "pra-familia", "cultura"],
+        descricao: ["Mais de 300 consoles e fliperamas jogáveis, do Atari ao realidade virtual. Entrada com horário marcado, a cada hora."],
+        sessoes: ["2026-12-10", "2026-12-11", "2026-12-12"].flatMap((d): [string, string][] => ["10:00", "13:00", "16:00"].map((h): [string, string] => [`${d}T${h}`, `${d}T${String(Number(h.slice(0, 2)) + 3).padStart(2, "0")}:00`])),
+        grupos: [{ nome: "Exposição", acesso: "Av. Assis Brasil, 8787", ingressos: [{ nome: "Inteira", lotes: [["Lote único", 50, 250, 90]] }, { nome: "Meia-entrada", beneficio: "meia-entrada", lotes: [["Lote único", 25, 100, 40]] }] }],
+    },
+    // Turismo (real): mototour diário no Vidigal.
+    {
+        id: "ig-110371",
+        nome: "Partiu Mototour no Vidigal",
+        produtora: "Partiu Mototour",
+        capa: `${K}/110371/xLarge/1793753282.7869425.jpg`,
+        local: "Mirante do Arvrão",
+        cidade: "Rio de Janeiro",
+        categoria: "shows",
+        tags: ["turismo", "ao-ar-livre", "cultura"],
+        descricao: ["Viva o Rio de um jeito diferente: o Vidigal em uma experiência de mototour com guia, segurança e muita paisagem e cultura. Embarque no Leblon."],
+        sessoes: datas("2026-11-25", "2026-11-30").map((d): [string, string] => [`${d}T08:00`, `${d}T11:00`]),
+        grupos: [{ nome: "Passeio", acesso: "Embarque no Leblon", ingressos: [{ nome: "Passeio com guia", descricao: "Capacete, guia e seguro inclusos.", lotes: [["Lote único", 150, 12, 5]], vendas: { limitePorPedido: 4 } }] }],
+    },
+    // Museus (real): réveillon no Museu de Arte Moderna.
+    {
+        id: "ig-104464",
+        nome: "Welcome Rio 2027 no Museu de Arte Moderna",
+        produtora: "Welcome Rio",
+        capa: `${K}/104464/xLarge/1785620707.5384789.jpg`,
+        local: "Museu de Arte Moderna do Rio de Janeiro",
+        cidade: "Rio de Janeiro",
+        categoria: "festivais",
+        tags: ["museu", "festival", "eletronica", "ao-ar-livre"],
+        descricao: ["O primeiro dia de 2027 nos jardins do Museu de Arte Moderna do Rio, de frente para a Baía de Guanabara."],
+        sessoes: [["2027-01-01T16:00", "2027-01-02T02:00"]],
+        grupos: [{ nome: "Jardins do MAM", acesso: "Av. Infante Dom Henrique, 85", ingressos: [{ nome: "Inteira", lotes: [["2º lote", 390, 1500, 900], ["3º lote", 450, 1500]] }, { nome: "Meia-entrada", beneficio: "meia-entrada", lotes: [["2º lote", 195, 500, 260]] }] }],
     },
 ];
 

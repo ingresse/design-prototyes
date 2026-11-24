@@ -22,6 +22,7 @@ Backstage (cria evento, ingressos, publica)
 | `db/index.ts` | Cliente do banco: `useColecao`, `useDoc`, `salvar`, `resetarBanco` |
 | `db/seed.ts` | Mundo inicial: eventos do Backstage e do novo site, cada um com catálogo gerado, e o histórico de vendas dos eventos publicados do Backstage |
 | `db/eventos-ingresse.ts` | 18 eventos reais do ingresse.com (raspagem leve de 24/11/2026: nome, capa, local, datas, descrição) com ingressos, lotes e vendas do protótipo, cada um com um tipo de data e uma condição de compra diferente |
+| `db/pedidos-exemplo.ts` | Compras de exemplo da pessoa do novo site (Pessoa Exemplo, pessoa@exemplo.com): pagos, aguardando pagamento, cancelado e um ingresso transferido. Alimentam Minhas compras e as carteiras |
 | `../../scripts/seed-do-novo-site.mjs` | `npm run seed:site`: gera `public/novo-site/_api/seed-backstage.json`, que o novo site usa para completar o banco do navegador. Rode depois de mudar a seed |
 | `../../api/db.ts` | API na Vercel, no mesmo Upstash Redis das outras APIs (namespace `design-prototyes:db:v1`) |
 
@@ -83,6 +84,7 @@ quando a produtora paga só a taxa) e `cortesia` (sem cobrança, método `cortes
 | Backstage › Marketing › Passkey | Passkeys e catálogo do evento | Passkeys (`Evento.passkeys`) e vínculos em `chaves` de ingresso, lote, combo e produto |
 | Backstage › Membros | membros, grupos e cargos da organização (exemplos por organização enquanto ela não grava) | membros, grupos e cargos, no documento da organização |
 | Novo site (`public/novo-site`, cópia estática; `ponte-backstage.js`) | eventos publicados no catálogo da home e da busca, nas categorias e na página do evento (`Evento.dc.html?ev=<id>`), com a compra indo para `/comprar/<id>` | — |
+| Novo site › área logada (`Compras`, `Conta`, `Dependentes`, `Pagamentos`, `Dispositivos`, `Seguranca`, `Facial`.dc.html; `conta.js`, `scripts/paginas-da-conta.py`) | pedidos e ingressos de quem está logado (`plataforma:sessao:v1` ou a conta do site) | reembolso, dados, cartões, dispositivos, senha e facial só no navegador (`conta:*`) |
 | Seleção e atribuição (`/comprar/:id`, `/e/:slug`) | catálogo e lote atual | pedido |
 | Checkout (melhorias de compra) | pedido | pagamento (Pix simulado e cartão), emissão |
 | Carteira web e carteira do app | ingressos do e-mail logado | — |

@@ -85,7 +85,9 @@
       if (resto.map(function (n) { return n.textContent; }).join('').trim() !== alvo) { resto.forEach(function (n) { sd.removeChild(n); }); sd.appendChild(document.createTextNode(alvo)); }
     }
     var fatos = document.querySelectorAll('.ev-facts > div');
-    if (fatos[0]) txt(fatos[0].querySelector('.ev-v'), q);
+    // design-prototypes: com várias datas, o «Quando» é o resumo (intervalo, semanal, horários do dia) e não só a primeira sessão
+    var ds = d.datas || {}, varias = (ds.n || 0) > 1;
+    if (fatos[0]) txt(fatos[0].querySelector('.ev-v'), varias && ds.longo ? ds.longo : q);
     var ondeCurto = v.name && v.city && v.name !== v.city ? v.name + ' · ' + v.city : (v.name || v.city || '');
     if (fatos[1]) txt(fatos[1].querySelector('.ev-v'), ondeCurto);
     if (fatos[2]) { if (artistas.length) { txt(fatos[2].querySelector('.ev-v'), artistas.join(', ')); fatos[2].hidden = false; } else some(fatos[2]); }
@@ -94,8 +96,8 @@
 
     // compra e barra do celular
     var buy = document.querySelector('aside.buy .card');
-    if (buy) { var bd = buy.querySelectorAll(':scope > div'); txt(bd[1], preco); txt(bd[2], nSess > 1 ? nSess + ' datas · preço final antes do pagamento' : 'Preço final antes do pagamento'); }
-    var mb = document.querySelector('.mbar > div'); if (mb) { var mbd = mb.querySelectorAll(':scope > div'); txt(mbd[0], dia(e.iso, tz) + ' · ' + (v.name || '')); txt(mbd[1], curto); }
+    if (buy) { var bd = buy.querySelectorAll(':scope > div'); txt(bd[1], preco); txt(bd[2], varias ? ds.curto + '. Escolha a data na compra' : 'Preço final antes do pagamento'); }
+    var mb = document.querySelector('.mbar > div'); if (mb) { var mbd = mb.querySelectorAll(':scope > div'); txt(mbd[0], (varias ? ds.curto : dia(e.iso, tz)) + ' · ' + (v.name || '')); txt(mbd[1], curto); }
     some(document.querySelector('.buy-social'));
 
     // avisos de estado do modelo (cancelado, adiado, alterado) citam o Sorriso Maroto: o BFF não tem esses estados
@@ -155,7 +157,7 @@
     if (bar) {
       attr(bar.querySelector('.mvp-evbar__img'), 'src', e.img);
       txt(bar.querySelector('.mvp-evbar__txt strong'), e.name);
-      txt(bar.querySelector('.mvp-evbar__txt > span'), [quando(e.iso, tz), v.name, v.city].filter(Boolean).join(' · '));
+      txt(bar.querySelector('.mvp-evbar__txt > span'), [varias ? ds.curto : quando(e.iso, tz), v.name, v.city].filter(Boolean).join(' · '));
     }
 
     // Local: mapa pelas coordenadas, endereço; a foto e o texto de como chegar são do Anhembi
