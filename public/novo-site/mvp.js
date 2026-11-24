@@ -122,7 +122,8 @@
       el.style.fontSize = meio + 'px';
       if (el.scrollWidth <= el.clientWidth + 1 && el.offsetHeight <= maxH) lo = meio; else hi = meio;
     }
-    el.style.fontSize = Math.floor(lo) + 'px';
+    // design-prototypes: 12 px menor que o maior tamanho que cabe (o título estava grande demais), sem passar do mínimo
+    el.style.fontSize = Math.max(parseFloat(cs.getPropertyValue('--mvp-titulo-min')) || 30, Math.floor(lo) - 12) + 'px';
   }
 
   /* ------------------------------------------------------------------ 2. topo da Home */
@@ -138,7 +139,7 @@
     if (!n) return;
     var atual = 0, vez = 0, parouUsuario = reduz(), pausado = false, timer = 0;
     raiz.innerHTML =
-      '<div class="mvp-hero__txt" data-txt aria-live="off"></div>' +
+      '<div class="mvp-hero__txt" data-txt aria-live="off"><a class="bp bp-lg mvp-hero__cta" data-cta href="#"></a></div>' +
       '<div class="mvp-hero__pilha" data-pilha></div>' +
       '<div class="mvp-hero__ctrl" role="group" aria-label="Controles dos destaques">' +
         '<button type="button" class="bs mvp-hero__b" data-ant aria-label="Destaque anterior">' + ICO.ant + '</button>' +
@@ -147,6 +148,14 @@
         '<button type="button" class="bs mvp-hero__b" data-pausa></button>' +
         '<span class="mvp-hero__prog" aria-hidden="true"><i data-prog></i></span>' +
       '</div>';
+    var cta = raiz.querySelector('[data-cta]');
+    // o botão fixo fica no pé do texto; os blocos reservam o espaço dele (altura + o espaço que o separava do texto)
+    function reservarCta() {
+      var b = txt.querySelector('.mvp-hero__bloco:not([data-estado="sai"])');
+      var gap = b ? parseFloat(getComputedStyle(b).rowGap) || 0 : 0;
+      txt.style.setProperty('--mvp-cta-reserva', (cta.offsetHeight + gap) + 'px');
+    }
+    window.addEventListener('resize', reservarCta);
     var txt = raiz.querySelector('[data-txt]'), pilha = raiz.querySelector('[data-pilha]'), num = raiz.querySelector('[data-num]'), prog = raiz.querySelector('[data-prog]'), bPausa = raiz.querySelector('[data-pausa]');
     raiz.style.setProperty('--mvp-dur', dur + 'ms');
 
@@ -160,8 +169,7 @@
         '<p class="over mvp-hero__selo">' + esc(it.selo) + '</p>' +
         '<h2 class="mvp-poster mvp-hero__titulo"><a href="' + esc(it.href) + '">' + palavras(it.nome) + '</a></h2>' +
         meta +
-        '<p class="mvp-hero__desc">' + esc(it.texto) + '</p>' +
-        '<a class="bp bp-lg mvp-hero__cta" href="' + esc(it.href) + '">' + esc(it.cta) + '</a>';
+        '<p class="mvp-hero__desc">' + esc(it.texto) + '</p>'; // design-prototypes: o botão do destaque é fixo (data-cta), fora da transição
       return el;
     }
     function carta(idx, pos) {
@@ -170,6 +178,53 @@
       a.setAttribute('data-pos', pos);
       a.innerHTML = '<img src="' + esc(it.img) + '" alt="" decoding="async" width="560" height="560">';
       return a;
+    }
+    /* design-prototypes: a cada troca a carta da frente dá a volta e vai para o fundo do baralho (e as de trás sobem); voltando, a do
+       fundo dá a volta e vem para a frente. A carta que viaja troca de imagem no meio do caminho, fora da pilha: o baralho continua
+       mostrando o atual na frente e os dois seguintes atrás. Devolve false se a pilha não estiver completa (quem chama remonta). */
+    var VIAGEM_MS = 900, ladoDoArraste = 0;
+    function embaralhar(cartas, idx, sentido) {
+      var por = {};
+      for (var i = 0; i < cartas.length; i++) { if (cartas[i]._fim) cartas[i]._fim(); por[cartas[i].getAttribute('data-pos')] = cartas[i]; }
+      var frente = por['0'], meio = por['1'], fundo = por['2'];
+      if (!frente || !meio || !fundo) return false;
+      var viaja = sentido > 0 ? frente : fundo, it = itens[((sentido > 0 ? idx + 2 : idx) % n + n) % n];
+      if (sentido > 0) { meio.setAttribute('data-pos', '0'); fundo.setAttribute('data-pos', '1'); }
+      else { frente.setAttribute('data-pos', '1'); meio.setAttribute('data-pos', '2'); }
+      var img = viaja.querySelector('img');
+      function trocar() { img.setAttribute('src', it.img); viaja.href = it.href; }
+      if (reduz() || !viaja.animate) { viaja.setAttribute('data-pos', sentido > 0 ? '2' : '0'); trocar(); return true; }
+      new Image().src = it.img;
+      var de = getComputedStyle(viaja).transform;
+      viaja.style.transform = ''; // se veio de um arraste, a carta parte de onde o dedo/mouse a deixou (de) e o resto é da animação
+      viaja.style.transition = 'none';
+      viaja.setAttribute('data-pos', sentido > 0 ? '2' : '0');
+      var para = getComputedStyle(viaja).transform;
+      // sai pelo lado (por cima da pilha indo, por baixo voltando), troca de camada fora da pilha e encaixa no lugar novo
+      var paraDireita = ladoDoArraste ? ladoDoArraste > 0 : sentido > 0; ladoDoArraste = 0; // arrastada, sai para o lado em que foi jogada
+      var fora = paraDireita ? 'translate(82%, -12%) rotate(16deg)' : 'translate(-82%, -12%) rotate(-16deg)';
+      var zIda = sentido > 0 ? 4 : 0, zVolta = sentido > 0 ? 0 : 4;
+      var anim = viaja.animate([
+        { transform: de, zIndex: zIda, offset: 0, easing: 'cubic-bezier(0.4, 0, 0.6, 1)' },
+        { transform: fora, zIndex: zIda, offset: 0.46 },
+        { transform: fora, zIndex: zVolta, offset: 0.47, easing: 'cubic-bezier(0.2, 0.7, 0.2, 1)' },
+        { transform: para, zIndex: zVolta, offset: 1 }
+      ], { duration: VIAGEM_MS });
+      var tTroca = setTimeout(trocar, VIAGEM_MS * 0.46);
+      viaja._fim = function () { viaja._fim = null; clearTimeout(tTroca); trocar(); anim.cancel(); viaja.style.transition = ''; };
+      anim.onfinish = function () { if (viaja._fim) { viaja._fim = null; viaja.style.transition = ''; } };
+      return true;
+    }
+    /* design-prototypes: no desktop (texto e pilha lado a lado), o centro da pilha fica no centro do CONTÊINER do texto (a área reservada
+       ao texto, com o botão «Ver evento» no pé), que tem a mesma altura em todo destaque: a pilha não pula quando o nome muda de tamanho.
+       Desloca a pilha com translate; no celular, empilhado, não mexe. */
+    var mqLado = window.matchMedia('(min-width: 1024px)');
+    function centrarPilha() {
+      if (!mqLado.matches) { pilha.style.translate = ''; return; }
+      var rt = txt.getBoundingClientRect(), topo = rt.top, pe = rt.bottom;
+      var atualY = parseFloat((pilha.style.translate || '0 0').split(' ')[1]) || 0, rp = pilha.getBoundingClientRect();
+      var centroPilha = rp.top + rp.height / 2 - atualY;
+      pilha.style.translate = '0 ' + Math.round((topo + pe) / 2 - centroPilha) + 'px';
     }
     function reiniciarProg() { prog.style.animation = 'none'; void prog.offsetWidth; prog.style.animation = ''; }
     function agendar() {
@@ -192,21 +247,17 @@
       var novo = bloco(itens[idx], lado);
       novo.setAttribute('data-estado', 'entra');
       txt.appendChild(novo);
+      cta.href = itens[idx].href; cta.textContent = itens[idx].cta;
+      reservarCta();
       ajustar(novo.querySelector('.mvp-hero__titulo'));
+      centrarPilha(novo);
       requestAnimationFrame(function () { requestAnimationFrame(function () { novo.setAttribute('data-estado', 'fica'); }); });
       // pilha: a carta de cima sai voando por um lado, as de trás sobem e uma nova entra no fundo
       var cartas = pilha.querySelectorAll('.mvp-hero__carta:not([data-pos="sai"])');
-      if (!cartas.length || idx !== (atual + 1) % n) {
+      var prox = idx === (atual + 1) % n, ant = idx === (atual - 1 + n) % n;
+      if (!cartas.length || !(prox || ant) || !embaralhar(cartas, idx, prox ? 1 : -1)) {
         for (var c = 0; c < cartas.length; c++) (function (v) { v.setAttribute('data-pos', 'sai'); v.setAttribute('data-lado', saida); setTimeout(function () { v.remove(); }, reduz() ? 0 : 700); })(cartas[c]);
         for (var p = 2; p >= 0; p--) pilha.appendChild(carta(idx + p, String(p)));
-      } else {
-        var topo = cartas[cartas.length - 1];
-        topo.setAttribute('data-pos', 'sai'); topo.setAttribute('data-lado', saida);
-        setTimeout(function () { topo.remove(); }, reduz() ? 0 : 700);
-        for (var q = 0; q < cartas.length - 1; q++) cartas[q].setAttribute('data-pos', String(Number(cartas[q].getAttribute('data-pos')) - 1));
-        var nova = carta(idx + 2, 'entra');
-        pilha.insertBefore(nova, pilha.firstChild);
-        requestAnimationFrame(function () { requestAnimationFrame(function () { nova.setAttribute('data-pos', '2'); }); });
       }
       atual = idx;
       num.textContent = String(idx + 1).padStart(2, '0');
@@ -221,13 +272,62 @@
     raiz.addEventListener('focusin', pausar(true)); raiz.addEventListener('focusout', function (e) { if (!raiz.contains(e.relatedTarget)) pausar(false)(); });
     raiz.addEventListener('keydown', function (e) { if (e.key === 'ArrowLeft') ir(atual - 1, -1); else if (e.key === 'ArrowRight') ir(atual + 1, 1); });
     document.addEventListener('visibilitychange', agendar);
-    // toque: arrastar para os lados troca a chamada
+    // toque: arrastar para os lados no texto troca a chamada
     var x0 = null;
-    raiz.addEventListener('pointerdown', function (e) { if (e.pointerType !== 'mouse') x0 = e.clientX; });
+    raiz.addEventListener('pointerdown', function (e) { if (e.pointerType !== 'mouse' && !e.target.closest('[data-pilha]')) x0 = e.clientX; });
     raiz.addEventListener('pointerup', function (e) { if (x0 == null) return; var dx = e.clientX - x0; x0 = null; if (Math.abs(dx) > 48) ir(atual + (dx < 0 ? 1 : -1), dx < 0 ? 1 : -1); });
+    /* design-prototypes: clicar (ou tocar) e arrastar a carta da frente. Ela segue o ponteiro, inclinando; solta além do limite (ou num
+       gesto rápido), a pilha sempre avança (a carta vai para o fundo e a próxima aparece), e a carta sai para o lado em que foi
+       jogada. Antes do limite, volta ao lugar. Um arraste não abre o link da carta; um clique sem arrastar abre. */
+    (function () {
+      var LIMITE = 32, arr = null, arrastou = false; // 32 px já trocam; um peteleco (velocidade recente) troca com menos
+      pilha.style.touchAction = 'pan-y'; pilha.style.userSelect = 'none'; pilha.style.webkitUserSelect = 'none';
+      pilha.addEventListener('dragstart', function (e) { e.preventDefault(); });
+      pilha.addEventListener('pointerdown', function (e) {
+        if (e.button !== 0) return;
+        var c = e.target.closest('.mvp-hero__carta[data-pos="0"]'); if (!c || c._fim) return;
+        arr = { c: c, x: e.clientX, y: e.clientY, t: performance.now(), base: getComputedStyle(c).transform, dx: 0, ativo: false, id: e.pointerId };
+        arrastou = false;
+      });
+      pilha.addEventListener('pointermove', function (e) {
+        if (!arr || e.pointerId !== arr.id) return;
+        var dx = e.clientX - arr.x, dy = e.clientY - arr.y;
+        if (!arr.ativo) {
+          if (Math.abs(dx) < 6) return;
+          if (Math.abs(dy) > Math.abs(dx)) { arr = null; return; } // gesto vertical: é rolagem
+          arr.ativo = true; arrastou = true;
+          try { pilha.setPointerCapture(e.pointerId); } catch (er) {}
+          arr.c.style.transition = 'none'; raiz.setAttribute('data-arrastando', '');
+          pausado = true; agendar();
+        }
+        arr.dx = dx;
+        var agora = performance.now(); arr.hist = (arr.hist || []).concat([[agora, dx]]).filter(function (p) { return agora - p[0] < 120; });
+        arr.c.style.transform = 'translate(' + dx + 'px, ' + (dy * 0.25) + 'px) rotate(' + (dx * 0.06) + 'deg) ' + (arr.base === 'none' ? '' : arr.base);
+      });
+      function soltar(e) {
+        if (!arr || (e && e.pointerId !== arr.id)) return;
+        var a = arr; arr = null;
+        if (!a.ativo) return;
+        raiz.removeAttribute('data-arrastando');
+        // velocidade dos últimos ~120 ms (px/ms), não do gesto inteiro: um peteleco rápido conta mesmo depois de segurar a carta
+        var h0 = (a.hist && a.hist[0]) || [a.t, 0], v = Math.abs(a.dx - h0[1]) / Math.max(16, performance.now() - h0[0]);
+        pausado = raiz.matches(':hover');
+        if (Math.abs(a.dx) > LIMITE || (Math.abs(a.dx) > 12 && v > 0.3)) {
+          var s = 1; // para qualquer lado: a carta da frente vai para trás e a próxima aparece (só o lado da saída segue a jogada)
+          ladoDoArraste = a.dx < 0 ? -1 : 1;
+          if (s < 0) { a.c.style.transform = ''; a.c.style.transition = ''; } // voltando: a da frente desce para trás pela transição do CSS
+          ir(atual + s, s);
+        } else { a.c.style.transition = ''; a.c.style.transform = ''; agendar(); }
+      }
+      pilha.addEventListener('pointerup', soltar);
+      pilha.addEventListener('pointercancel', soltar);
+      // na janela, em captura: o clique que fecha um arraste é barrado antes de qualquer outro script do site (transições de página)
+      window.addEventListener('click', function (e) { if (arrastou && pilha.contains(e.target)) { e.preventDefault(); e.stopPropagation(); arrastou = false; } }, true);
+    })();
     var tRes = 0;
-    window.addEventListener('resize', function () { clearTimeout(tRes); tRes = setTimeout(function () { ajustar(txt.querySelector('.mvp-hero__bloco:not([data-estado="sai"]) .mvp-hero__titulo')); }, 120); });
-    if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { ajustar(txt.querySelector('.mvp-hero__bloco:not([data-estado="sai"]) .mvp-hero__titulo')); });
+    var blocoAtual = function () { return txt.querySelector('.mvp-hero__bloco:not([data-estado="sai"])'); };
+    window.addEventListener('resize', function () { clearTimeout(tRes); tRes = setTimeout(function () { var b = blocoAtual(); if (b) { ajustar(b.querySelector('.mvp-hero__titulo')); centrarPilha(b); } }, 120); });
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { var b = blocoAtual(); if (b) { ajustar(b.querySelector('.mvp-hero__titulo')); centrarPilha(b); } });
     pintarPausa();
     ir(0, 1);
   }
@@ -270,12 +370,111 @@
     tentar();
     new MutationObserver(function () { tentar(); trocarIconeTitulo(); }).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-cor', 'data-estilo'] });
   }
+  /* design-prototypes: tema das partículas pelo FUNDO de verdade (o primeiro fundo não transparente subindo a árvore, ou o da página):
+     fundo claro, partículas pretas; fundo escuro, brancas. A cor de texto não serve: o topo herda texto claro mesmo no tema claro. */
+  function fundoEscuro(el) {
+    for (var e = el; e && e.nodeType === 1; e = e.parentElement) {
+      var m = (getComputedStyle(e).backgroundColor.match(/[\d.]+/g) || []).map(Number);
+      if (m.length >= 3 && (m.length < 4 || m[3] > 0.5)) return (0.299 * m[0] + 0.587 * m[1] + 0.114 * m[2]) < 128;
+    }
+    return false;
+  }
+  function corDoTema(el, alfa) { return fundoEscuro(el) ? 'rgba(255,255,255,' + alfa + ')' : 'rgba(0,0,0,' + alfa + ')'; }
+  /** Chama fn quando o tema muda (o site aplica data-theme depois de carregar, e o sistema pode trocar claro/escuro). */
+  function aoMudarTema(fn) {
+    var q = 0, chamar = function () { cancelAnimationFrame(q); q = requestAnimationFrame(fn); };
+    new MutationObserver(chamar).observe(raizDoc, { attributes: true, attributeFilter: ['data-theme', 'class', 'style'] });
+    if (window.matchMedia) { var mq = window.matchMedia('(prefers-color-scheme: dark)'); if (mq.addEventListener) mq.addEventListener('change', chamar); }
+    setTimeout(chamar, 300); setTimeout(chamar, 1500); // o tema do site pode chegar depois do primeiro desenho
+  }
+  /* design-prototypes: área limpa no centro da primeira dobra (as partículas só aparecem ao redor). Medida em pixels da dobra: o retângulo
+     base (14% das laterais, 13% do topo, 66% da altura) cresce 88 px para cima e para cada lado e 32 px para baixo; borda desfocada (feGaussianBlur).
+     Vai para --mvp-buraco, que o mvp.css soma ao degradê de baixo. Refaz ao redimensionar. */
+  var BURACO_EXTRA = { cima: 56 + 32, lados: 56 + 32, baixo: 32 };
+  function mascaraDoTopo(cv) {
+    var feito = '';
+    function desenhar() {
+      var W = Math.round(cv.clientWidth), H = Math.round(cv.clientHeight);
+      if (!W || !H || feito === W + 'x' + H) return;
+      feito = W + 'x' + H;
+      var x = Math.max(0, W * 0.14 - BURACO_EXTRA.lados), y = Math.max(0, H * 0.13 - BURACO_EXTRA.cima);
+      var w = Math.min(W - x, W * 0.72 + 2 * BURACO_EXTRA.lados), h = Math.min(H - y, H * 0.79 + BURACO_EXTRA.baixo - y);
+      var b = Math.round(Math.min(W, H) * 0.06);
+      var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '">' +
+        '<defs><filter id="b" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="' + b + '"/></filter>' +
+        '<mask id="m"><rect width="' + W + '" height="' + H + '" fill="#fff"/><rect x="' + Math.round(x) + '" y="' + Math.round(y) + '" width="' + Math.round(w) + '" height="' + Math.round(h) + '" fill="#000" filter="url(#b)"/></mask></defs>' +
+        '<rect width="' + W + '" height="' + H + '" fill="#000" mask="url(#m)"/></svg>';
+      cv.style.setProperty('--mvp-buraco', 'url("data:image/svg+xml,' + encodeURIComponent(svg) + '")');
+    }
+    desenhar();
+    if (window.ResizeObserver) new ResizeObserver(desenhar).observe(cv); else window.addEventListener('resize', desenhar);
+  }
+  /* design-prototypes: o banner da home mostra os próximos eventos do Backstage (catálogo da ponte-backstage.js), não mais os destaques
+     fixos do protótipo. Os 8 primeiros por data, à venda ou com venda para abrir, com capa. Sem catálogo, ficam os destaques fixos. */
+  function destaquesDoBackstage() {
+    return fetch('/api/eventos').then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
+      var evs = (d && d.events || []).filter(function (e) { return e.img && (e.situacao === 'venda' || e.situacao === 'nao-aberto' || e.situacao === 'esgotado'); });
+      if (!evs.length) return;
+      var nomes = {}; (d.categories || []).forEach(function (c) { nomes[c.slug] = c.name; });
+      // sugestões da busca («Experimente buscar…»): artistas e eventos do catálogo, e categoria + cidade
+      var sug = [];
+      (d.artists || []).slice(0, 4).forEach(function (a) { sug.push(a.name); });
+      evs.slice(0, 12).forEach(function (e) {
+        var cidade = String(e.venue || '').split(' · ').pop().replace(/, [A-Z]{2}$/, '');
+        var cat = nomes[(e.cats || [])[0]];
+        if (cat && cidade && sug.length < 9) sug.push(cat + ' em ' + cidade);
+      });
+      sug = sug.filter(function (x, i) { return x && sug.indexOf(x) === i; });
+      if (sug.length >= 3) { EXEMPLOS.length = 0; Array.prototype.push.apply(EXEMPLOS, sug); }
+      DADOS.itens = evs.slice(0, 8).map(function (e) {
+        var href = window.IngresseDestinos ? window.IngresseDestinos.evento(e) : 'Evento.dc.html';
+        var sit = e.situacao === 'esgotado' ? 'Esgotado' : e.situacao === 'nao-aberto' ? 'Venda em breve' : null;
+        return { tipo: 'evento', selo: sit || nomes[(e.cats || [])[0]] || 'Evento', nome: e.name, texto: e.resumo || '', data: e.date, local: e.venue, img: e.img, href: href, cta: 'Ver evento', estilo: 'festival' };
+      });
+    }).catch(function () {});
+  }
   function produtores() {
     var sec = document.querySelector('[data-mvp="produtores"]');
     if (!sec) return;
-    var a = areiaEm(sec, { estilo: 'pista', semente: 23, densidade: 130, max: 8000 });
+    // design-prototypes: no lugar da areia, o campo de partículas do Backstage (campo-de-particulas.js); a cor segue o tema pelo fundo (fundoEscuro), como
+    // useCorDeParticulas (preto translúcido no claro, branco no escuro), e o botão puxa para o vermelho da marca enquanto está em foco
     var cta = sec.querySelector('.bp');
-    if (cta) { cta.addEventListener('mouseenter', function () { a.excitar('festival'); }); cta.addEventListener('focus', function () { a.excitar('festival'); }); }
+    if (window.IngresseParticulas) {
+      var cv = document.createElement('canvas');
+      cv.className = 'mvp-particulas'; cv.setAttribute('aria-hidden', 'true');
+      sec.insertBefore(cv, sec.firstChild);
+      var base = corDoTema(sec, 0.16), marca = 'rgba(' + MARCA.join(',') + ',0.34)', acesa = false;
+      var campo = window.IngresseParticulas.criar(cv, { cor: base, densidade: 0.9 });
+      aoMudarTema(function () { base = corDoTema(sec, 0.16); if (!acesa) campo.cor(base); });
+      if (cta) {
+        var liga = function () { acesa = true; campo.cor(marca); }, desliga = function () { acesa = false; campo.cor(base); };
+        cta.addEventListener('mouseenter', liga); cta.addEventListener('focus', liga);
+        cta.addEventListener('mouseleave', desliga); cta.addEventListener('blur', desliga);
+      }
+    }
+    parallaxProdutores(sec);
+  }
+  /* design-prototypes: parallax das fotos de «Para produtores». Na rolagem, cada foto anda numa velocidade e num sentido (as de cima e as de
+     baixo se afastam do centro em ritmos diferentes), por transform; a flutuação (mvp-boia) segue no translate. Só calcula com a seção perto
+     da tela, um quadro por vez; com movimento reduzido fica parado. */
+  var VELOCIDADES = [0.22, -0.12, 0.16, -0.2, 0.1, -0.16];
+  function parallaxProdutores(sec) {
+    if (reduz()) return;
+    var fotos = sec.querySelectorAll('.mvp-prod__f'), perto = false, pend = false;
+    if (!fotos.length) return;
+    function aplicar() {
+      pend = false;
+      var r = sec.getBoundingClientRect(), vh = window.innerHeight || 1;
+      // -1 quando o centro da seção está no pé da tela, 0 no meio, 1 no topo
+      var p = Math.max(-1.5, Math.min(1.5, (vh / 2 - (r.top + r.height / 2)) / vh));
+      for (var i = 0; i < fotos.length; i++) fotos[i].style.setProperty('--py', (p * VELOCIDADES[i % VELOCIDADES.length] * vh).toFixed(1) + 'px');
+    }
+    function pedir() { if (perto && !pend) { pend = true; requestAnimationFrame(aplicar); } }
+    if ('IntersectionObserver' in window) new IntersectionObserver(function (es) { perto = es[0].isIntersecting; pedir(); }, { rootMargin: '200px' }).observe(sec);
+    else perto = true;
+    window.addEventListener('scroll', pedir, { passive: true });
+    window.addEventListener('resize', pedir);
+    aplicar();
   }
 
   /* ------------------------------------------------------------------ 6. trilha da Categoria: menu das categorias do mesmo nível */
@@ -376,6 +575,24 @@
   function buscaHome() {
     var f = document.querySelector('[data-mvp="topo"] .hb-form'); if (!f) return;
     var tw = f.querySelector('.mvp-nb__tw'), inp = f.querySelector('.hb-in'); if (!tw || !inp) return;
+    // design-prototypes: a frase digitada vai para DENTRO do campo, no lugar do placeholder (que sai; o nome acessível segue no aria-label).
+    // Fica por cima do input, sem receber clique, alinhada ao texto; some quando há termo (mvp.css, .mvp-hb__dica--dentro).
+    var dica = f.querySelector('.mvp-hb__dica'), barra = f.querySelector('.hb-bar');
+    if (dica && barra) {
+      barra.appendChild(dica);
+      dica.classList.add('mvp-hb__dica--dentro');
+      inp.setAttribute('placeholder', '');
+      var alinhar = function () {
+        var csI = getComputedStyle(inp);
+        dica.style.left = (inp.offsetLeft + (parseFloat(csI.paddingLeft) || 0)) + 'px';
+        dica.style.right = (barra.clientWidth - inp.offsetLeft - inp.offsetWidth + (parseFloat(csI.paddingRight) || 0)) + 'px';
+        dica.style.fontSize = csI.fontSize;
+        dica.style.top = (inp.offsetTop + inp.offsetHeight / 2) + 'px'; // no celular a barra empilha campo e botão: centra na linha do input
+      };
+      alinhar();
+      window.addEventListener('resize', alinhar);
+      if (window.ResizeObserver) new ResizeObserver(alinhar).observe(barra);
+    }
     var visivel = true;
     var roda = function () { return visivel && !document.hidden && !inp.value; };
     var dig = digitador(tw, roda);
@@ -390,11 +607,64 @@
   function evento() {
     var hero = document.querySelector('.ev-hero');
     if (!hero) return;
-    var a = areiaEm(hero, { estilo: 'pagode', semente: 29, tinta: [229, 229, 229], cor: [255, 74, 64], alfa: 0.34, densidade: 85, max: 12000 });
+    // design-prototypes: no lugar da areia, a faixa do título do Guia de configuração do Backstage: campo de partículas com as mesmas
+    // opções (densidade 2, escala 3, sem pausa), apagando para a esquerda, onde fica o texto (máscara no mvp.css). A cor segue o fundo.
+    var a = { excitar: function () {} };
+    if (window.IngresseParticulas) {
+      var cvEv = hero.querySelector(':scope > canvas.mvp-areia');
+      if (!cvEv) { cvEv = document.createElement('canvas'); cvEv.className = 'mvp-areia mvp-particulas-guia'; cvEv.setAttribute('aria-hidden', 'true'); hero.insertBefore(cvEv, hero.firstChild); }
+      var corEv = corDoTema(hero, 0.16), marcaEv = 'rgba(' + MARCA.join(',') + ',0.34)', tEv = 0, acesoEv = false;
+      var campoEv = window.IngresseParticulas.criar(cvEv, { cor: corEv, densidade: 2, escala: 3, parada: 0 });
+      aoMudarTema(function () { corEv = corDoTema(hero, 0.16); if (!acesoEv) campoEv.cor(corEv); });
+      a = { excitar: function () { if (reduz()) return; acesoEv = true; campoEv.cor(marcaEv); clearTimeout(tEv); tEv = setTimeout(function () { acesoEv = false; campoEv.cor(corEv); }, 700); } };
+    } else a = areiaEm(hero, { estilo: 'pagode', semente: 29, tinta: [229, 229, 229], cor: [255, 74, 64], alfa: 0.34, densidade: 85, max: 12000 });
     document.addEventListener('mouseover', function (e) { var b = e.target.closest && e.target.closest('.ev-hero-cta .bp'); if (b && !b.contains(e.relatedTarget)) a.excitar(); });
     // o cartão de compra sobe para dentro do hero: a altura do hero vai para o CSS (mvp.css, «hero invertido»)
     var medirHero = function () { raizDoc.style.setProperty('--mvp-hero-alt', hero.offsetHeight + 'px'); };
     medirHero(); window.addEventListener('resize', medirHero); if (window.ResizeObserver) new ResizeObserver(medirHero).observe(hero);
+    // design-prototypes: o cartão de compra ocupa a altura da tela menos o cabeçalho e 2× a margem que o separa do cabeçalho (a mesma
+    // margem em cima e embaixo). Mede a margem e a altura do cabeçalho (--mvp-buy-margem, --mvp-cab-alt); a altura está no mvp.css.
+    var cartao = document.querySelector('aside.buy .card'), cab = document.querySelector('.hdr');
+    var medirMargem = function () {
+      if (!cartao || !cab) return;
+      var aside = cartao.closest('aside') || cartao;
+      if (window.scrollY > 0) return; // o cartão é sticky: só mede com a página no topo (posição natural)
+      var topo = aside.getBoundingClientRect().top;
+      raizDoc.style.setProperty('--mvp-cab-alt', cab.offsetHeight + 'px');
+      raizDoc.style.setProperty('--mvp-buy-margem', Math.max(0, Math.round(topo - cab.getBoundingClientRect().bottom)) + 'px');
+      larguraDoCartao();
+    };
+    // a largura do cartão acompanha o pôster: com a altura do cartão fixa, o pôster fica com o que sobra depois de preço e botão; a largura
+    // é a que deixa o pôster na proporção dele (sem recorte). Preço e botão mudam de altura com a largura (o preço quebra linha), então
+    // repete até assentar. Vai para --layout-aside-width, que o site usa para o cartão e para a folga do texto do hero.
+    var larguraDoCartao = function () {
+      var img = cartao && cartao.querySelector('.mvp-buy-img');
+      if (!img || !window.matchMedia('(min-width: 1024px)').matches) { raizDoc.style.removeProperty('--layout-aside-width'); return; }
+      var prop = img.naturalWidth && img.naturalHeight ? img.naturalWidth / img.naturalHeight : 810 / 1080;
+      var borda = cartao.offsetWidth - cartao.clientWidth;
+      for (var i = 0; i < 3; i++) {
+        var alt = cartao.getBoundingClientRect().height, fixo = alt - img.getBoundingClientRect().height;
+        var w = Math.round(Math.max(280, Math.min(416, (alt - fixo) * prop + borda)));
+        if (Math.abs(w - cartao.offsetWidth) < 2) break;
+        raizDoc.style.setProperty('--layout-aside-width', w + 'px');
+      }
+    };
+    if (cartao) { var imgC = cartao.querySelector('.mvp-buy-img'); if (imgC) imgC.addEventListener('load', function () { requestAnimationFrame(larguraDoCartao); }); }
+    // mede quadro a quadro até a posição do cartão parar de mudar (o hero e a largura do cartão se ajustam em cadeia), no máximo ~1 s
+    var laco = 0;
+    var medirDepois = function () {
+      cancelAnimationFrame(laco); var ultimo = null, iguais = 0, n = 0;
+      (function passo() {
+        medirMargem();
+        var a = cartao ? Math.round(cartao.getBoundingClientRect().top) + ':' + cartao.offsetWidth + ':' + Math.round(cartao.getBoundingClientRect().height) : '';
+        iguais = a === ultimo ? iguais + 1 : 0; ultimo = a;
+        if (iguais < 3 && ++n < 60) laco = requestAnimationFrame(passo);
+      })();
+    };
+    medirDepois(); window.addEventListener('resize', medirDepois); if (window.ResizeObserver) new ResizeObserver(medirDepois).observe(hero);
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(medirDepois);
+    [400, 1200, 2500].forEach(function (ms) { setTimeout(medirDepois, ms); }); // a página monta em etapas (motor de templates, dados do BFF)
+    window.addEventListener('scroll', function () { if (window.scrollY === 0) medirMargem(); }, { passive: true });
     var ligado = null;
     var ver = function () { var on = hero.getBoundingClientRect().bottom < 8; if (on !== ligado) { ligado = on; raizDoc.toggleAttribute('data-mvp-evbar-on', on); } };
     window.addEventListener('scroll', ver, { passive: true }); window.addEventListener('resize', ver); ver();
@@ -432,9 +702,18 @@
   function iniciar() {
     var topo = document.querySelector('[data-mvp="topo"]');
     if (topo) {
-      var cv = topo.querySelector('canvas.mvp-areia'), areia = cv ? Areia(cv, { estilo: 'festival', semente: 11 }) : null;
+      var cv = topo.querySelector('canvas.mvp-areia'), areia = null;
+      // design-prototypes: no fundo da primeira dobra, o campo de partículas do Backstage (campo-de-particulas.js) no lugar da areia; a cada
+      // troca de destaque as partículas puxam para o vermelho da marca e voltam (o papel que o «excitar» da areia fazia). Sem o script, a areia.
+      if (cv && window.IngresseParticulas) {
+        var corBase = corDoTema(topo, 0.22), corMarca = 'rgba(' + MARCA.join(',') + ',0.5)', pulsando = false; // mais opacas que as de «Para produtores»
+        var campo = window.IngresseParticulas.criar(cv, { cor: corBase, densidade: 3.6, parada: 0, ciclo: 4000, repeticoes: 2 }), tVolta = 0; // quatro vezes as de «Para produtores»; parada 0: a figura nunca para; ciclo 4 s: troca 4x mais rápido que no Backstage (16 s); repeticoes 2: o dobro de células da figura em cada direção
+        aoMudarTema(function () { corBase = corDoTema(topo, 0.22); if (!pulsando) campo.cor(corBase); });
+        areia = { excitar: function () { if (reduz()) return; pulsando = true; campo.cor(corMarca); clearTimeout(tVolta); tVolta = setTimeout(function () { pulsando = false; campo.cor(corBase); }, 700); } };
+        mascaraDoTopo(cv);
+      } else if (cv) areia = Areia(cv, { estilo: 'festival', semente: 11 });
       var hero = topo.querySelector('[data-mvp-hero]');
-      if (hero) montarHero(hero, areia);
+      if (hero) destaquesDoBackstage().then(function () { montarHero(hero, areia); });
       cabecalho();
       buscaHome();
     }

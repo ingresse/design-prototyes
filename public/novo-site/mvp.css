@@ -335,8 +335,99 @@ html[data-modo="mvp"] .rp-grupo__t, html[data-modo="mvp"] .rp-grupo__lista :is(a
 html[data-modo="mvp"] .rp-grupo__t { margin-bottom: var(--space-3); color: var(--color-text-tertiary); }
 html[data-modo="mvp"] .rp-grupo__lista { justify-content: center; row-gap: var(--space-2); }
 
+/* ---------- design-prototypes: banner da Home ---------- */
+/* Ordem da troca: o texto antigo some no lugar, rápido (sem deslizar, para os dois títulos não se sobreporem); depois a tag se revela da
+   esquerda para a direita, o nome entra palavra por palavra saindo do desfoque e, por último, data, local e descrição sobem de leve.
+   O botão (data-cta) é fixo, fora dos blocos: só troca link e texto. */
+.mvp-hero__bloco { padding-bottom: var(--mvp-cta-reserva, 0px); transition: opacity var(--motion-duration-fast, 200ms) var(--motion-ease-move) 120ms; }
+.mvp-hero__bloco[data-estado] { transform: none !important; }
+.mvp-hero__bloco[data-estado="entra"] { filter: none; }
+.mvp-hero__bloco[data-estado="sai"] { filter: blur(6px); transition: opacity 240ms var(--motion-ease-exit), filter 240ms var(--motion-ease-exit); }
+.mvp-hero__txt > .mvp-hero__cta { position: absolute; left: 0; bottom: 0; z-index: 2; margin: 0; }
+
+/* tag: revelação horizontal (entra da esquerda, sai para a direita), sem desfoque */
+.mvp-hero__selo { clip-path: inset(0 0 0 0); animation: mvp-selo-entra 420ms var(--motion-ease-enter) 160ms backwards; }
+.mvp-hero__bloco[data-estado="sai"] .mvp-hero__selo { clip-path: inset(0 0 0 100%); transition: clip-path 240ms var(--motion-ease-exit); }
+@keyframes mvp-selo-entra { from { clip-path: inset(0 100% 0 0); } }
+
+/* nome: palavra por palavra; o foco em onda (mvp-foco) volta depois (a entrada só segura o estado inicial no atraso, fill backwards) */
+.mvp-hero__titulo .mvp-w {
+  animation: mvp-foco 6.4s var(--motion-ease-move) infinite, mvp-palavra-entra var(--motion-duration-hero) var(--motion-ease-enter) backwards;
+  animation-delay: calc(var(--i, 0) * -1.45s), calc(240ms + var(--i, 0) * 110ms);
+}
+@keyframes mvp-palavra-entra {
+  from { opacity: 0; filter: blur(0.14em); transform: translateY(0.18em); }
+  to { opacity: 1; filter: blur(0); transform: none; }
+}
+
+/* «Para produtores»: campo de partículas do Backstage (campo-de-particulas.js) atrás das fotos, e parallax nas fotos (--py vem do mvp.js) */
+.mvp-prod { border-top: 0; }
+/* a faixa cinza da revenda (última seção do main) encosta em «Para produtores»: sem o respiro do fim do main e sem os cantos de baixo */
+html[data-modo="mvp"][data-pagina="home"] main:has(+ .mvp-prod) { padding-bottom: 0 !important; }
+html[data-modo="mvp"][data-pagina="home"] main:has(+ .mvp-prod) > .mvp-rv { margin-bottom: 0 !important; }
+html[data-modo="mvp"][data-pagina="home"] main:has(+ .mvp-prod) > .mvp-rv::before { border-bottom-left-radius: 0 !important; border-bottom-right-radius: 0 !important; }
+/* as partículas presas na borda do canvas formavam uma linha: as bordas somem num degradê */
+.mvp-prod > .mvp-particulas { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none;
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 12%, #000 88%, transparent), linear-gradient(to right, transparent, #000 6%, #000 94%, transparent);
+  -webkit-mask-composite: source-in; mask-image: linear-gradient(to bottom, transparent, #000 12%, #000 88%, transparent), linear-gradient(to right, transparent, #000 6%, #000 94%, transparent); mask-composite: intersect; }
+.mvp-prod__f { transform: translate3d(0, var(--py, 0px), 0) rotate(var(--r, 0deg)); will-change: transform; }
+
+/* carrosséis de cartões: o corte seco na borda vira uma máscara de transparência na faixa de respiro (--folga-x), dos dois lados.
+   Máscara, não degradê de cor: funciona em qualquer fundo (cinza da faixa, branco, escuro). Parado no começo, o primeiro cartão fica
+   inteiro: a máscara só ocupa o respiro. */
+html[data-modo="mvp"] :is(.ev-scroll:has(> :is(.ev-card, .ven-card)), .row[data-artist-row]:has(> .art-col)) {
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 var(--folga-x, var(--space-8)), #000 calc(100% - var(--folga-x, var(--space-8))), transparent);
+  mask-image: linear-gradient(to right, transparent, #000 var(--folga-x, var(--space-8)), #000 calc(100% - var(--folga-x, var(--space-8))), transparent);
+}
+
+/* busca da Home: a frase digitada mora dentro do campo, no lugar do placeholder (mvp.js move o <p> para dentro da barra e mede left/right
+   pelo input). Prefixo na cor de placeholder, exemplo em destaque, cursor piscando; com termo digitado, some. */
+.hb-bar:has(> .mvp-hb__dica--dentro) { position: relative; }
+.mvp-hb__dica.mvp-hb__dica--dentro { position: absolute; top: 50%; transform: translateY(-50%); z-index: 1; padding: 0; min-height: 0; margin: 0; pointer-events: none; white-space: nowrap; overflow: hidden; align-self: auto; color: var(--color-field-placeholder); transition: opacity var(--motion-duration-fast) var(--motion-ease-move); }
+.mvp-hb__dica--dentro .mvp-hb__dica-r { color: var(--color-field-placeholder); }
+
+/* primeira dobra: o centro fica limpo (branco) e as partículas só aparecem ao redor. Buraco quadrado com bordas desfocadas (SVG com
+   feGaussianBlur, esticado à dobra), somado ao degradê que já apagava a parte de baixo. Máscara, não cor: vale em qualquer tema. */
+.mvp-topo > .mvp-areia {
+  --mvp-buraco: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cdefs%3E%3Cfilter id='b' x='-50%25' y='-50%25' width='200%25' height='200%25'%3E%3CfeGaussianBlur stdDeviation='6'/%3E%3C/filter%3E%3Cmask id='m'%3E%3Crect width='100' height='100' fill='%23fff'/%3E%3Crect x='14' y='13' width='72' height='66' fill='%23000' filter='url%28%23b%29'/%3E%3C/mask%3E%3C/defs%3E%3Crect width='100' height='100' fill='%23000' mask='url%28%23m%29'/%3E%3C/svg%3E");
+  -webkit-mask-image: var(--mvp-buraco), linear-gradient(to bottom, #000 0, #000 62%, transparent 96%);
+  mask-image: var(--mvp-buraco), linear-gradient(to bottom, #000 0, #000 62%, transparent 96%);
+  -webkit-mask-size: 100% 100%; mask-size: 100% 100%; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+  -webkit-mask-composite: source-in; mask-composite: intersect;
+}
+
+/* a pilha acompanha o centro do texto + botão (mvp.js, centrarPilha) */
+.mvp-hero__pilha { transition: translate var(--motion-duration-hero) var(--motion-ease-move); }
+
+/* detalhe do evento (desktop): o cartão de compra tem 100vh menos o cabeçalho e 2× a margem superior de hoje (a mesma margem embaixo;
+   --mvp-buy-margem e --mvp-cab-alt medidas pelo mvp.js). A largura acompanha o pôster: o mvp.js põe em --layout-aside-width a largura
+   em que o pôster cabe inteiro na altura que sobra, então o cartão fica mais estreito e o pôster sem recorte.
+   O pôster é quem estica ou encolhe para preencher (recorte, sem distorcer); preço e botão ficam com a altura que têm. */
+@media (min-width: 1024px) {
+  html[data-modo="mvp"][data-pagina="evento"] aside.buy .card { display: flex; flex-direction: column; box-sizing: border-box; height: calc(100vh - var(--mvp-cab-alt, 65px) - 2 * var(--mvp-buy-margem, 56px)); height: calc(100svh - var(--mvp-cab-alt, 65px) - 2 * var(--mvp-buy-margem, 56px)); }
+  html[data-modo="mvp"][data-pagina="evento"] aside.buy .card > * { flex: 0 0 auto; }
+  html[data-modo="mvp"][data-pagina="evento"] aside.buy .card > .mvp-buy-img { flex: 1 1 0; min-height: 0; height: auto; aspect-ratio: auto; object-fit: cover; }
+}
+
+/* detalhe do evento: a faixa do título como a do Guia de configuração do Backstage. Partículas do campo (mvp.js) que somem à esquerda,
+   onde fica o texto. O fundo segue o preto da faixa (as partículas ficam brancas). */
+html[data-modo="mvp"][data-pagina="evento"] .ev-hero > .mvp-particulas-guia { -webkit-mask-image: linear-gradient(to right, transparent 0%, #000 100%); mask-image: linear-gradient(to right, transparent 0%, #000 100%); }
+@media (min-width: 1024px) {
+  /* o texto do hero para antes do cartão, com folga (antes encostava: a folga era o próprio respiro lateral) */
+  html[data-modo="mvp"][data-pagina="evento"] .ev-hero-in { padding-right: calc(var(--layout-aside-width) + var(--layout-margin) + var(--space-8)); }
+}
+
+
+/* detalhe do evento: o preço do cartão («a partir de R$ …») 16 px menor que o token de preço */
+html[data-modo="mvp"][data-pagina="evento"] aside.buy .card > div[style*="font-size: 26px"] { font-size: calc(var(--font-size-price-xl) - 16px) !important; line-height: 1.1 !important; }
+
+/* data, local e descrição: depois do nome */
+.mvp-hero__bloco .mvp-hero__meta { animation: mvp-hero-sobe 480ms var(--motion-ease-enter) 520ms backwards; }
+.mvp-hero__bloco .mvp-hero__desc { animation: mvp-hero-sobe 480ms var(--motion-ease-enter) 600ms backwards; }
+@keyframes mvp-hero-sobe { from { opacity: 0; transform: translateY(var(--space-2)); } }
+
 @media (prefers-reduced-motion: reduce) {
-  .mvp-w, .mvp-prod__f { animation: none; }
+  .mvp-w, .mvp-prod__f, .mvp-hero__titulo .mvp-w, .mvp-hero__selo, .mvp-hero__bloco .mvp-hero__meta, .mvp-hero__bloco .mvp-hero__desc { animation: none; }
   .mvp-hero__bloco, .mvp-hero__carta, .mvp-evbar { transition: none; }
   .mvp-hero__bloco:is([data-estado="entra"], [data-estado="sai"]) { transform: none !important; filter: none; }
 }

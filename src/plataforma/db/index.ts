@@ -83,6 +83,22 @@ function publicarDaSeed(t: Tabelas) {
     }
 }
 
+/**
+ * Instagram do evento (EVT-168) vindo da seed para eventos já gravados sem o campo (2026-11-24.2: perfis da D-EDGE).
+ * Completar a seed não muda documento que já existe; aqui o campo entra só se ainda não houver um.
+ */
+const INSTAGRAM_DA_SEED = new Map(SEED.eventos.flatMap((e) => (e.instagram ? [[e.id, e.instagram] as const] : [])));
+/** Perfil errado que uma seed anterior gravou (2026-11-24.1: @primaverasound não é o do festival). Sai na leitura. */
+const INSTAGRAM_ERRADO = "primaverasound";
+function instagramDaSeed(t: Tabelas): Tabelas {
+    for (const [id, ev] of Object.entries(t.eventos)) if (ev.instagram === INSTAGRAM_ERRADO) t.eventos[id] = { ...ev, instagram: undefined };
+    for (const [id, ig] of INSTAGRAM_DA_SEED) {
+        const ev = t.eventos[id];
+        if (ev && ev.instagram === undefined) t.eventos[id] = { ...ev, instagram: ig };
+    }
+    return t;
+}
+
 function lerLocal(): Tabelas | null {
     try {
         const raw = localStorage.getItem(LOCAL_KEY);
@@ -97,7 +113,7 @@ function lerLocal(): Tabelas | null {
             for (const c of COLECOES) p.tabelas[c] = { ...seed[c], ...(p.tabelas[c] ?? {}) } as never;
             publicarDaSeed(p.tabelas);
         }
-        return completarFimDasSessoes(p.tabelas);
+        return instagramDaSeed(completarFimDasSessoes(p.tabelas));
     } catch {
         return null;
     }
@@ -125,7 +141,7 @@ async function sincronizar() {
             await post({ op: "seed", versao: SEED_VERSAO, data: SEED });
             return sincronizar();
         }
-        if (pendentes === 0) emitir({ modo: "compartilhado", tabelas: completarFimDasSessoes(indexar(r.colecoes)), erro: null });
+        if (pendentes === 0) emitir({ modo: "compartilhado", tabelas: instagramDaSeed(completarFimDasSessoes(indexar(r.colecoes))), erro: null });
     } catch (err) {
         if (estado.modo === "carregando") {
             emitir({ modo: "local", tabelas: lerLocal() ?? indexar(SEED), erro: null });

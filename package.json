@@ -6,6 +6,7 @@
   "scripts": {
     "build": "vite build",
     "dev": "vite",
+    "seed:site": "node scripts/seed-do-novo-site.mjs",
     "publish": "git add . && git commit -m \"improves\" && git push"
   },
   "dependencies": {

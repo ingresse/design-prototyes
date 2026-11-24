@@ -136,7 +136,27 @@
     }
 
     // sem dado no BFF: sai
-    ['Quem vai', 'Instagram do evento', 'Mesma turnê'].forEach(function (t) { some(secaoPorTitulo(t)); });
+    ['Quem vai', 'Mesma turnê'].forEach(function (t) { some(secaoPorTitulo(t)); });
+
+    // design-prototypes: Instagram do evento (campo da criação no Backstage, EVT-168). Sem perfil, a seção sai; com perfil, o cartão
+    // «Siga @perfil» aponta para ele.
+    var ig = secaoPorTitulo('Instagram do evento'), h = d.instagram;
+    if (ig) {
+      if (!h) some(ig);
+      else {
+        if (ig.hidden) ig.hidden = false;
+        txt(ig.querySelector('.ev-ig__t'), 'Siga @' + h);
+        var bt = ig.querySelector('.ev-ig__bt'); attr(bt, 'href', 'https://www.instagram.com/' + encodeURIComponent(h) + '/'); attr(bt, 'aria-label', 'Seguir @' + h + ' no Instagram (abre em nova aba)');
+      }
+    }
+
+    // design-prototypes: a barra preta que aparece ao rolar (mvp.js, .mvp-evbar) com os dados deste evento
+    var bar = document.querySelector('.mvp-evbar');
+    if (bar) {
+      attr(bar.querySelector('.mvp-evbar__img'), 'src', e.img);
+      txt(bar.querySelector('.mvp-evbar__txt strong'), e.name);
+      txt(bar.querySelector('.mvp-evbar__txt > span'), [quando(e.iso, tz), v.name, v.city].filter(Boolean).join(' · '));
+    }
 
     // Local: mapa pelas coordenadas, endereço; a foto e o texto de como chegar são do Anhembi
     var loc = document.getElementById('local');
@@ -146,7 +166,17 @@
       var ab = loc.querySelector('.mapa-cinza__abrir'); if (ab) { attr(ab, 'href', 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent([v.name, v.address, cidade].filter(Boolean).join(', '))); attr(ab, 'aria-label', 'Abrir ' + v.name + ' no mapa'); }
       some(loc.querySelector('.loc-foto'));
       var info = loc.querySelectorAll('.loc-info > div:last-child > div');
-      txt(info[0], v.name || ''); txt(info[1], [v.address, cidade].filter(Boolean).join(' · ')); some(info[2]);
+      txt(info[0], v.name || ''); txt(info[1], [v.address, cidade].filter(Boolean).join(' · '));
+      // design-prototypes: abaixo do nome do lugar, por onde entra cada grupo de ingressos (setor e acesso), uma linha por grupo
+      var en = (d.entradas || []).filter(function (g) { return g.acesso; });
+      if (info[2]) {
+        if (!en.length) some(info[2]);
+        else {
+          if (info[2].hidden) info[2].hidden = false;
+          var linhas = en.map(function (g) { return g.nome + ': ' + g.acesso; }).join('\n');
+          if (info[2].textContent !== linhas) { info[2].textContent = linhas; info[2].style.whiteSpace = 'pre-line'; }
+        }
+      }
     }
 
     // trilha: a categoria do evento (a primeira do BFF) e o nome

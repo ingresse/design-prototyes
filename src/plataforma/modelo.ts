@@ -655,6 +655,8 @@ export interface Evento {
     bannersAdicionais?: string[];
     /** Vídeo opcional da página do evento (EVT-165). */
     video?: VideoDoEvento;
+    /** Perfil do Instagram do evento, sem @ (EVT-168). A página do evento no site convida a seguir o perfil. */
+    instagram?: string;
     local: string;
     /** Entradas (portões) do local, opcionais (EVT-166). */
     entradas?: EntradaDoLocal[];

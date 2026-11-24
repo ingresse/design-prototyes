@@ -21,6 +21,8 @@ Backstage (cria evento, ingressos, publica)
 | `categorias.ts` | Categorias e tags de evento: as 10 categorias do mapa do Grupo (`categorias-catalogo.ts`, coleção `categorias` pela seed), tags por embedding (Hugging Face, no navegador) com citação no texto, e leitura do banner pelo Claude local (`ia-local/plugin.ts`). Coleções `categorias` e `criacoes` |
 | `db/index.ts` | Cliente do banco: `useColecao`, `useDoc`, `salvar`, `resetarBanco` |
 | `db/seed.ts` | Mundo inicial: eventos do Backstage e do novo site, cada um com catálogo gerado, e o histórico de vendas dos eventos publicados do Backstage |
+| `db/eventos-ingresse.ts` | 18 eventos reais do ingresse.com (raspagem leve de 24/11/2026: nome, capa, local, datas, descrição) com ingressos, lotes e vendas do protótipo, cada um com um tipo de data e uma condição de compra diferente |
+| `../../scripts/seed-do-novo-site.mjs` | `npm run seed:site`: gera `public/novo-site/_api/seed-backstage.json`, que o novo site usa para completar o banco do navegador. Rode depois de mudar a seed |
 | `../../api/db.ts` | API na Vercel, no mesmo Upstash Redis das outras APIs (namespace `design-prototyes:db:v1`) |
 
 ## Compartilhado ou local

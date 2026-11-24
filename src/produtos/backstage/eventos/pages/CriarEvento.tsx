@@ -4,7 +4,7 @@ import { Navigate, useNavigate, useSearchParams } from "react-router";
 import { toast } from "sonner";
 import { AnimatePresence, motion } from "motion/react";
 import { Button as AriaButton, ComboBox as AriaComboBox, Input as AriaInput, ListBox as AriaListBox } from "react-aria-components";
-import { ChevronDown, PlayCircle, Plus, RefreshCw01, Tag01, Trash01, XClose } from "@untitledui/icons";
+import { AtSign, ChevronDown, PlayCircle, Plus, RefreshCw01, Tag01, Trash01, XClose } from "@untitledui/icons";
 import { AlertFloating } from "@/components/application/alerts/alerts";
 import { Dialog, Modal, ModalOverlay } from "@/components/application/modals/modal";
 import { ButtonGroup, ButtonGroupItem } from "@/components/base/button-group/button-group";
@@ -34,6 +34,7 @@ import { useTagsDoEvento } from "../data/tags-do-evento";
 import { CaixaDeEnvio, CampoBanner, CampoBannerCompacto, exportarRecorte, useBannerNaColuna, type BannerDoEvento, type ImagemDoBanner, type Recorte } from "../components/campo-banner";
 import { CampoEntradas, entradasParaGravar, entradasRepetidas } from "../components/campo-entradas";
 import { lerVideo } from "../data/video-do-evento";
+import { lerInstagram } from "../data/instagram-do-evento";
 import { buscarLocais, useOpcoesEvento, type LocalEncontrado, type Opcao } from "../data/opcoes-evento";
 import { CampoOpcaoDaOrganizacao, CONTORNO_DE_ERRO } from "../components/campo-opcao-da-organizacao";
 import { TIPOS_DE_EVENTO, tipoDeEvento } from "../data/tipos-evento";
@@ -113,6 +114,8 @@ interface Formulario {
     bannersExtras: BannerDoEvento[];
     /** Link do vídeo opcional, como a pessoa colou (EVT-165). */
     video: string;
+    /** Instagram do evento, como a pessoa escreveu (@perfil ou link), opcional (EVT-168). */
+    instagram: string;
     /** Entradas (portões) do local, opcionais (EVT-166). */
     entradas: EntradaDoLocal[];
     mapaTipo: "imagem" | "assentos";
@@ -147,6 +150,7 @@ const INICIAL: Omit<Formulario, "tipo"> = {
     recorteBanner: null,
     bannersExtras: [],
     video: "",
+    instagram: "",
     entradas: [],
     mapaTipo: "imagem",
     mapaImagem: null,
@@ -163,7 +167,7 @@ const lerComoDataUrl = (file: File) =>
         r.readAsDataURL(file);
     });
 
-type Erros = Partial<Record<"mandante" | "visitante" | "modalidade" | "categoria" | "nome" | "local" | "entradas" | "inicio" | "fim" | "descricao" | "video" | "sessoes" | "mapa", string>>;
+type Erros = Partial<Record<"mandante" | "visitante" | "modalidade" | "categoria" | "nome" | "local" | "entradas" | "inicio" | "fim" | "descricao" | "video" | "instagram" | "sessoes" | "mapa", string>>;
 
 /** Evento em sessões (num dia só ou em vários): vale o horário das sessões, não o geral (EVT-98). */
 const emSessoes = (f: Formulario) => !!f.inicio && !!f.fim && f.formato === "sessoes";
@@ -198,6 +202,7 @@ function validar(f: Formulario): Erros {
     if (!f.local) e.local = "Busque e escolha o local do evento.";
     if (entradasRepetidas(f.entradas).size > 0) e.entradas = "Dê um nome diferente a cada entrada do local.";
     if (f.video.trim() && !lerVideo(f.video)) e.video = "Cole um link do YouTube ou do Vimeo.";
+    if (f.instagram.trim() && !lerInstagram(f.instagram)) e.instagram = "Use o @ do perfil ou o link do Instagram.";
     if (!paragrafosDoHtml(f.descricao).length) e.descricao = "Conte o que vai acontecer no evento.";
     if (!f.inicio) e.inicio = "Escolha quando o evento acontece.";
     // Em sessões não há horário geral: o que vale é ter ao menos uma sessão (EVT-98).
@@ -277,6 +282,7 @@ function formularioDoEvento(e: EventoDoBanco): Formulario {
         recorteBanner: e.capa ? RECORTE_INTEIRO : null,
         bannersExtras: (e.bannersAdicionais ?? []).map((url, i) => ({ imagem: { nome: `Banner ${i + 2} atual`, url }, recorte: RECORTE_INTEIRO })),
         video: e.video?.url ?? "",
+        instagram: e.instagram ? `@${e.instagram}` : "",
         entradas: e.entradas ?? [],
         mapaTipo: e.mapa?.tipo ?? "imagem",
         mapaImagem: e.mapa?.tipo === "imagem" && e.mapa.url ? { nome: "Mapa atual", url: e.mapa.url, dataUrl: e.mapa.url } : null,
@@ -335,6 +341,7 @@ async function salvarEdicao({
         capa,
         bannersAdicionais: bannersAdicionais.length ? bannersAdicionais : undefined,
         video: lerVideo(f.video) ?? undefined,
+        instagram: lerInstagram(f.instagram) ?? undefined,
         entradas: entradasParaGravar(f.entradas).length ? entradasParaGravar(f.entradas) : undefined,
         sessoes,
         modalidade: f.tipo === "esportivo" ? (f.modalidade as Modalidade) : undefined,
@@ -473,11 +480,11 @@ function FormularioDeEvento({ tipo, titulo, evento, cabecalho }: { tipo: TipoEve
 
     // Próximo obrigatório que falta, na ordem em que aparece na tela (EVT-93). Calculado sempre, sem esperar o clique em Criar.
     const pendencias = validar(f);
-    const ORDEM: (keyof Erros)[] = ["nome", "mandante", "visitante", "modalidade", "categoria", "inicio", "fim", "sessoes", "local", "entradas", "descricao", "video", "mapa"];
+    const ORDEM: (keyof Erros)[] = ["nome", "mandante", "visitante", "modalidade", "categoria", "inicio", "fim", "sessoes", "local", "entradas", "descricao", "video", "instagram", "mapa"];
     const campoPendente = ORDEM.find((k) => pendencias[k]);
     const proximaPendencia = campoPendente ? { campo: campoPendente, texto: pendencias[campoPendente]! } : null;
     const irParaCampo = (campo: keyof Erros) => {
-        const alvo: Partial<Record<keyof Erros, string>> = { nome: "nome-do-evento", categoria: "campo-categoria", inicio: "campo-quando", fim: "campo-quando", local: "campo-local", entradas: "campo-entradas", descricao: "campo-sobre", video: "campo-video", sessoes: "campo-quando" };
+        const alvo: Partial<Record<keyof Erros, string>> = { nome: "nome-do-evento", categoria: "campo-categoria", inicio: "campo-quando", fim: "campo-quando", local: "campo-local", entradas: "campo-entradas", descricao: "campo-sobre", video: "campo-video", instagram: "campo-instagram", sessoes: "campo-quando" };
         const el = alvo[campo] ? document.getElementById(alvo[campo]!) : null;
         el?.scrollIntoView({ behavior: "smooth", block: "center" });
         (el?.matches("input, textarea, button") ? el : el?.querySelector<HTMLElement>("input, button"))?.focus({ preventScroll: true });
@@ -652,6 +659,7 @@ function FormularioDeEvento({ tipo, titulo, evento, cabecalho }: { tipo: TipoEve
                 // Os outros banners, recortados como o principal, na ordem (EVT-164).
                 bannersAdicionais: f.bannersExtras.length ? await Promise.all(f.bannersExtras.map((b) => exportarRecorte(b.imagem, b.recorte))) : undefined,
                 video: lerVideo(f.video) ?? undefined,
+                instagram: lerInstagram(f.instagram) ?? undefined,
                 entradas: entradasParaGravar(f.entradas).length ? entradasParaGravar(f.entradas) : undefined,
                 modalidade: f.tipo === "esportivo" ? (f.modalidade as Modalidade) : undefined,
                 categoria: categoriaId,
@@ -1012,6 +1020,25 @@ function FormularioDeEvento({ tipo, titulo, evento, cabecalho }: { tipo: TipoEve
                                     (lerVideo(f.video)
                                         ? `Vídeo do ${lerVideo(f.video)!.origem === "youtube" ? "YouTube" : "Vimeo"}. Aparece na página do evento, depois dos banners.`
                                         : "Opcional. Cole o link de um vídeo do YouTube ou do Vimeo.")
+                                }
+                            />
+                        </div>
+
+                        {/* Instagram do evento, opcional (EVT-168): a página do evento no site convida a seguir o perfil. */}
+                        <div id="campo-instagram" className="sm:max-w-md" data-erro={erros.instagram ? "" : undefined}>
+                            <Input
+                                label="Instagram do evento"
+                                icon={AtSign}
+                                autoComplete="off"
+                                value={f.instagram}
+                                onChange={(v) => set("instagram", v)}
+                                placeholder="@perfil ou link do Instagram"
+                                isInvalid={!!erros.instagram}
+                                hint={
+                                    erros.instagram ??
+                                    (lerInstagram(f.instagram)
+                                        ? `@${lerInstagram(f.instagram)}. A página do evento no site convida a seguir esse perfil.`
+                                        : "Opcional. O perfil do evento ou da produtora no Instagram.")
                                 }
                             />
                         </div>

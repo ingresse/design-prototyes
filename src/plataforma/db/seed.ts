@@ -1,4 +1,5 @@
 import { EVENTOS_SITE_LEGADO as EVENTOS_SITE } from "./eventos-site";
+import { EVENTOS_INGRESSE, HISTORICO_INGRESSE } from "./eventos-ingresse";
 import { CATEGORIAS } from "../categorias-catalogo";
 import type { Evento, EventoStatus, Grupo, HistoricoVendas, Organizacao, Sessao, Usuario } from "../modelo";
 import { idDaOrganizacao, siglaDe, slugificar } from "../regras";
@@ -12,7 +13,7 @@ import { idDaOrganizacao, siglaDe, slugificar } from "../regras";
 /*  existem, então nada criado por alguém é sobrescrito.               */
 /* ------------------------------------------------------------------ */
 
-export const SEED_VERSAO = "2026-11-23.1";
+export const SEED_VERSAO = "2026-11-24.3";
 
 const CRIADO = "2026-11-07T12:00:00.000Z";
 
@@ -99,6 +100,8 @@ const diasEntre = (data: string, fim: string | undefined, hora: string) => {
 
 const evento = (e: Omit<Evento, "slug" | "criadoEm" | "atualizadoEm" | "taxaServico"> & { taxaServico?: number }): Evento => ({
     taxaServico: 0.1,
+    // Classificação é obrigatória: 18 anos em todos os eventos da seed (desde 24/11/2026).
+    idadeMinima: 18,
     ...e,
     slug: slugificar(e.nome),
     organizacaoId: idDaOrganizacao(e.produtora),
@@ -127,6 +130,8 @@ const eventosBackstage: Evento[] = BACKSTAGE.map((b) =>
         data: b.data,
         sessoes: catalogoPadrao(b.id, [b.data], b.preco),
         vitrine: { categoria: "eletronica", tags: ["eletrônica", "club"] },
+        // Instagram do evento (EVT-168): os da D-EDGE, pelo perfil de cada casa.
+        instagram: b.produtora === "D-EDGE" ? (b.cidade === "Rio de Janeiro" ? "dedgeclubrio" : "dedgesp") : undefined,
     }),
 );
 
@@ -144,6 +149,7 @@ const eventosSite: Evento[] = EVENTOS_SITE.map((s) => {
         data: inicios[0],
         sessoes: catalogoPadrao(s.id, inicios, s.preco, 4),
         vitrine: { artista: s.artista, categoria: s.categoria, tags: s.tags, descricao: s.descricao },
+        instagram: s.id === "dedge-rio" ? "dedgeclubrio" : undefined,
     });
 });
 
@@ -248,14 +254,14 @@ function historicoDe(ev: Evento, p: PerfilVendas): HistoricoVendas {
     };
 }
 
-const historico: HistoricoVendas[] = eventosBackstage.filter((e) => PERFIS[e.id]).map((e) => historicoDe(e, PERFIS[e.id]));
+const historico: HistoricoVendas[] = [...eventosBackstage.filter((e) => PERFIS[e.id]).map((e) => historicoDe(e, PERFIS[e.id])), ...HISTORICO_INGRESSE];
 
 const usuarios: Usuario[] = [{ id: "u_demo", nome: "Victor Pires da Costa", email: "victor.demo@exemplo.com" }];
 
 /** Uma organização por produtora dos eventos da seed (o primeiro nome visto vence). */
 const organizacoes: Organizacao[] = [
     ...new Map(
-        [...eventosBackstage, ...eventosSite].map((e) => [e.organizacaoId!, { id: e.organizacaoId!, nome: e.produtora, sigla: siglaDe(e.produtora), criadoEm: CRIADO }] as const).reverse(),
+        [...eventosBackstage, ...eventosSite, ...EVENTOS_INGRESSE].map((e) => [e.organizacaoId!, { id: e.organizacaoId!, nome: e.produtora, sigla: siglaDe(e.produtora), criadoEm: CRIADO }] as const).reverse(),
     ).values(),
     // Organização sem evento: para começar do zero (criar o primeiro evento, o estado vazio de Eventos).
     { id: idDaOrganizacao("Ingresse"), nome: "Ingresse", sigla: siglaDe("Ingresse"), criadoEm: "2026-11-13T12:00:00.000Z" },
@@ -263,7 +269,8 @@ const organizacoes: Organizacao[] = [
 
 export const SEED = {
     organizacoes,
-    eventos: [...eventosBackstage, ...eventosSite],
+    // Desde 24/11/2026: eventos reais do ingresse.com com datas e condições de compra variadas (eventos-ingresse.ts).
+    eventos: [...eventosBackstage, ...eventosSite, ...EVENTOS_INGRESSE],
     pedidos: [],
     ingressos: [],
     usuarios,

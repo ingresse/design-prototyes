@@ -5,15 +5,13 @@
    trocam /api/eventos por /api/bff/eventos e os índices de dados/ por /api/bff/dados/*, e a página do evento abre com
    Evento.dc.html?bff=<id>, lendo /api/bff/evento/<id>. Esta ponte responde essas rotas no navegador, a partir do banco:
 
-     /api/eventos                  catálogo fixo do protótipo (_api/eventos.json, cópia do deploy original)
-     /api/bff/eventos              catálogo fixo + eventos PUBLICADOS do Backstage
-     /api/bff/dados/categoria-*    categoria fixa + eventos publicados do Backstage daquela categoria
+     /api/eventos, /api/bff/eventos    só os eventos do Backstage publicados e por acontecer (o catálogo fixo saiu em 24/11/2026)
+     /api/bff/dados/categoria-*        só os eventos do Backstage daquela categoria (também ./dados/categoria-*.json)
      /api/bff/dados/*              o arquivo fixo de dados/ (índices de busca, sorteio…)
      /api/bff/evento/<id>          o evento do Backstage (mesmo privado: a página abre por link)
 
    Banco: GET /api/db (compartilhado, na Vercel) e, sem API (npm run dev), o localStorage 'plataforma:db:v1' deste navegador,
-   como faz src/plataforma/db. Sem banco nenhum (o Backstage nunca foi aberto neste navegador), o BFF responde 503 e o site
-   mostra só o catálogo fixo.
+   como faz src/plataforma/db, completados com a seed (_api/seed-backstage.json, `npm run seed:site` depois de mudar a seed).
 
    Ids: o site usa ids numéricos e trata como «do BFF» os ids de 10000 para cima. O id do Backstage vira 100000 + hash
    (estável), e Evento.dc.html?ev=<id do Backstage> é aceito e trocado pelo ?bff= certo (o link «Ver no site» do Backstage).
@@ -51,6 +49,27 @@
           var vals = function (o) { return Object.keys(o || {}).map(function (k) { return o[k]; }); };
           return { eventos: vals(t.eventos), ingressos: vals(t.ingressos), historico: vals(t.historico) };
         } catch (e) { return null; }
+      })
+      // completa com a seed (_api/seed-backstage.json, gerada por `npm run seed:site`): o que o banco já tem vence, como no
+      // lerLocal de src/plataforma/db. Assim o site mostra os eventos do Backstage mesmo onde o Backstage nunca abriu.
+      .then(function (b) {
+        return f0(BASE + '_api/seed-backstage.json').then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (seed) {
+          if (!seed) return b;
+          b = b || { eventos: [], ingressos: [], historico: [] };
+          ['eventos', 'historico'].forEach(function (col) {
+            var tem = {}; (b[col] || []).forEach(function (d) { tem[d.id] = true; });
+            b[col] = (b[col] || []).concat((seed[col] || []).filter(function (d) { return !tem[d.id]; }));
+          });
+          // campos que a seed traz para eventos já gravados sem eles (como instagramDaSeed em src/plataforma/db)
+          var daSeed = {}; (seed.eventos || []).forEach(function (e) { daSeed[e.id] = e; });
+          b.eventos = b.eventos.map(function (e) {
+            if (e.instagram === 'primaverasound') e = Object.assign({}, e, { instagram: undefined }); // perfil errado de uma seed anterior
+            var s0 = daSeed[e.id];
+            if (!s0 || !s0.instagram) return e;
+            return e.instagram === undefined ? Object.assign({}, e, { instagram: s0.instagram }) : e;
+          });
+          return b;
+        });
       });
     return bancoP;
   }
@@ -73,12 +92,20 @@
     (b.ingressos || []).forEach(function (i) { if (i.status !== 'cancelado') m[i.loteId] = (m[i.loteId] || 0) + 1; });
     return m;
   }
+  /** Ingresso à venda agora: ativo, dentro da janela de vendas (vendas.inicio / vendas.fim) e com lote com saldo. */
+  function janela(t, agora) {
+    var v = t.vendas || {};
+    if (v.inicio && Date.parse(comFuso(v.inicio)) > agora) return 'antes';
+    if (v.fim && Date.parse(comFuso(v.fim)) <= agora) return 'depois';
+    return 'aberta';
+  }
   function precoMinimo(e, vendidos) {
-    var min = null;
+    var min = null, agora = Date.now();
     (e.sessoes || []).forEach(function (s) {
+      if (Date.parse(comFuso(s.fim || s.inicio)) < agora) return; // sessão que já passou não vende
       (s.grupos || []).forEach(function (g) {
         (g.ingressos || []).forEach(function (t) {
-          if (!t.ativo) return;
+          if (!t.ativo || janela(t, agora) !== 'aberta') return;
           var l = (t.lotes || []).filter(function (x) { return !x.pausado && (vendidos[x.id] || 0) < x.quantidade; })[0];
           if (l && (min === null || l.preco < min)) min = l.preco;
         });
@@ -86,6 +113,14 @@
     });
     return min;
   }
+  /** Algum ingresso ainda vai abrir vendas (venda não aberta)? */
+  function abreDepois(e) {
+    var agora = Date.now();
+    return (e.sessoes || []).some(function (s) { return (s.grupos || []).some(function (g) { return (g.ingressos || []).some(function (t) { return t.ativo && janela(t, agora) === 'antes'; }); }); });
+  }
+  /** Fim da última sessão: o evento sai do site quando ela passa. */
+  function fimDoEvento(e) { return (e.sessoes || []).map(function (s) { return s.fim || s.inicio; }).sort().pop() || e.data; }
+  function noSite(e) { return e.status === 'publicado' && Date.parse(comFuso(fimDoEvento(e))) >= Date.now(); }
 
   /* ---------- conversão ---------- */
   var CATEGORIA = {
@@ -107,7 +142,12 @@
   function lugarDe(cidade, ls) {
     var n = norm(cidade);
     var c = n && ls.filter(function (l) { return l.nivel === 'cidade' && (norm(l.nome) === n || (l.chaves || []).indexOf(n) >= 0); })[0];
-    if (!c) return null;
+    if (!c) {
+      var sigla = UF[n];
+      var est = sigla && ls.filter(function (l) { return l.nivel === 'estado' && l.sigla === sigla; })[0];
+      if (!est) return null;
+      return { lugar: { cidade: 'br-' + sigla.toLowerCase() + '-' + slug(cidade), uf: est.id, regiao: est.regiao, pais: est.pais, continente: est.continente }, sigla: sigla, geo: { lat: est.lat, lng: est.lng } };
+    }
     return { lugar: { cidade: c.id, uf: c.uf, regiao: c.regiao, pais: c.pais, continente: c.continente }, sigla: c.sigla, geo: { lat: c.lat, lng: c.lng } };
   }
   var SEM = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
@@ -120,12 +160,16 @@
     var h = m[4] ? Number(m[4]) + 'h' + (m[5] && m[5] !== '00' ? m[5] : '') : '';
     return SEM[d.getDay()] + ' ' + Number(m[3]) + ' ' + MES[d.getMonth()] + (h ? ' · ' + h : '');
   }
-  // como apareceNoSite (src/plataforma/regras.ts): quem decide é o status do Backstage, não a data (a seed tem datas passadas)
+  // status do Backstage + datas + regras de venda: encerrado (status ou última sessão passou), à venda (há ingresso aberto com
+  // saldo), venda não aberta (nada aberto, mas algum ingresso abre depois) ou esgotado
   function situacao(e, min) {
-    if (e.status === 'encerrado') return 'encerrado';
-    return min === null ? 'esgotado' : 'venda';
+    if (e.status === 'encerrado' || Date.parse(comFuso(fimDoEvento(e))) < Date.now()) return 'encerrado';
+    if (min !== null) return 'venda';
+    return abreDepois(e) ? 'nao-aberto' : 'esgotado';
   }
-  var ROTULO = { venda: 'À venda', esgotado: 'Esgotado', encerrado: 'Encerrado' };
+  var ROTULO = { venda: 'À venda', esgotado: 'Esgotado', encerrado: 'Encerrado', 'nao-aberto': 'Venda não aberta' };
+  // cidades da seed que o lugares.json do site não conhece: pelo menos o estado, para o filtro de lugar
+  var UF = { 'japaratinga': 'AL', 'armacao dos buzios': 'RJ', 'buzios': 'RJ', 'ribeirao preto': 'SP', 'recife': 'PE', 'fortaleza': 'CE', 'belo horizonte': 'MG', 'valinhos': 'SP', 'salvador': 'BA', 'rio de janeiro': 'RJ', 'sao paulo': 'SP', 'campinas': 'SP', 'santos': 'SP', 'natal': 'RN', 'londrina': 'PR', 'porto alegre': 'RS', 'uberlandia': 'MG' };
   function rotuloDaTag(id, cat) { var t = cat && cat.c && cat.c[id]; return (t && t.pt) || id.replace(/-/g, ' ').replace(/^./, function (c) { return c.toUpperCase(); }); }
   function tagsDoEvento(e) { return (e.tags && e.tags.length ? e.tags : (e.vitrine || {}).tags || []).map(slug).filter(Boolean); }
   function esc(t) { return String(t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
@@ -139,15 +183,27 @@
       img: e.capa || BASE + 'assets/brand/venue-pista.avif', url: '#', flag: '',
       cats: categoriasDoEvento(e), situacao: sit, situacaoRotulo: ROTULO[sit],
       fromCents: min === null ? null : Math.round(min * 100),
-      tags: tagsDoEvento(e), tagsOrigem: {}, lineup: [],
+      tags: tagsDoEvento(e), tagsOrigem: {}, lineup: artistasDe(e).map(function (a) { return a.id; }),
       lugar: onde ? onde.lugar : undefined,
+      resumo: resumoDe(e),
       backstage: { id: e.id, produtora: e.produtora },
     };
   }
 
+  /** A primeira frase da descrição (para o banner da home), até ~110 caracteres. */
+  function resumoDe(e) {
+    var t = ((e.vitrine || {}).descricao || [])[0] || '';
+    var f = (t.match(/^[^.!?]+[.!?]/) || [t])[0].trim();
+    return f.length > 110 ? f.slice(0, 107).replace(/\s+\S*$/, '') + '…' : f;
+  }
+  var COMPRA = {}; // id do site -> link de compra da plataforma (destinos.js pergunta por compraDe)
+  function artistasDe(e) {
+    return String((e.vitrine || {}).artista || '').split(/,| e /).map(function (n) { return n.trim(); }).filter(Boolean).map(function (n) { return { id: slug(n), name: n }; });
+  }
   function contexto() {
     return Promise.all([banco(), catalogoFixo(), lugares()]).then(function (r) {
       var b = r[0], fixo = r[1], ls = (r[2] && r[2].lugares) || [];
+      if (b) b.eventos.forEach(function (e) { COMPRA[idDoSite(e.id)] = '/comprar/' + encodeURIComponent(e.id); });
       (fixo.categories || []).forEach(function (c) { NOME_CATEGORIA[c.slug] = c.name; });
       return { b: b, fixo: fixo, ls: ls, vendidos: b ? vendidosPorLote(b) : {} };
     });
@@ -160,10 +216,21 @@
   function bffEventos() {
     return contexto().then(function (x) {
       if (!x.b) return semBanco();
-      var novos = x.b.eventos.filter(function (e) { return e.status === 'publicado'; })
-        .map(function (e) { return paraCatalogo(e, x.vendidos, x.ls); })
+      // só os eventos do Backstage: publicados e ainda por acontecer (o catálogo fixo do protótipo original saiu)
+      var publicados = x.b.eventos.filter(noSite);
+      var novos = publicados.map(function (e) { return paraCatalogo(e, x.vendidos, x.ls); })
         .sort(function (a, z) { return Date.parse(a.iso) - Date.parse(z.iso); });
-      var c = Object.assign({}, x.fixo, { events: novos.concat(x.fixo.events || []), backstage: novos.length });
+      // artistas: os da vitrine dos eventos (o índice de artistas do protótipo original saiu com o catálogo)
+      var art = {};
+      publicados.forEach(function (e) {
+        var c = novos.filter(function (n) { return n.backstage.id === e.id; })[0];
+        artistasDe(e).forEach(function (a) {
+          var x0 = art[a.id] || (art[a.id] = { id: a.id, name: a.name, genre: '', count: 0, first: c.iso, img: '' });
+          x0.count++; if (c.iso < x0.first) x0.first = c.iso;
+          x0.genre = (NOME_CATEGORIA[c.cats[0]] || '') + ' · ' + x0.count + (x0.count > 1 ? ' datas' : ' data');
+        });
+      });
+      var c = Object.assign({}, x.fixo, { events: novos, artists: Object.keys(art).map(function (k) { return art[k]; }), backstage: novos.length });
       return json(c);
     });
   }
@@ -173,17 +240,18 @@
     return Promise.all([contexto(), f0(BASE + 'dados/' + nome).then(function (r) { return r.ok ? r.json() : null; })]).then(function (r) {
       var x = r[0], fixo = r[1];
       if (!fixo || !Array.isArray(fixo.e)) return json({ error: 'categoria indisponível' }, 404);
-      if (!x.b) return json(fixo);
-      var novos = x.b.eventos.filter(function (e) { return e.status === 'publicado'; })
+      if (!x.b) return json(Object.assign({}, fixo, { e: [], total: 0 }));
+      var novos = x.b.eventos.filter(noSite)
         .map(function (e) { return paraCatalogo(e, x.vendidos, x.ls); })
-        .filter(function (c) { return c.cats.indexOf(slugCat) >= 0 && c.situacao !== 'encerrado'; })
+        .filter(function (c) { return c.cats.indexOf(slugCat) >= 0; })
         .map(function (c) {
           var p = c.venue.split(' · ');
           return { i: c.id, n: c.name, d: c.iso, l: p[0] || '', c: (p[1] || '').replace(/, [A-Z]{2}$/, ''), u: c.state, s: c.situacao, p: c.fromCents || 0, t: c.tags, k: c.cats, lg: c.lugar && c.lugar.cidade, img: c.img };
         });
-      var cidades = (fixo.cidades || []).slice();
+      // só os eventos do Backstage daquela categoria (as listas fixas do protótipo original saíram)
+      var cidades = [];
       novos.forEach(function (n) { if (n.c && !cidades.some(function (c) { return c.v === n.c; })) cidades.push({ v: n.c, l: n.c }); });
-      return json(Object.assign({}, fixo, { e: novos.concat(fixo.e), total: (fixo.total || fixo.e.length) + novos.length, cidades: fixo.cidades ? cidades : undefined }));
+      return json(Object.assign({}, fixo, { e: novos, total: novos.length, cidades: fixo.cidades ? cidades : undefined }));
     });
   }
 
@@ -204,8 +272,18 @@
           description: descricao,
           sessionsCount: sessoes.length,
           endsAt: sessoes[0] && sessoes[0].fim ? comFuso(sessoes[0].fim) : null,
-          ageRating: '',
+          // classificação é obrigatória: o que o Backstage gravou; sem o dado (eventos antigos), 18 anos
+          ageRating: (function (i) { i = i == null ? 18 : Number(i); return i > 0 ? i + ' anos. Menores de ' + i + ' não entram.' : 'Livre para todos os públicos.'; })(e.idadeMinima),
           categories: c.cats.map(function (s) { return { slug: s, name: NOME_CATEGORIA[s] || s }; }),
+          // por onde se entra: os grupos de ingressos (setores) do evento e o acesso de cada um, sem repetir entre sessões
+          entradas: (function () {
+            var vistos = {}, out = [];
+            (e.sessoes || []).forEach(function (s) { (s.grupos || []).forEach(function (g) { var k = g.nome + '|' + (g.acesso || ''); if (!vistos[k]) { vistos[k] = 1; out.push({ nome: g.nome, acesso: g.acesso || '' }); } }); });
+            return out;
+          })(),
+          // há ingresso do tipo meia-entrada (ativo) em alguma sessão?
+          temMeia: (e.sessoes || []).some(function (s) { return (s.grupos || []).some(function (g) { return (g.ingressos || []).some(function (t) { return t.ativo && t.beneficio === 'meia-entrada'; }); }); }),
+          instagram: e.instagram || '',
         },
         tags: c.tags.map(function (t) { return { id: t, rotulo: rotuloDaTag(t, x.fixo.tagCatalog) }; }),
         backstage: { id: e.id, slug: e.slug, compra: '/comprar/' + e.id },
@@ -218,7 +296,8 @@
     var p;
     try { p = new URL(url, location.href).pathname; } catch (err) { return f0(u, o); }
     var m;
-    if (/^\/api\/eventos(\.json)?$/.test(p)) return f0(BASE + '_api/eventos.json', o);
+    if (/^\/api\/eventos(\.json)?$/.test(p)) return bffEventos(); // mesmo sem o modo BFF: só eventos do Backstage
+    if ((m = /\/dados\/(categoria-[a-z0-9-]+\.json)$/.exec(p)) && p.indexOf(new URL(BASE).pathname) === 0) return bffCategoria(m[1]);
     if (p === '/api/bff/eventos') return bffEventos();
     if ((m = /^\/api\/bff\/evento\/(\d+)$/.exec(p))) return bffEvento(Number(m[1]));
     if ((m = /^\/api\/bff\/dados\/(categoria-[a-z0-9-]+\.json)$/.exec(p))) return bffCategoria(m[1]);
@@ -262,8 +341,9 @@
         card.querySelectorAll('.mvp-sobre__info > div').forEach(function (row) {
           var k = (row.querySelector('dt') || {}).textContent, dd = row.querySelector('dd');
           if (k === 'Horários') dd.textContent = 'Início às ' + hora(d.evento.iso) + (d.detalhe.endsAt ? ' · fim previsto às ' + hora(d.detalhe.endsAt) : '');
-          else if (k === 'Classificação') dd.textContent = d.detalhe.ageRating || 'A confirmar';
+          else if (k === 'Classificação') dd.textContent = d.detalhe.ageRating;
           else if (k === 'Acessibilidade') row.hidden = true;
+          else if (k === 'Meia-entrada') row.hidden = !d.detalhe.temMeia;
         });
       }
       function trocar() {
@@ -283,5 +363,5 @@
     });
   }
 
-  window.__ponteBackstageApi = { idDoSite: idDoSite, banco: banco };
+  window.__ponteBackstageApi = { idDoSite: idDoSite, banco: banco, compraDe: function (idSite) { return COMPRA[idSite] || null; } };
 })();

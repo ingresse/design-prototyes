@@ -58,6 +58,9 @@
    *  (a jornada de futebol da Mariana); turnê e coleção ficam na Coleção. Só o id vai junto: os parâmetros de simulação (agora, ciclo, quem…) do destino do «Ver detalhes» não entram na compra. */
   function compra(href) {
     href = String(href || '');
+    // design-prototypes: evento do Backstage (Evento.dc.html?bff=<id>) compra na seleção de ingressos da plataforma (ponte-backstage.js)
+    var bff = /[?&]bff=(\d+)/.exec(href), ponte = window.__ponteBackstageApi;
+    if (bff && ponte && ponte.compraDe) return ponte.compraDe(Number(bff[1])) || href;
     if (!/^Evento\.dc\.html/.test(href)) return href || 'Ingressos.dc.html';
     var m = /[?&](esporte|jogo)=(\d+)/.exec(href);
     return 'Ingressos.dc.html' + (m ? '?' + m[1] + '=' + m[2] : '');
