@@ -5,7 +5,7 @@ import { brl, type Servico } from "../data/servicos";
 
 /**
  * Proteção de compra: no lugar dos valores, a lista dos ingressos da pessoa, com caixa de seleção.
- * Todos começam marcados; cada card mostra só o nome do ingresso, no formato da tela de ingressos
+ * Nenhum vem marcado: a pessoa escolhe. Cada card mostra só o nome do ingresso, no formato da tela de ingressos
  * ("Festival Aurora | Pista | (28/11)"), e, à direita, o preço da proteção (`percentual` do valor).
  * Selecionado, o card ganha a borda vermelha da marca.
  */

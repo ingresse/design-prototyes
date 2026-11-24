@@ -67,11 +67,12 @@ export function CardHub({ onAbrir, onDispensar }: { onAbrir: () => void; onDispe
         // O card inteiro abre o hub no clique; para teclado e leitor de tela, a ação é o botão "Preparar meu rolê"
         <div
             onClick={onAbrir}
-            className="relative isolate flex h-full min-h-[292px] cursor-pointer flex-col justify-end gap-3 overflow-hidden rounded-2xl p-4 transition duration-100 ease-linear hover:-translate-y-0.5 hover:shadow-lg"
+            className="relative isolate flex h-full min-h-[440px] cursor-pointer flex-col justify-end gap-3 overflow-hidden rounded-2xl p-4 transition duration-100 ease-linear hover:-translate-y-0.5 hover:shadow-lg"
         >
             <img src={fotoHub} alt="" aria-hidden="true" className="absolute inset-0 -z-20 size-full object-cover object-[center_40%]" />
             <span aria-hidden="true" className="absolute inset-0 -z-10 bg-gradient-to-t from-black/90 via-black/55 via-50% to-black/10" />
-            <div className="flex items-center gap-3">
+            {/* Selo em cima do texto: no card estreito (3:4), o título ganha a largura toda */}
+            <div className="flex flex-col items-start gap-3">
                 <SeloIngresse />
                 <div className="flex min-w-0 flex-col gap-0.5 text-white">
                     <p className="text-lg font-bold drop-shadow-sm">{TITULO}</p>

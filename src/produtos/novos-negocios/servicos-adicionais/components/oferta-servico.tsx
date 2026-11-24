@@ -25,9 +25,10 @@ export function OfertaServico({ servico }: { servico: Servico }) {
     const [params] = useSearchParams();
     const doChecklist = params.get("de") === "checklist";
     const selecao = useSelecaoValor(servico);
-    // Proteção de compra: escolhe os ingressos (todos marcados de início); o preço é o percentual de cada um
+    // Proteção de compra: a pessoa marca os ingressos (nenhum vem marcado); o preço é o percentual de cada um.
+    // Sem ingresso marcado, o CTA fica desabilitado, como nas ofertas sem valor escolhido
     const porIngresso = !!servico.ingressos?.length;
-    const [ingressos, setIngressos] = useState<string[]>(() => servico.ingressos?.map((i) => i.id) ?? []);
+    const [ingressos, setIngressos] = useState<string[]>([]);
     const [coberturas, setCoberturas] = useState(false);
     const valorIngressos = (servico.ingressos ?? []).filter((i) => ingressos.includes(i.id)).reduce((t, i) => t + i.valor * (servico.percentual ?? 0), 0);
     const valor = porIngresso ? (ingressos.length ? Math.round(valorIngressos * 100) / 100 : null) : selecao.valor;

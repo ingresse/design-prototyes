@@ -218,7 +218,7 @@ function CarteiraContent({ onCardClick, erro = false }: { onCardClick: (card: Ev
 
     return (
         <div className="bg-primary text-primary">
-            {/* Como no Figma ([Desktop] Carteira): coluna de 1144px, abas em largura total e grade de 3 cards */}
+            {/* Coluna de 1144px, abas em largura total e grade de 4 cards com a capa inteira em 3:4 */}
             <main className="mx-auto flex max-w-[1192px] flex-col gap-8 px-6 py-[60px]">
                 <h1 className="text-3xl font-bold text-primary">Carteira de ingressos</h1>
 
@@ -229,7 +229,7 @@ function CarteiraContent({ onCardClick, erro = false }: { onCardClick: (card: Ev
                 </div>
 
                 {cards.length === 0 && <SemIngressos nome={perfil?.nome} />}
-                <div className="grid grid-cols-[repeat(auto-fill,minmax(300px,360px))] gap-8">
+                <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-6">
                     {/* Atalho do hub como o primeiro card da grade (mesmo formato dos eventos, estático) */}
                     {tab === "proximos" && banner.visivel && cards.length > 0 && <CardHub onAbrir={() => navigate(LINK_HUB)} onDispensar={banner.dispensar} />}
                     {cards.map((card) => (
@@ -270,16 +270,16 @@ const EventoCardView = ({ card, past, erro = false, onClick }: { card: EventoCar
             onClick={onClick}
             className="flex w-full flex-col overflow-hidden rounded-2xl bg-primary text-left ring-1 ring-border-secondary transition duration-100 ease-linear hover:-translate-y-0.5 hover:shadow-lg"
         >
-            {/* Foto do evento (em cima) — altura explícita + degradê como SVG (export-safe) */}
+            {/* Capa do evento (em cima), inteira, na proporção do banner (3:4, 600×800) */}
             <div
                 className={cx(
-                    "relative h-44 w-full shrink-0 overflow-hidden",
+                    "relative aspect-[3/4] w-full shrink-0 overflow-hidden",
                     !escuro && "flex items-center justify-center bg-secondary text-quaternary",
                     transferido && "grayscale",
                 )}
             >
                 {escuro ? (
-                    <GradientFill gradient={card.gradient ?? ""} className="absolute inset-0 size-full object-[center_76%]" />
+                    <GradientFill gradient={card.gradient ?? ""} className="absolute inset-0 size-full" />
                 ) : (
                     <Package className="size-16" aria-hidden="true" />
                 )}
