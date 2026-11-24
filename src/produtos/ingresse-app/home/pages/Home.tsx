@@ -8,6 +8,12 @@ import { GradientFill } from "../../components/GradientFill";
 import { StatusBar } from "../../components/StatusBar";
 import { LINK_OFERTA_UBER } from "../../components/ofertas";
 import { OfertaUberSheet } from "../components/oferta-uber-sheet";
+import arenaBackstage from "../../assets/arena-backstage.svg";
+import arenaBrasileira from "../../assets/arena-brasileira.svg";
+import mixedByMixed from "../../assets/mixed-by-mixed.svg";
+import reveillonMilagres from "../../assets/reveillon-milagres.svg";
+import seuJustino from "../../assets/seu-justino.svg";
+import sunsetPraia from "../../assets/sunset-praia.svg";
 
 /** Mostra a oferta da Uber uma vez só (premissa até o negócio definir a frequência); /ingresse-app/uber ou ?oferta=uber força. */
 const OFERTA_UBER_KEY = "ing-oferta-uber";
@@ -20,15 +26,15 @@ interface EventoCard {
 }
 
 const EVENTOS_COPA: EventoCard[] = [
-    { id: "arena1", title: "ARENA BRASILEIRA 2026", date: "Sáb, 13 de junho", gradient: "linear-gradient(150deg,#16a34a 0%,#2563eb 50%,#f59e0b 100%)" },
-    { id: "arena2", title: "ARENA Backstage Mirante", date: "Sáb, 13 de junho", gradient: "linear-gradient(150deg,#2563eb 0%,#0ea5e9 100%)" },
-    { id: "justino", title: "Seu Justino - Copa do Mundo", date: "Sáb, 13 de junho", gradient: "linear-gradient(150deg,#15803d 0%,#facc15 100%)" },
+    { id: "arena1", title: "ARENA BRASILEIRA 2026", date: "Sáb, 13 de junho", gradient: arenaBrasileira },
+    { id: "arena2", title: "ARENA Backstage Mirante", date: "Sáb, 13 de junho", gradient: arenaBackstage },
+    { id: "justino", title: "Seu Justino - Copa do Mundo", date: "Sáb, 13 de junho", gradient: seuJustino },
 ];
 
 const EM_ALTA: EventoCard[] = [
-    { id: "reveillon", title: "Réveillon dos Milagres 2026", date: "Qui, 31 de dezembro", gradient: "linear-gradient(135deg,#FF4D00 0%,#B91C1C 100%)" },
-    { id: "sunset", title: "Sunset na Praia", date: "Ter, 29 de dezembro", gradient: "linear-gradient(135deg,#f59e0b 0%,#ef4444 100%)" },
-    { id: "mixed", title: "Mixed by Mixed", date: "Seg, 28 de dezembro", gradient: "linear-gradient(135deg,#7c3aed 0%,#2563eb 100%)" },
+    { id: "reveillon", title: "Réveillon dos Milagres 2026", date: "Qui, 31 de dezembro", gradient: reveillonMilagres },
+    { id: "sunset", title: "Sunset na Praia", date: "Ter, 29 de dezembro", gradient: sunsetPraia },
+    { id: "mixed", title: "Mixed by Mixed", date: "Seg, 28 de dezembro", gradient: mixedByMixed },
 ];
 
 export function Home() {

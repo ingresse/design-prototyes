@@ -15,10 +15,11 @@ A lista de eventos com ingressos da pessoa, separada em "Vem aí" e "Passados", 
 ## Regras
 
 ### Comunicações
-- **CAR-01** Banner da oferta de crédito Uber no topo da aba "Vem aí", antes do primeiro mês: fundo com a foto dos amigos juntos (a do mosaico da oferta) e um véu escuro desfocado à esquerda que concentra o texto em branco (mais escuro na área da legenda, para ela ficar legível); selo da Uber, título "Vai curtir o rolê?" e apoio "Vá de Uber pagando 5% menos" (cada um numa linha no celular a partir de 375px); cerca de 104px de altura. O card inteiro abre a oferta (`/novos-negocios/servicos-adicionais/uber`); sem seta, para o texto caber em uma linha no celular. _(carteira/components/banner-oferta-uber.tsx, components/ofertas.ts)_
-- **CAR-02** O X do banner dispensa a oferta e ela não volta (salvo no navegador). O banner não aparece em "Passados" nem quando não há eventos. Rola junto com a lista (não fica grudado no topo). _(carteira/pages/Carteira.tsx)_
+- **CAR-01** Atalho do hub "Prepare seu rolê" no topo de "Vem aí", antes do primeiro mês, no lugar do antigo banner da Uber (trocado em 23/11/2026, a pedido do Design). Mesma estrutura do banner anterior: foto do festival (`assets/foto-hub.jpg`) à direita, véu escuro com desfoque à esquerda, selo da Ingresse (símbolo branco sobre o vermelho da marca), "Tem mais pra viver no Gop Tun" / "Uber, fotos, seguro e mais". O card abre `/novos-negocios/servicos-adicionais/checklist?evento=gop-tun&vista=mobile`; o X dispensa e some até limpar os dados do navegador (`ing-banner-hub-dispensado`). Só aparece com eventos na lista. _(carteira/components/banner-hub.tsx, carteira/pages/Carteira.tsx)_
 - **CAR-03** O onboarding da troca de ingresso continua abrindo na primeira visita; o modal da Uber fica na Início para não empilhar dois avisos. _(carteira/pages/Carteira.tsx)_
+
+### Capas dos eventos
+- **CAR-04** Todo evento da lista tem capa ilustrativa (arte original do protótipo, não é a capa oficial), no padrão do Gop Tun e do Aurora; as mesmas capas valem na página do evento. _(assets/*.svg, carteira/pages/Carteira.tsx, ingressos/data/eventos.ts)_
 
 ## Em aberto
 
-- Frequência e regra de reexibição do banner depois de dispensado dependem do negócio.

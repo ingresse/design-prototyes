@@ -1,3 +1,5 @@
+import saoSilvestre from "../assets/sao-silvestre.svg";
+
 /* Dados da São Silvestre replicados do app (produtos isolados) para a modal da Carteira Web. */
 
 export type ItemStatus = "hoje" | "proximo" | "finalizado";
@@ -143,7 +145,7 @@ export const SAO_SILVESTRE: EventoSS = {
     diaSemana: "Qui",
     dia: "31",
     mes: "Dez",
-    gradient: "linear-gradient(135deg,#FF4D00 0%,#1d4ed8 100%)",
+    gradient: saoSilvestre,
     titular: "Camila Ferreira Rocha",
     cpf: "832.840.732-12",
     combos: [

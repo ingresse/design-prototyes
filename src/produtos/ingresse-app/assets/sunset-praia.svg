@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 800">
+  <!-- Capa ilustrativa de Sunset na Praia (arte original do protótipo, não é a capa oficial).
+       Texto em cima e embaixo; a faixa entre 58% e 78% fica só com grafismo, para o recorte do banner. -->
+  <defs><linearGradient id="p" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7c2d12"/><stop offset=".45" stop-color="#ef4444"/><stop offset=".7" stop-color="#f59e0b"/><stop offset="1" stop-color="#1e3a8a"/></linearGradient>
+  <clipPath id="sp"><rect x="0" y="0" width="600" height="590"/></clipPath></defs>
+  <rect width="600" height="800" fill="url(#p)"/>
+  <g clip-path="url(#sp)"><circle cx="300" cy="590" r="150" fill="#fde047"/><rect x="140" y="500" width="320" height="3" fill="#f59e0b"/><rect x="140" y="516" width="320" height="5" fill="#f59e0b"/><rect x="140" y="532" width="320" height="7" fill="#f59e0b"/><rect x="140" y="548" width="320" height="9" fill="#f59e0b"/><rect x="140" y="564" width="320" height="11" fill="#f59e0b"/><rect x="140" y="580" width="320" height="13" fill="#f59e0b"/></g>
+  <rect x="0" y="590" width="600" height="90" fill="#1e3a8a"/>
+  <rect x="170" y="600" width="260" height="4" rx="2" fill="#fde047" opacity="0.80"/>
+  <rect x="192" y="614" width="215" height="4" rx="2" fill="#fde047" opacity="0.67"/>
+  <rect x="215" y="628" width="170" height="4" rx="2" fill="#fde047" opacity="0.54"/>
+  <rect x="238" y="642" width="125" height="4" rx="2" fill="#fde047" opacity="0.41"/>
+  <rect x="260" y="656" width="80" height="4" rx="2" fill="#fde047" opacity="0.28"/>
+  <text x="300" y="192" text-anchor="middle" font-family="Arial Black, Helvetica Neue, Arial, sans-serif" font-weight="900" font-size="120" letter-spacing="0" fill="#ffffff">SUNSET</text>
+  <text x="300" y="252" text-anchor="middle" font-family="Arial Black, Helvetica Neue, Arial, sans-serif" font-weight="900" font-size="40" letter-spacing="16" fill="#fde047">NA PRAIA</text>
+  <rect x="0" y="680" width="600" height="120" fill="#0b0b0f" opacity=".75"/>
+  <text x="300" y="730" text-anchor="middle" font-family="Helvetica Neue, Arial, sans-serif" font-weight="700" font-size="28" letter-spacing="6" fill="#ffffff">TER · 29 DEZ</text>
+  <text x="300" y="768" text-anchor="middle" font-family="Helvetica Neue, Arial, sans-serif" font-weight="400" font-size="17" letter-spacing="4" fill="#fde047">PRAIA · AO PÔR DO SOL</text>
+</svg>
