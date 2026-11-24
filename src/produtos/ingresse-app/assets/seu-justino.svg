@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 800">
+  <!-- Capa ilustrativa de Seu Justino - Copa do Mundo (arte original do protótipo, não é a capa oficial).
+       Texto em cima e embaixo; a faixa entre 58% e 78% fica só com grafismo, para o recorte do banner. -->
+  <defs><linearGradient id="j" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#14532d"/><stop offset=".6" stop-color="#15803d"/><stop offset="1" stop-color="#ca8a04"/></linearGradient></defs>
+  <rect width="600" height="800" fill="url(#j)"/>
+  <path d="M-10 450 Q 300 500 610 450" stroke="#fefce8" stroke-width="2" fill="none" opacity=".7"/>
+  <g><polygon points="-2,456 22,456 10,484" fill="#facc15"/><polygon points="46,469 70,469 58,497" fill="#2563eb"/><polygon points="94,479 118,479 106,507" fill="#ffffff"/><polygon points="142,487 166,487 154,515" fill="#16a34a"/><polygon points="190,493 214,493 202,521" fill="#facc15"/><polygon points="238,496 262,496 250,524" fill="#2563eb"/><polygon points="286,497 310,497 298,525" fill="#ffffff"/><polygon points="334,496 358,496 346,524" fill="#16a34a"/><polygon points="382,493 406,493 394,521" fill="#facc15"/><polygon points="430,488 454,488 442,516" fill="#2563eb"/><polygon points="478,480 502,480 490,508" fill="#ffffff"/><polygon points="526,470 550,470 538,498" fill="#16a34a"/><polygon points="574,457 598,457 586,485" fill="#facc15"/></g>
+  <path d="M-10 520 Q 300 570 610 520" stroke="#fefce8" stroke-width="2" fill="none" opacity=".7"/>
+  <g><polygon points="-2,526 22,526 10,554" fill="#2563eb"/><polygon points="46,539 70,539 58,567" fill="#ffffff"/><polygon points="94,549 118,549 106,577" fill="#16a34a"/><polygon points="142,557 166,557 154,585" fill="#facc15"/><polygon points="190,563 214,563 202,591" fill="#2563eb"/><polygon points="238,566 262,566 250,594" fill="#ffffff"/><polygon points="286,567 310,567 298,595" fill="#16a34a"/><polygon points="334,566 358,566 346,594" fill="#facc15"/><polygon points="382,563 406,563 394,591" fill="#2563eb"/><polygon points="430,558 454,558 442,586" fill="#ffffff"/><polygon points="478,550 502,550 490,578" fill="#16a34a"/><polygon points="526,540 550,540 538,568" fill="#facc15"/><polygon points="574,527 598,527 586,555" fill="#2563eb"/></g>
+  <circle cx="300" cy="610" r="44" fill="#ffffff"/><polygon points="300,590 318,603 311,624 289,624 282,603" fill="#0b0b0f"/>
+  <text x="300" y="120" text-anchor="middle" font-family="Helvetica Neue, Arial, sans-serif" font-weight="400" font-size="24" letter-spacing="12" fill="#fef9c3">SEU</text>
+  <text x="300" y="225" text-anchor="middle" font-family="Arial Black, Helvetica Neue, Arial, sans-serif" font-weight="900" font-size="100" letter-spacing="0" fill="#ffffff">JUSTINO</text>
+  <text x="300" y="285" text-anchor="middle" font-family="Arial Black, Helvetica Neue, Arial, sans-serif" font-weight="900" font-size="30" letter-spacing="8" fill="#facc15">COPA DO MUNDO</text>
+  <rect x="0" y="680" width="600" height="120" fill="#0b0b0f" opacity=".75"/>
+  <text x="300" y="730" text-anchor="middle" font-family="Helvetica Neue, Arial, sans-serif" font-weight="700" font-size="28" letter-spacing="6" fill="#ffffff">SÁB · 13 JUN</text>
+  <text x="300" y="768" text-anchor="middle" font-family="Helvetica Neue, Arial, sans-serif" font-weight="400" font-size="17" letter-spacing="4" fill="#facc15">SEU JUSTINO · SÃO PAULO</text>
+</svg>

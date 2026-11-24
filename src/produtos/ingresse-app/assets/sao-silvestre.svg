@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 800">
+  <!-- Capa ilustrativa de São Silvestre 2026 (arte original do protótipo, não é a capa oficial).
+       Texto em cima e embaixo; a faixa entre 58% e 78% fica só com grafismo, para o recorte do banner. -->
+  <defs><linearGradient id="s" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff4d00"/><stop offset=".6" stop-color="#c2410c"/><stop offset="1" stop-color="#1d3a8a"/></linearGradient></defs>
+  <rect width="600" height="800" fill="url(#s)"/>
+  <g fill="#1d1b4b" opacity=".55"><rect x="0" y="409" width="35" height="151"/><rect x="41" y="414" width="64" height="146"/><rect x="111" y="392" width="46" height="168"/><rect x="163" y="391" width="62" height="169"/><rect x="231" y="460" width="57" height="100"/><rect x="294" y="454" width="48" height="106"/><rect x="348" y="360" width="48" height="200"/><rect x="402" y="394" width="46" height="166"/><rect x="454" y="357" width="47" height="203"/><rect x="507" y="480" width="73" height="80"/><rect x="586" y="392" width="64" height="168"/></g>
+  <g stroke="#ffffff" stroke-linecap="round"><line x1="-19" y1="480" x2="441" y2="480" stroke-width="3" stroke-opacity="0.8"/><line x1="11" y1="502" x2="624" y2="502" stroke-width="2" stroke-opacity="0.5"/><line x1="45" y1="524" x2="424" y2="524" stroke-width="5" stroke-opacity="0.5"/><line x1="78" y1="546" x2="585" y2="546" stroke-width="5" stroke-opacity="0.3"/><line x1="0" y1="568" x2="467" y2="568" stroke-width="2" stroke-opacity="0.3"/><line x1="-2" y1="590" x2="618" y2="590" stroke-width="5" stroke-opacity="0.3"/><line x1="116" y1="612" x2="622" y2="612" stroke-width="5" stroke-opacity="0.5"/><line x1="-1" y1="634" x2="447" y2="634" stroke-width="2" stroke-opacity="0.3"/><line x1="-14" y1="656" x2="451" y2="656" stroke-width="3" stroke-opacity="0.3"/></g>
+  <rect x="0" y="600" width="600" height="80" fill="#0b0b0f" opacity=".25"/>
+  <g stroke="#ffffff" stroke-width="4" stroke-dasharray="30 22" opacity=".7"><line x1="0" y1="640" x2="600" y2="640"/></g>
+  <text x="300" y="120" text-anchor="middle" font-family="Helvetica Neue, Arial, sans-serif" font-weight="400" font-size="24" letter-spacing="12" fill="#ffe4d6">CORRIDA INTERNACIONAL</text>
+  <text x="300" y="219" text-anchor="middle" font-family="Arial Black, Helvetica Neue, Arial, sans-serif" font-weight="900" font-size="92" letter-spacing="0" fill="#ffffff">SÃO</text>
+  <text x="300" y="315" text-anchor="middle" font-family="Arial Black, Helvetica Neue, Arial, sans-serif" font-weight="900" font-size="92" letter-spacing="0" fill="#ffffff">SILVESTRE</text>
+  <text x="300" y="375" text-anchor="middle" font-family="Arial Black, Helvetica Neue, Arial, sans-serif" font-weight="900" font-size="40" letter-spacing="16" fill="#fde047">2026</text>
+  <rect x="0" y="680" width="600" height="120" fill="#0b0b0f" opacity=".75"/>
+  <text x="300" y="730" text-anchor="middle" font-family="Helvetica Neue, Arial, sans-serif" font-weight="700" font-size="28" letter-spacing="6" fill="#ffffff">CORRIDA DE RUA · 15 KM</text>
+  <text x="300" y="768" text-anchor="middle" font-family="Helvetica Neue, Arial, sans-serif" font-weight="400" font-size="17" letter-spacing="4" fill="#fde047">AV. PAULISTA · SÃO PAULO</text>
+</svg>

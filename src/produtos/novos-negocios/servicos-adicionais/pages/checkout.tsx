@@ -41,7 +41,7 @@ export function CheckoutServico() {
     // Volta para a oferta mantendo a marcação de quem veio do Checklist do rolê
     const voltar = () => navigate(`/novos-negocios/servicos-adicionais/${servico.id}${params.get("de") === "checklist" ? "?de=checklist" : ""}`);
     const pagar = (forma: "pix" | "cartao") =>
-        navigate(`/novos-negocios/servicos-adicionais/${servico.id}/confirmacao?valor=${pedido.valor}&forma=${forma}${params.get("de") === "checklist" ? "&de=checklist" : ""}`);
+        navigate(`/novos-negocios/servicos-adicionais/${servico.id}/confirmacao?valor=${pedido.valor}&forma=${forma}${params.get("ingressos") ? `&ingressos=${params.get("ingressos")}` : ""}${params.get("de") === "checklist" ? "&de=checklist" : ""}`);
 
     return (
         <div className="min-h-screen bg-secondary text-primary">
@@ -101,8 +101,9 @@ export function CheckoutServico() {
                         <div className="mt-3 flex flex-col gap-2 text-sm">
                             <div className="flex items-start justify-between gap-3">
                                 <p className="flex gap-2 text-secondary">
-                                    <span className="font-semibold text-primary">1</span>
-                                    <span>{nomeItem(pedido)}</span>
+                                    {/* Proteção: a quantidade é a de ingressos protegidos */}
+                                    <span className="font-semibold text-primary">{pedido.ingressos ?? 1}</span>
+                                    <span>{pedido.ingressos ? pedido.servico.item : nomeItem(pedido)}</span>
                                 </p>
                                 <span className="font-semibold text-primary tabular-nums">{brl(pedido.valor)}</span>
                             </div>

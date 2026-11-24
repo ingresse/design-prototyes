@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { ArrowLeft } from "@untitledui/icons";
 import { Button } from "@/components/base/buttons/button";
@@ -9,6 +9,8 @@ import { useSelecaoValor } from "../utils/use-selecao-valor";
 import { ApresentacaoServico, MarcaServico } from "./apresentacao-servico";
 import { CompartilharOferta } from "./compartilhar-oferta";
 import { AvisoServico } from "./condicoes";
+import { CoberturasProtecao } from "./coberturas-protecao";
+import { SeletorIngressos } from "./seletor-ingressos";
 import { SeletorValor } from "./seletor-valor";
 
 /**
@@ -23,17 +25,24 @@ export function OfertaServico({ servico }: { servico: Servico }) {
     const [params] = useSearchParams();
     const doChecklist = params.get("de") === "checklist";
     const selecao = useSelecaoValor(servico);
-    const escolheu = selecao.valor != null;
+    // Proteção de compra: escolhe os ingressos (todos marcados de início); o preço é o percentual de cada um
+    const porIngresso = !!servico.ingressos?.length;
+    const [ingressos, setIngressos] = useState<string[]>(() => servico.ingressos?.map((i) => i.id) ?? []);
+    const [coberturas, setCoberturas] = useState(false);
+    const valorIngressos = (servico.ingressos ?? []).filter((i) => ingressos.includes(i.id)).reduce((t, i) => t + i.valor * (servico.percentual ?? 0), 0);
+    const valor = porIngresso ? (ingressos.length ? Math.round(valorIngressos * 100) / 100 : null) : selecao.valor;
+    const escolheu = valor != null;
     const card = useRef<HTMLElement>(null);
 
     useCantosDoCard(card);
 
     // Uber e Meep: com valor escolhido, o CTA mostra o preço (com desconto, quando houver)
-    const rotuloCta = servico.ctaComPreco && selecao.valor != null ? `${servico.ctaComPreco} ${brl(valorFinal(servico, selecao.valor))}` : servico.cta;
+    const rotuloCta = servico.ctaComPreco && valor != null ? `${servico.ctaComPreco} ${brl(valorFinal(servico, valor))}` : servico.cta;
 
     const contratar = () => {
-        if (selecao.valor == null) return;
-        navigate(`/novos-negocios/servicos-adicionais/${servico.id}/checkout?valor=${selecao.valor}${doChecklist ? "&de=checklist" : ""}`);
+        if (valor == null) return;
+        const extra = porIngresso ? `&ingressos=${ingressos.join(",")}` : "";
+        navigate(`/novos-negocios/servicos-adicionais/${servico.id}/checkout?valor=${valor}${extra}${doChecklist ? "&de=checklist" : ""}`);
     };
 
     return (
@@ -61,10 +70,10 @@ export function OfertaServico({ servico }: { servico: Servico }) {
                 <div className="-mb-2">
                     <MarcaServico servico={servico} acao={servico.compartilhar && <CompartilharOferta servico={servico} />} />
                 </div>
-                <ApresentacaoServico servico={servico} />
+                <ApresentacaoServico servico={servico} onLink={servico.coberturas ? () => setCoberturas(true) : undefined} />
 
                 <div className="flex flex-col gap-5 pt-2">
-                    <SeletorValor servico={servico} selecao={selecao} />
+                    {porIngresso ? <SeletorIngressos servico={servico} selecionados={ingressos} onChange={setIngressos} /> : <SeletorValor servico={servico} selecao={selecao} />}
                     {servico.aviso && <AvisoServico texto={servico.aviso} />}
                     {/* Desktop: CTA no fim do card, desabilitado até a pessoa escolher um valor */}
                     <Button size="xl" color="primary" className="hidden w-full lg:flex" isDisabled={!escolheu} onClick={contratar}>
@@ -79,6 +88,7 @@ export function OfertaServico({ servico }: { servico: Servico }) {
                     {rotuloCta}
                 </Button>
             </div>
+            <CoberturasProtecao servico={servico} aberto={coberturas} onFechar={() => setCoberturas(false)} />
         </>
     );
 }

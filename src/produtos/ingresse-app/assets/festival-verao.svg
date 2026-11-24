@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 800">
+  <!-- Capa ilustrativa de Festival de Verão 2024 (arte original do protótipo, não é a capa oficial).
+       Texto em cima e embaixo; a faixa entre 58% e 78% fica só com grafismo, para o recorte do banner. -->
+  <defs><linearGradient id="v" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0ea5e9"/><stop offset=".55" stop-color="#38bdf8"/><stop offset=".72" stop-color="#0891b2"/><stop offset="1" stop-color="#065f46"/></linearGradient></defs>
+  <rect width="600" height="800" fill="url(#v)"/>
+  <circle cx="300" cy="500" r="80" fill="#fde047"/><circle cx="300" cy="500" r="110" fill="#fde047" opacity=".25"/>
+  <path d="M-20 560 Q 75 548 150 560 T 300 560 T 450 560 T 620 560" stroke="#e0f2fe" stroke-opacity="0.70" stroke-width="3" fill="none"/>
+  <path d="M-20 582 Q 75 570 150 582 T 300 582 T 450 582 T 620 582" stroke="#e0f2fe" stroke-opacity="0.60" stroke-width="3" fill="none"/>
+  <path d="M-20 604 Q 75 592 150 604 T 300 604 T 450 604 T 620 604" stroke="#e0f2fe" stroke-opacity="0.50" stroke-width="3" fill="none"/>
+  <path d="M-20 626 Q 75 614 150 626 T 300 626 T 450 626 T 620 626" stroke="#e0f2fe" stroke-opacity="0.40" stroke-width="3" fill="none"/>
+  <path d="M-20 648 Q 75 636 150 648 T 300 648 T 450 648 T 620 648" stroke="#e0f2fe" stroke-opacity="0.30" stroke-width="3" fill="none"/>
+  <path d="M90 690 Q 110 560 100 470" stroke="#064e3b" stroke-width="12" fill="none" stroke-linecap="round"/>
+  <g fill="#065f46"><path d="M100 470 Q 61 410 22 460" stroke="#065f46" stroke-width="14" fill="none" stroke-linecap="round"/><path d="M100 470 Q 85 384 69 434" stroke="#065f46" stroke-width="14" fill="none" stroke-linecap="round"/><path d="M100 470 Q 115 384 131 434" stroke="#065f46" stroke-width="14" fill="none" stroke-linecap="round"/><path d="M100 470 Q 139 410 178 460" stroke="#065f46" stroke-width="14" fill="none" stroke-linecap="round"/><path d="M100 470 Q 144 440 189 500" stroke="#065f46" stroke-width="14" fill="none" stroke-linecap="round"/></g>
+  <path d="M510 690 Q 490 560 500 470" stroke="#064e3b" stroke-width="12" fill="none" stroke-linecap="round"/>
+  <g fill="#065f46"><path d="M500 470 Q 539 410 578 460" stroke="#065f46" stroke-width="14" fill="none" stroke-linecap="round"/><path d="M500 470 Q 515 384 531 434" stroke="#065f46" stroke-width="14" fill="none" stroke-linecap="round"/><path d="M500 470 Q 485 384 469 434" stroke="#065f46" stroke-width="14" fill="none" stroke-linecap="round"/><path d="M500 470 Q 461 410 422 460" stroke="#065f46" stroke-width="14" fill="none" stroke-linecap="round"/><path d="M500 470 Q 456 440 411 500" stroke="#065f46" stroke-width="14" fill="none" stroke-linecap="round"/></g>
+  <text x="300" y="120" text-anchor="middle" font-family="Helvetica Neue, Arial, sans-serif" font-weight="400" font-size="24" letter-spacing="12" fill="#e0f2fe">FESTIVAL DE</text>
+  <text x="300" y="240" text-anchor="middle" font-family="Arial Black, Helvetica Neue, Arial, sans-serif" font-weight="900" font-size="120" letter-spacing="0" fill="#ffffff">VERÃO</text>
+  <text x="300" y="300" text-anchor="middle" font-family="Arial Black, Helvetica Neue, Arial, sans-serif" font-weight="900" font-size="40" letter-spacing="16" fill="#fde047">2024</text>
+  <rect x="0" y="680" width="600" height="120" fill="#0b0b0f" opacity=".75"/>
+  <text x="300" y="730" text-anchor="middle" font-family="Helvetica Neue, Arial, sans-serif" font-weight="700" font-size="28" letter-spacing="6" fill="#ffffff">SÁB · 27 JAN · 16H</text>
+  <text x="300" y="768" text-anchor="middle" font-family="Helvetica Neue, Arial, sans-serif" font-weight="400" font-size="17" letter-spacing="4" fill="#fde047">PARQUE DE EXPOSIÇÕES · SALVADOR</text>
+</svg>

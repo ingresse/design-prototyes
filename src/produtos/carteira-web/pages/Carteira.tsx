@@ -21,7 +21,8 @@ import { usePerfilAtivo, type PerfilAtivo } from "../data/perfil-ativo";
 import { useDependentes } from "../data/dependentes";
 import { PerfisOnboarding } from "../components/perfis-onboarding";
 import { MULTIPERFIS } from "../data/funcionalidades";
-import { BannerOfertaUber, CardOfertaUber, LINK_OFERTA_UBER, OfertaUberDialogo } from "../components/oferta-uber";
+import { BannerHub, CardHub, LINK_HUB } from "../components/oferta-hub";
+import { LINK_OFERTA_UBER, OfertaUberDialogo } from "../components/oferta-uber";
 
 /** Onboarding dos perfis dos dependentes já visto (mostra uma vez; o link dedicado abre sempre). */
 const ONBOARDING_PERFIS = "cw-onboarding-perfis";
@@ -31,10 +32,15 @@ import { SAO_SILVESTRE } from "../data/sao-silvestre";
 import { isTransferido } from "../data/transfer-store";
 import festivalAurora from "../assets/festival-aurora.svg";
 import gopTun from "../assets/gop-tun.svg";
+import arenaBrasileira from "../assets/arena-brasileira.svg";
+import festivalVerao from "../assets/festival-verao.svg";
+import lollapalooza from "../assets/lollapalooza.svg";
+import reveillonCopacabana from "../assets/reveillon-copacabana.svg";
+import sambaIndependente from "../assets/samba-independente.svg";
+import saoSilvestre from "../assets/sao-silvestre.svg";
 
-/** Oferta da Uber: o modal aparece uma vez (?oferta=uber força); o banner some quando a pessoa toca no X. */
+/** Oferta da Uber: o modal aparece uma vez (?oferta=uber força). */
 const OFERTA_UBER_VISTA = "cw-oferta-uber";
-const BANNER_UBER_DISPENSADO = "cw-banner-uber-dispensado";
 const lerFlag = (k: string) => {
     try {
         return localStorage.getItem(k) === "1";
@@ -50,13 +56,14 @@ const gravarFlag = (k: string) => {
     }
 };
 
-/** Banner da oferta, com o estado de dispensado (o mesmo no desktop e no celular). */
-function useBannerUber() {
-    const [visivel, setVisivel] = useState(() => !lerFlag(BANNER_UBER_DISPENSADO));
+/** Atalho do hub "Prepare seu rolê" na lista: some quando a pessoa toca no X (o mesmo no desktop e no celular). */
+const BANNER_HUB_DISPENSADO = "cw-banner-hub-dispensado";
+function useBannerHub() {
+    const [visivel, setVisivel] = useState(() => !lerFlag(BANNER_HUB_DISPENSADO));
     return {
         visivel,
         dispensar: () => {
-            gravarFlag(BANNER_UBER_DISPENSADO);
+            gravarFlag(BANNER_HUB_DISPENSADO);
             setVisivel(false);
         },
     };
@@ -104,7 +111,7 @@ const PROXIMOS: EventoCard[] = [
         dia: "19",
         mes: "Junho",
         qtd: 2,
-        gradient: "linear-gradient(150deg,#16a34a 0%,#2563eb 50%,#f59e0b 100%)",
+        gradient: arenaBrasileira,
         datas: "19 de Jun 2026",
         mesAno: "Junho 2026",
     },
@@ -116,7 +123,7 @@ const PROXIMOS: EventoCard[] = [
         dia: "4",
         mes: "Julho",
         qtd: 2,
-        gradient: "linear-gradient(135deg,#F59E0B 0%,#DB2777 55%,#7C3AED 100%)",
+        gradient: sambaIndependente,
         datas: "4 e 18, Jul 2026",
         mesAno: "Julho 2026",
     },
@@ -140,7 +147,7 @@ const PROXIMOS: EventoCard[] = [
         dia: "31",
         mes: "Dezembro",
         qtd: 2,
-        gradient: "linear-gradient(135deg,#1d4ed8 0%,#9333ea 55%,#f59e0b 100%)",
+        gradient: reveillonCopacabana,
         datas: "31 de Dez 2026",
         mesAno: "Dezembro 2026",
     },
@@ -152,7 +159,7 @@ const PROXIMOS: EventoCard[] = [
         dia: "31",
         mes: "Dezembro",
         qtd: 1,
-        gradient: "linear-gradient(135deg,#FF4D00 0%,#1d4ed8 100%)",
+        gradient: saoSilvestre,
         datas: "30 de Dez 2026",
         mesAno: "Dezembro 2026",
         comboId: "combo-sao-silvestre",
@@ -168,7 +175,7 @@ const ANTERIORES: EventoCard[] = [
         dia: "28",
         mes: "Março",
         qtd: 2,
-        gradient: "linear-gradient(135deg,#db2777 0%,#7c3aed 100%)",
+        gradient: lollapalooza,
         datas: "28, Mar 2025",
         mesAno: "Março 2025",
     },
@@ -180,7 +187,7 @@ const ANTERIORES: EventoCard[] = [
         dia: "27",
         mes: "Janeiro",
         qtd: 4,
-        gradient: "linear-gradient(135deg,#0ea5e9 0%,#22c55e 100%)",
+        gradient: festivalVerao,
         datas: "27 de Jan 2024",
         mesAno: "Janeiro 2024",
     },
@@ -206,7 +213,7 @@ function CarteiraContent({ onCardClick, erro = false }: { onCardClick: (card: Ev
     const perfil = usePerfilAtivo();
     const doBanco = useCarteiraDoBanco();
     const cards = doPerfil(tab === "proximos" ? [...doBanco.proximos, ...PROXIMOS] : [...doBanco.anteriores, ...ANTERIORES], perfil);
-    const banner = useBannerUber();
+    const banner = useBannerHub();
     const navigate = useNavigate();
 
     return (
@@ -223,10 +230,8 @@ function CarteiraContent({ onCardClick, erro = false }: { onCardClick: (card: Ev
 
                 {cards.length === 0 && <SemIngressos nome={perfil?.nome} />}
                 <div className="grid grid-cols-[repeat(auto-fill,minmax(300px,360px))] gap-8">
-                    {/* Oferta da Uber como o primeiro card da grade (mesmo formato dos eventos, estático) */}
-                    {tab === "proximos" && banner.visivel && cards.length > 0 && (
-                        <CardOfertaUber onAbrir={() => navigate(LINK_OFERTA_UBER)} onDispensar={banner.dispensar} />
-                    )}
+                    {/* Atalho do hub como o primeiro card da grade (mesmo formato dos eventos, estático) */}
+                    {tab === "proximos" && banner.visivel && cards.length > 0 && <CardHub onAbrir={() => navigate(LINK_HUB)} onDispensar={banner.dispensar} />}
                     {cards.map((card) => (
                         <EventoCardView
                             key={card.id}
@@ -274,7 +279,7 @@ const EventoCardView = ({ card, past, erro = false, onClick }: { card: EventoCar
                 )}
             >
                 {escuro ? (
-                    <GradientFill gradient={card.gradient ?? ""} className="absolute inset-0 size-full" />
+                    <GradientFill gradient={card.gradient ?? ""} className="absolute inset-0 size-full object-[center_76%]" />
                 ) : (
                     <Package className="size-16" aria-hidden="true" />
                 )}
@@ -350,7 +355,7 @@ function MobileEventList({ onEventClick }: { onEventClick: (card: EventoCard) =>
     const doBanco = useCarteiraDoBanco();
     const eventos = doPerfil(tab === "proximos" ? [...doBanco.proximos, ...PROXIMOS] : [...doBanco.anteriores, ...ANTERIORES], perfil);
     const grupos = [...new Set(eventos.map((e) => e.mesAno))].map((mes) => ({ mes, eventos: eventos.filter((e) => e.mesAno === mes) }));
-    const banner = useBannerUber();
+    const banner = useBannerHub();
     const navigate = useNavigate();
 
     return (
@@ -366,9 +371,7 @@ function MobileEventList({ onEventClick }: { onEventClick: (card: EventoCard) =>
             {grupos.length === 0 && <SemIngressos nome={perfil?.nome} />}
 
             <div className="flex flex-col gap-2 px-5 pt-5 pb-6">
-                {tab === "proximos" && banner.visivel && grupos.length > 0 && (
-                    <BannerOfertaUber onAbrir={() => navigate(LINK_OFERTA_UBER)} onDispensar={banner.dispensar} />
-                )}
+                {tab === "proximos" && banner.visivel && grupos.length > 0 && <BannerHub onAbrir={() => navigate(LINK_HUB)} onDispensar={banner.dispensar} />}
                 {grupos.map((grupo) => (
                     <section key={grupo.mes} className="pt-2">
                         <h2 className="pb-3 text-md font-bold text-primary">{grupo.mes}</h2>

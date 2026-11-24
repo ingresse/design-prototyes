@@ -7,20 +7,26 @@ import { AppShell } from "../../components/AppShell";
 import { GradientFill } from "../../components/GradientFill";
 import { StatusBar } from "../../components/StatusBar";
 import { TrocaOnboarding } from "../../ingressos/components/TrocaOnboarding";
-import { LINK_OFERTA_UBER } from "../../components/ofertas";
-import { BannerOfertaUber } from "../components/banner-oferta-uber";
 import { MULTIPERFIS } from "../../components/funcionalidades";
 import { usePerfilAtivo } from "../../components/perfil-ativo";
 import { PerfisOnboarding } from "../../perfil/components/perfis-onboarding";
+import { BannerHub, LINK_HUB } from "../components/banner-hub";
 import { useDependentes } from "../../perfil/data/dependentes";
 import { juntarGrupos, useCarteiraAppDoBanco } from "../../ingressos/data/plataforma";
 import festivalAurora from "../../assets/festival-aurora.svg";
 import gopTun from "../../assets/gop-tun.svg";
+import arenaBrasileira from "../../assets/arena-brasileira.svg";
+import festivalVerao from "../../assets/festival-verao.svg";
+import lollapalooza from "../../assets/lollapalooza.svg";
+import reveillonCopacabana from "../../assets/reveillon-copacabana.svg";
+import sambaIndependente from "../../assets/samba-independente.svg";
+import saoSilvestre from "../../assets/sao-silvestre.svg";
+
+/** Atalho do hub dispensado pelo X (some até limpar os dados do navegador). */
+const BANNER_HUB_KEY = "ing-banner-hub-dispensado";
 
 const ONBOARDING_KEY = "ing-onboarding-troca";
 const ONBOARDING_PERFIS_KEY = "ing-onboarding-perfis";
-/** Banner da oferta da Uber dispensado pelo X (some até limpar os dados do navegador). */
-const BANNER_UBER_KEY = "ing-banner-uber-dispensado";
 
 interface Evento {
     id: string;
@@ -59,7 +65,7 @@ const VEM_AI: GrupoMes[] = [
                 date: "Sex, 19 jun • 15:00",
                 local: "Parque Ibirapuera • São Paulo/SP",
                 qtd: 2,
-                gradient: "linear-gradient(150deg,#16a34a 0%,#2563eb 50%,#f59e0b 100%)",
+                gradient: arenaBrasileira,
             },
         ],
     },
@@ -72,7 +78,7 @@ const VEM_AI: GrupoMes[] = [
                 date: "4 e 18 jul • 2026",
                 local: "Fundição Progresso • Rio de Janeiro/RJ",
                 qtd: 2,
-                gradient: "linear-gradient(135deg,#F59E0B 0%,#DB2777 55%,#7C3AED 100%)",
+                gradient: sambaIndependente,
             },
         ],
     },
@@ -98,7 +104,7 @@ const VEM_AI: GrupoMes[] = [
                 date: "Qui, 31 dez • 22:00",
                 local: "Praia de Copacabana • Rio de Janeiro/RJ",
                 qtd: 2,
-                gradient: "linear-gradient(135deg,#1d4ed8 0%,#9333ea 55%,#f59e0b 100%)",
+                gradient: reveillonCopacabana,
             },
             {
                 id: "sao-silvestre",
@@ -106,7 +112,7 @@ const VEM_AI: GrupoMes[] = [
                 date: "Qui, 31 dez • 08:00",
                 local: "Av. Paulista • São Paulo/SP",
                 qtd: 2,
-                gradient: "linear-gradient(135deg,#FF4D00 0%,#1d4ed8 100%)",
+                gradient: saoSilvestre,
             },
         ],
     },
@@ -116,13 +122,13 @@ const PASSADOS: GrupoMes[] = [
     {
         mes: "Março 2025",
         eventos: [
-            { id: "lolla", title: "Lollapalooza 2025", date: "Sex, 28 mar • 12:00", local: "Autódromo de Interlagos • São Paulo/SP", qtd: 2, gradient: "linear-gradient(135deg,#db2777 0%,#7c3aed 100%)" },
+            { id: "lolla", title: "Lollapalooza 2025", date: "Sex, 28 mar • 12:00", local: "Autódromo de Interlagos • São Paulo/SP", qtd: 2, gradient: lollapalooza },
         ],
     },
     {
         mes: "Janeiro 2024",
         eventos: [
-            { id: "verao", title: "Festival de Verão 2024", date: "Sáb, 27 jan • 16:00", local: "Parque de Exposições • Salvador/BA", qtd: 4, gradient: "linear-gradient(135deg,#0ea5e9 0%,#22c55e 100%)" },
+            { id: "verao", title: "Festival de Verão 2024", date: "Sáb, 27 jan • 16:00", local: "Parque de Exposições • Salvador/BA", qtd: 4, gradient: festivalVerao },
         ],
     },
 ];
@@ -130,7 +136,13 @@ const PASSADOS: GrupoMes[] = [
 export function Carteira() {
     const navigate = useNavigate();
     const [tab, setTab] = useState<"vem-ai" | "passados">("vem-ai");
-    const [bannerUber, setBannerUber] = useState(() => !localStorage.getItem(BANNER_UBER_KEY));
+    const [bannerHub, setBannerHub] = useState(() => {
+        try {
+            return !localStorage.getItem(BANNER_HUB_KEY);
+        } catch {
+            return true;
+        }
+    });
     // No perfil de um dependente: só os eventos com ingressos dele que essa conta pode acessar.
     const perfil = usePerfilAtivo();
     const doPerfil = (lista: GrupoMes[]) =>
@@ -201,13 +213,17 @@ export function Carteira() {
 
                 {/* Eventos agrupados por mês */}
                 <div className="flex flex-col gap-2 px-5 pt-5 pb-6">
-                    {/* Oferta da Uber antes da primeira data, só em "Vem aí" (quem ainda vai a eventos) */}
-                    {tab === "vem-ai" && bannerUber && grupos.length > 0 && (
-                        <BannerOfertaUber
-                            onAbrir={() => navigate(LINK_OFERTA_UBER)}
+                    {/* Atalho do hub "Prepare seu rolê" antes da primeira data, só em "Vem aí" (quem ainda vai a eventos) */}
+                    {tab === "vem-ai" && bannerHub && grupos.length > 0 && (
+                        <BannerHub
+                            onAbrir={() => navigate(LINK_HUB)}
                             onDispensar={() => {
-                                localStorage.setItem(BANNER_UBER_KEY, "1");
-                                setBannerUber(false);
+                                try {
+                                    localStorage.setItem(BANNER_HUB_KEY, "1");
+                                } catch {
+                                    /* sem armazenamento: some só nesta visita */
+                                }
+                                setBannerHub(false);
                             }}
                         />
                     )}

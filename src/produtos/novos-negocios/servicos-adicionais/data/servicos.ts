@@ -17,11 +17,29 @@ import { IconlyCadeado, IconlyRemedio, IconlyCalendario, IconlyCamera, IconlyCar
  * confirmadas com os parceiros.
  */
 
-export type ServicoId = "uber" | "uber-evento" | "meep" | "fotos" | "seguro" | "ressaca" | "guarda-volumes";
+export type ServicoId = "uber" | "uber-evento" | "meep" | "fotos" | "seguro" | "ressaca" | "guarda-volumes" | "protecao";
 
 export interface Beneficio {
     icone: FC<{ className?: string }>;
     texto: string;
+    /** Parte final do benefício que vira link e abre o modal de coberturas (Proteção de compra). */
+    link?: string;
+}
+
+/** Ingresso que pode ser protegido (Proteção de compra): o preço é `percentual` do valor. */
+export interface IngressoProtegivel {
+    id: string;
+    /** Nome do ingresso, como na lista da tela de ingressos. */
+    nome: string;
+    /** Pessoa a quem o ingresso está atribuído. */
+    titular: string;
+    valor: number;
+}
+
+/** Grupo de situações cobertas, no modal "O que a proteção cobre" (o mesmo de produção). */
+export interface GrupoCobertura {
+    titulo: string;
+    itens: string[];
 }
 
 export interface Servico {
@@ -76,6 +94,14 @@ export interface Servico {
      * `mensagem` vai antes do link no WhatsApp e em "Mais opções" (provisória).
      */
     compartilhar?: { rotulo: string; titulo: string; legenda: string; mensagem: string };
+    /**
+     * Proteção de compra: no lugar dos valores, a pessoa escolhe quais ingressos proteger. Cada um
+     * custa `percentual` do próprio valor (0.1 = 10%, configurável por evento).
+     */
+    ingressos?: IngressoProtegivel[];
+    percentual?: number;
+    /** Situações cobertas, abertas pelo link do benefício (`Beneficio.link`). */
+    coberturas?: { titulo: string; descricao: string; grupos: GrupoCobertura[] };
     /** Aviso curto exibido junto da seleção de valor. */
     aviso?: string;
     condicoes: string[];
@@ -103,6 +129,8 @@ export interface Evento {
     /** "do Festival Aurora", "do Gop Tun": textos de volta ("ir e voltar do…"). */
     doEvento: string;
     dataLabel: string;
+    /** Data curta do nome dos ingressos ("Festival Aurora | Pista | (28/11)"). */
+    dataCurta?: string;
     local: string;
     dataCompleta: string;
     /** Contagem até o evento; sem ela (evento sem data futura no mock), o selo não aparece. */
@@ -126,6 +154,7 @@ export const EVENTO = {
     proEvento: "pro Festival Aurora",
     doEvento: "do Festival Aurora",
     dataLabel: "Sáb, 28 nov · 16h",
+    dataCurta: "28/11",
     local: "Parque Villa-Lobos, São Paulo",
     dataCompleta: "Sábado, 28 de novembro de 2026 · 16h",
     contagem: "Faltam 10 dias",
@@ -144,6 +173,7 @@ export const GOP_TUN: Evento = {
     proEvento: "pro Gop Tun",
     doEvento: "do Gop Tun",
     dataLabel: "Sáb, 11 abr · 16h",
+    dataCurta: "11/04",
     local: "Audio, São Paulo",
     dataCompleta: "Sábado, 11 de abril de 2026 · 16h",
     // Fictício, como o resto do protótipo: a contagem não acompanha a data do mock
@@ -158,8 +188,8 @@ export const GOP_TUN: Evento = {
  * (a página da oferta mostra o evento e os textos trocam {evento}, {proEvento} etc.).
  */
 export const HUBS: Record<string, { evento: Evento; servicos: ServicoId[] }> = {
-    "festival-aurora": { evento: EVENTO, servicos: ["seguro", "uber-evento", "ressaca", "meep", "guarda-volumes", "fotos"] },
-    "gop-tun": { evento: GOP_TUN, servicos: ["seguro", "uber-evento", "ressaca", "meep", "guarda-volumes", "fotos"] },
+    "festival-aurora": { evento: EVENTO, servicos: ["protecao", "seguro", "uber-evento", "ressaca", "meep", "guarda-volumes", "fotos"] },
+    "gop-tun": { evento: GOP_TUN, servicos: ["protecao", "seguro", "uber-evento", "ressaca", "meep", "guarda-volumes", "fotos"] },
 };
 /** Evento do hub quando o endereço não diz qual: o Gop Tun (o Aurora segue em ?evento=festival-aurora). */
 export const HUB_PADRAO = "gop-tun";
@@ -283,6 +313,71 @@ export const SERVICOS: Record<ServicoId, Servico> = {
                 "No evento, vá a qualquer caixa e informe seu CPF.",
                 "Retire o cartão, que já vem com o seu saldo.",
                 "Use nos bares e comidas e acompanhe o saldo pelo app da Meep.",
+            ],
+        },
+    },
+    // Proteção de compra: vendida no checkout do ingresso e, como serviço adicional, depois da compra
+    // (Figma "Serviço adicional: Proteção de compra"). Preço e regras ILUSTRATIVOS: 10% de cada ingresso,
+    // reembolso de 100% do valor do ingresso em imprevistos cobertos, cada pedido analisado.
+    protecao: {
+        id: "protecao",
+        parceiro: "Proteção de compra",
+        iconeSelo: IconlyEscudo,
+        corSelo: "bg-utility-indigo-600",
+        categoria: "Reembolso",
+        marca: { nome: "Proteção de compra" },
+        evento: true,
+        titulo: "Se não der pra ir, o dinheiro volta",
+        legenda: "Proteja seus ingressos {doEvento} e receba 100% do valor de volta se um imprevisto te impedir de ir.",
+        descricao: "Proteja seus ingressos e receba 100% do valor de volta se um imprevisto te impedir de ir.",
+        beneficios: [
+            { icone: IconlyCarteira, texto: "Reembolso de 100% do valor do ingresso" },
+            { icone: IconlyEscudo, texto: "Cobre vários imprevistos.", link: "Veja\u00a0quais" },
+        ],
+        pergunta: "Quais ingressos você quer proteger?",
+        item: "Proteção de compra",
+        valores: [],
+        ingressos: [
+            // Nome como na tela de ingressos: evento | setor | (data)
+            { id: "pista-1", nome: "{nomeCurto} | Pista | ({dataCurta})", titular: "Camila Ferreira Rocha", valor: 240 },
+            { id: "pista-2", nome: "{nomeCurto} | Pista Premium | ({dataCurta})", titular: "Mariana Costa", valor: 240 },
+        ],
+        percentual: 0.1,
+        desconto: 0,
+        outroValor: false,
+        minimo: 0,
+        maximo: 0,
+        cta: "Proteger meus ingressos",
+        ctaComPreco: "Proteger por",
+        compartilhar: {
+            rotulo: "Compartilhar com a galera",
+            titulo: "Avisa quem vai com você",
+            legenda: "Assim todo mundo protege o ingresso {doEvento} contra imprevistos.",
+            mensagem: "Dá pra proteger o ingresso {doEvento} contra imprevistos por aqui:",
+        },
+        coberturas: {
+            titulo: "O que a proteção cobre",
+            descricao: "Se uma destas situações te impedir de ir ao evento, você pode pedir o reembolso. Cada pedido é analisado conforme as regras da proteção.",
+            grupos: [
+                { titulo: "Saúde", itens: ["Acidente, doença ou lesão", "Condição médica preexistente", "Infecção por COVID-19 e isolamento"] },
+                { titulo: "Imprevistos no caminho", itens: ["Falha no transporte público", "Falha de veículo privado"] },
+                { titulo: "Emergências em casa", itens: ["Emergência doméstica", "Chamada de serviços de emergência"] },
+                { titulo: "Documentos e questões judiciais", itens: ["Roubo de documentos", "Intimação judicial"] },
+            ],
+        },
+        condicoes: [
+            "A proteção custa 10% do valor de cada ingresso protegido.",
+            "Se um imprevisto coberto te impedir de ir, peça o reembolso em Minhas Compras.",
+            "Cada pedido de reembolso é analisado conforme as regras da proteção.",
+        ],
+        destino: { rotulo: "Pedido de reembolso", valor: "Em Minhas Compras, se precisar" },
+        confirmacao: {
+            titulo: "Tudo certo com sua\u00a0proteção",
+            descricao: "Seus ingressos {doEvento} estão protegidos. Agora é só curtir.",
+            passos: [
+                "Se não puder ir, abra o pedido em Minhas Compras.",
+                "Toque em \u201cPedir reembolso\u201d e conte o que aconteceu.",
+                "Depois da análise, o valor dos ingressos volta pra você.",
             ],
         },
     },
@@ -429,7 +524,7 @@ export const SERVICOS: Record<ServicoId, Servico> = {
 };
 
 /** Ofertas com página própria (cada uma aberta pelo link de uma comunicação). */
-export const INDIVIDUAIS: ServicoId[] = ["uber", "uber-evento", "meep"];
+export const INDIVIDUAIS: ServicoId[] = ["uber", "uber-evento", "meep", "protecao"];
 
 /**
  * Prepare seu rolê (rota /checklist): os serviços de UM evento, a partir do ingresso. Agrupados
@@ -473,6 +568,13 @@ export const ROLE = {
             id: "antes",
             titulo: "Antes do grande dia",
             servicos: [
+                {
+                    id: "protecao",
+                    titulo: "Se não der pra ir, o dinheiro volta",
+                    apoio: "Proteja sua compra de imprevistos",
+                    rotulo: "Ver oferta de proteção de compra dos ingressos",
+                    status: { titulo: "Ingressos protegidos", apoio: "{valor} · reembolso em Minhas Compras", acao: "Ver detalhes", rotulo: "Proteção de compra contratada. Ver detalhes" },
+                },
                 {
                     id: "seguro",
                     titulo: "Mais tranquilidade pra curtir",
@@ -551,7 +653,8 @@ export const textoDoEvento = (texto: string, evento: Evento) =>
         .replace(/\{nomeCurto\}/g, evento.nomeCurto)
         .replace(/\{noEvento\}/g, evento.noEvento)
         .replace(/\{proEvento\}/g, evento.proEvento)
-        .replace(/\{doEvento\}/g, evento.doEvento);
+        .replace(/\{doEvento\}/g, evento.doEvento)
+        .replace(/\{dataCurta\}/g, evento.dataCurta ?? "");
 
 /** O serviço com os textos já do evento (todas as strings, inclusive condições, confirmação e compartilhar). */
 export function servicoNoEvento(servico: Servico, evento: Evento): Servico {

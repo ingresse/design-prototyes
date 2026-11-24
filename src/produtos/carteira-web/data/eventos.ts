@@ -5,6 +5,11 @@
 import arenaCamisa from "../assets/arena-camisa.png";
 import festivalAurora from "../assets/festival-aurora.svg";
 import gopTun from "../assets/gop-tun.svg";
+import arenaBrasileira from "../assets/arena-brasileira.svg";
+import festivalVerao from "../assets/festival-verao.svg";
+import lollapalooza from "../assets/lollapalooza.svg";
+import reveillonCopacabana from "../assets/reveillon-copacabana.svg";
+import sambaIndependente from "../assets/samba-independente.svg";
 
 export interface ItemIngresso {
     id: string;
@@ -109,7 +114,7 @@ export const EVENTOS: Record<string, EventoDetalhe> = {
         title: "ARENA BRASILEIRA 2026",
         date: "Sex, 19 jun • 15:00",
         local: "Parque Ibirapuera • São Paulo/SP",
-        gradient: "linear-gradient(150deg,#16a34a 0%,#2563eb 50%,#f59e0b 100%)",
+        gradient: arenaBrasileira,
         sessao: "Sex, 19 jun • 15:00",
         ingressos: [
             { id: "1", title: "ARENA | Brasil x Haiti | (19/06)", tipo: "Inteira", data: "Sex, 19 jun • 15:00", portador: TITULAR, cpf: CPF },
@@ -122,7 +127,7 @@ export const EVENTOS: Record<string, EventoDetalhe> = {
         title: "SAMBA INDEPENDENTE DOS BONS COSTUMES",
         date: "4 e 18 Jul • 2026",
         local: "Fundição Progresso • Rio de Janeiro/RJ",
-        gradient: "linear-gradient(135deg,#F59E0B 0%,#DB2777 55%,#7C3AED 100%)",
+        gradient: sambaIndependente,
         sessao: "4 e 18 de Jul • 2026",
         ingressos: [
             { id: "samba-04jul", title: "SAMBA INDEPENDENTE | 04 Jul", tipo: "Inteira", data: "Sáb, 4 jul • 22:00", portador: TITULAR, cpf: CPF, qrModo: "oculto" },
@@ -134,7 +139,7 @@ export const EVENTOS: Record<string, EventoDetalhe> = {
         title: "Réveillon Copacabana 2027",
         date: "Qui, 31 dez • 22:00",
         local: "Praia de Copacabana • Rio de Janeiro/RJ",
-        gradient: "linear-gradient(135deg,#1d4ed8 0%,#9333ea 55%,#f59e0b 100%)",
+        gradient: reveillonCopacabana,
         sessao: "Qui, 31 dez • 22:00",
         combos: [
             {
@@ -167,7 +172,7 @@ export const EVENTOS: Record<string, EventoDetalhe> = {
         title: "Lollapalooza 2025",
         date: "Sex, 28 mar • 12:00",
         local: "Autódromo de Interlagos • São Paulo/SP",
-        gradient: "linear-gradient(135deg,#db2777 0%,#7c3aed 100%)",
+        gradient: lollapalooza,
         sessao: "Sex, 28 mar • 12:00",
         finalizado: true,
         ingressos: [
@@ -180,7 +185,7 @@ export const EVENTOS: Record<string, EventoDetalhe> = {
         title: "Festival de Verão 2024",
         date: "Sáb, 27 jan • 16:00",
         local: "Parque de Exposições • Salvador/BA",
-        gradient: "linear-gradient(135deg,#0ea5e9 0%,#22c55e 100%)",
+        gradient: festivalVerao,
         sessao: "Sáb, 27 jan • 16:00",
         finalizado: true,
         ingressos: Array.from({ length: 4 }, (_, i) => ({

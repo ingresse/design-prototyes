@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 800">
+  <!-- Capa ilustrativa de Arena Brasileira 2026 (arte original do protótipo, não é a capa oficial).
+       Texto em cima e embaixo; a faixa entre 58% e 78% fica só com grafismo, para o recorte do banner. -->
+  <defs><linearGradient id="c" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#062e1a"/><stop offset=".55" stop-color="#0f6b34"/><stop offset="1" stop-color="#0a3d22"/></linearGradient>
+  <radialGradient id="luz" cx="50%" cy="0%" r="80%"><stop offset="0" stop-color="#fff6c8" stop-opacity=".55"/><stop offset="1" stop-color="#fff6c8" stop-opacity="0"/></radialGradient></defs>
+  <rect width="600" height="800" fill="url(#c)"/>
+  <polygon points="80,0 300,520 520,0" fill="url(#luz)"/>
+  <g stroke="#e8ffe9" stroke-opacity=".35" stroke-width="3" fill="none">
+    <path d="M-40 640 L640 640"/><ellipse cx="300" cy="580" rx="220" ry="60"/><path d="M300 470 L300 690"/><ellipse cx="300" cy="580" rx="40" ry="12"/>
+  </g>
+  <g><rect x="20" y="470" width="10" height="30" rx="5" fill="#facc15" opacity=".55"/><rect x="62" y="476" width="10" height="37" rx="5" fill="#facc15" opacity=".55"/><rect x="104" y="482" width="10" height="44" rx="5" fill="#facc15" opacity=".55"/><rect x="146" y="470" width="10" height="51" rx="5" fill="#facc15" opacity=".55"/><rect x="188" y="476" width="10" height="58" rx="5" fill="#facc15" opacity=".55"/><rect x="230" y="482" width="10" height="65" rx="5" fill="#facc15" opacity=".55"/><rect x="272" y="470" width="10" height="32" rx="5" fill="#facc15" opacity=".55"/><rect x="314" y="476" width="10" height="39" rx="5" fill="#facc15" opacity=".55"/><rect x="356" y="482" width="10" height="46" rx="5" fill="#facc15" opacity=".55"/><rect x="398" y="470" width="10" height="53" rx="5" fill="#facc15" opacity=".55"/><rect x="440" y="476" width="10" height="60" rx="5" fill="#facc15" opacity=".55"/><rect x="482" y="482" width="10" height="67" rx="5" fill="#facc15" opacity=".55"/><rect x="524" y="470" width="10" height="34" rx="5" fill="#facc15" opacity=".55"/><rect x="566" y="476" width="10" height="41" rx="5" fill="#facc15" opacity=".55"/></g>
+  <circle cx="300" cy="560" r="16" fill="#ffffff"/><path d="M290 552 l10 -6 l10 6 l-4 12 h-12z" fill="#0b0b0f" opacity=".75"/>
+  <text x="300" y="120" text-anchor="middle" font-family="Helvetica Neue, Arial, sans-serif" font-weight="400" font-size="24" letter-spacing="12" fill="#bbf7d0">COPA 2026</text>
+  <text x="300" y="215" text-anchor="middle" font-family="Arial Black, Helvetica Neue, Arial, sans-serif" font-weight="900" font-size="84" letter-spacing="0" fill="#ffffff">ARENA</text>
+  <text x="300" y="303" text-anchor="middle" font-family="Arial Black, Helvetica Neue, Arial, sans-serif" font-weight="900" font-size="84" letter-spacing="0" fill="#ffffff">BRASILEIRA</text>
+  <text x="300" y="363" text-anchor="middle" font-family="Arial Black, Helvetica Neue, Arial, sans-serif" font-weight="900" font-size="40" letter-spacing="16" fill="#facc15">2026</text>
+  <rect x="0" y="680" width="600" height="120" fill="#0b0b0f" opacity=".75"/>
+  <text x="300" y="730" text-anchor="middle" font-family="Helvetica Neue, Arial, sans-serif" font-weight="700" font-size="28" letter-spacing="6" fill="#ffffff">BRASIL × HAITI</text>
+  <text x="300" y="768" text-anchor="middle" font-family="Helvetica Neue, Arial, sans-serif" font-weight="400" font-size="17" letter-spacing="4" fill="#facc15">PARQUE IBIRAPUERA · SÃO PAULO</text>
+</svg>

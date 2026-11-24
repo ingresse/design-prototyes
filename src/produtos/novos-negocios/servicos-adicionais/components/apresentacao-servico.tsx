@@ -36,7 +36,7 @@ export function MarcaServico({ servico, acao, semSelo = false }: { servico: Serv
 }
 
 /** Título com o benefício principal, legenda opcional e vantagens (a marca fica em MarcaServico). */
-export function ApresentacaoServico({ servico }: { servico: Servico }) {
+export function ApresentacaoServico({ servico, onLink }: { servico: Servico; onLink?: () => void }) {
     return (
         <div className="flex flex-col gap-6">
             <div className="flex flex-col gap-2">
@@ -53,7 +53,7 @@ export function ApresentacaoServico({ servico }: { servico: Servico }) {
             </div>
 
             <ul className="flex flex-col gap-3">
-                {servico.beneficios.map(({ icone: Icone, texto }, i) => {
+                {servico.beneficios.map(({ icone: Icone, texto, link }, i) => {
                     // O primeiro benefício (o desconto) em destaque: texto mais forte e ícone na cor da marca
                     const principal = servico.beneficioPrincipal && i === 0;
                     return (
@@ -61,7 +61,22 @@ export function ApresentacaoServico({ servico }: { servico: Servico }) {
                             <span className={cx("flex size-9 shrink-0 items-center justify-center rounded-lg", principal ? "bg-brand-primary" : "bg-secondary")}>
                                 <Icone className={cx("size-5", principal ? "text-fg-brand-primary" : "text-fg-primary")} aria-hidden="true" />
                             </span>
-                            <span className={cx("text-md", principal ? "font-semibold text-primary" : "font-medium text-tertiary")}>{texto}</span>
+                            <span className={cx("text-md", principal ? "font-semibold text-primary" : "font-medium text-tertiary")}>
+                                {texto}
+                                {/* Parte final como link (ex.: "Veja quais", que abre as coberturas da proteção) */}
+                                {link && onLink && (
+                                    <>
+                                        {" "}
+                                        <button
+                                            type="button"
+                                            onClick={onLink}
+                                            className="font-semibold text-brand-secondary underline underline-offset-2 outline-focus-ring transition duration-100 ease-linear hover:text-brand-secondary_hover focus-visible:outline-2"
+                                        >
+                                            {link}
+                                        </button>
+                                    </>
+                                )}
+                            </span>
                         </li>
                     );
                 })}
