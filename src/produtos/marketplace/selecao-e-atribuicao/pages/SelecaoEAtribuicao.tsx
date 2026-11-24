@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Children, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate, useSearchParams } from "react-router";
 import { AlertTriangle, CheckCircle, ChevronDown, HelpCircle, LayoutRight, InfoCircle, Minus, Package, Plus, QrCode01, Send01, Tag01, Ticket01, Trash01, XClose } from "@untitledui/icons";
-import { AnimatePresence, motion, type Variants } from "motion/react";
+import { AnimatePresence, motion, useReducedMotion, type Variants } from "motion/react";
 import { Dialog, Modal, ModalOverlay } from "@/components/application/modals/modal";
 import { Badge } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
@@ -105,6 +105,28 @@ interface CartGroup {
  * Com `evento`: link de compra de um evento do banco unificado (src/plataforma); finalizar
  * grava o pedido e segue para o checkout.
  */
+const DIAS_CURTOS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+const MESES_CURTOS = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+
+/**
+ * Quando e onde da barra do evento, no formato da barra do site: "Sex 27 nov 2026, 21h" e "Crema Club, São Paulo".
+ * Várias sessões em dias diferentes viram o intervalo ("25 a 30 nov 2026"). Sem símbolo separador entre as partes.
+ */
+function barraDoEvento(ev: EventoBanco, capa?: string) {
+    const inicios = (ev.sessoes.length ? ev.sessoes.map((s) => s.inicio) : [ev.data]).filter(Boolean).sort();
+    const d = (iso: string) => new Date(iso.length <= 10 ? `${iso}T00:00` : iso);
+    const hora = (x: Date) => (x.getMinutes() ? `${x.getHours()}h${String(x.getMinutes()).padStart(2, "0")}` : `${x.getHours()}h`);
+    let quando = "";
+    if (inicios.length) {
+        const a = d(inicios[0]), b = d(inicios[inicios.length - 1]);
+        if (a.toDateString() === b.toDateString()) quando = `${DIAS_CURTOS[a.getDay()]} ${a.getDate()} ${MESES_CURTOS[a.getMonth()]} ${a.getFullYear()}, ${hora(a)}`;
+        else if (a.getMonth() === b.getMonth() && a.getFullYear() === b.getFullYear()) quando = `${a.getDate()} a ${b.getDate()} ${MESES_CURTOS[b.getMonth()]} ${b.getFullYear()}`;
+        else quando = `${a.getDate()} ${MESES_CURTOS[a.getMonth()]} a ${b.getDate()} ${MESES_CURTOS[b.getMonth()]} ${b.getFullYear()}`;
+    }
+    const onde = [ev.local, ev.cidade].filter((x, i, l) => x && l.indexOf(x) === i).join(", ");
+    return { capa: capa || ev.capa, quando, onde };
+}
+
 export function SelecaoEAtribuicao({ evento }: { evento?: EventoBanco } = {}) {
     const navigate = useNavigate();
     const [params] = useSearchParams();
@@ -1097,9 +1119,9 @@ export function SelecaoEAtribuicao({ evento }: { evento?: EventoBanco } = {}) {
                 )}
             </div>
             <div className="flex w-full flex-col gap-4 lg:h-full lg:min-h-0 lg:max-w-[640px]">
-                {cupomBlock}
+                <div className="px-4 pt-4 md:px-0 md:pt-0">{cupomBlock}</div>
                 <div className="flex flex-col gap-4 lg:min-h-0 lg:flex-1">
-                    <div className="flex flex-col px-4 md:px-0 lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
+                    <div className="flex flex-col px-4 md:px-0 lg:-mx-1 lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:px-1 lg:pb-1">
                         {dataHeader}
                         {conteudo}
                     </div>
@@ -1145,6 +1167,7 @@ export function SelecaoEAtribuicao({ evento }: { evento?: EventoBanco } = {}) {
             onBack={etapa === "selecao" && config.exibirVoltar === false ? undefined : voltarEtapa}
             usuario={usuario ?? undefined}
             onAcessar={() => !usuario && setLoginOpen(true)}
+            evento={evento ? barraDoEvento(evento, config.capa) : undefined}
         >
             {etapa === "atribuicao" ? (
                 atribuicaoLayout
@@ -1160,9 +1183,9 @@ export function SelecaoEAtribuicao({ evento }: { evento?: EventoBanco } = {}) {
                     </div>
 
                     <div className="flex w-full flex-col gap-4 lg:h-full lg:min-h-0 lg:max-w-[640px]">
-                        {cupomBlock}
+                        <div className="px-4 pt-4 md:px-0 md:pt-0">{cupomBlock}</div>
                         <div className="flex flex-col gap-4 lg:min-h-0 lg:flex-1">
-                            <div className="flex flex-col px-4 md:px-0 lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
+                            <div className="flex flex-col px-4 md:px-0 lg:-mx-1 lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:px-1 lg:pb-1">
                                 {abas}
                                 {conteudo}
                             </div>
@@ -2292,6 +2315,7 @@ function GrupoIngressos({ nome, quantitativo, children }: { nome: string; quanti
     // Fechado por padrão. A troca de aba remonta a árvore (key no AnimatePresence),
     // então o estado também volta ao fechado a cada data ou combo.
     const [aberto, setAberto] = useState(false);
+    const reduzir = useReducedMotion();
 
     /*
       `ofertados` é o TOTAL do grupo e já contém as meias. Como a linha agora
@@ -2313,12 +2337,12 @@ function GrupoIngressos({ nome, quantitativo, children }: { nome: string; quanti
                 type="button"
                 onClick={() => setAberto((v) => !v)}
                 aria-expanded={aberto}
-                className="flex w-full flex-col gap-0.5 border-b border-secondary bg-primary px-4 py-3 text-left transition duration-100 ease-linear hover:bg-primary_hover"
+                className={cx("flex w-full flex-col gap-0.5 border-b bg-primary px-4 py-3 text-left transition duration-100 ease-linear hover:bg-primary_hover", aberto ? "border-secondary" : "border-transparent")}
             >
                 <span className="flex w-full items-center gap-2.5">
                     <QrCode01 className="size-4 shrink-0 text-fg-quaternary" />
                     <span className="flex-1 text-sm font-semibold tracking-wide text-secondary">{nome}</span>
-                    <ChevronDown className={cx("size-5 shrink-0 text-fg-quaternary transition-transform", aberto && "rotate-180")} />
+                    <ChevronDown className={cx("size-5 shrink-0 text-fg-quaternary transition-transform duration-200 ease-out motion-reduce:transition-none", aberto && "rotate-180")} />
                 </span>
                 {quantitativo && quantitativo.ofertados > 0 && (
                     <span className="pl-6.5 text-sm text-quaternary tabular-nums">
@@ -2327,7 +2351,32 @@ function GrupoIngressos({ nome, quantitativo, children }: { nome: string; quanti
                     </span>
                 )}
             </button>
-            {aberto && <div className="divide-y divide-secondary">{children}</div>}
+            {/* Abre e fecha animando a altura; os ingressos entram em cascata. Sem movimento reduzido, só troca. */}
+            <AnimatePresence initial={false}>
+                {aberto && (
+                    <motion.div
+                        key="itens"
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: reduzir ? 0 : 0.24, ease: [0.22, 1, 0.36, 1] }}
+                        className="overflow-hidden"
+                    >
+                        <motion.div
+                            className="divide-y divide-secondary"
+                            initial="fechado"
+                            animate="aberto"
+                            variants={{ aberto: { transition: { staggerChildren: reduzir ? 0 : 0.04, delayChildren: reduzir ? 0 : 0.06 } }, fechado: {} }}
+                        >
+                            {Children.map(children, (filho) => (
+                                <motion.div variants={{ fechado: { opacity: 0, y: reduzir ? 0 : -6 }, aberto: { opacity: 1, y: 0, transition: { duration: reduzir ? 0 : 0.2, ease: "easeOut" } } }}>
+                                    {filho}
+                                </motion.div>
+                            ))}
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }

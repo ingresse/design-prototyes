@@ -2,6 +2,7 @@ import { useEffect, type CSSProperties, type ReactNode } from "react";
 import ingresseLogoLight from "../assets/ingresse-logo-light.svg";
 import { ArrowLeft, HelpCircle, Share07 } from "@untitledui/icons";
 import { useTheme } from "@/providers/theme-provider";
+import { cx } from "@/utils/cx";
 
 /*
  * Estado em nível de módulo para forçar light mode em TODAS as telas do
@@ -56,6 +57,12 @@ interface MarketplaceLayoutProps {
     usuario?: string;
     /** Handler do botão de conta (abre o login). */
     onAcessar?: () => void;
+    /**
+     * Evento da compra. Presente, o subheader vira a barra do evento (miniatura, nome, quando e onde) e as duas barras do topo
+     * ganham ao fundo a capa do evento desfocada sob 70% de preto; o conteúdo sobe sobre esse fundo com os cantos de cima
+     * arredondados. Ausente, ficam a barra INGRESSE escura e o subheader claro.
+     */
+    evento?: { capa?: string; quando?: string; onde?: string };
     children: ReactNode;
 }
 
@@ -90,13 +97,20 @@ const INGRESSE_LOGO = ingresseLogoLight;
  * e subheader claro (voltar + título + selo, ações Compartilhar / Preciso de ajuda).
  * Reaproveitado por todas as telas do produto Marketplace.
  */
-export function MarketplaceLayout({ title, badge, logo, accent, onBack, usuario, onAcessar, children }: MarketplaceLayoutProps) {
+export function MarketplaceLayout({ title, badge, logo, accent, onBack, usuario, onAcessar, evento, children }: MarketplaceLayoutProps) {
     useForceLightMode();
 
     return (
-        <div className="flex h-[100dvh] flex-col overflow-hidden bg-primary text-primary md:bg-secondary" style={accentVars(accent)}>
+        <div className={cx("relative flex h-[100dvh] flex-col overflow-hidden text-primary", evento ? "bg-primary-solid" : "bg-primary md:bg-secondary")} style={accentVars(accent)}>
+            {/* Com evento: a capa desfocada sob 70% de preto atrás das duas barras (e dos cantos arredondados do conteúdo) */}
+            {evento && (
+                <div className="pointer-events-none absolute inset-x-0 top-0 h-[128px] overflow-hidden" aria-hidden="true">
+                    {evento.capa && <img src={evento.capa} alt="" className="absolute inset-0 size-full scale-125 object-cover blur-2xl" />}
+                    <div className="absolute inset-0 bg-black/70" />
+                </div>
+            )}
             {/* Barra INGRESSE (escura) */}
-            <header className="bg-primary-solid h-[56px] shrink-0">
+            <header className={cx("relative h-[56px] shrink-0", !evento && "bg-primary-solid")}>
                 <div className="mx-auto flex h-[56px] w-full items-center justify-between px-4 md:px-6">
                     {logo ? (
                         <img src={logo} alt="Logo do evento" className="h-7 w-auto object-contain md:h-[38px]" />
@@ -123,7 +137,38 @@ export function MarketplaceLayout({ title, badge, logo, accent, onBack, usuario,
                 </div>
             </header>
 
-            {/* Subheader (claro) */}
+            {evento ? (
+                /* Barra do evento: miniatura, nome e, ao lado, quando e onde */
+                <div className="relative shrink-0">
+                    <div className="mx-auto flex h-14 w-full items-center justify-between gap-4 px-4 md:px-6">
+                        <div className="flex min-w-0 items-center gap-3">
+                            {onBack && (
+                                <button type="button" onClick={onBack} aria-label="Voltar" className="shrink-0 text-white transition duration-100 ease-linear hover:opacity-80">
+                                    <ArrowLeft className="size-5" />
+                                </button>
+                            )}
+                            {evento.capa && <img src={evento.capa} alt="" className="size-8 shrink-0 rounded-md object-cover" />}
+                            <div className="flex min-w-0 items-baseline gap-3">
+                                <h1 className="truncate text-sm font-semibold text-white">{title}</h1>
+                                {badge && <span className="shrink-0 rounded-md bg-white/10 px-2 py-0.5 text-sm font-medium text-white">{badge}</span>}
+                                {evento.quando && <span className="hidden shrink-0 text-sm text-tooltip-supporting-text md:inline">{evento.quando}</span>}
+                                {evento.onde && <span className="hidden min-w-0 truncate text-sm text-tooltip-supporting-text lg:inline">{evento.onde}</span>}
+                            </div>
+                        </div>
+                        <div className="flex shrink-0 items-center gap-5">
+                            <button type="button" className="flex items-center gap-1.5 text-sm text-white transition duration-100 ease-linear hover:opacity-80">
+                                <Share07 className="size-4" />
+                                <span className="hidden sm:inline">Compartilhar</span>
+                            </button>
+                            <button type="button" className="flex items-center gap-1.5 text-sm text-white transition duration-100 ease-linear hover:opacity-80">
+                                <HelpCircle className="size-4" />
+                                <span className="hidden sm:inline">Preciso de ajuda</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            ) : (
+            /* Subheader (claro) */
             <div className="shrink-0 border-b border-secondary bg-primary">
                 <div className="mx-auto flex h-16 w-full items-center justify-between gap-4 px-4 md:px-6">
                     <div className="flex min-w-0 items-center gap-3">
@@ -147,8 +192,16 @@ export function MarketplaceLayout({ title, badge, logo, accent, onBack, usuario,
                     </div>
                 </div>
             </div>
+            )}
 
-            <main className="mx-auto w-full min-h-0 flex-1 overflow-y-auto p-0 md:p-4">{children}</main>
+            <main
+                className={cx(
+                    "mx-auto w-full min-h-0 flex-1 overflow-y-auto p-0 md:p-4",
+                    evento && "relative rounded-t-2xl bg-primary md:bg-secondary",
+                )}
+            >
+                {children}
+            </main>
         </div>
     );
 }

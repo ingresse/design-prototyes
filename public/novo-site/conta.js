@@ -212,6 +212,69 @@
     render();
   }
 
+  /* Recorte da foto de perfil: o mesmo modal do upload de banner do Backstage (campo-banner.tsx, Cropper do DS), aqui em JS puro.
+     Quadrado (a foto aparece redonda; o círculo é o guia), começa no maior quadrado centralizado; arrasta para mover, puxa um canto
+     para redimensionar, setas do teclado movem. Clicar fora não fecha (arrastar até a borda e soltar fora descartava). Sai em 256 px. */
+  function recortarFoto(arquivo) {
+    return new Promise(function (resolver) {
+      var url = URL.createObjectURL(arquivo), feito = false;
+      var d = dialogo('<div class="ct-recorte-modal"><div class="ct-recorte-modal__topo"><span class="ct-recorte-modal__ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2v14a2 2 0 0 0 2 2h14"/><path d="M18 22V8a2 2 0 0 0-2-2H2"/></svg></span>' +
+        '<div><h2>Recortar foto</h2><p>Arraste a área para escolher o que aparece. A foto fica redonda no menu e no ingresso.</p></div>' +
+        '<button type="button" class="ct-recorte-modal__x" aria-label="Fechar" data-fechar><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>' +
+        '<div class="ct-recorte-palco"><div class="ct-recorte"><img alt="" draggable="false"><div class="ct-recorte__sel" tabindex="0" role="group" aria-label="Área do recorte. Use as setas para mover.">' +
+        '<span class="ct-recorte__alca" data-canto="nw"></span><span class="ct-recorte__alca" data-canto="ne"></span><span class="ct-recorte__alca" data-canto="sw"></span><span class="ct-recorte__alca" data-canto="se"></span></div></div></div>' +
+        '<div class="ct-acoes"><button type="button" class="bs" data-fechar>Cancelar</button><button type="button" class="bp" data-aplicar>Aplicar recorte</button></div></div>');
+      d.classList.add('ct-dialogo--recorte');
+      d.addEventListener('cancel', function () { /* Esc fecha */ });
+      d.addEventListener('click', function (e) { if (e.target === d) e.stopPropagation(); }); // fora não fecha
+      var caixa = d.querySelector('.ct-recorte'), img = caixa.querySelector('img'), sel = caixa.querySelector('.ct-recorte__sel');
+      var r = { x: 0, y: 0, l: 0 }, W = 0, H = 0, MIN = 48;
+      function pintar() { sel.style.left = r.x + 'px'; sel.style.top = r.y + 'px'; sel.style.width = sel.style.height = r.l + 'px'; }
+      function limitar() { r.l = Math.max(Math.min(MIN, W, H), Math.min(r.l, W, H)); r.x = Math.min(Math.max(0, r.x), W - r.l); r.y = Math.min(Math.max(0, r.y), H - r.l); }
+      img.onload = function () {
+        W = img.clientWidth; H = img.clientHeight; r.l = Math.min(W, H); r.x = (W - r.l) / 2; r.y = (H - r.l) / 2; pintar();
+      };
+      img.src = url;
+      var gesto = null;
+      caixa.addEventListener('pointerdown', function (e) {
+        var alca = e.target.closest('.ct-recorte__alca');
+        if (!alca && !e.target.closest('.ct-recorte__sel')) return;
+        e.preventDefault(); caixa.setPointerCapture(e.pointerId); sel.focus({ preventScroll: true });
+        gesto = { canto: alca ? alca.getAttribute('data-canto') : null, x0: e.clientX, y0: e.clientY, r0: { x: r.x, y: r.y, l: r.l } };
+      });
+      caixa.addEventListener('pointermove', function (e) {
+        if (!gesto) return;
+        var dx = e.clientX - gesto.x0, dy = e.clientY - gesto.y0, o = gesto.r0, c = gesto.canto;
+        if (!c) { r.x = o.x + dx; r.y = o.y + dy; r.l = o.l; limitar(); pintar(); return; }
+        // redimensiona preso ao canto oposto, sempre quadrado
+        var sx = c.indexOf('e') >= 0 ? 1 : -1, sy = c.indexOf('s') >= 0 ? 1 : -1;
+        var ax = sx > 0 ? o.x : o.x + o.l, ay = sy > 0 ? o.y : o.y + o.l; // âncora
+        var l = Math.max(sx * dx, sy * dy) + o.l;
+        var maxX = sx > 0 ? W - ax : ax, maxY = sy > 0 ? H - ay : ay;
+        l = Math.max(Math.min(MIN, W, H), Math.min(l, maxX, maxY));
+        r.l = l; r.x = sx > 0 ? ax : ax - l; r.y = sy > 0 ? ay : ay - l; pintar();
+      });
+      function soltar() { gesto = null; }
+      caixa.addEventListener('pointerup', soltar); caixa.addEventListener('pointercancel', soltar);
+      sel.addEventListener('keydown', function (e) {
+        var p = e.shiftKey ? 20 : 4, m = { ArrowLeft: [-p, 0], ArrowRight: [p, 0], ArrowUp: [0, -p], ArrowDown: [0, p] }[e.key];
+        if (!m) return; e.preventDefault(); r.x += m[0]; r.y += m[1]; limitar(); pintar();
+      });
+      window.addEventListener('resize', function redimensionar() {
+        if (!document.contains(d)) { window.removeEventListener('resize', redimensionar); return; }
+        var k = img.clientWidth / (W || 1); W = img.clientWidth; H = img.clientHeight; r.x *= k; r.y *= k; r.l *= k; limitar(); pintar();
+      });
+      function fechar(v) { if (feito) return; feito = true; d.close(); URL.revokeObjectURL(url); resolver(v); }
+      d.querySelectorAll('[data-fechar]').forEach(function (b) { b.addEventListener('click', function () { fechar(null); }); });
+      d.addEventListener('close', function () { fechar(null); });
+      d.querySelector('[data-aplicar]').addEventListener('click', function () {
+        var k = img.naturalWidth / W, c = document.createElement('canvas'); c.width = c.height = 256;
+        c.getContext('2d').drawImage(img, r.x * k, r.y * k, r.l * k, r.l * k, 0, 0, 256, 256);
+        fechar(c.toDataURL('image/jpeg', 0.85));
+      });
+    });
+  }
+
   function telaDados() {
     var corpo = casca('Meus dados', 'Seus dados aparecem nos ingressos e ajudam a confirmar que é você na entrada.');
     var eu = conta(), foto = ler('foto', './assets/pessoas/pessoa-exemplo.jpg');
@@ -224,17 +287,16 @@
 
     var arq = corpo.querySelector('[data-arquivo]');
     arq.addEventListener('change', function () {
-      var f = arq.files && arq.files[0]; if (!f) return;
-      var leitor = new FileReader();
-      leitor.onload = function () {
-        var img = new Image(); img.onload = function () { // reduz para 256 px antes de guardar
-          var c = document.createElement('canvas'), lado = Math.min(img.width, img.height); c.width = c.height = 256;
-          c.getContext('2d').drawImage(img, (img.width - lado) / 2, (img.height - lado) / 2, lado, lado, 0, 0, 256, 256);
-          var url = c.toDataURL('image/jpeg', 0.85); gravar('foto', url); corpo.querySelector('[data-foto]').src = url; avisar('Foto atualizada.');
-        }; img.src = leitor.result;
-      }; leitor.readAsDataURL(f);
+      var f = arq.files && arq.files[0]; arq.value = ''; // limpa: escolher o mesmo arquivo de novo também abre o recorte
+      if (!f) return;
+      if (!/^image\//.test(f.type)) { avisar('Escolha um arquivo de imagem.', 'erro'); return; }
+      recortarFoto(f).then(function (url) {
+        if (!url) return;
+        gravar('foto', url); document.dispatchEvent(new CustomEvent('conta:foto'));
+        telaDados(); avisar('Foto atualizada.');
+      });
     });
-    corpo.addEventListener('click', function (e) { if (e.target.closest('[data-tirar-foto]')) { try { localStorage.removeItem('conta:foto'); } catch (x) {} telaDados(); avisar('Foto removida.'); } });
+    corpo.addEventListener('click', function (e) { if (e.target.closest('[data-tirar-foto]')) { try { localStorage.removeItem('conta:foto'); } catch (x) {} document.dispatchEvent(new CustomEvent('conta:foto')); telaDados(); avisar('Foto removida.'); } });
 
     var fp = corpo.querySelector('[data-form-pessoais]');
     formEditavel(fp, function (ed) {

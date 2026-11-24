@@ -98,7 +98,7 @@
     var buy = document.querySelector('aside.buy .card');
     if (buy) { var bd = buy.querySelectorAll(':scope > div'); txt(bd[1], preco); txt(bd[2], varias ? ds.curto + '. Escolha a data na compra' : 'Preço final antes do pagamento'); }
     var mb = document.querySelector('.mbar > div'); if (mb) { var mbd = mb.querySelectorAll(':scope > div'); txt(mbd[0], (varias ? ds.curto : dia(e.iso, tz)) + ' · ' + (v.name || '')); txt(mbd[1], curto); }
-    some(document.querySelector('.buy-social'));
+    // o «Quero ir» (nomes de exemplo) o modo MVP já esconde; o «Chamar a galera» fica, com o texto do evento (data-share abaixo)
 
     // avisos de estado do modelo (cancelado, adiado, alterado) citam o Sorriso Maroto: o BFF não tem esses estados
     Array.prototype.forEach.call(document.querySelectorAll('.ev-aviso'), some);

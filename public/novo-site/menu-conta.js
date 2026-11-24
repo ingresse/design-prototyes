@@ -17,6 +17,18 @@
 
   var root = document.documentElement;
   var FOTO = './assets/pessoas/pessoa-exemplo.jpg', FOTO2 = './assets/pessoas/pessoa-exemplo@2x.jpg';
+  // foto trocada na área logada (conta.js, «Trocar foto» com recorte): fica em localStorage 'conta:foto' (data URL em JSON)
+  function fotoSalva() { try { var v = localStorage.getItem('conta:foto'); return v ? JSON.parse(v) : null; } catch (e) { return null; } }
+  function aplicarFoto() {
+    var f = fotoSalva(), imgs = document.querySelectorAll('.mc-av img, .mc-pop .uui-avatar img');
+    for (var i = 0; i < imgs.length; i++) {
+      if (f) { imgs[i].removeAttribute('srcset'); imgs[i].src = f; }
+      else if (imgs[i].src.indexOf('data:') === 0) { imgs[i].src = FOTO; imgs[i].setAttribute('srcset', FOTO + ' 96w, ' + FOTO2 + ' 192w'); }
+    }
+  }
+  document.addEventListener('conta:foto', aplicarFoto);
+  window.addEventListener('storage', function (e) { if (e.key === 'conta:foto') aplicarFoto(); });
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', aplicarFoto); else setTimeout(aplicarFoto, 0);
   var NOME = 'Pessoa Exemplo', EMAIL = 'pessoa@exemplo.com';
   var POP = '.mc-pop:not([data-saindo])';
   var T = {
@@ -61,7 +73,7 @@
     var c = el('span', 'uui-avatar__content');
     var ini = el('span', 'mc-ini', 'PE'); ini.setAttribute('aria-hidden', 'true'); c.appendChild(ini);
     c.appendChild(svg(D_GEN, 'mc-gen'));
-    var im = el('img'); im.src = FOTO; im.setAttribute('srcset', FOTO + ' 96w, ' + FOTO2 + ' 192w'); im.setAttribute('sizes', tam + 'px'); im.width = tam; im.height = tam; im.alt = ''; c.appendChild(im);
+    var im = el('img'), fs = fotoSalva(); im.src = fs || FOTO; if (!fs) im.setAttribute('srcset', FOTO + ' 96w, ' + FOTO2 + ' 192w'); im.setAttribute('sizes', tam + 'px'); im.width = tam; im.height = tam; im.alt = ''; c.appendChild(im);
     return c;
   }
 

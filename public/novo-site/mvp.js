@@ -629,9 +629,21 @@
       if (!cartao || !cab) return;
       var aside = cartao.closest('aside') || cartao;
       if (window.scrollY > 0) return; // o cartão é sticky: só mede com a página no topo (posição natural)
-      var topo = aside.getBoundingClientRect().top;
+      // mede na posição natural: preso (sticky) ele ficaria no «top» que depende da própria margem e a medida entraria em laço
+      var pos = aside.style.getPropertyValue('position'), pri = aside.style.getPropertyPriority('position');
+      aside.style.setProperty('position', 'static', 'important'); // static, não relative: relative deslocaria pelo «top»
+      // a entrada do cartão anima um deslocamento (transform): a medida desconta, senão pegaria a posição de partida
+      var desloca = 0; try { desloca = new DOMMatrixReadOnly(getComputedStyle(aside).transform).m42 || 0; } catch (e) {}
+      var topo = cartao.getBoundingClientRect().top - desloca, dentro = topo - (aside.getBoundingClientRect().top - desloca); // o cartão começa um pouco abaixo do aside
+      if (pos) aside.style.setProperty('position', pos, pri); else aside.style.removeProperty('position');
       raizDoc.style.setProperty('--mvp-cab-alt', cab.offsetHeight + 'px');
-      raizDoc.style.setProperty('--mvp-buy-margem', Math.max(0, Math.round(topo - cab.getBoundingClientRect().bottom)) + 'px');
+      // a margem é a metade da natural (24/11/2026): o cartão sobe o que falta (--mvp-buy-recuo). A natural soma o recuo já aplicado,
+      // senão cada nova medida cortaria pela metade de novo.
+      var recuo = parseFloat(getComputedStyle(raizDoc).getPropertyValue('--mvp-buy-recuo')) || 0;
+      var natural = Math.max(0, topo + recuo - cab.getBoundingClientRect().bottom), margem = Math.round(natural / 2);
+      raizDoc.style.setProperty('--mvp-buy-recuo', (natural - margem) + 'px');
+      raizDoc.style.setProperty('--mvp-buy-margem', margem + 'px');
+      raizDoc.style.setProperty('--mvp-buy-topo', Math.round(cab.offsetHeight + margem - dentro) + 'px'); // «top» do sticky: o cartão preso fica à mesma margem
       larguraDoCartao();
     };
     // a largura do cartão acompanha o pôster: com a altura do cartão fixa, o pôster fica com o que sobra depois de preço e botão; a largura

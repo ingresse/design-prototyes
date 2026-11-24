@@ -291,7 +291,10 @@ html[data-mvp-evbar-on] .mvp-evbar { grid-template-rows: 1fr; }
 .mvp-evbar__txt { min-width: 0; display: flex; align-items: baseline; gap: var(--space-3); white-space: nowrap; }
 .mvp-evbar__txt strong { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; font-size: var(--font-size-small); font-weight: 600; color: var(--color-primitive-neutral-0); }
 .mvp-evbar__txt span { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; font-size: var(--font-size-label); color: var(--color-primitive-neutral-300); }
-html[data-modo="mvp"][data-pagina="evento"][data-mvp-evbar-on] aside.buy { top: calc(var(--size-header) + var(--size-avatar-sm) + var(--space-4) + var(--space-5)) !important; }
+/* barra do evento aberta: o cabeçalho cresce a altura dela (miniatura + respiro); o cartão desce essa altura e encolhe o mesmo tanto,
+   para seguir com a meia margem em cima e embaixo sem encostar na borda da tela (24/11/2026) */
+html[data-modo="mvp"][data-pagina="evento"] { --mvp-evbar-alt: calc(var(--size-avatar-sm) + 2 * var(--space-2)); }
+html[data-modo="mvp"][data-pagina="evento"][data-mvp-evbar-on] aside.buy { top: calc(var(--mvp-buy-topo, calc(var(--size-header) + var(--space-5))) + var(--mvp-evbar-alt)) !important; }
 @media (max-width: 767px) { /* no celular: uma linha baixa, sem miniatura; o nome encolhe antes da data */
   .mvp-evbar__in { padding-inline: var(--space-4); }
   .mvp-evbar__img { display: none; }
@@ -311,7 +314,11 @@ html[data-modo="mvp"][data-pagina="evento"][data-mvp-evbar-on] aside.buy { top: 
   html[data-modo="mvp"][data-pagina="evento"] .ev-hero-in { min-height: 22rem; height: auto; align-items: flex-end; padding-right: calc(var(--layout-aside-width) + var(--space-9)); }
   html[data-modo="mvp"][data-pagina="evento"] .ev-hero-info { max-width: none; }
   /* o cartão sobe para dentro do hero (mvp.js mede a altura do hero) e segue fixo ao rolar */
-  html[data-modo="mvp"][data-pagina="evento"] aside.buy { margin-top: calc(var(--space-6) - var(--mvp-hero-alt, 22rem) - var(--space-7)); }
+  html[data-modo="mvp"][data-pagina="evento"] aside.buy { margin-top: calc(var(--space-6) - var(--mvp-hero-alt, 22rem) - var(--space-7) - var(--mvp-buy-recuo, 0px)); }
+  /* preso ao rolar: a mesma meia margem abaixo do cabeçalho (sem a barra do evento aberta) */
+  html[data-modo="mvp"][data-pagina="evento"]:not([data-mvp-evbar-on]) aside.buy { top: var(--mvp-buy-topo, calc(var(--mvp-cab-alt, 65px) + var(--space-5))) !important; }
+  /* botões do cartão: texto menor, numa linha */
+  html[data-modo="mvp"][data-pagina="evento"] aside.buy :is(a.bp, .buy-social .bs) { font-size: var(--font-size-small) !important; white-space: nowrap; }
   html[data-modo="mvp"][data-pagina="evento"] aside.buy > .card { background: var(--color-bg-surface); }
   html[data-modo="mvp"][data-pagina="evento"] .mvp-buy-img { display: block; width: calc(100% + 2 * var(--space-card-pad)); max-width: none; margin: calc(-1 * var(--space-card-pad)) calc(-1 * var(--space-card-pad)) var(--space-5); height: auto; aspect-ratio: 810 / 1080; object-fit: cover; border-radius: calc(var(--radius-base) - var(--border-width-strong)) calc(var(--radius-base) - var(--border-width-strong)) 0 0 !important; background: var(--color-bg-quaternary); } /* (o raio global é !important: por isso este também) a imagem ocupa a largura do cartão, com a proporção inteira do pôster (sem recorte nem faixas); só os cantos de cima são arredondados, iguais aos do cartão, e a base é reta */
   @media (max-height: 820px) { html[data-modo="mvp"][data-pagina="evento"] aside.buy { position: static !important; } } /* tela baixa: o cartão com o pôster inteiro não cabe fixo; ele rola com a página e o botão segue ao alcance */
@@ -405,6 +412,9 @@ html[data-modo="mvp"] :is(.ev-scroll:has(> :is(.ev-card, .ven-card)), .row[data-
    O pôster é quem estica ou encolhe para preencher (recorte, sem distorcer); preço e botão ficam com a altura que têm. */
 @media (min-width: 1024px) {
   html[data-modo="mvp"][data-pagina="evento"] aside.buy .card { display: flex; flex-direction: column; box-sizing: border-box; height: calc(100vh - var(--mvp-cab-alt, 65px) - 2 * var(--mvp-buy-margem, 56px)); height: calc(100svh - var(--mvp-cab-alt, 65px) - 2 * var(--mvp-buy-margem, 56px)); }
+  html[data-modo="mvp"][data-pagina="evento"][data-mvp-evbar-on] aside.buy .card { height: calc(100vh - var(--mvp-cab-alt, 65px) - var(--mvp-evbar-alt) - 2 * var(--mvp-buy-margem, 56px)); height: calc(100svh - var(--mvp-cab-alt, 65px) - var(--mvp-evbar-alt) - 2 * var(--mvp-buy-margem, 56px)); }
+  html[data-modo="mvp"][data-pagina="evento"] aside.buy .card { transition: height var(--motion-duration-base) var(--motion-ease-move); }
+  html[data-modo="mvp"][data-pagina="evento"] aside.buy { transition: top var(--motion-duration-base) var(--motion-ease-move); }
   html[data-modo="mvp"][data-pagina="evento"] aside.buy .card > * { flex: 0 0 auto; }
   html[data-modo="mvp"][data-pagina="evento"] aside.buy .card > .mvp-buy-img { flex: 1 1 0; min-height: 0; height: auto; aspect-ratio: auto; object-fit: cover; }
 }

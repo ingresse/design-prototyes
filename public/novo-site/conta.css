@@ -76,7 +76,7 @@ html[data-area="conta"] body { background: var(--color-bg-page); }
 
 /* Meus dados */
 .ct-foto { display: flex; align-items: center; gap: var(--space-5); flex-wrap: wrap; }
-.ct-foto img { width: 7.75rem; height: 7.75rem; border-radius: 50%; object-fit: cover; background: var(--color-bg-quaternary); }
+.ct-foto img { width: 7.75rem; height: 7.75rem; border-radius: 50% !important; object-fit: cover; background: var(--color-bg-quaternary); }
 
 /* Formas de pagamento */
 .ct-banner { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--space-6); align-items: center; padding: var(--space-7); border-radius: var(--radius-base); background: var(--color-bg-inverse); color: var(--color-text-inverse); }
@@ -181,3 +181,37 @@ html[data-area="conta"] body { background: var(--color-bg-page); }
   .ct-facial { padding: var(--space-6); }
 }
 @media (prefers-reduced-motion: reduce) { .ct-giro { animation-duration: 3s; } }
+
+/* cabeçalho: lupa de busca compacta, igual à Carteira (o bloco <style data-pb> das páginas do site não vem para as páginas geradas da conta) */
+.hdr-search.hdr-lupa { flex: 0 0 auto !important; display: inline-flex !important; align-items: center; justify-content: center; width: var(--size-touch-default); height: var(--size-touch-default); min-height: var(--size-touch-default) !important; padding: 0 !important; margin: 0 0 0 auto !important; max-width: none; border-radius: var(--radius-base); color: var(--color-text-primary) !important; cursor: pointer; }
+.hdr-search.hdr-lupa svg { stroke: currentColor; }
+.hdr .crumbs { min-width: 0; flex: 0 1 auto; overflow: hidden; }
+.hdr .crumbs .crumb-cur, .hdr .crumbs [aria-current] { overflow: hidden; text-overflow: ellipsis; }
+
+/* recorte da foto de perfil (conta.js, recortarFoto): o modal do upload de banner do Backstage (Cropper do DS), em CSS do site */
+.ct-dialogo--recorte { width: min(35rem, calc(100vw - 2 * var(--space-4))); }
+.ct-recorte-modal { display: flex; flex-direction: column; gap: var(--space-5); padding: var(--space-6); }
+.ct-recorte-modal__topo { position: relative; display: flex; gap: var(--space-4); padding-right: var(--space-8); }
+.ct-recorte-modal__ic { flex: none; display: inline-grid; place-items: center; width: var(--size-control-sm, 40px); height: var(--size-control-sm, 40px); border-radius: var(--radius-inner, 8px); border: var(--border-width-hairline) solid var(--color-border-subtle); color: var(--color-text-secondary); }
+.ct-recorte-modal__ic svg { width: var(--size-icon-md, 20px); height: var(--size-icon-md, 20px); }
+.ct-recorte-modal__topo h2 { margin: 0 0 var(--space-1); }
+.ct-recorte-modal__x { position: absolute; top: calc(-1 * var(--space-2)); right: calc(-1 * var(--space-2)); display: inline-grid; place-items: center; width: var(--size-control-sm, 40px); height: var(--size-control-sm, 40px); border: 0; border-radius: var(--radius-inner, 8px); background: transparent; color: var(--color-fg-quaternary); cursor: pointer; transition: background-color 100ms linear; }
+.ct-recorte-modal__x:hover { background: var(--color-bg-hover); }
+.ct-recorte-modal__x svg { width: var(--size-icon-md, 20px); height: var(--size-icon-md, 20px); }
+.ct-recorte-modal .ct-acoes { justify-content: flex-end; padding-top: var(--space-5); border-top: var(--border-width-hairline) solid var(--color-border-subtle); }
+.ct-recorte-palco { display: flex; justify-content: center; }
+.ct-recorte { position: relative; display: inline-block; max-width: 100%; overflow: hidden; border-radius: var(--radius-inner, 8px); user-select: none; -webkit-user-select: none; touch-action: none; }
+.ct-recorte img { display: block; max-width: 100%; max-height: 55vh; width: auto; height: auto; pointer-events: none; }
+/* a área: o escurecido em volta é a sombra; o círculo é o guia de como a foto aparece */
+.ct-recorte__sel { position: absolute; box-sizing: border-box; cursor: move; border: 2px solid var(--color-fg-brand); border-radius: 0 !important; }
+/* o escurecido em volta é um outline enorme (o site zera box-shadow com !important), recortado pela caixa */
+.ct-recorte__sel::before { content: ""; position: absolute; inset: -2px; border-radius: 0 !important; outline: 9999px solid color-mix(in srgb, var(--color-primitive-neutral-950) 55%, transparent); pointer-events: none; }
+.ct-recorte__sel::after { content: ""; position: absolute; inset: 0; border-radius: 50% !important; border: 1px dashed color-mix(in srgb, var(--color-primitive-neutral-0) 80%, transparent); pointer-events: none; }
+.ct-recorte__sel:focus-visible { outline: 3px solid var(--color-focus-ring); outline-offset: 3px; }
+.ct-recorte__alca { position: absolute; width: 14px; height: 14px; border-radius: 3px !important; background: var(--color-primitive-neutral-0); border: 2px solid var(--color-fg-brand); z-index: 1; }
+.ct-recorte__alca[data-canto="nw"] { left: -7px; top: -7px; cursor: nwse-resize; }
+.ct-recorte__alca[data-canto="ne"] { right: -7px; top: -7px; cursor: nesw-resize; }
+.ct-recorte__alca[data-canto="sw"] { left: -7px; bottom: -7px; cursor: nesw-resize; }
+.ct-recorte__alca[data-canto="se"] { right: -7px; bottom: -7px; cursor: nwse-resize; }
+@media (pointer: coarse) { .ct-recorte__alca { width: 24px; height: 24px; } .ct-recorte__alca[data-canto^="n"] { top: -12px; } .ct-recorte__alca[data-canto^="s"] { bottom: -12px; } .ct-recorte__alca[data-canto$="w"] { left: -12px; } .ct-recorte__alca[data-canto$="e"] { right: -12px; } }
+@media (max-width: 640px) { .ct-recorte-modal .ct-acoes { flex-direction: column-reverse; } .ct-recorte-modal .ct-acoes > * { width: 100%; } }
