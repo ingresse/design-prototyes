@@ -22,8 +22,8 @@ export type Cenario = "normal" | "negativo" | "bloqueado" | "carregando" | "erro
 /** `muda` diz, na barra do protótipo, o que o cenário altera na tela (para quem conduz a entrevista). */
 export const CENARIOS: Array<{ id: Cenario; rotulo: string; muda: string }> = [
     { id: "normal", rotulo: "Normal", muda: "Dados do briefing. Dois eventos têm saldo negativo, mas o total é positivo." },
-    { id: "negativo", rotulo: "Total negativo", muda: "O disponível dos outros eventos já foi recebido: o total da organização fica negativo." },
-    { id: "bloqueado", rotulo: "Bloqueado", muda: "Repasses pausados: repasse e antecipação desligados." },
+    { id: "negativo", rotulo: "Total negativo", muda: "O saldo disponível dos outros eventos já foi sacado: o total da organização fica negativo." },
+    { id: "bloqueado", rotulo: "Bloqueado", muda: "Saques pausados: saque e antecipação desligados." },
     { id: "carregando", rotulo: "Carregando", muda: "Tela esperando os dados." },
     { id: "erro", rotulo: "Erro", muda: "Os dados não carregaram." },
     { id: "sem-eventos", rotulo: "Sem eventos", muda: "Organização sem nenhum evento com vendas." },
@@ -87,7 +87,7 @@ export interface PodeMudar {
     ate?: string;
 }
 
-export type Selo = "Saldo negativo" | "Devolução recente" | "Em vendas" | "Totalmente repassado";
+export type Selo = "Saldo negativo" | "Devolução recente" | "Em vendas" | "Totalmente sacado";
 
 /** Quitado: tudo o que era do produtor já foi repassado. Não há nada para entrar, sair ou acompanhar. */
 export const quitado = (e: Evento) => e.processamento + e.retidoEvento + e.retidoSeguranca + e.aLiberar + e.agendado === 0 && e.disponivel === 0;
@@ -146,8 +146,8 @@ const contestacoes = (dataDoEvento: string): PodeMudar => {
         titulo: "Contestações no cartão",
         texto:
             liberaRetido > HOJE
-                ? `Podem acontecer até 120 dias depois do evento. Até ${quando}, contestações saem do Retido. Depois disso, saem do seu Disponível.`
-                : "Podem acontecer até 120 dias depois do evento. O Retido já foi liberado: se acontecerem, saem do seu Disponível.",
+                ? `Podem acontecer até 120 dias depois do evento. Até ${quando}, contestações saem do Retido. Depois disso, saem do seu saldo disponível.`
+                : "Podem acontecer até 120 dias depois do evento. O Retido já foi liberado: se acontecerem, saem do seu saldo disponível.",
         ate: somarDias(dataDoEvento, DIAS_DE_CONTESTACAO),
     };
 };
@@ -223,7 +223,7 @@ const EVENTOS_BASE: Evento[] = [
                 data: "2026-11-10",
                 valor: 123_480,
                 situacao: "falhou",
-                nota: "O banco recusou a transferência: os dados da conta não conferem. O valor voltou para o seu Disponível.",
+                nota: "O banco recusou a transferência: os dados da conta não conferem. O valor voltou para o seu saldo disponível.",
                 conta: CONTA_DA_ORGANIZACAO,
                 modalidade: "Expresso",
             },
@@ -295,8 +295,8 @@ const EVENTOS_BASE: Evento[] = [
                 data: "2026-10-12",
                 devolucao: "cancelamento",
                 origem: "disponivel",
-                titulo: "Cancelamentos depois do repasse",
-                motivo: "Compradores cancelaram ingressos depois que o repasse de 05/10 já tinha sido pago.",
+                titulo: "Cancelamentos depois do saque",
+                motivo: "Compradores cancelaram ingressos depois que o saque de 05/10 já tinha sido pago.",
                 valor: 18_000,
             },
             {
@@ -522,8 +522,8 @@ const SEMENTES: Semente[] = [
                 data: "2026-10-30",
                 devolucao: "cancelamento",
                 origem: "disponivel",
-                titulo: "Cancelamentos depois do repasse",
-                motivo: "Compradores cancelaram ingressos depois que o repasse de 24/10 já tinha sido pago.",
+                titulo: "Cancelamentos depois do saque",
+                motivo: "Compradores cancelaram ingressos depois que o saque de 24/10 já tinha sido pago.",
                 valor: 11_500,
             },
             {
@@ -627,7 +627,7 @@ export function selosDoEvento(e: Evento): Selo[] {
     // "Recente": ajuste nos últimos 30 dias.
     if (e.ajustesLista.some((a) => a.data >= somarDias(HOJE, -30))) selos.push("Devolução recente");
     if (e.emVendas) selos.push("Em vendas");
-    if (quitado(e) && e.recebido > 0) selos.push("Totalmente repassado");
+    if (quitado(e) && e.recebido > 0) selos.push("Totalmente sacado");
     return selos;
 }
 
@@ -826,7 +826,7 @@ export const ROTULO_DO_MOVIMENTO: Record<TipoDeMovimento, string> = {
     taxa: "Taxa ou custo",
     credito: "Crédito",
     devolucao: "Devolução",
-    repasse: "Repasse",
+    repasse: "Saque",
     antecipacao: "Antecipação",
 };
 
@@ -896,10 +896,10 @@ export function movimentos(eventos: Evento[]): Movimento[] {
                 evento: e,
                 valor: l.valor,
                 efeito: l.valor,
-                descricao: `O valor chegou à data de liberação e passou de ${de} para Disponível.`,
+                descricao: `O valor chegou à data de liberação e passou de ${de} para o saldo disponível.`,
                 partes: [
                     { parte: de, valor: -l.valor },
-                    { parte: "Disponível", valor: l.valor },
+                    { parte: "Saldo disponível", valor: l.valor },
                 ],
                 prova: "calendario",
             });
@@ -913,7 +913,7 @@ export function movimentos(eventos: Evento[]): Movimento[] {
                 valor: -c.valor,
                 efeito: -c.valor,
                 descricao: c.motivo,
-                partes: [{ parte: "Disponível", valor: -c.valor }],
+                partes: [{ parte: "Saldo disponível", valor: -c.valor }],
                 prova: "contrato",
             });
         }
@@ -926,7 +926,7 @@ export function movimentos(eventos: Evento[]): Movimento[] {
                 valor: c.valor,
                 efeito: c.valor,
                 descricao: c.motivo,
-                partes: [{ parte: "Disponível", valor: c.valor }],
+                partes: [{ parte: "Saldo disponível", valor: c.valor }],
                 prova: "contrato",
             });
         }
@@ -941,7 +941,7 @@ export function movimentos(eventos: Evento[]): Movimento[] {
                 efeito: doDisponivel ? -d.valor : 0,
                 semEfeito: doDisponivel ? undefined : "Saiu do Antecipável",
                 descricao: d.motivo,
-                partes: [{ parte: doDisponivel ? "Disponível" : "Antecipável", valor: -d.valor }],
+                partes: [{ parte: doDisponivel ? "Saldo disponível" : "Antecipável", valor: -d.valor }],
                 prova: "transacoes",
             });
         }
@@ -953,10 +953,10 @@ export function movimentos(eventos: Evento[]): Movimento[] {
                 evento: e,
                 valor: a.valor - a.taxa,
                 efeito: a.valor - a.taxa,
-                descricao: "Você antecipou parte do Antecipável. O valor líquido, já sem a taxa da antecipação, entrou no Disponível.",
+                descricao: "Você antecipou parte do Antecipável. O valor líquido, já sem a taxa da antecipação, entrou no saldo disponível.",
                 partes: [
                     { parte: "Antecipável", valor: -a.valor },
-                    { parte: "Disponível", valor: a.valor - a.taxa },
+                    { parte: "Saldo disponível", valor: a.valor - a.taxa },
                 ],
                 prova: "comprovante",
                 antecipacao: a,
@@ -967,15 +967,15 @@ export function movimentos(eventos: Evento[]): Movimento[] {
                 incluir({
                     data: r.data,
                     tipo: "repasse",
-                    titulo: "Repasse pago",
+                    titulo: "Saque pago",
                     evento: e,
                     valor: -r.valor,
                     efeito: -r.valor,
                     situacao: "pago",
-                    descricao: "O repasse foi pago na conta de destino.",
+                    descricao: "O saque foi pago na conta de destino.",
                     partes: [
-                        { parte: "Disponível", valor: -r.valor },
-                        { parte: "Repassado", valor: r.valor },
+                        { parte: "Saldo disponível", valor: -r.valor },
+                        { parte: "Sacado", valor: r.valor },
                     ],
                     prova: "comprovante",
                     repasse: r,
@@ -984,15 +984,15 @@ export function movimentos(eventos: Evento[]): Movimento[] {
                 incluir({
                     data: r.pedidoEm ?? HOJE,
                     tipo: "repasse",
-                    titulo: "Repasse solicitado",
+                    titulo: "Saque solicitado",
                     evento: e,
                     valor: -r.valor,
                     efeito: -r.valor,
                     situacao: "agendado",
-                    descricao: "O valor saiu do Disponível quando você solicitou o repasse e espera a data de pagamento.",
+                    descricao: "O valor saiu do saldo disponível quando você solicitou o saque e espera a data de pagamento.",
                     partes: [
-                        { parte: "Disponível", valor: -r.valor },
-                        { parte: "Agendado", valor: r.valor },
+                        { parte: "Saldo disponível", valor: -r.valor },
+                        { parte: "Saque agendado", valor: r.valor },
                     ],
                     prova: "comprovante",
                     repasse: r,
@@ -1001,26 +1001,26 @@ export function movimentos(eventos: Evento[]): Movimento[] {
                 incluir({
                     data: r.data,
                     tipo: "repasse",
-                    titulo: "Repasse solicitado",
+                    titulo: "Saque solicitado",
                     evento: e,
                     valor: -r.valor,
                     efeito: -r.valor,
                     situacao: "falhou",
-                    descricao: "O valor saiu do Disponível quando você solicitou o repasse.",
-                    partes: [{ parte: "Disponível", valor: -r.valor }],
+                    descricao: "O valor saiu do saldo disponível quando você solicitou o saque.",
+                    partes: [{ parte: "Saldo disponível", valor: -r.valor }],
                     prova: "comprovante",
                     repasse: r,
                 });
                 incluir({
                     data: somarDias(r.data, 1),
                     tipo: "repasse",
-                    titulo: "Repasse não concluído",
+                    titulo: "Saque não concluído",
                     evento: e,
                     valor: r.valor,
                     efeito: r.valor,
                     situacao: "devolvido",
-                    descricao: r.nota ?? "O repasse não foi concluído e o valor voltou para o seu Disponível.",
-                    partes: [{ parte: "Disponível", valor: r.valor }],
+                    descricao: r.nota ?? "O saque não foi concluído e o valor voltou para o seu saldo disponível.",
+                    partes: [{ parte: "Saldo disponível", valor: r.valor }],
                     prova: "comprovante",
                     repasse: r,
                 });
@@ -1121,8 +1121,8 @@ export function composicaoDoRepasse(evento: Evento, repasse: Repasse): Composica
         coberto += m.efeito;
     }
     const resto = repasse.valor - linhas.reduce((s, l) => s + l.valor, 0);
-    if (resto > 0) linhas.unshift({ id: "antes", titulo: "Já estava no Disponível do evento", valor: resto });
-    if (resto < 0) linhas.push({ id: "ficou", titulo: "Ficou no Disponível do evento", valor: resto });
+    if (resto > 0) linhas.unshift({ id: "antes", titulo: "Já estava no saldo disponível do evento", valor: resto });
+    if (resto < 0) linhas.push({ id: "ficou", titulo: "Ficou no saldo disponível do evento", valor: resto });
     return { linhas, total: repasse.valor };
 }
 
@@ -1221,7 +1221,7 @@ export interface Registro {
 const semente = (texto: string) => [...texto].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 1_000_003, 7);
 
 /** Código, solicitante e horário de um repasse ou de uma antecipação. Dados ilustrativos (NOTAS.md). */
-export function registro(prefixo: "RP" | "AN", evento: Evento, data: string, valor: number): Registro {
+export function registro(prefixo: "SQ" | "AN", evento: Evento, data: string, valor: number): Registro {
     const n = semente(`${prefixo}-${evento.id}-${data}-${valor}`);
     return {
         codigo: `${prefixo}-${String(100_000 + (n % 900_000))}`,
@@ -1230,7 +1230,7 @@ export function registro(prefixo: "RP" | "AN", evento: Evento, data: string, val
         hora: `${String(9 + (n % 9)).padStart(2, "0")}:${String((n * 7) % 60).padStart(2, "0")}`,
     };
 }
-export const registroDoRepasse = (evento: Evento, r: Repasse) => registro("RP", evento, r.pedidoEm ?? somarDias(r.data, r.situacao === "pago" ? -2 : 0), r.valor);
+export const registroDoRepasse = (evento: Evento, r: Repasse) => registro("SQ", evento, r.pedidoEm ?? somarDias(r.data, r.situacao === "pago" ? -2 : 0), r.valor);
 export const registroDaAntecipacao = (evento: Evento, a: Antecipacao) => registro("AN", evento, a.data, a.valor);
 
 /* ---------------- verificação ---------------- */
@@ -1277,6 +1277,11 @@ export function conferirContas(): string[] {
             if (repasses("agendado") !== e.agendado) erros.push(`${onde}: repasses agendados não somam Agendado`);
             if (e.repasses.some((r) => r.situacao === "pago" && r.data > HOJE)) erros.push(`${onde}: repasse pago com data no futuro`);
         }
+        // As duas linhas da tela: Líquido − Sacado − Saque agendado = Saldo total; Saldo total − A liberar = Saldo disponível.
+        for (const e of eventos) {
+            const aLiberar = e.aLiberar + e.retidoEvento + e.retidoSeguranca + e.processamento;
+            if (seuDinheiro(e) - e.recebido - e.agendado - aLiberar !== e.disponivel) erros.push(`${cenario}/${e.id}: Líquido − Sacado − Saque agendado − A liberar não dá o Saldo disponível`);
+        }
         // O topo (total da organização) contra a soma evento a evento.
         const t = totalizar(eventos);
         const liquidoDosEventos = soma(eventos, seuDinheiro);
@@ -1291,6 +1296,7 @@ export function conferirContas(): string[] {
         // Calendário da organização e o resumo em três faixas.
         const entradas = entradasDoCalendario(eventos);
         const aEntrar = t.processamento + t.retido + t.aLiberar;
+        if (t.seuDinheiro - t.recebido - t.agendado - aEntrar !== t.disponivel) erros.push(`${cenario}: Líquido − Sacado − Saque agendado − A liberar (${aEntrar}) não dá o Saldo disponível do topo`);
         if (soma(entradas, (x) => x.valor) !== aEntrar) erros.push(`${cenario}: o Calendário soma ${soma(entradas, (x) => x.valor)}, eram ${aEntrar}`);
         const resumo = resumoDoCalendario(entradas);
         if (resumo.em7 + resumo.em30 + resumo.depois !== aEntrar) erros.push(`${cenario}: as três faixas do Calendário não somam o total`);

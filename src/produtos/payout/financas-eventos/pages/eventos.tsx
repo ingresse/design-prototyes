@@ -6,7 +6,6 @@ import { toast } from "sonner";
 import { DateRangePicker } from "@/components/application/date-picker/date-range-picker";
 import { FilterBar } from "@/components/application/filter-bar/filter-bar";
 import { EmptyState } from "@/components/application/empty-state/empty-state";
-import { TableCard } from "@/components/application/table/table";
 import { Avatar } from "@/components/base/avatar/avatar";
 import { Badge } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
@@ -14,22 +13,22 @@ import { Input } from "@/components/base/input/input";
 import { Select } from "@/components/base/select/select";
 import { cx } from "@/utils/cx";
 import { capaDoEvento } from "../../components/financas/capa";
-import { Cascata, Distribuicao, NumeroGrande, PARTES_COM_DETALHE, Secao } from "../../components/financas/cascata";
-import { CONTA_DA_ORGANIZACAO, HOJE, ROTULO_DA_ENTRADA, quitado, calendario, entradasDoCalendario, eventosDoCenario, movimentos, totalizar, type Entrada, type Evento } from "../../components/financas/dados";
+import { COR_DO_NEGATIVO, Cascata, Distribuicao, PARTES_COM_DETALHE, Secao } from "../../components/financas/cascata";
+import { HOJE, ROTULO_DA_ENTRADA, quitado, entradasDoCalendario, eventosDoCenario, movimentos, totalizar, type Entrada, type Evento } from "../../components/financas/dados";
 import { Aviso, AvisoDeBloqueio, Carregando, ErroAoCarregar, TelaFinal, type AcaoFinal } from "../../components/financas/estados";
 import { dataComDia, dataCurta, dataDoEvento, reais } from "../../components/financas/formato";
 import { detalhesDaDistribuicao, fraseDeCompensacao, proximaLiberacaoDoEvento } from "../../components/financas/frases";
 import { Linha, Lista, Vazio } from "../../components/financas/linha";
 import { PainelDoDetalhe } from "../../components/financas/painel-do-detalhe";
-import { CabecalhoDaPagina, FinancasShell, useCenario, useParametro } from "../../components/financas/shell";
+import { CabecalhoDaPagina, FinancasShell, useCenario, useEventosEscolhidos, useParametro } from "../../components/financas/shell";
 import { Paginacao } from "../components/paginacao";
 import { SelosDoEvento } from "../components/selos-do-evento";
 import { ORDENS, POR_PAGINA, SITUACOES, baixarRelatorio, filtrarEOrdenar, type Ordem, type Situacao } from "../utils/lista";
 
 /*
  * Finanças · a fonte da verdade do produtor (ajustes v3, 17/11/2026).
- * De cima para baixo: três cards de ação (para agir), "Resumo financeiro" (para conferir:
- * de onde veio e onde está o Líquido), "Próximas liberações" e "Últimos movimentos" (portas para o
+ * De cima para baixo: "Resumo financeiro" (as duas contas;
+ * de onde veio o Líquido e como ele chega ao Saldo disponível), "Últimos movimentos" e "Próximos movimentos" (portas para o
  * Calendário e o Extrato) e "Saldo por evento" (as pastas, com busca, filtro, ordenação e paginação).
  */
 
@@ -47,31 +46,28 @@ const PERIODOS = {
 const BASE = "/payout/financas-eventos";
 
 /**
- * "Próximas liberações" e "Últimos movimentos" mostram três linhas e um pedaço da quarta, com rolagem
+ * "Últimos movimentos" e "Próximos movimentos" mostram três linhas e um pedaço da quarta, com rolagem
  * dentro do bloco: dá para ver mais sem sair da Visão geral, e a linha cortada avisa que há mais.
  */
 const NA_ROLAGEM = 8;
 const ROLAGEM = "max-h-68 overflow-y-auto overscroll-contain";
 
-/** Card de ação do topo: um número (o único tipo de número com centavos na tela), uma linha de apoio e uma ação. */
-const CardDeAcao = ({ rotulo, selo, valor, cor, apoio, children }: { rotulo: string; selo?: ReactNode; valor: number; cor: string; apoio?: string; children?: ReactNode }) => (
-    <div className="flex min-w-0 flex-col gap-3">
-        <div className="flex flex-col gap-1">
-            <span className="flex items-center gap-2 text-sm font-medium text-secondary">
-                {rotulo}
-                {selo}
-            </span>
-            <NumeroGrande valor={valor} className={cx("text-display-xs", cor)} classeDosCentavos="text-lg" />
-            {apoio && <span className="text-sm text-tertiary">{apoio}</span>}
-        </div>
-        {children}
-    </div>
-);
+interface ProximoMovimento {
+    data?: string;
+    tipo: Entrada["tipo"];
+    valor: number;
+    itens: Entrada[];
+    /** Saque já solicitado, com pagamento marcado: o valor cai na conta bancária nesta data. */
+    saque?: { evento: Evento; conta: string };
+}
 
-/** Próximas liberações: uma linha por data e tipo. Vários eventos na mesma data e tipo viram uma linha só. */
-function proximasLiberacoes(entradas: Entrada[], quantas: number) {
-    const grupos: Array<{ data?: string; tipo: Entrada["tipo"]; valor: number; itens: Entrada[] }> = [];
-    for (const e of entradas) {
+/**
+ * Próximos movimentos: as liberações (uma linha por data e tipo; vários eventos na mesma data e tipo
+ * viram uma linha só) e os saques agendados, em ordem de data.
+ */
+function proximosMovimentos(eventos: Evento[], quantos: number): ProximoMovimento[] {
+    const grupos: ProximoMovimento[] = [];
+    for (const e of entradasDoCalendario(eventos)) {
         if (!e.data) continue;
         const grupo = grupos.find((g) => g.data === e.data && g.tipo === e.tipo);
         if (grupo) {
@@ -79,7 +75,10 @@ function proximasLiberacoes(entradas: Entrada[], quantas: number) {
             grupo.itens.push(e);
         } else grupos.push({ data: e.data, tipo: e.tipo, valor: e.valor, itens: [e] });
     }
-    return grupos.slice(0, quantas);
+    for (const evento of eventos) {
+        for (const r of evento.repasses) if (r.situacao === "agendado") grupos.push({ data: r.data, tipo: "processamento", valor: r.valor, itens: [], saque: { evento, conta: r.conta } });
+    }
+    return grupos.sort((a, b) => a.data!.localeCompare(b.data!)).slice(0, quantos);
 }
 
 const TIPO_NO_CALENDARIO: Record<Entrada["tipo"], string> = { processamento: "processamento", retidoEvento: "retido-evento", retidoSeguranca: "retido-seguranca", aLiberar: "antecipavel" };
@@ -110,8 +109,8 @@ const PastaDoEvento = ({ evento, sufixo, lista }: { evento: Evento; sufixo: stri
                     <span className="truncate text-sm text-tertiary">{proximaLiberacaoDoEvento(evento)}</span>
                 </div>
                 <span className={cx(COLUNA_DE_SALDO, "flex flex-col")}>
-                    <span className="text-xs text-tertiary">Disponível</span>
-                    <span className={cx("text-md font-semibold whitespace-nowrap tabular-nums", evento.disponivel < 0 ? "text-error-primary" : evento.disponivel === 0 ? "text-tertiary" : "text-primary")}>{reais(evento.disponivel)}</span>
+                    <span className="text-xs text-tertiary">Saldo disponível</span>
+                    <span className={cx("text-md font-semibold whitespace-nowrap tabular-nums", evento.disponivel < 0 ? COR_DO_NEGATIVO : evento.disponivel === 0 ? "text-tertiary" : "text-primary")}>{reais(evento.disponivel)}</span>
                 </span>
                 <ChevronRight className="size-5 shrink-0 text-fg-quaternary transition duration-100 ease-linear group-hover:text-fg-secondary" aria-hidden="true" />
             </Link>
@@ -125,8 +124,12 @@ export function FinancasEventos() {
     const [detalheAberto, setDetalhe] = useParametro("detalhe");
     const [params, setParams] = useSearchParams();
 
-    const eventos = eventosDoCenario(cenario);
+    // O filtro de eventos da página aplica-se a todos os dados: cards, Resumo financeiro, Líquido por
+    // situação, próximas liberações, últimos movimentos e a lista "Saldo por evento".
+    const { escolhidos: eventos, filtrado } = useEventosEscolhidos();
+    const escopo = eventos;
     const totais = totalizar(eventos);
+    const daOrganizacao = totais;
     const bloqueado = cenario === "bloqueado";
     const acao = ACOES.find((a) => a === acaoAberta);
     const detalhe = PARTES_COM_DETALHE.find((p) => p === detalheAberto) ?? null;
@@ -134,9 +137,7 @@ export function FinancasEventos() {
     const compensa = fraseDeCompensacao(eventos);
     const negativos = eventos.filter((e) => e.disponivel < 0);
     const comCenario = (rota: string) => `${rota}${cenario === "normal" ? "" : `${rota.includes("?") ? "&" : "?"}cenario=${cenario}`}`;
-    const proximaAntecipavel = calendario(eventos, ["aLiberar"])[0];
-    const agendado = eventos.flatMap((e) => e.repasses.filter((r) => r.situacao === "agendado")).sort((a, b) => a.data.localeCompare(b.data))[0];
-    const proximas = proximasLiberacoes(entradasDoCalendario(eventos), NA_ROLAGEM);
+    const proximas = proximosMovimentos(eventos, NA_ROLAGEM);
     const ultimos = movimentos(eventos)
         .filter((m) => m.efeito !== 0)
         .slice(-NA_ROLAGEM)
@@ -166,7 +167,6 @@ export function FinancasEventos() {
     const comFiltro = situacao !== "todos" || Boolean(de || ate);
     const contagem = (n: number) => (n === 1 ? "1 evento" : `${n} eventos`);
     const totalDoResultado = resultado.reduce((soma, e) => soma + e.disponivel, 0);
-    const comDisponivel = eventos.filter((e) => e.disponivel > 0).length;
 
     const conteudo = () => {
         if (acao) return <TelaFinal acao={acao} valor={acao === "repasse" ? totais.disponivel : acao === "antecipar" ? totais.aLiberar : undefined} aoVoltar={() => setAcao(null)} />;
@@ -176,66 +176,23 @@ export function FinancasEventos() {
             <>
                 {bloqueado && <AvisoDeBloqueio />}
                 {compensa && (
-                    <Aviso tom="erro" titulo={`Seu Disponível está negativo em ${reais(-totais.disponivel)}`}>
+                    <Aviso tom="erro" titulo={`Seu saldo disponível está negativo em ${reais(-daOrganizacao.disponivel)}`}>
                         <p>
-                            {negativos.length === 1 ? `O evento ${negativos[0].nome} teve` : `${negativos.length} eventos tiveram`} devoluções depois do último repasse, e o que estava disponível nos outros eventos já foi repassado.
+                            {negativos.length === 1 ? `O evento ${negativos[0].nome} teve` : `${negativos.length} eventos tiveram`} devoluções depois do último saque, e o saldo disponível dos outros eventos já foi sacado.
                         </p>
                         <p>Você não precisa pagar nada. {compensa}</p>
                     </Aviso>
                 )}
 
-                {/* Cards de ação: servem para agir. Os mesmos três valores voltam na legenda da conta, para conferir. */}
-                <section aria-label="O que você pode fazer agora" className="grid grid-cols-3 gap-6">
-                    <TableCard.Root className="px-6 py-5">
-                        <CardDeAcao
-                            rotulo="Disponível para repasse"
-                            selo={
-                                bloqueado && (
-                                    <Badge size="sm" type="pill-color" color="warning">
-                                        Pausado
-                                    </Badge>
-                                )
-                            }
-                            valor={totais.disponivel}
-                            cor={totais.disponivel < 0 ? "text-error-primary" : "text-primary"}
-                            apoio={comDisponivel > 0 ? `Em ${contagem(comDisponivel)}` : undefined}
-                        >
-                            {/* A conta que recebe fica à vista antes de qualquer pedido de repasse. */}
-                            <span className="flex flex-wrap items-center gap-2 text-sm text-tertiary">
-                                Conta de repasse: <span className="font-medium text-secondary">{CONTA_DA_ORGANIZACAO}</span>
-                                <Badge size="sm" type="pill-color" color={bloqueado ? "warning" : "success"}>
-                                    {bloqueado ? "Em confirmação" : "Confirmada"}
-                                </Badge>
-                            </span>
-                        </CardDeAcao>
-                    </TableCard.Root>
-                    <TableCard.Root className="px-6 py-5">
-                        <CardDeAcao rotulo="Antecipável" valor={totais.aLiberar} cor="text-primary" apoio={proximaAntecipavel ? `Próxima liberação: ${reais(proximaAntecipavel.valor)} em ${dataCurta(proximaAntecipavel.data)}` : undefined}>
-                            {totais.aLiberar > 0 && (
-                                <Button size="sm" color="secondary" className="self-start" isDisabled={bloqueado} onClick={() => setAcao("antecipar")}>
-                                    Antecipar
-                                </Button>
-                            )}
-                        </CardDeAcao>
-                    </TableCard.Root>
-                    <TableCard.Root className="px-6 py-5">
-                        <CardDeAcao rotulo="Repassado" valor={totais.recebido} cor="text-primary" apoio={agendado ? `${reais(totais.agendado)} agendados para ${dataCurta(agendado.data)}` : undefined}>
-                            <Button size="sm" color="link-gray" className="self-start" href={comCenario(`${BASE}/extrato?tipo=repasse`)}>
-                                Ver repasses
-                            </Button>
-                        </CardDeAcao>
-                    </TableCard.Root>
-                </section>
-
-                <Secao titulo="Resumo financeiro" lateral={<span className="text-sm text-tertiary">Acumulado de todos os eventos, até hoje</span>}>
-                    <Cascata totais={totais} aoAbrir={setDetalhe} creditoPendente={eventos.some((e) => e.creditoPendente)} />
+                <Secao titulo="Resumo financeiro" lateral={<span className="text-sm text-tertiary">Acumulado de {filtrado ? contagem(escopo.length) : "todos os eventos"}, até hoje</span>}>
+                    <Cascata totais={totais} aoAbrir={setDetalhe} creditoPendente={escopo.some((e) => e.creditoPendente)} />
                     <Distribuicao
                         totais={totais}
-                        detalhes={detalhesDaDistribuicao(eventos)}
+                        detalhes={detalhesDaDistribuicao(escopo)}
                         destinos={{
                             processamento: comCenario(`${BASE}/calendario?tipo=processamento`),
                             retido: comCenario(`${BASE}/calendario?tipo=retido`),
-                            aLiberar: comCenario(`${BASE}/calendario?tipo=antecipavel`),
+                            aLiberar: comCenario(`${BASE}/calendario`),
                             disponivel: comCenario(`${BASE}?situacao=disponivel`),
                             agendado: comCenario(`${BASE}/extrato?tipo=repasse&periodo=90`),
                             recebido: comCenario(`${BASE}/extrato?tipo=repasse-pago&periodo=90`),
@@ -245,33 +202,6 @@ export function FinancasEventos() {
 
                 <div className="grid grid-cols-2 items-start gap-6">
                     <Secao
-                        titulo="Próximas liberações"
-                        lateral={
-                            <Button size="sm" color="link-gray" href={comCenario(`${BASE}/calendario`)}>
-                                Ver calendário
-                            </Button>
-                        }
-                    >
-                        {proximas.length === 0 ? (
-                            <Vazio>Nenhuma liberação prevista. Quando um evento começar a vender, as próximas datas aparecem aqui.</Vazio>
-                        ) : (
-                            <div className={ROLAGEM}>
-                            <Lista>
-                                {proximas.map((g) => (
-                                    <Linha
-                                        key={`${g.data}-${g.tipo}`}
-                                        quando={g.data === HOJE ? "Hoje" : dataComDia(g.data!)}
-                                        titulo={ROTULO_DA_ENTRADA[g.tipo]}
-                                        detalhe={g.itens.length === 1 ? g.itens[0].evento.nome : `${g.itens.length} eventos`}
-                                        valor={reais(g.valor)}
-                                        para={g.itens.length === 1 ? comCenario(`${BASE}/${g.itens[0].evento.id}`) : comCenario(`${BASE}/calendario?tipo=${TIPO_NO_CALENDARIO[g.tipo]}`)}
-                                    />
-                                ))}
-                            </Lista>
-                            </div>
-                        )}
-                    </Secao>
-                    <Secao
                         titulo="Últimos movimentos"
                         lateral={
                             <Button size="sm" color="link-gray" href={comCenario(`${BASE}/extrato`)}>
@@ -280,7 +210,7 @@ export function FinancasEventos() {
                         }
                     >
                         {ultimos.length === 0 ? (
-                            <Vazio>Nenhum movimento ainda. Liberações, repasses e devoluções aparecem aqui.</Vazio>
+                            <Vazio>Nenhum movimento ainda. Liberações, saques e devoluções aparecem aqui.</Vazio>
                         ) : (
                             <div className={ROLAGEM}>
                             <Lista>
@@ -291,10 +221,49 @@ export function FinancasEventos() {
                                         titulo={m.titulo}
                                         detalhe={m.evento.nome}
                                         valor={`${m.valor > 0 ? "+ " : ""}${reais(m.valor)}`}
-                                        corDoValor={m.valor > 0 ? "text-success-primary" : "text-primary"}
+                                        corDoValor={m.valor > 0 ? "text-success-primary" : m.valor < 0 ? COR_DO_NEGATIVO : "text-primary"}
                                         para={comCenario(`${BASE}/extrato?periodo=90&movimento=${m.id}`)}
                                     />
                                 ))}
+                            </Lista>
+                            </div>
+                        )}
+                    </Secao>
+                    <Secao
+                        titulo="Próximos movimentos"
+                        lateral={
+                            <Button size="sm" color="link-gray" href={comCenario(`${BASE}/calendario`)}>
+                                Ver calendário
+                            </Button>
+                        }
+                    >
+                        {proximas.length === 0 ? (
+                            <Vazio>Nenhum movimento previsto. Liberações e saques agendados aparecem aqui.</Vazio>
+                        ) : (
+                            <div className={ROLAGEM}>
+                            <Lista>
+                                {proximas.map((g) =>
+                                    g.saque ? (
+                                        <Linha
+                                            key={`saque-${g.data}-${g.saque.evento.id}`}
+                                            quando={dataComDia(g.data!)}
+                                            titulo="Saque agendado"
+                                            detalhe={`${g.saque.evento.nome} · cai na conta ${g.saque.conta.replace("Conta de terceiro · ", "")}`}
+                                            valor={reais(g.valor)}
+                                            para={comCenario(`${BASE}/extrato?tipo=repasse&periodo=90`)}
+                                        />
+                                    ) : (
+                                        <Linha
+                                            key={`${g.data}-${g.tipo}`}
+                                            quando={g.data === HOJE ? "Hoje" : dataComDia(g.data!)}
+                                            titulo={`${ROTULO_DA_ENTRADA[g.tipo]} libera`}
+                                            detalhe={g.itens.length === 1 ? g.itens[0].evento.nome : `${g.itens.length} eventos`}
+                                            valor={`+ ${reais(g.valor)}`}
+                                            corDoValor="text-success-primary"
+                                            para={g.itens.length === 1 ? comCenario(`${BASE}/${g.itens[0].evento.id}`) : comCenario(`${BASE}/calendario?tipo=${TIPO_NO_CALENDARIO[g.tipo]}`)}
+                                        />
+                                    ),
+                                )}
                             </Lista>
                             </div>
                         )}
@@ -409,8 +378,8 @@ export function FinancasEventos() {
                             <div className="flex items-center gap-4 border-b border-secondary bg-secondary px-6 py-2">
                                 <span className="flex-1 text-sm font-semibold text-secondary">Total de {contagem(resultado.length)}</span>
                                 <span className={cx(COLUNA_DE_SALDO, "flex flex-col")}>
-                                    <span className="text-xs text-tertiary">Disponível</span>
-                                    <span className={cx("text-md font-semibold whitespace-nowrap tabular-nums", totalDoResultado < 0 ? "text-error-primary" : "text-primary")}>{reais(totalDoResultado)}</span>
+                                    <span className="text-xs text-tertiary">Saldo disponível</span>
+                                    <span className={cx("text-md font-semibold whitespace-nowrap tabular-nums", totalDoResultado < 0 ? COR_DO_NEGATIVO : "text-primary")}>{reais(totalDoResultado)}</span>
                                 </span>
                                 <span aria-hidden="true" className="size-5 shrink-0" />
                             </div>
@@ -437,13 +406,13 @@ export function FinancasEventos() {
                 acoes={
                     temDados && (
                         <Button size="md" color="primary" isDisabled={bloqueado || totais.disponivel <= 0} onClick={() => setAcao("repasse")}>
-                            Solicitar repasse
+                            Solicitar saque
                         </Button>
                     )
                 }
             />
             {conteudo()}
-            {temDados && <PainelDoDetalhe parte={detalhe} eventos={eventos} aoFechar={() => setDetalhe(null)} />}
+            {temDados && <PainelDoDetalhe parte={detalhe} eventos={escopo} aoFechar={() => setDetalhe(null)} />}
         </FinancasShell>
     );
 }

@@ -40,7 +40,7 @@ export const Aviso = ({ tom, titulo, children, acao }: AvisoProps) => (
 export const AvisoDeBloqueio = () => (
     <Aviso
         tom="alerta"
-        titulo="Seus repasses estão pausados"
+        titulo="Seus saques estão pausados"
         acao={
             <>
                 <Button size="sm" color="primary" onClick={() => toast("Aqui abriria a confirmação da conta bancária, em Ajustes.")}>
@@ -52,8 +52,8 @@ export const AvisoDeBloqueio = () => (
             </>
         }
     >
-        <p>Precisamos confirmar a conta bancária da Arena Produções ({CONTA_DA_ORGANIZACAO}) antes de enviar novos repasses.</p>
-        <p>Seu saldo continua seguro. Depois que você confirmar a conta, a análise leva até 2 dias úteis e os repasses voltam.</p>
+        <p>Precisamos confirmar a conta bancária da Arena Produções ({CONTA_DA_ORGANIZACAO}) antes de liberar novos saques.</p>
+        <p>Seu saldo continua seguro. Depois que você confirmar a conta, a análise leva até 2 dias úteis e os saques voltam.</p>
     </Aviso>
 );
 
@@ -90,10 +90,10 @@ const ListaEmEspera = ({ linhas }: { linhas: number }) => (
     </div>
 );
 
-/** `variante="lista"`: Calendário e Extrato (resumo e lista). Padrão: Finanças e página do evento (cards, conta e lista). */
+/** `variante="lista"`: Calendário e Extrato (resumo e lista). Padrão: Visão geral e página do evento (conta e lista, sem cards). */
 export const Carregando = ({ variante }: { variante?: "lista" }) => (
     <div role="status" aria-label="Carregando suas finanças" className="flex flex-col gap-6">
-        <CartoesEmEspera />
+        {variante === "lista" && <CartoesEmEspera />}
         {variante !== "lista" && (
             <div className="flex flex-col gap-5 rounded-xl bg-primary p-6 ring-1 ring-secondary">
                 <Bloco className="h-5 w-56" />
@@ -187,8 +187,8 @@ export const TelaFinal = ({ acao, evento, valor, aoVoltar }: TelaFinalProps) => 
     const textos = {
         repasse: {
             icone: Send01,
-            titulo: "Aqui começa o repasse",
-            descricao: `O pedido de repasse abre ${escopo}${valor !== undefined ? ` e ${reais(valor)} disponíveis` : ""}.`,
+            titulo: "Aqui começa o saque",
+            descricao: `O pedido de saque abre ${escopo}${valor !== undefined ? ` e ${reais(valor)} disponíveis` : ""}.`,
         },
         antecipar: {
             icone: CoinsHand,

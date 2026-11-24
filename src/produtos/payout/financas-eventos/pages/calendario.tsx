@@ -33,7 +33,7 @@ import { baixarCsv, dataDoCsv } from "../../components/financas/csv";
 import { tituloDeTooltip } from "../../components/financas/dica";
 import { AvisoDeBloqueio, Carregando, ErroAoCarregar, TelaFinal } from "../../components/financas/estados";
 import { dataComDia, dataCurta, reais } from "../../components/financas/formato";
-import { CabecalhoDaPagina, FinancasShell, useCenario } from "../../components/financas/shell";
+import { CabecalhoDaPagina, FinancasShell, useCenario, useEventosEscolhidos } from "../../components/financas/shell";
 
 /*
  * Calendário de liberações, aba "Calendário" de Finanças (ajustes v3, seção 4.1, refeito depois da crítica de design de 17/11).
@@ -199,7 +199,8 @@ export function FinancasCalendario() {
     const [params, setParams] = useSearchParams();
     const [abertos, setAbertos] = useState<Set<string>>(new Set());
 
-    const eventos = eventosDoCenario(cenario);
+    // O filtro de eventos do topo de Finanças vale para a tela inteira.
+    const { escolhidos: eventos } = useEventosEscolhidos();
     const totais = totalizar(eventos);
     const bloqueado = cenario === "bloqueado";
     const comCenario = (rota: string) => `${rota}${cenario === "normal" ? "" : `${rota.includes("?") ? "&" : "?"}cenario=${cenario}`}`;
@@ -293,7 +294,7 @@ export function FinancasCalendario() {
                             <dd>
                                 <NumeroGrande valor={grafico.total} className="text-display-sm text-primary" classeDosCentavos="text-xl" />
                             </dd>
-                            <dd className="text-sm text-tertiary">Entra no seu Disponível nas datas abaixo</dd>
+                            <dd className="text-sm text-tertiary">Entra no seu saldo disponível nas datas abaixo</dd>
                         </div>
                         <Faixa rotulo={`Até ${dataCurta(resumo.limite7)}`} apoio="Próximos 7 dias" valor={resumo.em7} />
                         <Faixa rotulo={`Até ${dataCurta(resumo.limite30)}`} apoio="Próximos 30 dias" valor={resumo.em7 + resumo.em30} />

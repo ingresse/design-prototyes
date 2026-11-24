@@ -1,6 +1,6 @@
 import { useLayoutEffect, type ComponentType, type ReactNode } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router";
-import { ChevronDown } from "@untitledui/icons";
+import { Calendar, ChevronDown, FilterLines, InfoCircle } from "@untitledui/icons";
 import calendario from "@/assets/iconly/calendar.json";
 import grafico from "@/assets/iconly/chart.json";
 import pessoas from "@/assets/iconly/users.json";
@@ -10,11 +10,14 @@ import sacola from "@/assets/iconly/bag.json";
 import grupo from "@/assets/iconly/users-group.json";
 import engrenagem from "@/assets/iconly/setting.json";
 import { Avatar } from "@/components/base/avatar/avatar";
+import { FilterBar } from "@/components/application/filter-bar/filter-bar";
 import { Tabs } from "@/components/application/tabs/tabs";
+import { Button } from "@/components/base/buttons/button";
 import { ButtonGroup, ButtonGroupItem } from "@/components/base/button-group/button-group";
 import { iconeAnimado } from "@/components/foundations/icone-animado";
 import { cx } from "@/utils/cx";
-import { ATUALIZADO_EM, CENARIOS, ORGANIZACAO, type Cenario } from "./dados";
+import { MultiSelect } from "./multi-select-pt";
+import { ATUALIZADO_EM, CENARIOS, ORGANIZACAO, eventosDoCenario, type Cenario, type Evento } from "./dados";
 
 /*
  * Shell dos protótipos de Finanças do produtor.
@@ -205,6 +208,83 @@ export function FinancasShell({ jornada, children }: FinancasShellProps) {
     );
 }
 
+/* ---------------- filtro de eventos (topo de Finanças) ---------------- */
+
+/**
+ * Eventos escolhidos no filtro do topo, em `?eventos=id,id`. Sem escolha (ou com todos marcados),
+ * vale a organização inteira. O filtro aplica-se a todos os dados da página, nas três abas,
+ * inclusive à lista "Saldo por evento".
+ */
+export function useEventosEscolhidos(): { todos: Evento[]; escolhidos: Evento[]; filtrado: boolean } {
+    const [cenario] = useCenario();
+    const [params] = useSearchParams();
+    const todos = eventosDoCenario(cenario);
+    const ids = new Set((params.get("eventos") ?? "").split(",").filter(Boolean));
+    const escolhidos = todos.filter((e) => ids.has(e.id));
+    const filtrado = escolhidos.length > 0 && escolhidos.length < todos.length;
+    return { todos, escolhidos: filtrado ? escolhidos : todos, filtrado };
+}
+
+const FiltroDeEventos = () => {
+    const { todos, escolhidos, filtrado } = useEventosEscolhidos();
+    const [, mudar] = useParametro("eventos");
+    if (todos.length === 0) return null;
+    const itens = todos.map((e) => ({ id: e.id, label: e.nome }));
+    const valor = !filtrado ? "Todos os eventos" : escolhidos.length === 1 ? escolhidos[0].nome : `${escolhidos.length} eventos`;
+    return (
+        // Barra de filtros da página, abaixo das abas: `FilterBar` do DS dentro de um cartão.
+        <FilterBar.Root role="group" aria-label="Filtros de Finanças" className="mt-4 items-center gap-4 rounded-xl bg-primary px-4 py-3 shadow-xs ring-1 ring-secondary ring-inset">
+            <FilterBar.Content className="items-center gap-4">
+                <span className="flex items-center gap-2 pl-2 text-sm font-semibold text-secondary">
+                    <FilterLines aria-hidden="true" className="size-5 text-fg-quaternary" />
+                    Filtros
+                </span>
+                <span aria-hidden="true" className="h-6 w-px bg-border-secondary" />
+                <span id="rotulo-filtro-de-evento" className="text-sm font-medium text-tertiary">
+                    Evento
+                </span>
+                <MultiSelect
+                    size="sm"
+                    className="w-96"
+                    popoverClassName="w-96"
+                    icon={Calendar}
+                    aria-label={`Evento: ${valor}`}
+                    placeholder="Todos os eventos"
+                    placeholderComoValor
+                    items={itens}
+                    selectedKeys={new Set(filtrado ? escolhidos.map((e) => e.id) : [])}
+                    onSelectionChange={(chaves) => {
+                        const ids = chaves === "all" ? [] : [...chaves].map(String);
+                        // Tudo marcado é o mesmo que nenhum filtro. Trocar a seleção fecha painel aberto.
+                        mudar(ids.length === 0 || ids.length === todos.length ? null : ids.join(","), { detalhe: null, movimento: null, pagina: null });
+                    }}
+                    onReset={() => mudar(null)}
+                    onSelectAll={() => mudar(null)}
+                    emptyStateTitle="Nenhum evento encontrado"
+                    emptyStateDescription="Confira o nome do evento."
+                    selectedCountFormatter={() => valor}
+                >
+                    {(item) => (
+                        <MultiSelect.Item id={item.id} selectionIndicator="checkbox" selectionIndicatorAlign="left">
+                            {item.label}
+                        </MultiSelect.Item>
+                    )}
+                </MultiSelect>
+                {/* Com filtro, um clique volta para a organização inteira, sem abrir a lista. */}
+                {filtrado && (
+                    <Button size="sm" color="link-gray" onClick={() => mudar(null)}>
+                        Limpar filtros
+                    </Button>
+                )}
+            </FilterBar.Content>
+            <FilterBar.Actions className="gap-2 pr-2 text-sm text-tertiary">
+                <InfoCircle aria-hidden="true" className="size-4 shrink-0 text-fg-quaternary" />
+                Aplica-se a todos os dados da página
+            </FilterBar.Actions>
+        </FilterBar.Root>
+    );
+};
+
 /* ---------------- abas de Finanças ---------------- */
 
 export type AbaDeFinancas = "visao-geral" | "calendario" | "extrato";
@@ -218,12 +298,18 @@ const ABAS: Array<{ id: AbaDeFinancas; rotulo: string; rota: string }> = [
 const AbasDeFinancas = ({ ativa }: { ativa: AbaDeFinancas }) => {
     const navigate = useNavigate();
     const [cenario] = useCenario();
+    const [params] = useSearchParams();
     return (
         <Tabs
             selectedKey={ativa}
             onSelectionChange={(chave) => {
                 const aba = ABAS.find((a) => a.id === chave);
-                if (aba && aba.id !== ativa) navigate(`${aba.rota}${cenario === "normal" ? "" : `?cenario=${cenario}`}`);
+                if (!aba || aba.id === ativa) return;
+                // A troca de aba mantém o cenário do protótipo e os eventos escolhidos no filtro do topo.
+                const destino = new URLSearchParams();
+                if (cenario !== "normal") destino.set("cenario", cenario);
+                if (params.get("eventos")) destino.set("eventos", params.get("eventos")!);
+                navigate(`${aba.rota}${destino.size ? `?${destino}` : ""}`);
             }}
         >
             <Tabs.List type="underline" size="sm" aria-label="Telas de Finanças">
@@ -251,5 +337,6 @@ export const CabecalhoDaPagina = ({ titulo, acima, abaixo, acoes, aba }: { titul
         </div>
         {abaixo}
         {aba && <AbasDeFinancas ativa={aba} />}
+        {aba && <FiltroDeEventos />}
     </header>
 );
