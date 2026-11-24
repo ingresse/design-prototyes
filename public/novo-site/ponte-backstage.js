@@ -209,11 +209,11 @@
     var mesmaHora = ps.every(function (p) { return p.h === a.h && p.min === a.min; });
     if (semanal) {
       var ini = mesmoMes ? a.dia : diaMes(a);
-      return { curto: 'Toda ' + SEM_LONGO[a.sem] + ', ' + ini + ' a ' + diaMes(z), longo: 'Toda ' + SEM_LONGO[a.sem] + ', de ' + diaMes(a) + ' a ' + diaMes(z) + ' de ' + z.ano + (mesmaHora ? ', às ' + hora(a) : '') + ' (' + dias.length + ' datas)', n: n };
+      return { curto: 'Toda ' + SEM_LONGO[a.sem] + ', ' + ini + ' a ' + diaMes(z), longo: 'Toda ' + SEM_LONGO[a.sem] + ', de ' + diaMes(a) + ' a ' + diaMes(z) + ' de ' + z.ano + (mesmaHora ? ', às ' + hora(a) : ''), n: n };
     }
     var curto = dias.length === 2 && Math.round((porDia[1].t - porDia[0].t) / 864e5) === 1 ? (mesmoMes ? a.dia : diaMes(a)) + ' e ' + diaMes(z) : intervalo;
-    var longo = 'De ' + SEM_LONGO[a.sem] + ', ' + diaMes(a) + (a.ano !== z.ano ? ' de ' + a.ano : '') + ' a ' + SEM_LONGO[z.sem] + ', ' + diaMes(z) + ' de ' + z.ano +
-      ' (' + (n === dias.length ? dias.length + ' datas' : n + ' sessões em ' + dias.length + ' dias') + ')';
+    // sem a contagem de datas no fim: a seção «Datas e horários» logo abaixo lista cada sessão
+    var longo = 'De ' + SEM_LONGO[a.sem] + ', ' + diaMes(a) + (a.ano !== z.ano ? ' de ' + a.ano : '') + ' a ' + SEM_LONGO[z.sem] + ', ' + diaMes(z) + ' de ' + z.ano;
     return { curto: curto, longo: longo, n: n };
   }
   /** Cada sessão por acontecer: horário, situação (venda, esgotado, nao-aberto) e o menor preço à venda. */
