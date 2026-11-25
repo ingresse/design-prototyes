@@ -34,6 +34,10 @@ import { EquipeEComissarios } from '../produtos/backstage/equipe-e-comissarios/p
 import { GrupoDaEquipe } from '../produtos/backstage/equipe-e-comissarios/pages/grupo';
 import { CanalDoGrupo } from '../produtos/backstage/equipe-e-comissarios/pages/canal-do-grupo';
 import { RedirecionarComissario } from '../produtos/backstage/equipe-e-comissarios/pages/redirecionar-comissario';
+import { BackstageOldRotas } from '../produtos/backstage-old/components/backstage-old-rotas';
+import { EquipeDeOperacaoV3 } from '../produtos/backstage-old/equipe-de-operacao-v3/pages/EquipeDeOperacaoV3';
+import { CriarGrupoV3 } from '../produtos/backstage-old/equipe-de-operacao-v3/pages/CriarGrupoV3';
+import { DetalheGrupoV3 } from '../produtos/backstage-old/equipe-de-operacao-v3/pages/DetalheGrupoV3';
 import { RelatorioComissarios } from '../produtos/backstage/comissarios/pages/relatorio-comissarios';
 import { ChaveDeAcesso } from '../produtos/backstage/chave-de-acesso/pages/ChaveDeAcesso';
 import { VenderIngressos } from '../produtos/backstage/bilheteria/pages/VenderIngressos';
@@ -284,6 +288,14 @@ export default function App() {
         <Route path="/backstage/evento/equipe/:grupoId" element={<GrupoDaEquipe />} />
         <Route path="/backstage/evento/equipe/:grupoId/canal/:canal" element={<CanalDoGrupo />} />
         <Route path="/backstage/equipe-de-operacao/*" element={<Navigate to="/backstage/evento/equipe" replace />} />
+        {/* Backstage antigo: Gerenciamento de cotas como publicado em 30/10/2026, com o layout daquela data. */}
+        <Route path="/backstage-old" element={<BackstageOldRotas />}>
+          <Route index element={<Navigate to="/backstage-old/equipe-de-operacao/v3" replace />} />
+          <Route path="equipe-de-operacao/v3" element={<EquipeDeOperacaoV3 />} />
+          <Route path="equipe-de-operacao/v3/criar" element={<CriarGrupoV3 />} />
+          <Route path="equipe-de-operacao/v3/:grupoId" element={<DetalheGrupoV3 />} />
+          <Route path="equipe-de-operacao/v3/:grupoId/editar" element={<CriarGrupoV3 />} />
+        </Route>
         <Route path="/backstage/bilheteria" element={<PedidosBilheteria />} />
         <Route path="/backstage/bilheteria/vender" element={<VenderIngressos />} />
         <Route path="/backstage/bilheteria/ingresso-pdf" element={<IngressoPdf />} />
