@@ -53,6 +53,11 @@
     }
 }
 
+/* Modal "O que a proteção cobre": card centralizado nos dois tamanhos, entra como o modal de desktop */
+.tc-modal-coberturas {
+    animation: tc-modal 260ms var(--tc-ease-out) 60ms both;
+}
+
 /* 3 · Anéis: opacidade + escala(0.7→1) · 200/240 · 500 · ease-out */
 .tc-aneis {
     animation: tc-aneis 500ms var(--tc-ease-out) var(--tc-d-aneis) both;

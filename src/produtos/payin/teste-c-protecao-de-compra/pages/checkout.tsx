@@ -4,6 +4,7 @@ import { AvisoSemProtecao } from "../components/aviso-sem-protecao";
 import { CheckoutMetodos } from "../components/checkout-metodos";
 import { CheckoutResumo } from "../components/checkout-resumo";
 import { CheckoutTitulo, CheckoutTopo } from "../components/checkout-topo";
+import { ModalCoberturas } from "../components/modal-coberturas";
 import { ModalProtecao } from "../components/modal-protecao";
 import { usePedido } from "../data/pedido-store";
 import { useForceLightTheme } from "../utils/use-force-light-theme";
@@ -17,6 +18,8 @@ export function Checkout() {
     const { protecao, escolherProtecao, qtdIngressos } = usePedido();
     // Modal reaberto pelo nome "Proteção de compra" no resumo; a escolha atual vale até o comprador decidir de novo
     const [revendoProtecao, setRevendoProtecao] = useState(false);
+    // "Conheça as coberturas" no aviso de compra sem proteção abre o modal informativo "O que a proteção cobre"
+    const [verCoberturas, setVerCoberturas] = useState(false);
 
     // A jornada sempre começa na seleção: checkout sem pedido (URL direta ou página recarregada) volta para lá
     if (qtdIngressos === 0) return <Navigate to="/payin/teste-c-protecao-de-compra" replace />;
@@ -32,7 +35,7 @@ export function Checkout() {
                         <CheckoutResumo onRevisarProtecao={() => setRevendoProtecao(true)} />
                     </div>
                     <div className="min-w-0">
-                        <AvisoSemProtecao />
+                        <AvisoSemProtecao onVerCoberturas={() => setVerCoberturas(true)} />
                         <CheckoutMetodos />
                     </div>
                 </div>
@@ -45,6 +48,7 @@ export function Checkout() {
                     setRevendoProtecao(false);
                 }}
             />
+            <ModalCoberturas aberto={verCoberturas} onFechar={() => setVerCoberturas(false)} />
         </div>
     );
 }

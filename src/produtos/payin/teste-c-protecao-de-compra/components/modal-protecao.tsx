@@ -1,5 +1,4 @@
-import { type FC, useEffect, useRef, useState } from "react";
-import { ActivityHeart, Bus, Home02, Scales02 } from "@untitledui/icons";
+import { useEffect, useRef, useState } from "react";
 import {
   Dialog as AriaDialog,
   Heading as AriaHeading,
@@ -15,42 +14,10 @@ import ring192 from "../assets/ring-192.svg";
 import ring240 from "../assets/ring-240.svg";
 import ring96 from "../assets/ring-96.svg";
 import shieldTickBranco from "../assets/shield-tick-branco.svg";
+import { COBERTURAS } from "../data/coberturas";
 import { brl } from "../data/evento";
 import { usePedido } from "../data/pedido-store";
 import "./modal-protecao.css";
-
-interface Cobertura {
-  icone: FC<{ className?: string }>;
-  titulo: string;
-  casos: string[];
-}
-
-const COBERTURAS: Cobertura[] = [
-  {
-    icone: ActivityHeart,
-    titulo: "Saúde",
-    casos: [
-      "Acidente, doença ou lesão",
-      "Condição médica preexistente",
-      "Infecção por COVID-19 e isolamento",
-    ],
-  },
-  {
-    icone: Bus,
-    titulo: "Imprevistos no caminho",
-    casos: ["Falha no transporte público", "Falha de veículo privado"],
-  },
-  {
-    icone: Home02,
-    titulo: "Emergências em casa",
-    casos: ["Emergência doméstica", "Chamada de serviços de emergência"],
-  },
-  {
-    icone: Scales02,
-    titulo: "Documentos e questões judiciais",
-    casos: ["Roubo de documentos", "Intimação judicial"],
-  },
-];
 
 /** Depois de "Continuar com proteção" o modal fica na tela com o card verde antes de fechar (spec: ~600ms). */
 const ESPERA_PROTEGIDO_MS = 600;
